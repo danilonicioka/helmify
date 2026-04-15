@@ -1,6 +1,3 @@
-default:
-  tags: ["podman"]
-
 variables:
   BUILDER_IMAGE: "registry.access.redhat.com/ubi8/go-toolset:1.21.0"
   CLI_TOOLS_IMAGE: "gitlab-ca.tjpa.jus.br:5050/devops/base-images/cli-tools-ubi:v1.3.0"

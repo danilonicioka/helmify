@@ -58,13 +58,14 @@ func Test_crd_Process(t *testing.T) {
 		assert.NotNil(t, tmpl)
 
 		data := string(tmpl.(*result).data)
+		expectedNestedPath := "cephvolumesTestExampleCom.crds.enabled"
 
-		assert.Contains(t, data, "{{- if .Values."+optionalCRDsConditional+" }}", "template should start with conditional")
+		assert.Contains(t, data, "{{- if .Values."+expectedNestedPath+" }}", "template should start with conditional")
 		assert.Contains(t, data, "{{- end }}", "template should end with conditional")
 
 		values := tmpl.(*result).values
-		val, ok := getValue(values, optionalCRDsConditional)
-		assert.True(t, ok, "expected key crds."+optionalCRDsConditional+" in values")
+		val, ok := getValue(values, expectedNestedPath)
+		assert.True(t, ok, "expected key "+expectedNestedPath+" in values")
 		assert.Equal(t, true, val)
 	})
 }
