@@ -67,12 +67,13 @@ func Test_svc_Process(t *testing.T) {
 		assert.NotNil(t, template)
 
 		values := template.Values()
-		ipFamilyPolicy, found, err := unstructured.NestedString(values, "myOperatorControllerManagerMetricsService", "ipFamilyPolicy")
+		expectedRoot := "myOperatorControllerManagerMetrics"
+		ipFamilyPolicy, found, err := unstructured.NestedString(values, expectedRoot, "ipFamilyPolicy")
 		assert.NoError(t, err)
 		assert.True(t, found)
 		assert.Equal(t, "PreferDualStack", ipFamilyPolicy)
 
-		ipFamilies, found, err := unstructured.NestedSlice(values, "myOperatorControllerManagerMetricsService", "ipFamilies")
+		ipFamilies, found, err := unstructured.NestedSlice(values, expectedRoot, "ipFamilies")
 		assert.NoError(t, err)
 		assert.True(t, found)
 		assert.Len(t, ipFamilies, 2)
