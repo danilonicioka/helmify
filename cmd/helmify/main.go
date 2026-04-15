@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/arttor/helmify/pkg/app"
+	"github.com/arttor/helmify/pkg/helm"
 	"github.com/arttor/helmify/pkg/translator/k8smanifest"
 	"github.com/sirupsen/logrus"
 )

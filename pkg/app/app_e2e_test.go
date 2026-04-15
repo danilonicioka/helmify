@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/arttor/helmify/pkg/config"
+	"github.com/arttor/helmify/pkg/helm"
 	"github.com/arttor/helmify/pkg/translator/k8smanifest"
 	"github.com/stretchr/testify/assert"
 	"helm.sh/helm/v3/pkg/action"
@@ -24,7 +25,7 @@ func TestOperator(t *testing.T) {
 	conf := config.Config{ChartName: operatorChartName}
 	objects := bufio.NewReader(file)
 	trans := k8smanifest.New(conf, objects)
-	engine := NewEngine(conf)
+	engine := NewEngine(conf, helm.NewOutput())
 	
 	err = engine.Run(context.Background(), trans)
 	assert.NoError(t, err)
@@ -50,7 +51,7 @@ func TestApp(t *testing.T) {
 	conf := config.Config{ChartName: appChartName}
 	objects := bufio.NewReader(file)
 	trans := k8smanifest.New(conf, objects)
-	engine := NewEngine(conf)
+	engine := NewEngine(conf, helm.NewOutput())
 
 	err = engine.Run(context.Background(), trans)
 	assert.NoError(t, err)
