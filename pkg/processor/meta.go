@@ -140,8 +140,12 @@ func ObjectValueName(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		return appName
 	}
 
-	// 2. Suffix Stripping Route
-	name := obj.GetName()
+	return ResolveValueName(appMeta, obj.GetName())
+}
+
+// ResolveValueName tries to reconcile a raw resource name with its likely component-based root name.
+// Used when only the name string is available (e.g. for reloading annotations).
+func ResolveValueName(appMeta helmify.AppMetadata, name string) string {
 	suffixes := []string{"-deploy", "-deployment", "-svc", "-service", "-route", "-cm", "-configmap", "-secret", "-job", "-cronjob", "-pdb"}
 	for _, s := range suffixes {
 		if strings.HasSuffix(name, s) {
@@ -149,6 +153,6 @@ func ObjectValueName(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		}
 	}
 
-	// 3. Mathematical Fallback
+	// Mathematical Fallback
 	return appMeta.TrimName(name)
 }

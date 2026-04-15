@@ -7,6 +7,7 @@ import (
 
 	"github.com/arttor/helmify/pkg/cluster"
 	"github.com/arttor/helmify/pkg/helmify"
+	"github.com/arttor/helmify/pkg/processor"
 	securityContext "github.com/arttor/helmify/pkg/processor/security-context"
 	"github.com/iancoleman/strcase"
 	corev1 "k8s.io/api/core/v1"
@@ -178,12 +179,7 @@ func processNestedContainers(specMap map[string]interface{}, objName string, val
 func processContainers(objName string, values helmify.Values, containerType string, containers []interface{}, nindent int) ([]interface{}, helmify.Values, error) {
 	for i := range containers {
 		containerName := strcase.ToLowerCamel((containers[i].(map[string]interface{})["name"]).(string))
-		var valuePath []string
-		if containerName == objName || containerName == "" {
-			valuePath = []string{objName}
-		} else {
-			valuePath = []string{objName, containerName}
-		}
+		valuePath := []string{objName, containerName}
 		valuePathStr := strings.Join(valuePath, ".")
 
 		res, exists, err := unstructured.NestedMap(values, append(valuePath, "resources")...)
@@ -262,13 +258,7 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 	}
 	repo, tag := c.Image[:index], c.Image[index+1:]
 	containerName := strcase.ToLowerCamel(c.Name)
-	
-	var valuePath []string
-	if containerName == name || containerName == "" {
-		valuePath = []string{name}
-	} else {
-		valuePath = []string{name, containerName}
-	}
+	valuePath := []string{name, containerName}
 	valuePathStr := strings.Join(valuePath, ".")
 
 	c.Image = fmt.Sprintf("{{ .Values.%[1]s.image.repository }}:{{ .Values.%[1]s.image.tag | default .Chart.AppVersion }}", valuePathStr)
@@ -323,12 +313,7 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 }
 
 func processEnv(name string, containerName string, appMeta helmify.AppMetadata, c corev1.Container, values *helmify.Values) (corev1.Container, error) {
-	var valuePath []string
-	if containerName == name || containerName == "" {
-		valuePath = []string{name}
-	} else {
-		valuePath = []string{name, containerName}
-	}
+	valuePath := []string{name, containerName}
 	valuePathStr := strings.Join(valuePath, ".")
 	for i := 0; i < len(c.Env); i++ {
 		if c.Env[i].ValueFrom != nil {
@@ -400,12 +385,12 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 	}
 
 	for cm := range configMaps {
-		trimmed := appMeta.TrimName(cm)
-		annotations["checksum/config-"+trimmed] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s.yaml") . | sha256sum }}`, trimmed)
+		valueName := processor.ResolveValueName(appMeta, cm)
+		annotations["checksum/config-"+valueName] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s-configmap.yaml") . | sha256sum }}`, valueName)
 	}
 	for sec := range secrets {
-		trimmed := appMeta.TrimName(sec)
-		annotations["checksum/secret-"+trimmed] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s.yaml") . | sha256sum }}`, trimmed)
+		valueName := processor.ResolveValueName(appMeta, sec)
+		annotations["checksum/secret-"+valueName] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s-secret.yaml") . | sha256sum }}`, valueName)
 	}
 
 	return annotations
