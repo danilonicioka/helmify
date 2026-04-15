@@ -32,9 +32,6 @@ setup-vars:
   artifacts:
     reports:
       dotenv: build.env
-  only:
-    - develop
-    - tags
 
 app-test:
   stage: test
@@ -43,9 +40,6 @@ app-test:
   script:
     - echo "Running unit tests..."
     - go test ./...
-  only:
-    - develop
-    - tags
 
 # ---------------------------------------------------------------------------
 # Stage: Build (Source -> Binary)
@@ -64,9 +58,6 @@ build-app:
     paths:
       - helmify-api
     expire_in: 1 hour
-  only:
-    - develop
-    - tags
 
 # ---------------------------------------------------------------------------
 # Stage: Containerize (Binary -> Image)
@@ -83,6 +74,3 @@ push-to-quay:
     - podman login $QUAY_URL -u $QUAY_USER -p $QUAY_PASS --tls-verify=false
     - podman build --tls-verify=false -f Containerfile -t "$IMAGE" .
     - podman push "$IMAGE" --tls-verify=false
-  only:
-    - develop
-    - tags
