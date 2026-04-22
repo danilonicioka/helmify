@@ -36,7 +36,7 @@ app-test:
   needs: [setup-vars]
   script:
     - echo "Running unit tests..."
-    - go test ./...
+    - go test -buildvcs=false ./...
 
 # ---------------------------------------------------------------------------
 # Stage: Build (Source -> Binary)
@@ -50,7 +50,7 @@ build-app:
     - job: app-test
   script:
     - echo "Building the Helmify API binary..."
-    - go build -o helmify-api ./cmd/helmify-api
+    - go build -buildvcs=false -o helmify-api ./cmd/helmify-api
   artifacts:
     paths:
       - helmify-api
