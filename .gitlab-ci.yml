@@ -1,6 +1,6 @@
 variables:
   BUILDER_IMAGE: "registry.access.redhat.com/ubi8/go-toolset:1.21"
-  CLI_TOOLS_IMAGE: "gitlab-ca.tjpa.jus.br:5050/devops/base-images/cli-tools-ubi:v1.3.0"
+  CLI_TOOLS_IMAGE: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/ca/devops/base-images/cli-tools-ubi:v1.3.0"
   GOPATH: $CI_PROJECT_DIR/.go
   GOCACHE: $CI_PROJECT_DIR/.gocache
 
