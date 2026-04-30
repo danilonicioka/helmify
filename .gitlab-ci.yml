@@ -63,7 +63,7 @@ build-app:
 # ---------------------------------------------------------------------------
 push-to-quay:
   stage: containerize
-  image: registry.access.redhat.com/ubi8/podman:latest
+  image: quay.io/podman/stable:latest
   needs:
     - job: setup-vars
       artifacts: true
