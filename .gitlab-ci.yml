@@ -63,7 +63,7 @@ build-app:
 # ---------------------------------------------------------------------------
 push-to-quay:
   stage: containerize
-  image: quay.io/podman/stable:latest
+  image: registry.access.redhat.com/ubi8/podman:latest
   needs:
     - job: setup-vars
       artifacts: true
@@ -73,6 +73,6 @@ push-to-quay:
     STORAGE_DRIVER: vfs
     BUILDAH_ISOLATION: chroot
   script:
-    - podman login $QUAY_URL -u $QUAY_USER -p $QUAY_PASS --tls-verify=false
-    - podman build --tls-verify=false -f Containerfile -t "$IMAGE" .
-    - podman push "$IMAGE" --tls-verify=false
+    - podman login --storage-driver vfs $QUAY_URL -u $QUAY_USER -p $QUAY_PASS --tls-verify=false
+    - podman build --storage-driver vfs --tls-verify=false -f Containerfile -t "$IMAGE" .
+    - podman push --storage-driver vfs "$IMAGE" --tls-verify=false
