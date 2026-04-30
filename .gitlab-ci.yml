@@ -1,3 +1,7 @@
+default:
+  tags:
+    - ocp-dev-global
+
 variables:
   BUILDER_IMAGE: "registry.access.redhat.com/ubi8/go-toolset:1.21"
   # CLI_TOOLS_IMAGE: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/ca/devops/base-images/cli-tools-ubi:v1.3.0"
