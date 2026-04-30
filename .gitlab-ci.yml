@@ -48,6 +48,8 @@ build-app:
     - job: setup-vars
       artifacts: true
     - job: app-test
+  variables:
+    CGO_ENABLED: "0"
   script:
     - echo "Building the Helmify API binary..."
     - go build -buildvcs=false -o helmify-api ./cmd/helmify-api
@@ -61,12 +63,15 @@ build-app:
 # ---------------------------------------------------------------------------
 push-to-quay:
   stage: containerize
-  image: quay.io/podman/stable:latest
+  image: registry.access.redhat.com/ubi8/podman:latest
   needs:
     - job: setup-vars
       artifacts: true
     - job: build-app
       artifacts: true
+  variables:
+    STORAGE_DRIVER: vfs
+    BUILDAH_ISOLATION: chroot
   script:
     - podman login $QUAY_URL -u $QUAY_USER -p $QUAY_PASS --tls-verify=false
     - podman build --tls-verify=false -f Containerfile -t "$IMAGE" .
