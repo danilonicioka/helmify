@@ -69,7 +69,7 @@ push-to-quay:
   stage: containerize
   image: registry.access.redhat.com/ubi8/podman:latest
   tags:
-    - podman
+    - rancher
   needs:
     - job: setup-vars
       artifacts: true
