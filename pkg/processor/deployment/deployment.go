@@ -29,15 +29,9 @@ var deploymentGVC = schema.GroupVersionKind{
 var deploymentTempl, _ = template.New("deployment").Parse(
 	`{{- .Meta }}
 spec:
-{{- if .Replicas }}
-{{ .Replicas }}
-{{- end }}
-{{- if .RevisionHistoryLimit }}
-{{ .RevisionHistoryLimit }}
-{{- end }}
-{{- if .Strategy }}
-{{ .Strategy }}
-{{- end }}
+{{- .Replicas }}
+{{- .RevisionHistoryLimit }}
+{{- .Strategy }}
   selector:
 {{ .Selector }}
   template:
@@ -206,88 +200,56 @@ func processReplicas(name string, deployment *appsv1.Deployment, values *helmify
 	if deployment.Spec.Replicas == nil {
 		return "", nil
 	}
-	replicasTpl, err := values.Add(int64(*deployment.Spec.Replicas), name, "replicas")
+	nameCamel := strcase.ToLowerCamel(name)
+	_, err := values.Add(int64(*deployment.Spec.Replicas), name, "replicas")
 	if err != nil {
 		return "", err
 	}
-	replicas, err := yamlformat.Marshal(map[string]interface{}{"replicas": replicasTpl}, 2)
-	if err != nil {
-		return "", err
-	}
-	replicas = strings.ReplaceAll(replicas, "'", "")
-	return replicas, nil
+	return fmt.Sprintf("{{- if not (kindIs \"nil\" .Values.%s.replicas) }}\n  replicas: {{ .Values.%s.replicas }}\n{{- end }}", nameCamel, nameCamel), nil
 }
 
 func processRevisionHistoryLimit(name string, deployment *appsv1.Deployment, values *helmify.Values) (string, error) {
 	if deployment.Spec.RevisionHistoryLimit == nil {
 		return "", nil
 	}
-	revisionHistoryLimitTpl, err := values.Add(int64(*deployment.Spec.RevisionHistoryLimit), name, "revisionHistoryLimit")
+	nameCamel := strcase.ToLowerCamel(name)
+	_, err := values.Add(int64(*deployment.Spec.RevisionHistoryLimit), name, "revisionHistoryLimit")
 	if err != nil {
 		return "", err
 	}
-	revisionHistoryLimit, err := yamlformat.Marshal(map[string]interface{}{"revisionHistoryLimit": revisionHistoryLimitTpl}, 2)
-	if err != nil {
-		return "", err
-	}
-	revisionHistoryLimit = strings.ReplaceAll(revisionHistoryLimit, "'", "")
-	return revisionHistoryLimit, nil
+	return fmt.Sprintf("{{- if not (kindIs \"nil\" .Values.%s.revisionHistoryLimit) }}\n  revisionHistoryLimit: {{ .Values.%s.revisionHistoryLimit }}\n{{- end }}", nameCamel, nameCamel), nil
 }
 
 func processStrategy(name string, deployment *appsv1.Deployment, values *helmify.Values) (string, error) {
 	if deployment.Spec.Strategy.Type == "" {
 		return "", nil
 	}
-	allowedStrategyTypes := map[appsv1.DeploymentStrategyType]bool{
-		appsv1.RecreateDeploymentStrategyType:      true,
-		appsv1.RollingUpdateDeploymentStrategyType: true,
-	}
-	if !allowedStrategyTypes[deployment.Spec.Strategy.Type] {
-		return "", fmt.Errorf("invalid deployment strategy type: %s", deployment.Spec.Strategy.Type)
-	}
-	strategyTypeTpl, err := values.Add(string(deployment.Spec.Strategy.Type), name, "strategy", "type")
-	if err != nil {
-		return "", err
-	}
+	nameCamel := strcase.ToLowerCamel(name)
 	strategyMap := map[string]interface{}{
-		"type": strategyTypeTpl,
+		"type": string(deployment.Spec.Strategy.Type),
 	}
-	if deployment.Spec.Strategy.Type == appsv1.RollingUpdateDeploymentStrategyType {
-		if rollingUpdate := deployment.Spec.Strategy.RollingUpdate; rollingUpdate != nil {
-			rollingUpdateMap := map[string]interface{}{}
-			setRollingUpdateField := func(value *intstr.IntOrString, fieldName string) error {
-				var tpl string
-				var err error
-				if value.Type == intstr.Int {
-					tpl, err = values.Add(value.IntValue(), name, "strategy", "rollingUpdate", fieldName)
-				} else {
-					tpl, err = values.Add(value.String(), name, "strategy", "rollingUpdate", fieldName)
-				}
-				if err != nil {
-					return err
-				}
-				rollingUpdateMap[fieldName] = tpl
-				return nil
+	// ... (rest of strategyMap logic is fine as it populates values)
+	if deployment.Spec.Strategy.RollingUpdate != nil {
+		ru := deployment.Spec.Strategy.RollingUpdate
+		ruMap := map[string]interface{}{}
+		if ru.MaxSurge != nil {
+			if ru.MaxSurge.Type == intstr.Int {
+				ruMap["maxSurge"] = int64(ru.MaxSurge.IntVal)
+			} else {
+				ruMap["maxSurge"] = ru.MaxSurge.StrVal
 			}
-			if rollingUpdate.MaxSurge != nil {
-				if err := setRollingUpdateField(rollingUpdate.MaxSurge, "maxSurge"); err != nil {
-					return "", err
-				}
-			}
-			if rollingUpdate.MaxUnavailable != nil {
-				if err := setRollingUpdateField(rollingUpdate.MaxUnavailable, "maxUnavailable"); err != nil {
-					return "", err
-				}
-			}
-			strategyMap["rollingUpdate"] = rollingUpdateMap
 		}
+		if ru.MaxUnavailable != nil {
+			if ru.MaxUnavailable.Type == intstr.Int {
+				ruMap["maxUnavailable"] = int64(ru.MaxUnavailable.IntVal)
+			} else {
+				ruMap["maxUnavailable"] = ru.MaxUnavailable.StrVal
+			}
+		}
+		strategyMap["rollingUpdate"] = ruMap
 	}
-	strategy, err := yamlformat.Marshal(map[string]interface{}{"strategy": strategyMap}, 2)
-	if err != nil {
-		return "", err
-	}
-	strategy = strings.ReplaceAll(strategy, "'", "")
-	return strategy, nil
+	_ = unstructured.SetNestedField(*values, strategyMap, nameCamel, "strategy")
+	return fmt.Sprintf("{{- with .Values.%s.strategy }}\n  strategy:\n    {{- toYaml . | nindent 4 }}\n{{- end }}", nameCamel), nil
 }
 
 type result struct {

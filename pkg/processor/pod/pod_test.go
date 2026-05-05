@@ -151,20 +151,30 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"args": "{{- toYaml .Values.nginx.nginx.args | nindent 8 }}",
+					"args": "{{- toYaml .Values.nginx.args | nindent 8 }}",
 					"env": []interface{}{
 						map[string]interface{}{
 							"name":  "KUBERNETES_CLUSTER_DOMAIN",
 							"value": "{{ quote .Values.kubernetesClusterDomain }}",
 						},
 					},
-					"image": "{{ .Values.nginx.nginx.image.repository }}:{{ .Values.nginx.nginx.image.tag | default .Chart.AppVersion }}",
+					"envFrom": []interface{}{
+						map[string]interface{}{
+							"configMapRef": map[string]interface{}{
+								"name": `{{ include ".fullname" . }}-global`,
+							},
+						},
+					},
+					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
 					},
-					"resources": map[string]interface{}{},
+					"resources":      map[string]interface{}{},
+					"livenessProbe":  "{{- with .Values.nginx }}\nlivenessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"readinessProbe": "{{- with .Values.nginx }}\nreadinessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"startupProbe":   "{{- with .Values.nginx }}\nstartupProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
 				},
 			},
 			"tolerations":               "{{- toYaml .Values.nginx.tolerations | nindent 8 }}",
@@ -175,14 +185,30 @@ func Test_pod_Process(t *testing.T) {
 
 		assert.Equal(t, helmify.Values{
 			"nginx": map[string]interface{}{
-				"nginx": map[string]interface{}{
-					"image": map[string]interface{}{
-						"repository": "nginx",
-						"tag":        "1.14.2",
+				"image": map[string]interface{}{
+					"repository": "nginx",
+					"tag":        "1.14.2",
+				},
+				"args": []interface{}{
+					"--test",
+					"--arg",
+				},
+				"livenessProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
 					},
-					"args": []interface{}{
-						"--test",
-						"--arg",
+				},
+				"readinessProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
+					},
+				},
+				"startupProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
 					},
 				},
 				"nodeSelector":              map[string]interface{}{},
@@ -208,13 +234,23 @@ func Test_pod_Process(t *testing.T) {
 							"value": "{{ quote .Values.kubernetesClusterDomain }}",
 						},
 					},
-					"image": "{{ .Values.nginx.nginx.image.repository }}:{{ .Values.nginx.nginx.image.tag | default .Chart.AppVersion }}",
+					"envFrom": []interface{}{
+						map[string]interface{}{
+							"configMapRef": map[string]interface{}{
+								"name": `{{ include ".fullname" . }}-global`,
+							},
+						},
+					},
+					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
 					},
-					"resources": map[string]interface{}{},
+					"resources":      map[string]interface{}{},
+					"livenessProbe":  "{{- with .Values.nginx }}\nlivenessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"readinessProbe": "{{- with .Values.nginx }}\nreadinessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"startupProbe":   "{{- with .Values.nginx }}\nstartupProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
 				},
 			},
 			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
@@ -225,10 +261,26 @@ func Test_pod_Process(t *testing.T) {
 
 		assert.Equal(t, helmify.Values{
 			"nginx": map[string]interface{}{
-				"nginx": map[string]interface{}{
-					"image": map[string]interface{}{
-						"repository": "nginx",
-						"tag":        "1.14.2",
+				"image": map[string]interface{}{
+					"repository": "nginx",
+					"tag":        "1.14.2",
+				},
+				"livenessProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
+					},
+				},
+				"readinessProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
+					},
+				},
+				"startupProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
 					},
 				},
 				"nodeSelector":              map[string]interface{}{},
@@ -254,13 +306,23 @@ func Test_pod_Process(t *testing.T) {
 							"value": "{{ quote .Values.kubernetesClusterDomain }}",
 						},
 					},
-					"image": "{{ .Values.nginx.nginx.image.repository }}:{{ .Values.nginx.nginx.image.tag | default .Chart.AppVersion }}",
+					"envFrom": []interface{}{
+						map[string]interface{}{
+							"configMapRef": map[string]interface{}{
+								"name": `{{ include ".fullname" . }}-global`,
+							},
+						},
+					},
+					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
 					},
-					"resources": map[string]interface{}{},
+					"resources":      map[string]interface{}{},
+					"livenessProbe":  "{{- with .Values.nginx }}\nlivenessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"readinessProbe": "{{- with .Values.nginx }}\nreadinessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"startupProbe":   "{{- with .Values.nginx }}\nstartupProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
 				},
 			},
 			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
@@ -271,10 +333,26 @@ func Test_pod_Process(t *testing.T) {
 
 		assert.Equal(t, helmify.Values{
 			"nginx": map[string]interface{}{
-				"nginx": map[string]interface{}{
-					"image": map[string]interface{}{
-						"repository": "nginx",
-						"tag":        "1.14.2@sha256:cb5c1bddd1b5665e1867a7fa1b5fa843a47ee433bbb75d4293888b71def53229",
+				"image": map[string]interface{}{
+					"repository": "nginx",
+					"tag":        "1.14.2@sha256:cb5c1bddd1b5665e1867a7fa1b5fa843a47ee433bbb75d4293888b71def53229",
+				},
+				"livenessProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
+					},
+				},
+				"readinessProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
+					},
+				},
+				"startupProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
 					},
 				},
 				"nodeSelector":              map[string]interface{}{},
@@ -300,13 +378,23 @@ func Test_pod_Process(t *testing.T) {
 							"value": "{{ quote .Values.kubernetesClusterDomain }}",
 						},
 					},
-					"image": "{{ .Values.nginx.nginx.image.repository }}:{{ .Values.nginx.nginx.image.tag | default .Chart.AppVersion }}",
+					"envFrom": []interface{}{
+						map[string]interface{}{
+							"configMapRef": map[string]interface{}{
+								"name": `{{ include ".fullname" . }}-global`,
+							},
+						},
+					},
+					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
 					},
-					"resources": map[string]interface{}{},
+					"resources":      map[string]interface{}{},
+					"livenessProbe":  "{{- with .Values.nginx }}\nlivenessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"readinessProbe": "{{- with .Values.nginx }}\nreadinessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"startupProbe":   "{{- with .Values.nginx }}\nstartupProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
 				},
 			},
 			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
@@ -317,10 +405,26 @@ func Test_pod_Process(t *testing.T) {
 
 		assert.Equal(t, helmify.Values{
 			"nginx": map[string]interface{}{
-				"nginx": map[string]interface{}{
-					"image": map[string]interface{}{
-						"repository": "localhost:6001/my_project",
-						"tag":        "latest",
+				"image": map[string]interface{}{
+					"repository": "localhost:6001/my_project",
+					"tag":        "latest",
+				},
+				"livenessProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
+					},
+				},
+				"readinessProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
+					},
+				},
+				"startupProbe": map[string]interface{}{
+					"periodSeconds": int64(10),
+					"tcpSocket": map[string]interface{}{
+						"port": int64(80),
 					},
 				},
 				"nodeSelector":              map[string]interface{}{},
@@ -344,9 +448,19 @@ func Test_pod_Process(t *testing.T) {
 							"value": "{{ quote .Values.kubernetesClusterDomain }}",
 						},
 					},
-					"image":     "{{ .Values.nginx.nginx.image.repository }}:{{ .Values.nginx.nginx.image.tag | default .Chart.AppVersion }}",
-					"name":      "nginx",
-					"resources": map[string]interface{}{},
+					"envFrom": []interface{}{
+						map[string]interface{}{
+							"configMapRef": map[string]interface{}{
+								"name": `{{ include ".fullname" . }}-global`,
+							},
+						},
+					},
+					"image":          "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
+					"name":           "nginx",
+					"resources":      map[string]interface{}{},
+					"livenessProbe":  "{{- with .Values.nginx }}\nlivenessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"readinessProbe": "{{- with .Values.nginx }}\nreadinessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"startupProbe":   "{{- with .Values.nginx }}\nstartupProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
 				},
 			},
 			"securityContext":           "{{- toYaml .Values.nginx.podSecurityContext | nindent 8 }}",
@@ -364,12 +478,13 @@ func Test_pod_Process(t *testing.T) {
 					"runAsNonRoot": true,
 					"runAsUser":    int64(65532),
 				},
-				"nginx": map[string]interface{}{
-					"image": map[string]interface{}{
-						"repository": "localhost:6001/my_project",
-						"tag":        "latest",
-					},
+				"image": map[string]interface{}{
+					"repository": "localhost:6001/my_project",
+					"tag":        "latest",
 				},
+				"livenessProbe":             map[string]interface{}{},
+				"readinessProbe":            map[string]interface{}{},
+				"startupProbe":              map[string]interface{}{},
 				"nodeSelector":              map[string]interface{}{},
 				"tolerations":               []interface{}{},
 				"topologySpreadConstraints": []interface{}{},

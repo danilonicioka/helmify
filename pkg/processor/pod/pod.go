@@ -13,11 +13,21 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const imagePullPolicyTemplate = "{{ .Values.%[1]s.%[2]s.imagePullPolicy }}"
 const envValue = "{{ quote .Values.%[1]s.%[2]s.%[3]s.%[4]s }}"
 const baseIndent = 8
+
+const probeTemplate = `{{- with .Values.%[1]s }}
+%[2]s:
+  {{- toYaml . | nindent %[3]d }}
+{{- end }}`
+
+const numericTemplate = `{{- if not (kindIs "nil" .Values.%[1]s) }}
+%[2]s: {{ .Values.%[1]s }}
+{{- end }}`
 
 func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpec, addIndent int) (map[string]interface{}, helmify.Values, error) {
 	nindent := baseIndent + addIndent
@@ -179,7 +189,12 @@ func processNestedContainers(specMap map[string]interface{}, objName string, val
 func processContainers(objName string, values helmify.Values, containerType string, containers []interface{}, nindent int) ([]interface{}, helmify.Values, error) {
 	for i := range containers {
 		containerName := strcase.ToLowerCamel((containers[i].(map[string]interface{})["name"]).(string))
-		valuePath := []string{objName, containerName}
+		var valuePath []string
+		if containerName == objName || containerName == "" {
+			valuePath = []string{objName}
+		} else {
+			valuePath = []string{objName, containerName}
+		}
 		valuePathStr := strings.Join(valuePath, ".")
 
 		res, exists, err := unstructured.NestedMap(values, append(valuePath, "resources")...)
@@ -206,6 +221,14 @@ func processContainers(objName string, values helmify.Values, containerType stri
 			err = unstructured.SetNestedStringSlice(values, args, append(valuePath, "args")...)
 			if err != nil {
 				return nil, nil, fmt.Errorf("%w: unable to set deployment value field", err)
+			}
+		}
+
+		// Inject 3-Tier Probes templates
+		for _, pName := range []string{"startupProbe", "livenessProbe", "readinessProbe"} {
+			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf(probeTemplate, valuePathStr, pName, nindent+2), pName)
+			if err != nil {
+				return nil, nil, err
 			}
 		}
 	}
@@ -258,7 +281,12 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 	}
 	repo, tag := c.Image[:index], c.Image[index+1:]
 	containerName := strcase.ToLowerCamel(c.Name)
-	valuePath := []string{name, containerName}
+	var valuePath []string
+	if containerName == name || containerName == "" {
+		valuePath = []string{name}
+	} else {
+		valuePath = []string{name, containerName}
+	}
 	valuePathStr := strings.Join(valuePath, ".")
 
 	c.Image = fmt.Sprintf("{{ .Values.%[1]s.image.repository }}:{{ .Values.%[1]s.image.tag | default .Chart.AppVersion }}", valuePathStr)
@@ -285,6 +313,14 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 			e.ConfigMapRef.Name = appMeta.TemplatedName(e.ConfigMapRef.Name)
 		}
 	}
+	// Inject global configmap inheritance
+	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
+		ConfigMapRef: &corev1.ConfigMapEnvSource{
+			LocalObjectReference: corev1.LocalObjectReference{
+				Name: fmt.Sprintf(`{{ include "%s.fullname" . }}-global`, appMeta.ChartName()),
+			},
+		},
+	})
 	c.Env = append(c.Env, corev1.EnvVar{
 		Name:  cluster.DomainEnv,
 		Value: fmt.Sprintf("{{ quote .Values.%s }}", cluster.DomainKey),
@@ -309,6 +345,64 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 		}
 		c.ImagePullPolicy = corev1.PullPolicy(fmt.Sprintf("{{ .Values.%s.imagePullPolicy }}", valuePathStr))
 	}
+
+	c, err = processProbes(name, containerName, c, values)
+	if err != nil {
+		return c, err
+	}
+
+	return c, nil
+}
+
+func processProbes(name, containerName string, c corev1.Container, values *helmify.Values) (corev1.Container, error) {
+	var valuePath []string
+	if containerName == name || containerName == "" {
+		valuePath = []string{name}
+	} else {
+		valuePath = []string{name, containerName}
+	}
+
+	processProbe := func(p *corev1.Probe, probeName string) error {
+		if p == nil {
+			// Default to tcpSocket if not present and container has ports
+			if len(c.Ports) > 0 {
+				p = &corev1.Probe{
+					ProbeHandler: corev1.ProbeHandler{
+						TCPSocket: &corev1.TCPSocketAction{
+							Port: intstr.FromInt(int(c.Ports[0].ContainerPort)),
+						},
+					},
+					InitialDelaySeconds: 0,
+					PeriodSeconds:       10,
+				}
+			} else {
+				// Create empty probe in values if not present to follow "Zero-Default Base"
+				_ = unstructured.SetNestedField(*values, map[string]interface{}{}, append(valuePath, probeName)...)
+				return nil
+			}
+		}
+		pMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(p)
+		if err != nil {
+			return err
+		}
+		err = unstructured.SetNestedField(*values, pMap, append(valuePath, probeName)...)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+
+	if err := processProbe(c.LivenessProbe, "livenessProbe"); err != nil {
+		return c, err
+	}
+	if err := processProbe(c.ReadinessProbe, "readinessProbe"); err != nil {
+		return c, err
+	}
+	if err := processProbe(c.StartupProbe, "startupProbe"); err != nil {
+		return c, err
+	}
+
+	// We'll surgically replace them in the Unstructured map later in processContainers
 	return c, nil
 }
 
@@ -383,6 +477,9 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 	for _, c := range spec.InitContainers {
 		scanContainerRef(c)
 	}
+
+	// Always add checksum for global configmap
+	annotations["checksum/global-config"] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}`)
 
 	for cm := range configMaps {
 		valueName := processor.ResolveValueName(appMeta, cm)

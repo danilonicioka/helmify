@@ -85,6 +85,12 @@ Selector labels
 {{- define "<CHARTNAME>.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+{{- if .Values.component }}
+app.kubernetes.io/component: {{ .Values.component | quote }}
+{{- end }}
+{{- if .Values.partOf }}
+app.kubernetes.io/part-of: {{ .Values.partOf | quote }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -102,6 +108,17 @@ Create the name of the service account to use
 {{- end }}
 `
 
+const globalConfigMapTempl = `apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHARTNAME>.fullname" . }}-global
+  labels:
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+data:
+{{- range $key, $val := .Values.global }}
+  {{ $key }}: {{ $val | quote }}
+{{- end }}
+`
 const defaultChartfile = `apiVersion: v2
 name: %s
 description: A Helm chart for Kubernetes
@@ -188,7 +205,12 @@ func createCommonFiles(chartDir, chartName string, crd bool, certManagerAsSubcha
 	createFile(chartYAML(chartName, certManagerAsSubchart, certManagerVersion), cDir, "Chart.yaml")
 	createFile([]byte(helmIgnore), cDir, ".helmignore")
 	createFile(helpersYAML(chartName), cDir, "templates", "_helpers.tpl")
+	createFile(globalConfigMapYAML(chartName), cDir, "templates", "cm-global.yaml")
 	return err
+}
+
+func globalConfigMapYAML(chartName string) []byte {
+	return []byte(strings.ReplaceAll(globalConfigMapTempl, "<CHARTNAME>", chartName))
 }
 
 func chartYAML(appName string, certManagerAsSubchart bool, certManagerVersion string) []byte {

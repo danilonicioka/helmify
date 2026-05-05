@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
       - name: helmify-api
-        image: quay-tj.br/devops/helmify-api:latest # Placeholder
+        image: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/helmify:latest
         ports:
         - containerPort: 8080
         resources:
@@ -50,6 +50,18 @@ spec:
           runAsNonRoot: true
           seccompProfile:
             type: RuntimeDefault
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
