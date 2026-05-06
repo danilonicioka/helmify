@@ -21,7 +21,7 @@ import (
 func init() {
 	// Use JSON formatter for logs - standard for OpenShift/Kubernetes
 	logrus.SetFormatter(&logrus.JSONFormatter{})
-
+	
 	// Set log level from environment
 	levelStr := os.Getenv("HELMIFY_LOG_LEVEL")
 	if levelStr == "" {
@@ -45,6 +45,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/generate", handleGenerate)
+	mux.HandleFunc("/v1/preview", handlePreview)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -100,27 +101,10 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	conf := config.Config{
-		ChartName: r.Header.Get("X-Chart-Name"),
-	}
-	if conf.ChartName == "" {
-		conf.ChartName = "chart"
-	}
-
-	// Simple header parsing for booleans
-	conf.Crd, _ = strconv.ParseBool(r.Header.Get("X-Crd"))
-	conf.CertManagerAsSubchart, _ = strconv.ParseBool(r.Header.Get("X-Cert-Manager-Subchart"))
-	conf.CertManagerInstallCRD, _ = strconv.ParseBool(r.Header.Get("X-Cert-Manager-Install-Crd"))
-	conf.AddWebhookOption, _ = strconv.ParseBool(r.Header.Get("X-Add-Webhook-Option"))
-	conf.OptionalCRDs, _ = strconv.ParseBool(r.Header.Get("X-Optional-Crds"))
-	conf.CertManagerVersion = r.Header.Get("X-Cert-Manager-Version")
-	if conf.CertManagerVersion == "" {
-		conf.CertManagerVersion = "v1.11.0"
-	}
-
+	conf := parseConfig(r)
 	logrus.WithFields(logrus.Fields{
 		"chart_name": conf.ChartName,
-		"crd":        conf.Crd,
+		"op":         "generate",
 	}).Info("Generating chart")
 
 	memOut := helm.NewMemoryOutput()
@@ -138,6 +122,57 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 
 	if err := memOut.ToTarGz(conf.ChartName, w); err != nil {
 		logrus.WithError(err).Error("TarGz streaming failed")
-		// Note: we might have already sent some data, so we can't reliably send a JSON error here
 	}
+}
+
+func handlePreview(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	conf := parseConfig(r)
+	logrus.WithFields(logrus.Fields{
+		"chart_name": conf.ChartName,
+		"op":         "preview",
+	}).Info("Generating preview")
+
+	memOut := helm.NewMemoryOutput()
+	engine := app.NewEngine(conf, memOut)
+	trans := k8smanifest.New(conf, r.Body)
+
+	if err := engine.Run(r.Context(), trans); err != nil {
+		logrus.WithError(err).Error("Preview execution failed")
+		sendError(w, fmt.Sprintf("Failed to generate preview: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// Convert map[string][]byte to map[string]string for JSON
+	preview := make(map[string]string)
+	for name, content := range memOut.Files {
+		preview[name] = string(content)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(preview)
+}
+
+func parseConfig(r *http.Request) config.Config {
+	conf := config.Config{
+		ChartName: r.Header.Get("X-Chart-Name"),
+	}
+	if conf.ChartName == "" {
+		conf.ChartName = "chart"
+	}
+
+	conf.Crd, _ = strconv.ParseBool(r.Header.Get("X-Crd"))
+	conf.CertManagerAsSubchart, _ = strconv.ParseBool(r.Header.Get("X-Cert-Manager-Subchart"))
+	conf.CertManagerInstallCRD, _ = strconv.ParseBool(r.Header.Get("X-Cert-Manager-Install-Crd"))
+	conf.AddWebhookOption, _ = strconv.ParseBool(r.Header.Get("X-Add-Webhook-Option"))
+	conf.OptionalCRDs, _ = strconv.ParseBool(r.Header.Get("X-Optional-Crds"))
+	conf.CertManagerVersion = r.Header.Get("X-Cert-Manager-Version")
+	if conf.CertManagerVersion == "" {
+		conf.CertManagerVersion = "v1.11.0"
+	}
+	return conf
 }
