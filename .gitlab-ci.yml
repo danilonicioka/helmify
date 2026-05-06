@@ -10,7 +10,6 @@ variables:
 
 stages:
   - test
-  - build
   - containerize
 
 cache:
@@ -34,33 +33,6 @@ setup-vars:
     reports:
       dotenv: build.env
 
-# app-test:
-#   stage: test
-#   image: $BUILDER_IMAGE
-#   needs: [setup-vars]
-#   script:
-#     - echo "Running unit tests..."
-#     - go test -buildvcs=false ./...
-
-# ---------------------------------------------------------------------------
-# Stage: Build (Source -> Binary)
-# ---------------------------------------------------------------------------
-build-app:
-  stage: build
-  image: $BUILDER_IMAGE
-  needs:
-    - job: setup-vars
-      artifacts: true
-    # - job: app-test
-  variables:
-    CGO_ENABLED: "0"
-  script:
-    - echo "Building the Helmify API binary..."
-    - go build -buildvcs=false -o helmify-api ./cmd/helmify-api
-  artifacts:
-    paths:
-      - helmify-api
-    expire_in: 1 hour
 
 # ---------------------------------------------------------------------------
 # Stage: Containerize (Binary -> Image)
@@ -72,8 +44,6 @@ push-to-quay:
     - rancher
   needs:
     - job: setup-vars
-      artifacts: true
-    - job: build-app
       artifacts: true
   variables:
     STORAGE_DRIVER: vfs
