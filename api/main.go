@@ -21,7 +21,7 @@ import (
 func init() {
 	// Use JSON formatter for logs - standard for OpenShift/Kubernetes
 	logrus.SetFormatter(&logrus.JSONFormatter{})
-	
+
 	// Set log level from environment
 	levelStr := os.Getenv("HELMIFY_LOG_LEVEL")
 	if levelStr == "" {

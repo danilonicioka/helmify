@@ -26,7 +26,7 @@ func TestOperator(t *testing.T) {
 	objects := bufio.NewReader(file)
 	trans := k8smanifest.New(conf, objects)
 	engine := NewEngine(conf, helm.NewOutput())
-	
+
 	err = engine.Run(context.Background(), trans)
 	assert.NoError(t, err)
 

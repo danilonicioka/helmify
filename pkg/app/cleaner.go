@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// cleanKomposeMetadata deeply iterates through a K8s object and removes any 
+// cleanKomposeMetadata deeply iterates through a K8s object and removes any
 // label, annotation, or selector key starting with "io.kompose."
 func cleanKomposeMetadata(obj *unstructured.Unstructured) {
 	cleanMap(obj.Object)
@@ -20,7 +20,7 @@ func cleanMap(obj interface{}) {
 		cleanKeys(m, "annotations")
 		cleanKeys(m, "selector")
 		cleanKeys(m, "matchLabels")
-		
+
 		// Recurse into all maps
 		for _, v := range m {
 			cleanMap(v)

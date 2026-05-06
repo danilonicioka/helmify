@@ -17,12 +17,12 @@ import (
 	"github.com/arttor/helmify/pkg/processor/daemonset"
 	"github.com/arttor/helmify/pkg/processor/deployment"
 	"github.com/arttor/helmify/pkg/processor/rbac"
+	"github.com/arttor/helmify/pkg/processor/route"
 	"github.com/arttor/helmify/pkg/processor/secret"
 	"github.com/arttor/helmify/pkg/processor/service"
 	"github.com/arttor/helmify/pkg/processor/storage"
 	"github.com/arttor/helmify/pkg/processor/webhook"
 	"github.com/arttor/helmify/pkg/translator"
-	"github.com/arttor/helmify/pkg/processor/route"
 )
 
 // Engine is the core helmify processing engine, decoupled from inputs like stdin or files.
