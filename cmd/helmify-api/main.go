@@ -29,6 +29,8 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
+	// Serve the UI for all other paths
+	mux.Handle("/", getUIHandler())
 
 	server := &http.Server{
 		Addr:    ":" + port,

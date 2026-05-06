@@ -1,3 +1,11 @@
+# Next.js
+ui/node_modules
+ui/out
+ui/.next
+
+# Binaries
+helmify-api
+helmify
 
 # Binaries for programs and plugins
 *.exe
@@ -32,5 +40,7 @@ vendor/
 
 stand.py
 
-divida-ativa-batch/
-divida-ativa-batch-kustomize/
+portal-certidao/
+
+test-output/
+test-output.tar.gz
