@@ -163,6 +163,17 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 		}
 	}
 
+	if spec.TerminationGracePeriodSeconds != nil {
+		err = unstructured.SetNestedField(specMap, fmt.Sprintf(numericTemplate, objName+".terminationGracePeriodSeconds", "terminationGracePeriodSeconds"), "terminationGracePeriodSeconds")
+		if err != nil {
+			return nil, nil, err
+		}
+		err = unstructured.SetNestedField(values, *spec.TerminationGracePeriodSeconds, objName, "terminationGracePeriodSeconds")
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+
 	return specMap, values, nil
 }
 

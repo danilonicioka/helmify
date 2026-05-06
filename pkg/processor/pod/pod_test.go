@@ -128,6 +128,7 @@ spec:
       labels:
         app: nginx
     spec:
+      terminationGracePeriodSeconds: 30
       containers:
       - name: nginx
         image: localhost:6001/my_project:latest
@@ -475,11 +476,12 @@ func Test_pod_Process(t *testing.T) {
 					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
-			"securityContext":           "{{- toYaml .Values.nginx.podSecurityContext | nindent 8 }}",
-			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
-			"serviceAccountName":        `{{ include ".serviceAccountName" . }}`,
-			"tolerations":               "{{- toYaml .Values.nginx.tolerations | nindent 8 }}",
-			"topologySpreadConstraints": "{{- toYaml .Values.nginx.topologySpreadConstraints | nindent 8 }}",
+			"securityContext":               "{{- toYaml .Values.nginx.podSecurityContext | nindent 8 }}",
+			"nodeSelector":                  "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
+			"serviceAccountName":            `{{ include ".serviceAccountName" . }}`,
+			"tolerations":                   "{{- toYaml .Values.nginx.tolerations | nindent 8 }}",
+			"topologySpreadConstraints":     "{{- toYaml .Values.nginx.topologySpreadConstraints | nindent 8 }}",
+			"terminationGracePeriodSeconds": "{{- if not (kindIs \"nil\" .Values.nginx.terminationGracePeriodSeconds) }}\nterminationGracePeriodSeconds: {{ .Values.nginx.terminationGracePeriodSeconds }}\n{{- end }}",
 		}, specMap)
 
 		assert.Equal(t, helmify.Values{
@@ -494,12 +496,13 @@ func Test_pod_Process(t *testing.T) {
 					"repository": "localhost:6001/my_project",
 					"tag":        "latest",
 				},
-				"livenessProbe":             map[string]interface{}{},
-				"readinessProbe":            map[string]interface{}{},
-				"startupProbe":              map[string]interface{}{},
-				"nodeSelector":              map[string]interface{}{},
-				"tolerations":               []interface{}{},
-				"topologySpreadConstraints": []interface{}{},
+				"livenessProbe":                 map[string]interface{}{},
+				"readinessProbe":                map[string]interface{}{},
+				"startupProbe":                  map[string]interface{}{},
+				"nodeSelector":                  map[string]interface{}{},
+				"tolerations":                   []interface{}{},
+				"topologySpreadConstraints":     []interface{}{},
+				"terminationGracePeriodSeconds": int64(30),
 			},
 		}, tmpl)
 	})
