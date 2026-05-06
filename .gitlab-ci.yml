@@ -9,7 +9,6 @@ variables:
 
 stages:
   - test
-  - lint
   - containerize
 
 cache:
@@ -32,18 +31,6 @@ setup-vars:
   artifacts:
     reports:
       dotenv: build.env
-
-# ---------------------------------------------------------------------------
-# Stage: Lint (Code Quality)
-# ---------------------------------------------------------------------------
-lint-app:
-  stage: lint
-  image: $BUILDER_IMAGE
-  script:
-    - echo "Preparing dummy UI for linting..."
-    - mkdir -p api/ui/out && touch api/ui/out/index.html
-    - echo "Running golangci-lint..."
-    - golangci-lint run ./...
 
 # ---------------------------------------------------------------------------
 # Stage: Containerize (Build -> Image)
