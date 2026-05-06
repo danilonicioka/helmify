@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -17,8 +18,27 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+func init() {
+	// Use JSON formatter for logs - standard for OpenShift/Kubernetes
+	logrus.SetFormatter(&logrus.JSONFormatter{})
+	
+	// Set log level from environment
+	levelStr := os.Getenv("HELMIFY_LOG_LEVEL")
+	if levelStr == "" {
+		levelStr = "info"
+	}
+	level, err := logrus.ParseLevel(levelStr)
+	if err != nil {
+		level = logrus.InfoLevel
+	}
+	logrus.SetLevel(level)
+}
+
 func main() {
-	port := os.Getenv("PORT")
+	port := os.Getenv("HELMIFY_PORT")
+	if port == "" {
+		port = os.Getenv("PORT") // Fallback to standard PORT
+	}
 	if port == "" {
 		port = "8080"
 	}
@@ -41,9 +61,9 @@ func main() {
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		logrus.Infof("Starting Helmify API on %s", port)
+		logrus.WithField("port", port).Info("Starting Helmify API")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logrus.Fatalf("listen: %s\n", err)
+			logrus.WithError(err).Fatal("Server failed to start")
 		}
 	}()
 
@@ -54,14 +74,29 @@ func main() {
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		logrus.Fatalf("Server Shutdown Failed:%+v", err)
+		logrus.WithError(err).Fatal("Server Shutdown Failed")
 	}
 	logrus.Info("Server Exited Properly")
 }
 
+// errorResponse represents a structured JSON error
+type errorResponse struct {
+	Error  string `json:"error"`
+	Status int    `json:"status"`
+}
+
+func sendError(w http.ResponseWriter, message string, code int) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(errorResponse{
+		Error:  message,
+		Status: code,
+	})
+}
+
 func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -83,15 +118,18 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		conf.CertManagerVersion = "v1.11.0"
 	}
 
-	logrus.Infof("Generating chart: %s", conf.ChartName)
+	logrus.WithFields(logrus.Fields{
+		"chart_name": conf.ChartName,
+		"crd":        conf.Crd,
+	}).Info("Generating chart")
 
 	memOut := helm.NewMemoryOutput()
 	engine := app.NewEngine(conf, memOut)
 	trans := k8smanifest.New(conf, r.Body)
 
 	if err := engine.Run(r.Context(), trans); err != nil {
-		logrus.WithError(err).Error("Engine failed")
-		http.Error(w, fmt.Sprintf("Failed to generate chart: %v", err), http.StatusInternalServerError)
+		logrus.WithError(err).Error("Engine execution failed")
+		sendError(w, fmt.Sprintf("Failed to generate chart: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -99,7 +137,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.tar.gz"`, conf.ChartName))
 
 	if err := memOut.ToTarGz(conf.ChartName, w); err != nil {
-		logrus.WithError(err).Error("TarGz failed")
-		// Note: we might have already sent some data, so we can't http.Error here reliably
+		logrus.WithError(err).Error("TarGz streaming failed")
+		// Note: we might have already sent some data, so we can't reliably send a JSON error here
 	}
 }

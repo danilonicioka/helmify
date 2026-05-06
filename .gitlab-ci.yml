@@ -4,12 +4,12 @@ default:
 
 variables:
   BUILDER_IMAGE: "registry.access.redhat.com/ubi8/go-toolset:1.21"
-  # CLI_TOOLS_IMAGE: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/ca/devops/base-images/cli-tools-ubi:v1.3.0"
   GOPATH: $CI_PROJECT_DIR/.go
   GOCACHE: $CI_PROJECT_DIR/.gocache
 
 stages:
   - test
+  - lint
   - containerize
 
 cache:
@@ -19,7 +19,7 @@ cache:
     - .gocache
 
 # ---------------------------------------------------------------------------
-# Stage: Test (Variable Setup and Unit Tests)
+# Stage: Test (Variable Setup)
 # ---------------------------------------------------------------------------
 setup-vars:
   stage: test
@@ -33,9 +33,18 @@ setup-vars:
     reports:
       dotenv: build.env
 
+# ---------------------------------------------------------------------------
+# Stage: Lint (Code Quality)
+# ---------------------------------------------------------------------------
+lint-app:
+  stage: lint
+  image: $BUILDER_IMAGE
+  script:
+    - echo "Running golangci-lint..."
+    - golangci-lint run ./...
 
 # ---------------------------------------------------------------------------
-# Stage: Containerize (Binary -> Image)
+# Stage: Containerize (Build -> Image)
 # ---------------------------------------------------------------------------
 push-to-quay:
   stage: containerize
