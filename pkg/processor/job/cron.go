@@ -3,7 +3,6 @@ package job
 import (
 	"fmt"
 	"io"
-	"strings"
 	"text/template"
 
 	"github.com/arttor/helmify/pkg/helmify"
@@ -124,7 +123,7 @@ func (p cron) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 	if err != nil {
 		return true, nil, err
 	}
-	specStr = strings.ReplaceAll(specStr, "'", "")
+	specStr = pod.ReplacePlaceholders(specStr)
 
 	return true, &resultCron{
 		name: name,

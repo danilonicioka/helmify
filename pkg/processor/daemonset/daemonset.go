@@ -116,7 +116,7 @@ func (d daemonset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	if err != nil {
 		return true, nil, err
 	}
-	spec = strings.ReplaceAll(spec, "'", "")
+	spec = pod.ReplacePlaceholders(spec)
 
 	return true, &result{
 		name:   name,

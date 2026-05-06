@@ -3,7 +3,6 @@ package statefulset
 import (
 	"fmt"
 	"io"
-	"strings"
 	"text/template"
 
 	"github.com/arttor/helmify/pkg/processor/pod"
@@ -128,7 +127,7 @@ func (d statefulset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unst
 	if err != nil {
 		return true, nil, err
 	}
-	spec = strings.ReplaceAll(spec, "'", "")
+	spec = pod.ReplacePlaceholders(spec)
 
 	return true, &result{
 		name:   name,
