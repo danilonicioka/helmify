@@ -171,10 +171,10 @@ func Test_pod_Process(t *testing.T) {
 							"containerPort": int64(80),
 						},
 					},
-					"resources":      map[string]interface{}{},
-					"livenessProbe":  "{{- with .Values.nginx }}\nlivenessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
-					"readinessProbe": "{{- with .Values.nginx }}\nreadinessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
-					"startupProbe":   "{{- with .Values.nginx }}\nstartupProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"resources":      "[HELMIFY_WITH:nginx.resources:10]",
+					"livenessProbe":  "[HELMIFY_WITH:nginx.livenessProbe:10]",
+					"readinessProbe": "[HELMIFY_WITH:nginx.readinessProbe:10]",
+					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
 			"tolerations":               "{{- toYaml .Values.nginx.tolerations | nindent 8 }}",
@@ -194,19 +194,22 @@ func Test_pod_Process(t *testing.T) {
 					"--arg",
 				},
 				"livenessProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
 				},
 				"readinessProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
 				},
 				"startupProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
@@ -247,10 +250,10 @@ func Test_pod_Process(t *testing.T) {
 							"containerPort": int64(80),
 						},
 					},
-					"resources":      map[string]interface{}{},
-					"livenessProbe":  "{{- with .Values.nginx }}\nlivenessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
-					"readinessProbe": "{{- with .Values.nginx }}\nreadinessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
-					"startupProbe":   "{{- with .Values.nginx }}\nstartupProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"resources":      "[HELMIFY_WITH:nginx.resources:10]",
+					"livenessProbe":  "[HELMIFY_WITH:nginx.livenessProbe:10]",
+					"readinessProbe": "[HELMIFY_WITH:nginx.readinessProbe:10]",
+					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
 			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
@@ -266,19 +269,22 @@ func Test_pod_Process(t *testing.T) {
 					"tag":        "1.14.2",
 				},
 				"livenessProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
 				},
 				"readinessProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
 				},
 				"startupProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
@@ -319,10 +325,10 @@ func Test_pod_Process(t *testing.T) {
 							"containerPort": int64(80),
 						},
 					},
-					"resources":      map[string]interface{}{},
-					"livenessProbe":  "{{- with .Values.nginx }}\nlivenessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
-					"readinessProbe": "{{- with .Values.nginx }}\nreadinessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
-					"startupProbe":   "{{- with .Values.nginx }}\nstartupProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"resources":      "[HELMIFY_WITH:nginx.resources:10]",
+					"livenessProbe":  "[HELMIFY_WITH:nginx.livenessProbe:10]",
+					"readinessProbe": "[HELMIFY_WITH:nginx.readinessProbe:10]",
+					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
 			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
@@ -338,19 +344,22 @@ func Test_pod_Process(t *testing.T) {
 					"tag":        "1.14.2@sha256:cb5c1bddd1b5665e1867a7fa1b5fa843a47ee433bbb75d4293888b71def53229",
 				},
 				"livenessProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
 				},
 				"readinessProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
 				},
 				"startupProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
@@ -391,10 +400,10 @@ func Test_pod_Process(t *testing.T) {
 							"containerPort": int64(80),
 						},
 					},
-					"resources":      map[string]interface{}{},
-					"livenessProbe":  "{{- with .Values.nginx }}\nlivenessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
-					"readinessProbe": "{{- with .Values.nginx }}\nreadinessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
-					"startupProbe":   "{{- with .Values.nginx }}\nstartupProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"resources":      "[HELMIFY_WITH:nginx.resources:10]",
+					"livenessProbe":  "[HELMIFY_WITH:nginx.livenessProbe:10]",
+					"readinessProbe": "[HELMIFY_WITH:nginx.readinessProbe:10]",
+					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
 			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
@@ -410,19 +419,22 @@ func Test_pod_Process(t *testing.T) {
 					"tag":        "latest",
 				},
 				"livenessProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
 				},
 				"readinessProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
 				},
 				"startupProbe": map[string]interface{}{
-					"periodSeconds": int64(10),
+					"initialDelaySeconds": int64(0),
+					"periodSeconds":       int64(10),
 					"tcpSocket": map[string]interface{}{
 						"port": int64(80),
 					},
@@ -457,10 +469,10 @@ func Test_pod_Process(t *testing.T) {
 					},
 					"image":          "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":           "nginx",
-					"resources":      map[string]interface{}{},
-					"livenessProbe":  "{{- with .Values.nginx }}\nlivenessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
-					"readinessProbe": "{{- with .Values.nginx }}\nreadinessProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
-					"startupProbe":   "{{- with .Values.nginx }}\nstartupProbe:\n  {{- toYaml . | nindent 10 }}\n{{- end }}",
+					"resources":      "[HELMIFY_WITH:nginx.resources:10]",
+					"livenessProbe":  "[HELMIFY_WITH:nginx.livenessProbe:10]",
+					"readinessProbe": "[HELMIFY_WITH:nginx.readinessProbe:10]",
+					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
 			"securityContext":           "{{- toYaml .Values.nginx.podSecurityContext | nindent 8 }}",
@@ -490,6 +502,17 @@ func Test_pod_Process(t *testing.T) {
 				"topologySpreadConstraints": []interface{}{},
 			},
 		}, tmpl)
+	})
+
+	t.Run("placeholder replacement", func(t *testing.T) {
+		input := `
+        livenessProbe: '[HELMIFY_WITH:nginx.livenessProbe:10]'
+        resources: '[HELMIFY_WITH:nginx.resources:10]'`
+		output := ReplacePlaceholders(input)
+		assert.Contains(t, output, "{{- with .Values.nginx.livenessProbe }}")
+		assert.Contains(t, output, "livenessProbe:")
+		assert.Contains(t, output, "{{- with .Values.nginx.resources }}")
+		assert.Contains(t, output, "resources:")
 	})
 
 }

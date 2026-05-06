@@ -3,6 +3,7 @@ package pod
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/arttor/helmify/pkg/cluster"
@@ -197,12 +198,9 @@ func processContainers(objName string, values helmify.Values, containerType stri
 		}
 		valuePathStr := strings.Join(valuePath, ".")
 
-		res, exists, err := unstructured.NestedMap(values, append(valuePath, "resources")...)
-		if err != nil {
-			return nil, nil, err
-		}
-		if exists && len(res) > 0 {
-			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf(`{{- toYaml .Values.%s.resources | nindent %d }}`, valuePathStr, nindent+2), "resources")
+		_, exists := (containers[i].(map[string]interface{}))["resources"]
+		if exists {
+			err := unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf("[HELMIFY_WITH:%s.resources:%d]", valuePathStr, nindent+2), "resources")
 			if err != nil {
 				return nil, nil, err
 			}
@@ -224,9 +222,9 @@ func processContainers(objName string, values helmify.Values, containerType stri
 			}
 		}
 
-		// Inject 3-Tier Probes templates
+		// Inject 3-Tier Probes templates using placeholders
 		for _, pName := range []string{"startupProbe", "livenessProbe", "readinessProbe"} {
-			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf(probeTemplate, valuePathStr, pName, nindent+2), pName)
+			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf("[HELMIFY_WITH:%s.%s:%d]", valuePathStr, pName, nindent+2), pName)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -385,6 +383,8 @@ func processProbes(name, containerName string, c corev1.Container, values *helmi
 		if err != nil {
 			return err
 		}
+		// Force initialDelaySeconds to 0 per Best Practices
+		pMap["initialDelaySeconds"] = int64(0)
 		err = unstructured.SetNestedField(*values, pMap, append(valuePath, probeName)...)
 		if err != nil {
 			return err
@@ -490,5 +490,25 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 		annotations["checksum/secret-"+valueName] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s-secret.yaml") . | sha256sum }}`, valueName)
 	}
 
+	// Filter out static placeholders from Kustomize
+	for k, v := range annotations {
+		if v == "$(CONFIG_HASH)" || v == "$(SECRET_HASH)" {
+			delete(annotations, k)
+		}
+	}
+
 	return annotations
+}
+
+// ReplacePlaceholders replaces HELMIFY_WITH placeholders with actual Helm templates.
+func ReplacePlaceholders(s string) string {
+	// 1. Handle single quotes: key: '[HELMIFY_WITH:path:indent]'
+	r1 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*'\[HELMIFY_WITH:([^:]+):([0-9]+)\]'`)
+	s = r1.ReplaceAllString(s, "{{- with .Values.${3} }}\n${1}${2}:\n${1}  {{- toYaml . | nindent ${4} }}\n${1}{{- end }}")
+
+	// 2. Handle block scalars if they occur: key: |-\n  [HELMIFY_WITH:path:indent]
+	r2 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*\|-\s*\n\s*\[HELMIFY_WITH:([^:]+):([0-9]+)\]`)
+	s = r2.ReplaceAllString(s, "{{- with .Values.${3} }}\n${1}${2}:\n${1}  {{- toYaml . | nindent ${4} }}\n${1}{{- end }}")
+
+	return s
 }

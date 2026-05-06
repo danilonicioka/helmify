@@ -123,7 +123,7 @@ func (p job) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	if err != nil {
 		return true, nil, err
 	}
-	specStr = strings.ReplaceAll(specStr, "'", "")
+	specStr = pod.ReplacePlaceholders(specStr)
 
 	return true, &result{
 		name: name,

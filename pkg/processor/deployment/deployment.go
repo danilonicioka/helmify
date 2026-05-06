@@ -141,6 +141,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	}
 
 	spec = replaceSingleQuotes(spec)
+	spec = pod.ReplacePlaceholders(spec)
 
 	return true, &result{
 		name:   name,
