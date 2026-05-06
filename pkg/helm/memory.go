@@ -52,7 +52,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		} else {
 			subdir = "templates"
 		}
-		
+
 		var buf bytes.Buffer
 		for i, t := range tpls {
 			if err := t.Write(&buf); err != nil {

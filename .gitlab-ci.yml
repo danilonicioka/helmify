@@ -40,6 +40,8 @@ lint-app:
   stage: lint
   image: $BUILDER_IMAGE
   script:
+    - echo "Preparing dummy UI for linting..."
+    - mkdir -p api/ui/out && touch api/ui/out/index.html
     - echo "Running golangci-lint..."
     - golangci-lint run ./...
 
