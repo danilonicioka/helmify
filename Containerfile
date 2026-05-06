@@ -12,9 +12,9 @@ WORKDIR /opt/app-root/src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-# Copy the built UI from the previous stage
-COPY --from=ui-builder /opt/app-root/src/out ./ui/out
-RUN CGO_ENABLED=0 go build -o helmify-api ./cmd/helmify-api
+# Copy the built UI into the api/ui/out directory for embedding
+COPY --from=ui-builder /opt/app-root/src/out ./api/ui/out
+RUN CGO_ENABLED=0 go build -buildvcs=false -o helmify-api ./api
 
 # Stage 3: Final Production Image
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
