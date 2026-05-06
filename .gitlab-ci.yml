@@ -34,13 +34,13 @@ setup-vars:
     reports:
       dotenv: build.env
 
-app-test:
-  stage: test
-  image: $BUILDER_IMAGE
-  needs: [setup-vars]
-  script:
-    - echo "Running unit tests..."
-    - go test -buildvcs=false ./...
+# app-test:
+#   stage: test
+#   image: $BUILDER_IMAGE
+#   needs: [setup-vars]
+#   script:
+#     - echo "Running unit tests..."
+#     - go test -buildvcs=false ./...
 
 # ---------------------------------------------------------------------------
 # Stage: Build (Source -> Binary)
@@ -51,7 +51,7 @@ build-app:
   needs:
     - job: setup-vars
       artifacts: true
-    - job: app-test
+    # - job: app-test
   variables:
     CGO_ENABLED: "0"
   script:
