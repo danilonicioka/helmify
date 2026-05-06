@@ -167,7 +167,6 @@ export default function HelmifyUI() {
                 roundedSelection: true,
                 scrollBeyondLastLine: false,
                 automaticLayout: true,
-                backgroundColor: '#0f172a'
               }}
             />
           </div>
