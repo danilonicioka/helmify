@@ -16,7 +16,8 @@ import {
   ShieldCheck,
   PanelLeftClose,
   PanelLeftOpen,
-  Download
+  Download,
+  Edit3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -69,28 +70,27 @@ export default function HelmifyUI() {
   useEffect(() => {
     const timer = setTimeout(() => {
       updatePreview(manifest, chartName);
-    }, 600);
+    }, 800); // Slightly longer debounce to allow for more complex manifests
     return () => clearTimeout(timer);
   }, [manifest, chartName, updatePreview]);
 
-  const handleGenerate = async () => {
-    if (!manifest) return;
+  const handleDownload = async () => {
+    if (Object.keys(previewFiles).length === 0) return;
     setIsGenerating(true);
     
     try {
-      const response = await fetch('/v1/generate', {
+      const response = await fetch('/v1/download', {
         method: 'POST',
         headers: {
-          'X-Chart-Name': chartName,
-          'X-Crd': 'false',
-          'X-Cert-Manager-Subchart': 'false',
-          'X-Add-Webhook-Option': 'false',
-          'X-Optional-Crds': 'false',
+          'Content-Type': 'application/json',
         },
-        body: manifest,
+        body: JSON.stringify({
+          chartName: chartName,
+          files: previewFiles
+        }),
       });
 
-      if (!response.ok) throw new Error('Generation failed');
+      if (!response.ok) throw new Error('Download failed');
 
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -102,9 +102,18 @@ export default function HelmifyUI() {
       a.remove();
     } catch (err) {
       console.error(err);
+      alert('Failed to download chart.');
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handlePreviewEdit = (newValue: string | undefined) => {
+    if (newValue === undefined) return;
+    setPreviewFiles(prev => ({
+      ...prev,
+      [selectedFile]: newValue
+    }));
   };
 
   const sortedFiles = Object.keys(previewFiles).sort((a, b) => {
@@ -147,16 +156,16 @@ export default function HelmifyUI() {
                 <span>Production Ready</span>
              </div>
              <button
-                onClick={handleGenerate}
-                disabled={!manifest || isGenerating}
+                onClick={handleDownload}
+                disabled={Object.keys(previewFiles).length === 0 || isGenerating}
                 className={`px-4 h-9 rounded-lg font-semibold text-xs flex items-center gap-2 transition-all shadow-lg ${
-                  !manifest || isGenerating 
+                  Object.keys(previewFiles).length === 0 || isGenerating 
                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
                     : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/10 active:scale-[0.95]'
                 }`}
               >
                 {isGenerating ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-                {isGenerating ? 'Building...' : 'Download .tar.gz'}
+                {isGenerating ? 'Building...' : 'Download Chart'}
               </button>
           </div>
         </div>
@@ -191,15 +200,15 @@ export default function HelmifyUI() {
                <div className="flex items-start gap-3">
                   <CheckCircle2 size={16} className="text-green-500 mt-0.5 flex-shrink-0" />
                   <div className="text-[11px] text-slate-400 leading-relaxed">
-                     <span className="text-slate-200 block font-semibold mb-1">TJPA STANDARD</span>
-                     Tiered probes and global config inheritance are applied.
+                     <span className="text-slate-200 block font-semibold mb-1 uppercase tracking-tight">TJPA Compliant</span>
+                     Probes and annotations are generated live.
                   </div>
                </div>
                <div className="flex items-start gap-3">
-                  <AlertCircle size={16} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                  <Edit3 size={16} className="text-blue-400 mt-0.5 flex-shrink-0" />
                   <div className="text-[11px] text-slate-400 leading-relaxed">
-                     <span className="text-slate-200 block font-semibold mb-1">BLUEPRINT MODE</span>
-                     Manifests are clean blueprints. Operational choices stay in values.yaml.
+                     <span className="text-slate-200 block font-semibold mb-1 uppercase tracking-tight">Editable Preview</span>
+                     You can edit the generated files directly before downloading.
                   </div>
                </div>
             </div>
@@ -207,23 +216,23 @@ export default function HelmifyUI() {
             <div className="bg-blue-500/5 rounded-xl p-4 border border-blue-500/10">
                <div className="flex items-center gap-2 text-blue-400 mb-2">
                   <Zap size={14} className="fill-current" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">Live Preview Active</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">Live Updates Active</span>
                </div>
                <p className="text-[10px] text-slate-500 leading-relaxed italic">
-                 Updates happen in real-time as you refine your Kubernetes source.
+                 The preview updates as you refine your source manifest. Manual edits are preserved.
                </p>
             </div>
           </div>
         </motion.aside>
 
-        {/* Main Content (Editors) */}
+        {/* Main Content (Editors with strict 50/50 split) */}
         <main className="flex-1 flex overflow-hidden bg-[#020617]">
-          {/* Left Editor */}
-          <div className="flex-1 flex flex-col border-r border-slate-800/50">
-            <div className="h-10 border-b border-slate-800/50 bg-slate-900/30 flex items-center px-4 justify-between">
+          {/* Left Editor - Source */}
+          <div className="w-1/2 flex flex-col border-r border-slate-800/50 overflow-hidden">
+            <div className="h-10 border-b border-slate-800/50 bg-slate-900/30 flex items-center px-4 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <Package size={14} className="text-blue-400" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Source Manifest</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Kubernetes Source</span>
               </div>
             </div>
             <div className="flex-1 overflow-hidden">
@@ -247,9 +256,9 @@ export default function HelmifyUI() {
             </div>
           </div>
 
-          {/* Right Editor */}
-          <div className="flex-1 flex flex-col">
-            <div className="h-10 border-b border-slate-800/50 bg-slate-900/30 flex items-center px-2 overflow-x-auto no-scrollbar">
+          {/* Right Editor - Preview & Edit */}
+          <div className="w-1/2 flex flex-col overflow-hidden">
+            <div className="h-10 border-b border-slate-800/50 bg-slate-900/30 flex items-center px-2 overflow-x-auto no-scrollbar flex-shrink-0">
               {sortedFiles.length === 0 ? (
                 <div className="px-4 text-[10px] text-slate-500 italic uppercase">Preview Output</div>
               ) : (
@@ -284,8 +293,9 @@ export default function HelmifyUI() {
                     language="yaml"
                     theme="vs-dark"
                     value={previewFiles[selectedFile] || ''}
+                    onChange={handlePreviewEdit}
                     options={{
-                      readOnly: true,
+                      readOnly: false,
                       minimap: { enabled: false },
                       fontSize: 12,
                       fontFamily: 'JetBrains Mono, Menlo, monospace',
@@ -313,7 +323,7 @@ export default function HelmifyUI() {
         <div>© 2026 Helmify Pro — Advanced Agentic Coding</div>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 bg-green-500 rounded-full" /> API Online</span>
-          <span>v1.2.0-pro</span>
+          <span>v1.3.0-pro</span>
         </div>
       </footer>
     </div>
