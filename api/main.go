@@ -1,12 +1,15 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -46,6 +49,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/generate", handleGenerate)
 	mux.HandleFunc("/v1/preview", handlePreview)
+	mux.HandleFunc("/v1/download", handleDownload)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -147,7 +151,6 @@ func handlePreview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Convert map[string][]byte to map[string]string for JSON
 	preview := make(map[string]string)
 	for name, content := range memOut.Files {
 		preview[name] = string(content)
@@ -155,6 +158,53 @@ func handlePreview(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(preview)
+}
+
+type downloadRequest struct {
+	ChartName string            `json:"chartName"`
+	Files     map[string]string `json:"files"`
+}
+
+func handleDownload(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req downloadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		sendError(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if req.ChartName == "" {
+		req.ChartName = "chart"
+	}
+
+	w.Header().Set("Content-Type", "application/x-tar")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.tar.gz"`, req.ChartName))
+
+	gw := gzip.NewWriter(w)
+	defer gw.Close()
+	tw := tar.NewWriter(gw)
+	defer tw.Close()
+
+	for name, content := range req.Files {
+		path := filepath.Join(req.ChartName, name)
+		header := &tar.Header{
+			Name: path,
+			Mode: 0644,
+			Size: int64(len(content)),
+		}
+		if err := tw.WriteHeader(header); err != nil {
+			logrus.WithError(err).Error("Failed to write tar header")
+			return
+		}
+		if _, err := tw.Write([]byte(content)); err != nil {
+			logrus.WithError(err).Error("Failed to write tar content")
+			return
+		}
+	}
 }
 
 func parseConfig(r *http.Request) config.Config {
