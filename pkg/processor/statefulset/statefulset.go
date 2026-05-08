@@ -45,7 +45,7 @@ func (d statefulset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unst
 	if err != nil {
 		return true, nil, fmt.Errorf("%w: unable to cast to StatefulSet", err)
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj)
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("statefulset"))
 	if err != nil {
 		return true, nil, err
 	}
@@ -152,7 +152,10 @@ type result struct {
 }
 
 func (r *result) Filename() string {
-	return fmt.Sprintf("%s-statefulset.yaml", r.name)
+	if r.name == "chart" || r.name == "" {
+		return "statefulset.yaml"
+	}
+	return fmt.Sprintf("statefulset-%s.yaml", r.name)
 }
 
 func (r *result) Values() helmify.Values {

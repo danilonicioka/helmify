@@ -58,7 +58,7 @@ func (d daemonset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	if err != nil {
 		return true, nil, fmt.Errorf("%w: unable to cast to daemonset", err)
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj)
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("daemonset"))
 	if err != nil {
 		return true, nil, err
 	}
@@ -150,7 +150,10 @@ type result struct {
 }
 
 func (r *result) Filename() string {
-	return fmt.Sprintf("%s-daemonset.yaml", r.name)
+	if r.name == "chart" || r.name == "" {
+		return "daemonset.yaml"
+	}
+	return fmt.Sprintf("daemonset-%s.yaml", r.name)
 }
 
 func (r *result) Values() helmify.Values {

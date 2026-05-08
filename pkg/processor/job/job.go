@@ -39,7 +39,7 @@ func (p job) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	if obj.GroupVersionKind() != jobGVC {
 		return false, nil, nil
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj)
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("job"))
 	if err != nil {
 		return true, nil, err
 	}
@@ -145,7 +145,10 @@ type result struct {
 }
 
 func (r *result) Filename() string {
-	return fmt.Sprintf("%s-job.yaml", r.name)
+	if r.name == "chart" || r.name == "" {
+		return "job.yaml"
+	}
+	return fmt.Sprintf("job-%s.yaml", r.name)
 }
 
 func (r *result) Values() helmify.Values {

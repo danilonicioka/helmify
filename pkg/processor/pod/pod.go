@@ -14,7 +14,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
 const imagePullPolicyTemplate = "{{ .Values.%[1]s.%[2]s.imagePullPolicy }}"
@@ -55,12 +54,12 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 		return nil, nil, fmt.Errorf("%w: unable to convert podSpec to map", err)
 	}
 
-	specMap, values, err = processNestedContainers(specMap, objName, values, "containers", nindent)
+	specMap, values, err = processNestedContainers(specMap, objName, values, "containers", nindent, appMeta)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	specMap, values, err = processNestedContainers(specMap, objName, values, "initContainers", nindent)
+	specMap, values, err = processNestedContainers(specMap, objName, values, "initContainers", nindent, appMeta)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -177,14 +176,14 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 	return specMap, values, nil
 }
 
-func processNestedContainers(specMap map[string]interface{}, objName string, values map[string]interface{}, containerKey string, nindent int) (map[string]interface{}, map[string]interface{}, error) {
+func processNestedContainers(specMap map[string]interface{}, objName string, values map[string]interface{}, containerKey string, nindent int, appMeta helmify.AppMetadata) (map[string]interface{}, map[string]interface{}, error) {
 	containers, _, err := unstructured.NestedSlice(specMap, containerKey)
 	if err != nil {
 		return nil, nil, err
 	}
 
 	if len(containers) > 0 {
-		containers, values, err = processContainers(objName, values, containerKey, containers, nindent)
+		containers, values, err = processContainers(objName, values, containerKey, containers, nindent, appMeta)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -198,7 +197,7 @@ func processNestedContainers(specMap map[string]interface{}, objName string, val
 	return specMap, values, nil
 }
 
-func processContainers(objName string, values helmify.Values, containerType string, containers []interface{}, nindent int) ([]interface{}, helmify.Values, error) {
+func processContainers(objName string, values helmify.Values, containerType string, containers []interface{}, nindent int, appMeta helmify.AppMetadata) ([]interface{}, helmify.Values, error) {
 	for i := range containers {
 		containerName := strcase.ToLowerCamel((containers[i].(map[string]interface{})["name"]).(string))
 		var valuePath []string
@@ -239,6 +238,12 @@ func processContainers(objName string, values helmify.Values, containerType stri
 			if err != nil {
 				return nil, nil, err
 			}
+		}
+
+		// Inject standardized envFrom block using placeholder
+		err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf("[HELMIFY_ENV_FROM:%s:%d]", objName, nindent), "envFrom")
+		if err != nil {
+			return nil, nil, err
 		}
 	}
 	return containers, values, nil
@@ -314,37 +319,19 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 		return c, err
 	}
 
-	for _, e := range c.EnvFrom {
-		if e.SecretRef != nil {
-			e.SecretRef.Name = appMeta.TemplatedName(e.SecretRef.Name)
-		}
-		if e.ConfigMapRef != nil {
-			e.ConfigMapRef.Name = appMeta.TemplatedName(e.ConfigMapRef.Name)
-		}
-	}
-	// Inject global configmap inheritance
-	c.EnvFrom = append(c.EnvFrom, corev1.EnvFromSource{
-		ConfigMapRef: &corev1.ConfigMapEnvSource{
-			LocalObjectReference: corev1.LocalObjectReference{
-				Name: fmt.Sprintf(`{{ include "%s.fullname" . }}-global`, appMeta.ChartName()),
-			},
-		},
-	})
+	// We clear envFrom as it will be handled by the standardized block injected in processContainers
+	c.EnvFrom = nil
+
 	c.Env = append(c.Env, corev1.EnvVar{
 		Name:  cluster.DomainEnv,
 		Value: fmt.Sprintf("{{ quote .Values.%s }}", cluster.DomainKey),
 	})
-	for k, v := range c.Resources.Requests {
-		err = unstructured.SetNestedField(*values, v.ToUnstructured(), append(valuePath, "resources", "requests", k.String())...)
-		if err != nil {
-			return c, fmt.Errorf("%w: unable to set container resources value", err)
-		}
-	}
-	for k, v := range c.Resources.Limits {
-		err = unstructured.SetNestedField(*values, v.ToUnstructured(), append(valuePath, "resources", "limits", k.String())...)
-		if err != nil {
-			return c, fmt.Errorf("%w: unable to set container resources value", err)
-		}
+	// Zero-Default initialization handled below
+
+	// Initialize as empty object {} per Zero-Default standard
+	err = unstructured.SetNestedField(*values, map[string]interface{}{}, append(valuePath, "resources")...)
+	if err != nil {
+		return c, err
 	}
 
 	if c.ImagePullPolicy != "" {
@@ -372,34 +359,8 @@ func processProbes(name, containerName string, c corev1.Container, values *helmi
 	}
 
 	processProbe := func(p *corev1.Probe, probeName string) error {
-		if p == nil {
-			// Default to tcpSocket if not present and container has ports
-			if len(c.Ports) > 0 {
-				p = &corev1.Probe{
-					ProbeHandler: corev1.ProbeHandler{
-						TCPSocket: &corev1.TCPSocketAction{
-							Port: intstr.FromInt(int(c.Ports[0].ContainerPort)),
-						},
-					},
-					InitialDelaySeconds: 0,
-					PeriodSeconds:       10,
-				}
-			} else {
-				// Create empty probe in values if not present to follow "Zero-Default Base"
-				_ = unstructured.SetNestedField(*values, map[string]interface{}{}, append(valuePath, probeName)...)
-				return nil
-			}
-		}
-		pMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(p)
-		if err != nil {
-			return err
-		}
-		// Force initialDelaySeconds to 0 per Best Practices
-		pMap["initialDelaySeconds"] = int64(0)
-		err = unstructured.SetNestedField(*values, pMap, append(valuePath, probeName)...)
-		if err != nil {
-			return err
-		}
+		// Initialize as empty object {} per Zero-Default standard
+		_ = unstructured.SetNestedField(*values, map[string]interface{}{}, append(valuePath, probeName)...)
 		return nil
 	}
 
@@ -418,27 +379,27 @@ func processProbes(name, containerName string, c corev1.Container, values *helmi
 }
 
 func processEnv(name string, containerName string, appMeta helmify.AppMetadata, c corev1.Container, values *helmify.Values) (corev1.Container, error) {
-	valuePath := []string{name, containerName}
-	valuePathStr := strings.Join(valuePath, ".")
-	for i := 0; i < len(c.Env); i++ {
-		if c.Env[i].ValueFrom != nil {
-			switch {
-			case c.Env[i].ValueFrom.SecretKeyRef != nil:
-				c.Env[i].ValueFrom.SecretKeyRef.Name = appMeta.TemplatedName(c.Env[i].ValueFrom.SecretKeyRef.Name)
-			case c.Env[i].ValueFrom.ConfigMapKeyRef != nil:
-				c.Env[i].ValueFrom.ConfigMapKeyRef.Name = appMeta.TemplatedName(c.Env[i].ValueFrom.ConfigMapKeyRef.Name)
-			case c.Env[i].ValueFrom.FieldRef != nil, c.Env[i].ValueFrom.ResourceFieldRef != nil:
-				// nothing to change here, keep the original value
+	newEnv := []corev1.EnvVar{}
+	for _, e := range c.Env {
+		if e.ValueFrom != nil {
+			// Keep fieldRef/resourceFieldRef as they can't be in ConfigMaps
+			if e.ValueFrom.FieldRef != nil || e.ValueFrom.ResourceFieldRef != nil {
+				newEnv = append(newEnv, e)
+				continue
 			}
+			// For others (SecretKeyRef, ConfigMapKeyRef), they should ideally be handled via envFrom
+			// but we keep them for now to avoid breaking existing complex mappings
+			newEnv = append(newEnv, e)
 			continue
 		}
-
-		err := unstructured.SetNestedField(*values, c.Env[i].Value, append(valuePath, "env", strcase.ToLowerCamel(strings.ToLower(c.Env[i].Name)))...)
+		
+		// Move plain value to ConfigMap
+		err := unstructured.SetNestedField(*values, e.Value, name, "cm", e.Name)
 		if err != nil {
-			return c, fmt.Errorf("%w: unable to set deployment value field", err)
+			return c, err
 		}
-		c.Env[i].Value = fmt.Sprintf("{{ .Values.%s.env.%s }}", valuePathStr, strcase.ToLowerCamel(strings.ToLower(c.Env[i].Name)))
 	}
+	c.Env = newEnv
 	return c, nil
 }
 
@@ -490,7 +451,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 	}
 
 	// Always add checksum for global configmap
-	annotations["checksum/global-config"] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}`)
+	annotations["checksum/global-config"] = fmt.Sprintf(`{{- if .Values.global }}\n  checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}\n  {{- end }}`)
 
 	for cm := range configMaps {
 		valueName := processor.ResolveValueName(appMeta, cm)
@@ -498,7 +459,11 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 		if valueName == "chart" || valueName == "" {
 			filename = "cm.yaml"
 		}
-		annotations["checksum/config-"+valueName] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s") . | sha256sum }}`, filename)
+		key := "checksum/config-" + valueName
+		if valueName == "chart" || valueName == "" {
+			key = "checksum/config"
+		}
+		annotations[key] = fmt.Sprintf(`{{- if (index .Values "%s").cm }}\n  %s: {{ include (print $.Template.BasePath "/%s") . | sha256sum }}\n  {{- end }}`, valueName, key, filename)
 	}
 	for sec := range secrets {
 		valueName := processor.ResolveValueName(appMeta, sec)
@@ -506,7 +471,11 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 		if valueName == "chart" || valueName == "" {
 			filename = "secret.yaml"
 		}
-		annotations["checksum/secret-"+valueName] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s") . | sha256sum }}`, filename)
+		key := "checksum/secret-" + valueName
+		if valueName == "chart" || valueName == "" {
+			key = "checksum/secret"
+		}
+		annotations[key] = fmt.Sprintf(`{{- if (index .Values "%s").secret }}\n  %s: {{ include (print $.Template.BasePath "/%s") . | sha256sum }}\n  {{- end }}`, valueName, key, filename)
 	}
 
 	// Filter out static placeholders from Kustomize
@@ -519,7 +488,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 	return annotations
 }
 
-// ReplacePlaceholders replaces HELMIFY_WITH placeholders with actual Helm templates.
+// ReplacePlaceholders replaces HELMIFY_WITH and HELMIFY_ENV_FROM placeholders with actual Helm templates.
 func ReplacePlaceholders(s string) string {
 	// 1. Handle single quotes: key: '[HELMIFY_WITH:path:indent]'
 	r1 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*'\[HELMIFY_WITH:([^:]+):([0-9]+)\]'`)
@@ -528,6 +497,22 @@ func ReplacePlaceholders(s string) string {
 	// 2. Handle block scalars if they occur: key: |-\n  [HELMIFY_WITH:path:indent]
 	r2 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*\|-\s*\n\s*\[HELMIFY_WITH:([^:]+):([0-9]+)\]`)
 	s = r2.ReplaceAllString(s, "{{- with .Values.${3} }}\n${1}${2}:\n${1}  {{- toYaml . | nindent ${4} }}\n${1}{{- end }}")
+
+	// 3. Handle HELMIFY_ENV_FROM: envFrom: '[HELMIFY_ENV_FROM:name:indent]'
+	r3 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([0-9]+)\]'`)
+	s = r3.ReplaceAllString(s, `${1}envFrom:
+${1}{{- if .Values.global }}
+${1}- configMapRef:
+${1}    name: {{ include "chart.fullname" . }}-global
+${1}{{- end }}
+${1}{{- if (index .Values "${2}").cm }}
+${1}- configMapRef:
+${1}    name: {{ include "chart.fullname" . }}-cm
+${1}{{- end }}
+${1}{{- if (index .Values "${2}").secret }}
+${1}- secretRef:
+${1}    name: {{ include "chart.fullname" . }}-secret
+${1}{{- end }}`)
 
 	return s
 }
