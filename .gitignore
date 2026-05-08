@@ -34,6 +34,4 @@ testbin/*
 # Build artifacts
 dist/
 vendor/
-portal-certidao/
-test-output/
-test-output.tar.gz
+chart-model/

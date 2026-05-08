@@ -494,11 +494,19 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 
 	for cm := range configMaps {
 		valueName := processor.ResolveValueName(appMeta, cm)
-		annotations["checksum/config-"+valueName] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s-configmap.yaml") . | sha256sum }}`, valueName)
+		filename := "cm-" + valueName + ".yaml"
+		if valueName == "chart" || valueName == "" {
+			filename = "cm.yaml"
+		}
+		annotations["checksum/config-"+valueName] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s") . | sha256sum }}`, filename)
 	}
 	for sec := range secrets {
 		valueName := processor.ResolveValueName(appMeta, sec)
-		annotations["checksum/secret-"+valueName] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s-secret.yaml") . | sha256sum }}`, valueName)
+		filename := "secret-" + valueName + ".yaml"
+		if valueName == "chart" || valueName == "" {
+			filename = "secret.yaml"
+		}
+		annotations["checksum/secret-"+valueName] = fmt.Sprintf(`{{ include (print $.Template.BasePath "/%s") . | sha256sum }}`, filename)
 	}
 
 	// Filter out static placeholders from Kustomize

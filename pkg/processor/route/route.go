@@ -33,7 +33,7 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 
 	name := processor.ObjectValueName(appMeta, obj)
 	nameCamel := strcase.ToLowerCamel(name)
-	meta, err := processor.ProcessObjMeta(appMeta, obj)
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("route"))
 	if err != nil {
 		return true, nil, err
 	}
@@ -116,7 +116,10 @@ type routeResult struct {
 }
 
 func (r *routeResult) Filename() string {
-	return fmt.Sprintf("%s-route.yaml", r.name)
+	if r.name == "chart" || r.name == "" {
+		return "route.yaml"
+	}
+	return fmt.Sprintf("route-%s.yaml", r.name)
 }
 
 func (r *routeResult) Values() helmify.Values {

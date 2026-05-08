@@ -70,7 +70,7 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		return true, nil, fmt.Errorf("%w: unable to cast to service", err)
 	}
 
-	meta, err := processor.ProcessObjMeta(appMeta, obj)
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("svc"))
 	if err != nil {
 		return true, nil, err
 	}
@@ -173,7 +173,10 @@ type result struct {
 }
 
 func (r *result) Filename() string {
-	return fmt.Sprintf("%s-service.yaml", r.name)
+	if r.name == "chart" || r.name == "" {
+		return "svc.yaml"
+	}
+	return fmt.Sprintf("svc-%s.yaml", r.name)
 }
 
 func (r *result) Values() helmify.Values {

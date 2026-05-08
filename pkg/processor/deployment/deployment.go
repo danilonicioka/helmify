@@ -64,7 +64,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	if err != nil {
 		return true, nil, fmt.Errorf("%w: unable to cast to deployment", err)
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj)
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("deploy"))
 	if err != nil {
 		return true, nil, err
 	}
@@ -269,7 +269,10 @@ type result struct {
 }
 
 func (r *result) Filename() string {
-	return fmt.Sprintf("%s-deployment.yaml", r.name)
+	if r.name == "chart" || r.name == "" {
+		return "deployment.yaml"
+	}
+	return fmt.Sprintf("deployment-%s.yaml", r.name)
 }
 
 func (r *result) Values() helmify.Values {
