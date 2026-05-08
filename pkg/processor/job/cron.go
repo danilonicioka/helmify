@@ -38,7 +38,7 @@ func (p cron) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 	if obj.GroupVersionKind() != cronGVC {
 		return false, nil, nil
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj)
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("cronjob"))
 	if err != nil {
 		return true, nil, err
 	}
@@ -145,7 +145,10 @@ type resultCron struct {
 }
 
 func (r *resultCron) Filename() string {
-	return fmt.Sprintf("%s-cronjob.yaml", r.name)
+	if r.name == "chart" || r.name == "" {
+		return "cronjob.yaml"
+	}
+	return fmt.Sprintf("cronjob-%s.yaml", r.name)
 }
 
 func (r *resultCron) Values() helmify.Values {

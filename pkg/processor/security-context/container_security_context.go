@@ -11,7 +11,7 @@ import (
 const (
 	sc           = "securityContext"
 	cscValueName = "containerSecurityContext"
-	helmTemplate = "{{- toYaml .Values.%[1]s.%[2]s.containerSecurityContext | nindent %[3]d }}"
+	helmTemplate = "{{- with .Values.%[1]s.containerSecurityContext }}\nsecurityContext:\n  {{- toYaml . | nindent %[3]d }}\n{{- end }}"
 )
 
 // ProcessContainerSecurityContext adds 'securityContext' to the podSpec in specMap, if it doesn't have one already defined.
@@ -50,18 +50,13 @@ func processSecurityContext(nameCamel string, containerType string, specMap map[
 }
 
 func setSecContextValue(resourceName string, containerName string, castedContainer map[string]interface{}, values *helmify.Values, nindent int) error {
-	if castedContainer["securityContext"] != nil {
-		err := unstructured.SetNestedField(*values, castedContainer["securityContext"], resourceName, containerName, cscValueName)
-		if err != nil {
-			return err
-		}
-
-		valueString := fmt.Sprintf(helmTemplate, resourceName, containerName, nindent+2)
-
-		err = unstructured.SetNestedField(castedContainer, valueString, sc)
-		if err != nil {
-			return err
-		}
+	// Initialize as empty object {} per Zero-Default standard at component level
+	err := unstructured.SetNestedField(*values, map[string]interface{}{}, resourceName, cscValueName)
+	if err != nil {
+		return err
 	}
+
+	valueString := fmt.Sprintf(helmTemplate, resourceName, nindent+2)
+	castedContainer[sc] = valueString
 	return nil
 }

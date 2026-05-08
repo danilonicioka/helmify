@@ -3,7 +3,6 @@ package secret
 import (
 	"fmt"
 	"io"
-	"strings"
 	"text/template"
 
 	"github.com/arttor/helmify/pkg/processor"
@@ -56,17 +55,9 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 	values := helmify.Values{}
 	secValues := map[string]interface{}{}
 	for key, value := range sec.Data {
-		keyCamelCase := strcase.ToLowerCamel(key)
-		if key == strings.ToUpper(key) {
-			keyCamelCase = strcase.ToLowerCamel(strings.ToLower(key))
-		}
 		secValues[key] = string(value)
 	}
 	for key, value := range sec.StringData {
-		keyCamelCase := strcase.ToLowerCamel(key)
-		if key == strings.ToUpper(key) {
-			keyCamelCase = strcase.ToLowerCamel(strings.ToLower(key))
-		}
 		secValues[key] = value
 	}
 

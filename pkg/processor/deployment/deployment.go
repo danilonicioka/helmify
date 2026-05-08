@@ -140,6 +140,13 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 		spec = addWebhookOption(spec)
 	}
 
+	// Strategy
+	err = unstructured.SetNestedField(values, map[string]interface{}{}, nameCamel, "strategy")
+	if err != nil {
+		return true, nil, err
+	}
+	strategy = fmt.Sprintf("{{- with .Values.%s.strategy }}\n  strategy:\n    {{- toYaml . | nindent 4 }}\n  {{- end }}", nameCamel)
+
 	spec = replaceSingleQuotes(spec)
 	spec = pod.ReplacePlaceholders(spec)
 
