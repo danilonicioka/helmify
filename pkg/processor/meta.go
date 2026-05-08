@@ -15,11 +15,11 @@ import (
 const metaTemplate = `apiVersion: %[1]s
 kind: %[2]s
 metadata:
-  name: %[3]s
+  name: {{ include "%[4]s.fullname" . }}-%[3]s
 %[7]s
   labels:
 %[5]s
-  {{- include "%[4]s.labels" . | nindent 4 }}
+    {{- include "%[4]s.labels" . | nindent 4 }}
 %[6]s`
 
 const annotationsTemplate = `  annotations:
@@ -32,6 +32,7 @@ type MetaOpt interface {
 type options struct {
 	values      helmify.Values
 	annotations bool
+	suffix      string
 }
 
 type annotationsOption struct {
@@ -46,6 +47,20 @@ func (a annotationsOption) apply(opts *options) {
 func WithAnnotations(values helmify.Values) MetaOpt {
 	return annotationsOption{
 		values: values,
+	}
+}
+
+type suffixOption struct {
+	suffix string
+}
+
+func (s suffixOption) apply(opts *options) {
+	opts.suffix = s.suffix
+}
+
+func WithSuffix(suffix string) MetaOpt {
+	return suffixOption{
+		suffix: suffix,
 	}
 }
 
@@ -89,8 +104,11 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		}
 	}
 
-	templatedName := appMeta.TemplatedName(obj.GetName())
 	apiVersion, kind := obj.GetObjectKind().GroupVersionKind().ToAPIVersionAndKind()
+	suffix := options.suffix
+	if suffix == "" {
+		suffix = strings.ToLower(kind)
+	}
 
 	var metaStr string
 	if options.values != nil && options.annotations {
@@ -108,7 +126,7 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		annotations = fmt.Sprintf(annotationsTemplate, name, kind)
 	}
 
-	metaStr = fmt.Sprintf(metaTemplate, apiVersion, kind, templatedName, appMeta.ChartName(), labels, annotations, namespace)
+	metaStr = fmt.Sprintf(metaTemplate, apiVersion, kind, suffix, appMeta.ChartName(), labels, annotations, namespace)
 	metaStr = strings.Trim(metaStr, " \n")
 	metaStr = strings.ReplaceAll(metaStr, "\n\n", "\n")
 	return metaStr, nil

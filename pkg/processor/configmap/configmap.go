@@ -2,9 +2,7 @@ package configmap
 
 import (
 	"fmt"
-	"github.com/arttor/helmify/pkg/format"
 	"io"
-	"strings"
 	"text/template"
 
 	"github.com/arttor/helmify/pkg/processor"
@@ -24,9 +22,11 @@ var configMapTempl, _ = template.New("configMap").Parse(
 {{- if .BinaryData }}
 {{ .BinaryData }}
 {{- end }}
-{{- if .Data }}
-{{ .Data }}
-{{- end }}`)
+data:
+{{- range $key, $value := (index .Values .Name).cm }}
+  {{ $key }}: {{ $value | quote }}
+{{- end }}
+  TZ: {{ .Values.global.timezone | default "America/Belem" | quote }}`)
 
 var configMapGVC = schema.GroupVersionKind{
 	Group:   "",
@@ -46,11 +46,8 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	if obj.GroupVersionKind() != configMapGVC {
 		return false, nil, nil
 	}
-	var meta, immutable, binaryData, data string
-	meta, err := processor.ProcessObjMeta(appMeta, obj)
-	if err != nil {
-		return true, nil, err
-	}
+	var immutable, binaryData string
+	var err error
 
 	if field, exists, _ := unstructured.NestedBool(obj.Object, "immutable"); exists {
 		immutable, err = yamlformat.Marshal(map[string]interface{}{"immutable": field}, 0)
@@ -68,22 +65,38 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	valueName := processor.ObjectValueName(appMeta, obj)
 	var values helmify.Values
 	if field, exists, _ := unstructured.NestedStringMap(obj.Object, "data"); exists {
-		field, values = parseMapData(field, valueName)
-		data, err = yamlformat.Marshal(map[string]interface{}{"data": field}, 0)
-		if err != nil {
-			return true, nil, err
+		_, values = parseMapData(field, valueName)
+		// Restructure values to be under component.cm
+		cmValues := values[valueName]
+		values = helmify.Values{
+			valueName: map[string]interface{}{
+				"cm": cmValues,
+			},
+			"global": map[string]interface{}{
+				"timezone":                "America/Belem",
+				"kubernetesClusterDomain": "cluster.local",
+			},
 		}
-		data = strings.ReplaceAll(data, "'", "")
+	}
+
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("cm"))
+	if err != nil {
+		return true, nil, err
 	}
 
 	return true, &result{
 		name: valueName,
 		data: struct {
+			Name       string
 			Meta       string
 			Immutable  string
 			BinaryData string
-			Data       string
-		}{Meta: meta, Immutable: immutable, BinaryData: binaryData, Data: data},
+		}{
+			Name:       valueName,
+			Meta:       meta,
+			Immutable:  immutable,
+			BinaryData: binaryData,
+		},
 		values: values,
 	}, nil
 }
@@ -92,27 +105,7 @@ func parseMapData(data map[string]string, configName string) (map[string]string,
 	values := helmify.Values{}
 	for key, value := range data {
 		valuesNamePath := []string{configName, key}
-		if strings.HasSuffix(key, ".properties") {
-			// handle properties
-			templated, err := parseProperties(value, valuesNamePath, values)
-			if err != nil {
-				logrus.WithError(err).Errorf("unable to process configmap data: %v", valuesNamePath)
-				continue
-			}
-			data[key] = templated
-			continue
-		}
-		if strings.Contains(value, "\n") {
-			value = format.RemoveTrailingWhitespaces(value)
-			templatedVal, err := values.AddYaml(value, 1, false, valuesNamePath...)
-			if err != nil {
-				logrus.WithError(err).Errorf("unable to process multiline configmap data: %v", valuesNamePath)
-				continue
-			}
-			data[key] = templatedVal
-			continue
-		}
-		// handle plain string
+		// handle plain string (we don't need properties parsing for the range strategy)
 		templatedVal, err := values.Add(value, valuesNamePath...)
 		if err != nil {
 			logrus.WithError(err).Errorf("unable to process configmap data: %v", valuesNamePath)
@@ -123,41 +116,22 @@ func parseMapData(data map[string]string, configName string) (map[string]string,
 	return data, values
 }
 
-// func parseProperties(properties string, path []string, values helmify.Values) (string, error) {
-func parseProperties(properties interface{}, path []string, values helmify.Values) (string, error) {
-	var res strings.Builder
-	for _, line := range strings.Split(strings.TrimSuffix(properties.(string), "\n"), "\n") {
-		prop := strings.Split(line, "=")
-		if len(prop) != 2 {
-			return "", fmt.Errorf("wrong property format in %v: %s", path, line)
-		}
-		propName, propVal := prop[0], prop[1]
-		propNamePath := strings.Split(propName, ".")
-		templatedVal, err := values.Add(propVal, append(path, propNamePath...)...)
-		if err != nil {
-			return "", err
-		}
-		_, err = res.WriteString(propName + "=" + templatedVal + "\n")
-		if err != nil {
-			return "", fmt.Errorf("%w: unable to write to string builder", err)
-		}
-	}
-	return res.String(), nil
-}
-
 type result struct {
 	name string
 	data struct {
+		Name       string
 		Meta       string
 		Immutable  string
 		BinaryData string
-		Data       string
 	}
 	values helmify.Values
 }
 
 func (r *result) Filename() string {
-	return fmt.Sprintf("%s-configmap.yaml", r.name)
+	if r.name == "chart" || r.name == "" {
+		return "cm.yaml"
+	}
+	return fmt.Sprintf("cm-%s.yaml", r.name)
 }
 
 func (r *result) Values() helmify.Values {

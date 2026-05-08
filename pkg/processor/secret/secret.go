@@ -2,7 +2,6 @@ package secret
 
 import (
 	"fmt"
-	"github.com/arttor/helmify/pkg/format"
 	"io"
 	"strings"
 	"text/template"
@@ -10,7 +9,6 @@ import (
 	"github.com/arttor/helmify/pkg/processor"
 
 	"github.com/arttor/helmify/pkg/helmify"
-	yamlformat "github.com/arttor/helmify/pkg/yaml"
 	"github.com/iancoleman/strcase"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -20,17 +18,15 @@ import (
 
 var secretTempl, _ = template.New("secret").Parse(
 	`{{ .Meta }}
-{{- if .Data }}
-{{ .Data }}
-{{- end }}
-{{- if .StringData }}
-{{ .StringData }}
-{{- end }}
 {{- if .Type }}
 {{ .Type }}
+{{- end }}
+data:
+{{- range $key, $value := (index .Values .Name).secret }}
+  {{ $key }}: {{ $value | b64enc | quote }}
 {{- end }}`)
 
-var configMapGVC = schema.GroupVersionKind{
+var secretGVC = schema.GroupVersionKind{
 	Group:   "",
 	Version: "v1",
 	Kind:    "Secret",
@@ -45,7 +41,7 @@ type secret struct{}
 
 // Process k8s Secret object into template. Returns false if not capable of processing given resource type.
 func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured) (bool, helmify.Template, error) {
-	if obj.GroupVersionKind() != configMapGVC {
+	if obj.GroupVersionKind() != secretGVC {
 		return false, nil, nil
 	}
 	sec := corev1.Secret{}
@@ -53,74 +49,54 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 	if err != nil {
 		return true, nil, fmt.Errorf("%w: unable to cast to secret", err)
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj)
-	if err != nil {
-		return true, nil, err
-	}
 
 	valueName := processor.ObjectValueName(appMeta, obj)
 	nameCamelCase := strcase.ToLowerCamel(valueName)
 
-	secretType := string(sec.Type)
-	if secretType != "" {
-		secretType, err = yamlformat.Marshal(map[string]interface{}{"type": secretType}, 0)
-		if err != nil {
-			return true, nil, err
-		}
-	}
-
 	values := helmify.Values{}
-	var data, stringData string
-	templatedData := map[string]string{}
-	for key := range sec.Data {
+	secValues := map[string]interface{}{}
+	for key, value := range sec.Data {
 		keyCamelCase := strcase.ToLowerCamel(key)
 		if key == strings.ToUpper(key) {
 			keyCamelCase = strcase.ToLowerCamel(strings.ToLower(key))
 		}
-		templatedName, err := values.AddSecret(true, nameCamelCase, keyCamelCase)
-		if err != nil {
-			return true, nil, fmt.Errorf("%w: unable add secret to values", err)
-		}
-		templatedData[key] = templatedName
+		secValues[key] = string(value)
 	}
-	if len(templatedData) != 0 {
-		data, err = yamlformat.Marshal(map[string]interface{}{"data": templatedData}, 0)
-		if err != nil {
-			return true, nil, err
+	for key, value := range sec.StringData {
+		keyCamelCase := strcase.ToLowerCamel(key)
+		if key == strings.ToUpper(key) {
+			keyCamelCase = strcase.ToLowerCamel(strings.ToLower(key))
 		}
-		data = strings.ReplaceAll(data, "'", "")
-		data = format.FixUnterminatedQuotes(data)
+		secValues[key] = value
 	}
 
-	templatedData = map[string]string{}
-	for key := range sec.StringData {
-		keyCamelCase := strcase.ToLowerCamel(key)
-		if key == strings.ToUpper(key) {
-			keyCamelCase = strcase.ToLowerCamel(strings.ToLower(key))
-		}
-		templatedName, err := values.AddSecret(false, nameCamelCase, keyCamelCase)
-		if err != nil {
-			return true, nil, fmt.Errorf("%w: unable add secret to values", err)
-		}
-		templatedData[key] = templatedName
+	values = helmify.Values{
+		nameCamelCase: map[string]interface{}{
+			"secret": secValues,
+		},
 	}
-	if len(templatedData) != 0 {
-		stringData, err = yamlformat.Marshal(map[string]interface{}{"stringData": templatedData}, 0)
-		if err != nil {
-			return true, nil, err
-		}
-		stringData = strings.ReplaceAll(stringData, "'", "")
-		stringData = format.FixUnterminatedQuotes(stringData)
+
+	secretType := ""
+	if sec.Type != "" {
+		secretType = fmt.Sprintf("type: %s", string(sec.Type))
+	}
+
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("secret"))
+	if err != nil {
+		return true, nil, err
 	}
 
 	return true, &result{
 		name: valueName,
 		data: struct {
-			Type       string
-			Meta       string
-			Data       string
-			StringData string
-		}{Type: secretType, Meta: meta, Data: data, StringData: stringData},
+			Name string
+			Type string
+			Meta string
+		}{
+			Name: nameCamelCase,
+			Type: secretType,
+			Meta: meta,
+		},
 		values: values,
 	}, nil
 }
@@ -128,16 +104,18 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 type result struct {
 	name string
 	data struct {
-		Type       string
-		Meta       string
-		Data       string
-		StringData string
+		Name string
+		Type string
+		Meta string
 	}
 	values helmify.Values
 }
 
 func (r *result) Filename() string {
-	return fmt.Sprintf("%s-secret.yaml", r.name)
+	if r.name == "chart" || r.name == "" {
+		return "secret.yaml"
+	}
+	return fmt.Sprintf("secret-%s.yaml", r.name)
 }
 
 func (r *result) Values() helmify.Values {

@@ -85,25 +85,16 @@ Selector labels
 {{- define "<CHARTNAME>.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "<CHARTNAME>.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
-{{- if .Values.component }}
-app.kubernetes.io/component: {{ .Values.component | quote }}
-{{- end }}
-{{- if .Values.partOf }}
-app.kubernetes.io/part-of: {{ .Values.partOf | quote }}
-{{- end }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
 {{- define "<CHARTNAME>.serviceAccountName" -}}
-{{- $default := (include "<CHARTNAME>.fullname" .) }}
-{{- with .Values.serviceAccount }}
-{{- if .create }}
-{{- default $default .name }}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "<CHARTNAME>.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
-{{- default "default" .name }}
-{{- end }}
+{{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
 `
