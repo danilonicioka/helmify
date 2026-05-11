@@ -56,7 +56,7 @@ func setSecContextValue(resourceName string, containerName string, castedContain
 		return err
 	}
 
-	valueString := fmt.Sprintf(helmTemplate, resourceName, nindent+2)
+	valueString := fmt.Sprintf(helmTemplate, resourceName, 0, nindent+2)
 	castedContainer[sc] = valueString
 	return nil
 }

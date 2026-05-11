@@ -5,6 +5,7 @@ import (
 	"io"
 	"text/template"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/arttor/helmify/pkg/processor"
 
 	"github.com/arttor/helmify/pkg/helmify"
@@ -14,7 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var configMapTempl, _ = template.New("configMap").Parse(
+var configMapTempl = template.Must(template.New("configMap").Funcs(sprig.TxtFuncMap()).Parse(
 	`{{ .Meta }}
 {{- if .Immutable }}
 {{ .Immutable }}
@@ -26,7 +27,7 @@ data:
 {{- range $key, $value := (index .Values .Name).cm }}
   {{ $key }}: {{ $value | quote }}
 {{- end }}
-  TZ: {{ .Values.global.timezone | default "America/Belem" | quote }}`)
+  TZ: {{ .Values.global.timezone | default "America/Belem" | quote }}`))
 
 var configMapGVC = schema.GroupVersionKind{
 	Group:   "",
@@ -139,5 +140,17 @@ func (r *result) Values() helmify.Values {
 }
 
 func (r *result) Write(writer io.Writer) error {
-	return configMapTempl.Execute(writer, r.data)
+	return configMapTempl.Execute(writer, struct {
+		Name       string
+		Meta       string
+		Immutable  string
+		BinaryData string
+		Values     helmify.Values
+	}{
+		Name:       r.name,
+		Meta:       r.data.Meta,
+		Immutable:  r.data.Immutable,
+		BinaryData: r.data.BinaryData,
+		Values:     r.values,
+	})
 }

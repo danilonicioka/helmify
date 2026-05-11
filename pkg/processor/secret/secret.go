@@ -5,6 +5,7 @@ import (
 	"io"
 	"text/template"
 
+	"github.com/Masterminds/sprig/v3"
 	"github.com/arttor/helmify/pkg/processor"
 
 	"github.com/arttor/helmify/pkg/helmify"
@@ -15,7 +16,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-var secretTempl, _ = template.New("secret").Parse(
+var secretTempl = template.Must(template.New("secret").Funcs(sprig.TxtFuncMap()).Parse(
 	`{{ .Meta }}
 {{- if .Type }}
 {{ .Type }}
@@ -23,7 +24,7 @@ var secretTempl, _ = template.New("secret").Parse(
 data:
 {{- range $key, $value := (index .Values .Name).secret }}
   {{ $key }}: {{ $value | b64enc | quote }}
-{{- end }}`)
+{{- end }}`))
 
 var secretGVC = schema.GroupVersionKind{
 	Group:   "",
@@ -114,5 +115,15 @@ func (r *result) Values() helmify.Values {
 }
 
 func (r *result) Write(writer io.Writer) error {
-	return secretTempl.Execute(writer, r.data)
+	return secretTempl.Execute(writer, struct {
+		Name   string
+		Type   string
+		Meta   string
+		Values helmify.Values
+	}{
+		Name:   r.data.Name,
+		Type:   r.data.Type,
+		Meta:   r.data.Meta,
+		Values: r.values,
+	})
 }
