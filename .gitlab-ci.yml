@@ -8,20 +8,52 @@ variables:
   GOCACHE: $CI_PROJECT_DIR/.gocache
 
 stages:
-  - test
+  - build
   - containerize
 
-cache:
-  key: "$CI_COMMIT_REF_SLUG"
-  paths:
-    - .go/pkg/mod
-    - .gocache
+# ---------------------------------------------------------------------------
+# Stage: Build (UI & API)
+# ---------------------------------------------------------------------------
+build-ui:
+  stage: build
+  image: registry.access.redhat.com/ubi8/nodejs-20:latest
+  cache:
+    key: "ui-deps-$CI_COMMIT_REF_SLUG"
+    paths:
+      - ui/node_modules
+  script:
+    - cd ui
+    - npm install
+    - npm run build
+  artifacts:
+    paths:
+      - ui/out
+    expire_in: 1 hour
+
+build-api:
+  stage: build
+  image: $BUILDER_IMAGE
+  cache:
+    key: "api-deps-$CI_COMMIT_REF_SLUG"
+    paths:
+      - .go/pkg/mod
+      - .gocache
+  needs:
+    - build-ui
+  script:
+    - mkdir -p api/ui/out
+    - cp -a ui/out/. api/ui/out/
+    - go build -buildvcs=false -o helmify-api ./api
+  artifacts:
+    paths:
+      - helmify-api
+    expire_in: 1 hour
 
 # ---------------------------------------------------------------------------
-# Stage: Test (Variable Setup)
+# Stage: Containerize (Assemble Image)
 # ---------------------------------------------------------------------------
 setup-vars:
-  stage: test
+  stage: containerize
   image: $BUILDER_IMAGE
   script:
     - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
@@ -42,6 +74,8 @@ push-to-quay:
     - rancher
   needs:
     - job: setup-vars
+      artifacts: true
+    - job: build-api
       artifacts: true
   variables:
     STORAGE_DRIVER: vfs
