@@ -22,8 +22,15 @@ var secretTempl = template.Must(template.New("secret").Funcs(sprig.TxtFuncMap())
 {{ .Type }}
 {{- end }}
 data:
+{{- if (index .Values .Name).secret }}
 {{- range $key, $value := (index .Values .Name).secret }}
   {{ $key }}: {{ $value | b64enc | quote }}
+{{- end }}
+{{- end }}
+{{- if .Values.globalSecret }}
+{{- range $key, $value := .Values.globalSecret }}
+  {{ $key }}: {{ $value | b64enc | quote }}
+{{- end }}
 {{- end }}`))
 
 var secretGVC = schema.GroupVersionKind{

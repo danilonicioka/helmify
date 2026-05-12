@@ -387,13 +387,31 @@ func processEnv(name string, containerName string, appMeta helmify.AppMetadata, 
 				newEnv = append(newEnv, e)
 				continue
 			}
-			// For others (SecretKeyRef, ConfigMapKeyRef), they should ideally be handled via envFrom
-			// but we keep them for now to avoid breaking existing complex mappings
-			newEnv = append(newEnv, e)
+			
+			// Check for redundant ConfigMap/Secret mappings
+			// If it points to the same component's ConfigMap/Secret, it's redundant because of envFrom
+			redundant := false
+			if e.ValueFrom.ConfigMapKeyRef != nil {
+				cmName := processor.ResolveValueName(appMeta, e.ValueFrom.ConfigMapKeyRef.Name)
+				if cmName == name {
+					redundant = true
+				}
+			}
+			if e.ValueFrom.SecretKeyRef != nil {
+				secName := processor.ResolveValueName(appMeta, e.ValueFrom.SecretKeyRef.Name)
+				if secName == name {
+					redundant = true
+				}
+			}
+			
+			if !redundant {
+				newEnv = append(newEnv, e)
+			}
 			continue
 		}
 		
 		// Move plain value to ConfigMap
+		// Use exact key name to preserve casing as requested by user
 		err := unstructured.SetNestedField(*values, e.Value, name, "cm", e.Name)
 		if err != nil {
 			return c, err
@@ -451,7 +469,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 	}
 
 	// Always add checksum for global configmap
-	annotations["checksum/global-config"] = fmt.Sprintf(`{{- if .Values.global }}\n  checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}\n  {{- end }}`)
+	annotations["checksum/global-config"] = fmt.Sprintf("{{- if .Values.global }}\n  checksum/global-config: {{ include (print $.Template.BasePath \"/cm-global.yaml\") . | sha256sum }}\n  {{- end }}")
 
 	for cm := range configMaps {
 		valueName := processor.ResolveValueName(appMeta, cm)
@@ -463,7 +481,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 		if valueName == "chart" || valueName == "" {
 			key = "checksum/config"
 		}
-		annotations[key] = fmt.Sprintf(`{{- if (index .Values "%s").cm }}\n  %s: {{ include (print $.Template.BasePath "/%s") . | sha256sum }}\n  {{- end }}`, valueName, key, filename)
+		annotations[key] = fmt.Sprintf("{{- if (index .Values \"%s\").cm }}\n  %s: {{ include (print $.Template.BasePath \"/%s\") . | sha256sum }}\n  {{- end }}", valueName, key, filename)
 	}
 	for sec := range secrets {
 		valueName := processor.ResolveValueName(appMeta, sec)
@@ -475,7 +493,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 		if valueName == "chart" || valueName == "" {
 			key = "checksum/secret"
 		}
-		annotations[key] = fmt.Sprintf(`{{- if (index .Values "%s").secret }}\n  %s: {{ include (print $.Template.BasePath "/%s") . | sha256sum }}\n  {{- end }}`, valueName, key, filename)
+		annotations[key] = fmt.Sprintf("{{- if (index .Values \"%s\").secret }}\n  %s: {{ include (print $.Template.BasePath \"/%s\") . | sha256sum }}\n  {{- end }}", valueName, key, filename)
 	}
 
 	// Filter out static placeholders from Kustomize

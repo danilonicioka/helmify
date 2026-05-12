@@ -24,10 +24,16 @@ var configMapTempl = template.Must(template.New("configMap").Funcs(sprig.TxtFunc
 {{ .BinaryData }}
 {{- end }}
 data:
+{{- if (index .Values .Name).cm }}
 {{- range $key, $value := (index .Values .Name).cm }}
   {{ $key }}: {{ $value | quote }}
 {{- end }}
-  TZ: {{ .Values.global.timezone | default "America/Belem" | quote }}`))
+{{- end }}
+{{- if .Values.global }}
+{{- range $key, $value := .Values.global }}
+  {{ $key }}: {{ $value | quote }}
+{{- end }}
+{{- end }}`))
 
 var configMapGVC = schema.GroupVersionKind{
 	Group:   "",
@@ -64,19 +70,16 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	}
 
 	valueName := processor.ObjectValueName(appMeta, obj)
+	valueNameCamel := strcase.ToLowerCamel(valueName)
 	var values helmify.Values
 	if field, exists, _ := unstructured.NestedStringMap(obj.Object, "data"); exists {
 		_, values = parseMapData(field, valueName)
-		// Restructure values to be under component.cm
-		cmValues := values[valueName]
-		values = helmify.Values{
-			valueName: map[string]interface{}{
-				"cm": cmValues,
-			},
-			"global": map[string]interface{}{
+		// Add global defaults
+		if values["global"] == nil {
+			values["global"] = map[string]interface{}{
 				"timezone":                "America/Belem",
 				"kubernetesClusterDomain": "cluster.local",
-			},
+			}
 		}
 	}
 
@@ -105,14 +108,16 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 func parseMapData(data map[string]string, configName string) (map[string]string, helmify.Values) {
 	values := helmify.Values{}
 	for key, value := range data {
-		valuesNamePath := []string{configName, key}
-		// handle plain string (we don't need properties parsing for the range strategy)
-		templatedVal, err := values.Add(value, valuesNamePath...)
+		// Use the key exactly as it is to preserve application requirements
+		// Only camel-case the configName prefix
+		configNameCamel := strcase.ToLowerCamel(configName)
+		valuesNamePath := []string{configNameCamel, "cm", key}
+		
+		err := unstructured.SetNestedField(values, value, valuesNamePath...)
 		if err != nil {
 			logrus.WithError(err).Errorf("unable to process configmap data: %v", valuesNamePath)
 			continue
 		}
-		data[key] = templatedVal
 	}
 	return data, values
 }
@@ -140,6 +145,7 @@ func (r *result) Values() helmify.Values {
 }
 
 func (r *result) Write(writer io.Writer) error {
+	nameCamel := strcase.ToLowerCamel(r.name)
 	return configMapTempl.Execute(writer, struct {
 		Name       string
 		Meta       string
@@ -147,7 +153,7 @@ func (r *result) Write(writer io.Writer) error {
 		BinaryData string
 		Values     helmify.Values
 	}{
-		Name:       r.name,
+		Name:       nameCamel,
 		Meta:       r.data.Meta,
 		Immutable:  r.data.Immutable,
 		BinaryData: r.data.BinaryData,
