@@ -10,6 +10,7 @@ import (
 
 	"github.com/arttor/helmify/pkg/helmify"
 	yamlformat "github.com/arttor/helmify/pkg/yaml"
+	"github.com/iancoleman/strcase"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -70,7 +71,6 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	}
 
 	valueName := processor.ObjectValueName(appMeta, obj)
-	valueNameCamel := strcase.ToLowerCamel(valueName)
 	var values helmify.Values
 	if field, exists, _ := unstructured.NestedStringMap(obj.Object, "data"); exists {
 		_, values = parseMapData(field, valueName)
