@@ -77,8 +77,8 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 		// Add global defaults
 		if values["global"] == nil {
 			values["global"] = map[string]interface{}{
-				"timezone":                "America/Belem",
-				"kubernetesClusterDomain": "cluster.local",
+				"TZ":                        "America/Belem",
+				"KUBERNETES_CLUSTER_DOMAIN": "cluster.local",
 			}
 		}
 	}

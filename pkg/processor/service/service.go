@@ -22,27 +22,27 @@ import (
 const (
 	svcTempSpec = `
 spec:
-  type: {{ .Values.%[1]s.type }}
+  type: {{ .Values.%[1]s.service.type }}
   selector:%[2]s
     {{- include "%[3]s" . | nindent 4 }}%[4]s
   ports:
-  {{- .Values.%[1]s.ports | toYaml | nindent 2 }}`
+  {{- .Values.%[1]s.service.ports | toYaml | nindent 2 }}`
 )
 
 const (
 	lbSourceRangesTempSpec = `
   loadBalancerSourceRanges:
-  {{- .Values.%[1]s.loadBalancerSourceRanges | toYaml | nindent 2 }}`
+  {{- .Values.%[1]s.service.loadBalancerSourceRanges | toYaml | nindent 2 }}`
 )
 
 const (
 	ipFamilyTempSpec = `
-  {{- if .Values.%[1]s.ipFamilyPolicy }}
-  ipFamilyPolicy: {{ .Values.%[1]s.ipFamilyPolicy }}
+  {{- if .Values.%[1]s.service.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ .Values.%[1]s.service.ipFamilyPolicy }}
   {{- end }}
-  {{- if .Values.%[1]s.ipFamilies }}
+  {{- if .Values.%[1]s.service.ipFamilies }}
   ipFamilies:
-  {{- .Values.%[1]s.ipFamilies | toYaml | nindent 2 }}
+  {{- .Values.%[1]s.service.ipFamilies | toYaml | nindent 2 }}
   {{- end }}`
 )
 
@@ -91,7 +91,7 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	if svcType == "" {
 		svcType = corev1.ServiceTypeClusterIP
 	}
-	_ = unstructured.SetNestedField(values, string(svcType), shortNameCamel, "type")
+	_ = unstructured.SetNestedField(values, string(svcType), shortNameCamel, "service", "type")
 	ports := make([]interface{}, len(service.Spec.Ports))
 	for i, p := range service.Spec.Ports {
 		pMap := map[string]interface{}{
@@ -114,7 +114,7 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		ports[i] = pMap
 	}
 
-	_ = unstructured.SetNestedSlice(values, ports, shortNameCamel, "ports")
+	_ = unstructured.SetNestedSlice(values, ports, shortNameCamel, "service", "ports")
 
 	comp := processor.GetComponent(obj)
 	labelHelper := appMeta.ChartName() + ".selectorLabels"
@@ -145,7 +145,7 @@ func parseIPFamily(values helmify.Values, service corev1.Service, shortNameCamel
 	}
 
 	if hasIPFamilyPolicy {
-		_ = unstructured.SetNestedField(values, string(*service.Spec.IPFamilyPolicy), shortNameCamel, "ipFamilyPolicy")
+		_ = unstructured.SetNestedField(values, string(*service.Spec.IPFamilyPolicy), shortNameCamel, "service", "ipFamilyPolicy")
 	}
 
 	if hasIPFamilies {
@@ -153,7 +153,7 @@ func parseIPFamily(values helmify.Values, service corev1.Service, shortNameCamel
 		for i, fam := range service.Spec.IPFamilies {
 			ipFamilies[i] = string(fam)
 		}
-		_ = unstructured.SetNestedSlice(values, ipFamilies, shortNameCamel, "ipFamilies")
+		_ = unstructured.SetNestedSlice(values, ipFamilies, shortNameCamel, "service", "ipFamilies")
 	}
 
 	return fmt.Sprintf(ipFamilyTempSpec, shortNameCamel)
@@ -167,7 +167,7 @@ func parseLoadBalancerSourceRanges(values helmify.Values, service corev1.Service
 	for i, ip := range service.Spec.LoadBalancerSourceRanges {
 		lbSourceRanges[i] = ip
 	}
-	_ = unstructured.SetNestedSlice(values, lbSourceRanges, shortNameCamel, "loadBalancerSourceRanges")
+	_ = unstructured.SetNestedSlice(values, lbSourceRanges, shortNameCamel, "service", "loadBalancerSourceRanges")
 	return fmt.Sprintf(lbSourceRangesTempSpec, shortNameCamel)
 }
 
