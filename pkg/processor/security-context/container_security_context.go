@@ -2,6 +2,7 @@ package security_context
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/iancoleman/strcase"
@@ -50,13 +51,21 @@ func processSecurityContext(nameCamel string, containerType string, specMap map[
 }
 
 func setSecContextValue(resourceName string, containerName string, castedContainer map[string]interface{}, values *helmify.Values, nindent int) error {
-	// Initialize as empty object {} per Zero-Default standard at component level
-	err := unstructured.SetNestedField(*values, map[string]interface{}{}, resourceName, cscValueName)
+	var valuePath []string
+	if containerName == resourceName || containerName == "" {
+		valuePath = []string{resourceName}
+	} else {
+		valuePath = []string{resourceName, containerName}
+	}
+	valuePathStr := strings.Join(valuePath, ".")
+
+	// Initialize as empty object {} per Zero-Default standard
+	err := unstructured.SetNestedField(*values, map[string]interface{}{}, append(valuePath, cscValueName)...)
 	if err != nil {
 		return err
 	}
 
-	valueString := fmt.Sprintf(helmTemplate, resourceName, 0, nindent+2)
+	valueString := fmt.Sprintf(helmTemplate, valuePathStr, 0, nindent+2)
 	castedContainer[sc] = valueString
 	return nil
 }

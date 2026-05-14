@@ -24,7 +24,7 @@ const (
 spec:
   type: {{ .Values.%[1]s.type }}
   selector:%[2]s
-    {{- include "%[3]s.selectorLabels" . | nindent 4 }}%[4]s
+    {{- include "%[3]s" . | nindent 4 }}%[4]s
   ports:
   {{- .Values.%[1]s.ports | toYaml | nindent 2 }}`
 )
@@ -116,8 +116,13 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 
 	_ = unstructured.SetNestedSlice(values, ports, shortNameCamel, "ports")
 
+	comp := processor.GetComponent(obj)
+	labelHelper := appMeta.ChartName() + ".selectorLabels"
+	if comp != "" {
+		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), comp)
+	}
 	ipFamilySpec := parseIPFamily(values, service, shortNameCamel)
-	res := meta + fmt.Sprintf(svcTempSpec, shortNameCamel, selector, appMeta.ChartName(), ipFamilySpec)
+	res := meta + fmt.Sprintf(svcTempSpec, shortNameCamel, selector, labelHelper, ipFamilySpec)
 
 	res += parseLoadBalancerSourceRanges(values, service, shortNameCamel)
 

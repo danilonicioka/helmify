@@ -88,13 +88,48 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+API labels
+*/}}
+{{- define "<CHARTNAME>.api.labels" -}}
+{{ include "<CHARTNAME>.labels" . }}
+app.kubernetes.io/component: api
+{{- end }}
+
+{{/*
+API selector labels
+*/}}
+{{- define "<CHARTNAME>.api.selectorLabels" -}}
+{{ include "<CHARTNAME>.selectorLabels" . }}
+app.kubernetes.io/component: api
+{{- end }}
+
+{{/*
+APP labels
+*/}}
+{{- define "<CHARTNAME>.app.labels" -}}
+{{ include "<CHARTNAME>.labels" . }}
+app.kubernetes.io/component: app
+{{- end }}
+
+{{/*
+APP selector labels
+*/}}
+{{- define "<CHARTNAME>.app.selectorLabels" -}}
+{{ include "<CHARTNAME>.selectorLabels" . }}
+app.kubernetes.io/component: app
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "<CHARTNAME>.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "<CHARTNAME>.fullname" .) .Values.serviceAccount.name }}
+{{- $default := (include "<CHARTNAME>.fullname" .) }}
+{{- with .Values.serviceAccount }}
+{{- if .create }}
+{{- default $default .name }}
 {{- else }}
-{{- default "default" .Values.serviceAccount.name }}
+{{- default "default" .name }}
+{{- end }}
 {{- end }}
 {{- end }}
 `
@@ -125,7 +160,7 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.1.0
+version: 0.1.3
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.

@@ -507,7 +507,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 }
 
 // ReplacePlaceholders replaces HELMIFY_WITH and HELMIFY_ENV_FROM placeholders with actual Helm templates.
-func ReplacePlaceholders(s string) string {
+func ReplacePlaceholders(s string, chartName string) string {
 	// 1. Handle single quotes: key: '[HELMIFY_WITH:path:indent]'
 	r1 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*'\[HELMIFY_WITH:([^:]+):([0-9]+)\]'`)
 	s = r1.ReplaceAllString(s, "{{- with .Values.${3} }}\n${1}${2}:\n${1}  {{- toYaml . | nindent ${4} }}\n${1}{{- end }}")
@@ -518,19 +518,19 @@ func ReplacePlaceholders(s string) string {
 
 	// 3. Handle HELMIFY_ENV_FROM: envFrom: '[HELMIFY_ENV_FROM:name:indent]'
 	r3 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([0-9]+)\]'`)
-	s = r3.ReplaceAllString(s, `${1}envFrom:
+	s = r3.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
 ${1}{{- if .Values.global }}
 ${1}- configMapRef:
-${1}    name: {{ include "chart.fullname" . }}-global
+${1}    name: {{ include "%[1]s.fullname" . }}-global
 ${1}{{- end }}
 ${1}{{- if (index .Values "${2}").cm }}
 ${1}- configMapRef:
-${1}    name: {{ include "chart.fullname" . }}-cm
+${1}    name: {{ include "%[1]s.fullname" . }}-cm
 ${1}{{- end }}
 ${1}{{- if (index .Values "${2}").secret }}
 ${1}- secretRef:
-${1}    name: {{ include "chart.fullname" . }}-secret
-${1}{{- end }}`)
+${1}    name: {{ include "%[1]s.fullname" . }}-secret
+${1}{{- end }}`, chartName))
 
 	return s
 }

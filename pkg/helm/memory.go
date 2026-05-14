@@ -33,11 +33,11 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	// Group templates into files
 	files := map[string][]helmify.Template{}
 	values := helmify.Values{
-		"fullnameOverride": "",
+		"fullnameOverride": chartName,
 		"dnsResolver":     "dns-default.openshift-dns.svc.cluster.local",
 		"global": map[string]interface{}{
-			"timezone":                "America/Belem",
-			"kubernetesClusterDomain": cluster.DefaultDomain,
+			"TZ":                        "America/Belem",
+			"KUBERNETES_CLUSTER_DOMAIN": cluster.DefaultDomain,
 		},
 	}
 

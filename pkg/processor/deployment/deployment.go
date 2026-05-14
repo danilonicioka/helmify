@@ -43,7 +43,7 @@ spec:
 {{ .Spec }}`)
 
 const selectorTempl = `%[1]s
-{{- include "%[2]s.selectorLabels" . | nindent 6 }}
+{{- include "%[2]s" . | nindent 6 }}
 %[3]s`
 
 // New creates processor for k8s Deployment resource.
@@ -98,7 +98,12 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 			return true, nil, err
 		}
 	}
-	selector := fmt.Sprintf(selectorTempl, matchLabels, appMeta.ChartName(), matchExpr)
+	comp := processor.GetComponent(obj)
+	labelHelper := appMeta.ChartName() + ".selectorLabels"
+	if comp != "" {
+		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), comp)
+	}
+	selector := fmt.Sprintf(selectorTempl, matchLabels, labelHelper, matchExpr)
 	selector = strings.Trim(selector, " \n")
 	selector = string(yamlformat.Indent([]byte(selector), 4))
 
@@ -106,7 +111,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	if err != nil {
 		return true, nil, err
 	}
-	podLabels += fmt.Sprintf("\n      {{- include \"%s.selectorLabels\" . | nindent 8 }}", appMeta.ChartName())
+	podLabels += fmt.Sprintf("\n      {{- include \"%s\" . | nindent 8 }}", labelHelper)
 
 	podAnnotations := ""
 	annotations := depl.Spec.Template.ObjectMeta.Annotations
@@ -148,7 +153,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	strategy = fmt.Sprintf("{{- with .Values.%s.strategy }}\n  strategy:\n    {{- toYaml . | nindent 4 }}\n  {{- end }}", nameCamel)
 
 	spec = replaceSingleQuotes(spec)
-	spec = pod.ReplacePlaceholders(spec)
+	spec = pod.ReplacePlaceholders(spec, appMeta.ChartName())
 
 	return true, &result{
 		name:   name,

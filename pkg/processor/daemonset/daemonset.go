@@ -116,7 +116,7 @@ func (d daemonset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	if err != nil {
 		return true, nil, err
 	}
-	spec = pod.ReplacePlaceholders(spec)
+	spec = pod.ReplacePlaceholders(spec, appMeta.ChartName())
 
 	return true, &result{
 		name:   name,

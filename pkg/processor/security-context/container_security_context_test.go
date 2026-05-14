@@ -46,9 +46,7 @@ func TestProcessContainerSecurityContext(t *testing.T) {
 			want: &helmify.Values{
 				"someResourceName": map[string]interface{}{
 					"someContainerName": map[string]interface{}{
-						"containerSecurityContext": map[string]interface{}{
-							"privileged": true,
-						},
+						"containerSecurityContext": map[string]interface{}{},
 					},
 				},
 			},
@@ -78,14 +76,10 @@ func TestProcessContainerSecurityContext(t *testing.T) {
 			want: &helmify.Values{
 				"someResourceName": map[string]interface{}{
 					"firstContainer": map[string]interface{}{
-						"containerSecurityContext": map[string]interface{}{
-							"privileged": true,
-						},
+						"containerSecurityContext": map[string]interface{}{},
 					},
 					"secondContainer": map[string]interface{}{
-						"containerSecurityContext": map[string]interface{}{
-							"allowPrivilegeEscalation": true,
-						},
+						"containerSecurityContext": map[string]interface{}{},
 					},
 				},
 			},
@@ -130,9 +124,7 @@ func Test_setSecContextValue(t *testing.T) {
 			want: &helmify.Values{
 				"someResource": map[string]interface{}{
 					"someContainer": map[string]interface{}{
-						"containerSecurityContext": map[string]interface{}{
-							"someField": "someValue",
-						},
+						"containerSecurityContext": map[string]interface{}{},
 					},
 				},
 			},

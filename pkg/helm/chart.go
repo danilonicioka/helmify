@@ -40,8 +40,14 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	}
 	// group templates into files
 	files := map[string][]helmify.Template{}
-	values := helmify.Values{}
-	values[cluster.DomainKey] = cluster.DefaultDomain
+	values := helmify.Values{
+		"fullnameOverride": chartName,
+		"dnsResolver":     "dns-default.openshift-dns.svc.cluster.local",
+		"global": map[string]interface{}{
+			"TZ":                        "America/Belem",
+			"KUBERNETES_CLUSTER_DOMAIN": cluster.DefaultDomain,
+		},
+	}
 	for i, template := range templates {
 		file := files[filenames[i]]
 		file = append(file, template)
@@ -172,6 +178,19 @@ func toNode(v interface{}, depth int) *yaml.Node {
 			if depth == 1 && prevPriority != 0 && p != prevPriority {
 				keyNode.HeadComment = "helmify-newline"
 			}
+			
+			// Inject Ultra-Lean comments for empty objects
+			if isEmptyMap(val[k]) {
+				switch k {
+				case "resources":
+					keyNode.FootComment = "  limits:\n    cpu: 500m\n    memory: 512Mi\n  requests:\n    cpu: 100m\n    memory: 128Mi"
+				case "startupProbe", "livenessProbe":
+					keyNode.FootComment = "  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  failureThreshold: 30\n  successThreshold: 1\n  timeoutSeconds: 5"
+				case "readinessProbe":
+					keyNode.FootComment = "  httpGet:\n    path: /health\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  failureThreshold: 3\n  successThreshold: 1\n  timeoutSeconds: 5"
+				}
+			}
+
 			content = append(content, keyNode)
 			content = append(content, toNode(val[k], depth+1))
 			prevPriority = p
@@ -194,6 +213,11 @@ func toNode(v interface{}, depth int) *yaml.Node {
 		}
 		return &node
 	}
+}
+
+func isEmptyMap(v interface{}) bool {
+	m, ok := v.(map[string]interface{})
+	return ok && len(m) == 0
 }
 
 func getPriority(key string, value interface{}) int {
