@@ -158,7 +158,10 @@ func GetComponent(obj *unstructured.Unstructured) string {
 	}
 	// Heuristic detection based on name
 	name := strings.ToLower(obj.GetName())
-	if strings.Contains(name, "api") || strings.Contains(name, "web") || strings.Contains(name, "server") {
+	if strings.Contains(name, "web") || strings.Contains(name, "front") || strings.Contains(name, "gui") {
+		return "app"
+	}
+	if strings.Contains(name, "api") || strings.Contains(name, "server") || strings.Contains(name, "back") {
 		return "api"
 	}
 	return "app"
@@ -167,6 +170,11 @@ func GetComponent(obj *unstructured.Unstructured) string {
 // ObjectValueName creates a smart, unified values.yaml root key name for a Kubernetes object.
 // It relies on app labels or suffix stripping to group multiple microservice components under the same root.
 func ObjectValueName(appMeta helmify.AppMetadata, obj *unstructured.Unstructured) string {
+	comp := GetComponent(obj)
+	if comp != "" {
+		return comp
+	}
+
 	// 1. Label Detection Route
 	if appName := GetAppName(obj); appName != "" {
 		return appName
