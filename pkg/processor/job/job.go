@@ -123,7 +123,7 @@ func (p job) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	if err != nil {
 		return true, nil, err
 	}
-	specStr = pod.ReplacePlaceholders(specStr)
+	specStr = pod.ReplacePlaceholders(specStr, appMeta.ChartName())
 
 	return true, &result{
 		name: name,

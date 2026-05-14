@@ -123,7 +123,7 @@ func (p cron) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 	if err != nil {
 		return true, nil, err
 	}
-	specStr = pod.ReplacePlaceholders(specStr)
+	specStr = pod.ReplacePlaceholders(specStr, appMeta.ChartName())
 
 	return true, &resultCron{
 		name: name,

@@ -76,6 +76,9 @@ func (a *Service) Namespace() string {
 
 // ChartName returns ChartName.
 func (a *Service) ChartName() string {
+	if a.conf.ChartName == "" {
+		return "chart"
+	}
 	return a.conf.ChartName
 }
 

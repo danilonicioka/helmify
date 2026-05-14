@@ -150,6 +150,20 @@ func GetAppName(obj *unstructured.Unstructured) string {
 	return ""
 }
 
+// GetComponent tries to pull the component name from standard K8s labels.
+func GetComponent(obj *unstructured.Unstructured) string {
+	labels := obj.GetLabels()
+	if comp, ok := labels["app.kubernetes.io/component"]; ok && comp != "" {
+		return comp
+	}
+	// Heuristic detection based on name
+	name := strings.ToLower(obj.GetName())
+	if strings.Contains(name, "api") || strings.Contains(name, "web") || strings.Contains(name, "server") {
+		return "api"
+	}
+	return "app"
+}
+
 // ObjectValueName creates a smart, unified values.yaml root key name for a Kubernetes object.
 // It relies on app labels or suffix stripping to group multiple microservice components under the same root.
 func ObjectValueName(appMeta helmify.AppMetadata, obj *unstructured.Unstructured) string {

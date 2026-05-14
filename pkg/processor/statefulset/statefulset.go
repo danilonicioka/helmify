@@ -127,7 +127,7 @@ func (d statefulset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unst
 	if err != nil {
 		return true, nil, err
 	}
-	spec = pod.ReplacePlaceholders(spec)
+	spec = pod.ReplacePlaceholders(spec, appMeta.ChartName())
 
 	return true, &result{
 		name:   name,
