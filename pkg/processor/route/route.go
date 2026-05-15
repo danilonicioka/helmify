@@ -32,7 +32,7 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	}
 
 	name := processor.ObjectValueName(appMeta, obj)
-	nameCamel := strcase.ToLowerCamel(name)
+	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("route"))
 	if err != nil {
 		return true, nil, err

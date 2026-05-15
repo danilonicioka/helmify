@@ -58,7 +58,7 @@ func (r pdb) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	}
 
 	name := processor.ObjectValueName(appMeta, obj)
-	nameCamel := strcase.ToLowerCamel(name)
+	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 
 	var selector string
 	if pdb.Spec.Selector != nil && (len(pdb.Spec.Selector.MatchLabels) > 0 || len(pdb.Spec.Selector.MatchExpressions) > 0) {

@@ -252,7 +252,7 @@ func processContainers(objName string, values helmify.Values, containerType stri
 func processPodSpec(name string, appMeta helmify.AppMetadata, pod *corev1.PodSpec) (helmify.Values, error) {
 	values := helmify.Values{}
 	for i, c := range pod.Containers {
-		processed, err := processPodContainer(name, appMeta, c, &values)
+		processed, err := processPodContainer(name, appMeta, c, &values, i == 0 && len(pod.Containers) == 1)
 		if err != nil {
 			return nil, err
 		}
@@ -260,7 +260,7 @@ func processPodSpec(name string, appMeta helmify.AppMetadata, pod *corev1.PodSpe
 	}
 
 	for i, c := range pod.InitContainers {
-		processed, err := processPodContainer(name, appMeta, c, &values)
+		processed, err := processPodContainer(name, appMeta, c, &values, false)
 		if err != nil {
 			return nil, err
 		}
@@ -284,7 +284,7 @@ func processPodSpec(name string, appMeta helmify.AppMetadata, pod *corev1.PodSpe
 	return values, nil
 }
 
-func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Container, values *helmify.Values) (corev1.Container, error) {
+func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Container, values *helmify.Values, isPrimary bool) (corev1.Container, error) {
 	index := strings.LastIndex(c.Image, ":")
 	if strings.Contains(c.Image, "@") && strings.Count(c.Image, ":") >= 2 {
 		last := strings.LastIndex(c.Image, ":")
@@ -296,7 +296,7 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 	repo, tag := c.Image[:index], c.Image[index+1:]
 	containerName := strcase.ToLowerCamel(c.Name)
 	var valuePath []string
-	if containerName == name || containerName == "" {
+	if containerName == name || containerName == "" || isPrimary {
 		valuePath = []string{name}
 	} else {
 		valuePath = []string{name, containerName}
