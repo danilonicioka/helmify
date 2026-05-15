@@ -58,7 +58,7 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 	}
 
 	valueName := processor.ObjectValueName(appMeta, obj)
-	nameCamelCase := strcase.ToLowerCamel(valueName)
+	nameCamelCase := strcase.ToLowerCamel(processor.GetComponent(obj))
 
 	values := helmify.Values{}
 	secValues := map[string]interface{}{}
