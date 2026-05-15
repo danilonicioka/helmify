@@ -342,7 +342,7 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 		c.ImagePullPolicy = corev1.PullPolicy(fmt.Sprintf("{{ .Values.%s.imagePullPolicy }}", valuePathStr))
 	}
 
-	c, err = processProbes(name, containerName, c, values)
+	c, err = processProbes(name, containerName, c, values, isPrimary)
 	if err != nil {
 		return c, err
 	}
@@ -350,9 +350,9 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 	return c, nil
 }
 
-func processProbes(name, containerName string, c corev1.Container, values *helmify.Values) (corev1.Container, error) {
+func processProbes(name, containerName string, c corev1.Container, values *helmify.Values, isPrimary bool) (corev1.Container, error) {
 	var valuePath []string
-	if containerName == name || containerName == "" {
+	if containerName == name || containerName == "" || isPrimary {
 		valuePath = []string{name}
 	} else {
 		valuePath = []string{name, containerName}
