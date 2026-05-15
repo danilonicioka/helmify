@@ -201,7 +201,7 @@ func processContainers(objName string, values helmify.Values, containerType stri
 	for i := range containers {
 		containerName := strcase.ToLowerCamel((containers[i].(map[string]interface{})["name"]).(string))
 		var valuePath []string
-		if containerName == objName || containerName == "" {
+		if containerName == objName || containerName == "" || len(containers) == 1 {
 			valuePath = []string{objName}
 		} else {
 			valuePath = []string{objName, containerName}

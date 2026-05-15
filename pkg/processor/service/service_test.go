@@ -67,7 +67,7 @@ func Test_svc_Process(t *testing.T) {
 		assert.NotNil(t, template)
 
 		values := template.Values()
-		expectedRoot := "app"
+		expectedRoot := "api"
 		ipFamilyPolicy, found, err := unstructured.NestedString(values, expectedRoot, "service", "ipFamilyPolicy")
 		assert.NoError(t, err)
 		assert.True(t, found)

@@ -71,9 +71,10 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	}
 
 	valueName := processor.ObjectValueName(appMeta, obj)
+	compName := processor.GetComponent(obj)
 	var values helmify.Values
 	if field, exists, _ := unstructured.NestedStringMap(obj.Object, "data"); exists {
-		_, values = parseMapData(field, valueName)
+		_, values = parseMapData(field, compName)
 		// Add global defaults
 		if values["global"] == nil {
 			values["global"] = map[string]interface{}{

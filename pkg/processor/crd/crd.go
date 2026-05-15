@@ -135,7 +135,7 @@ func (c crd) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	res = strings.ReplaceAll(res, "\n\n", "\n")
 
 	valueName := processor.ObjectValueName(appMeta, obj)
-	nameCamel := strcase.ToLowerCamel(valueName)
+	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 	values := helmify.Values{}
 
 	if appMeta.Config().OptionalCRDs {

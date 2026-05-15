@@ -164,17 +164,12 @@ func GetComponent(obj *unstructured.Unstructured) string {
 	if strings.Contains(name, "api") || strings.Contains(name, "server") || strings.Contains(name, "back") {
 		return "api"
 	}
-	return "app"
+	return "api" // Default to api for backend-like names
 }
 
 // ObjectValueName creates a smart, unified values.yaml root key name for a Kubernetes object.
 // It relies on app labels or suffix stripping to group multiple microservice components under the same root.
 func ObjectValueName(appMeta helmify.AppMetadata, obj *unstructured.Unstructured) string {
-	comp := GetComponent(obj)
-	if comp != "" {
-		return comp
-	}
-
 	// 1. Label Detection Route
 	if appName := GetAppName(obj); appName != "" {
 		return appName

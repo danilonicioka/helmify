@@ -72,17 +72,18 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	values := helmify.Values{}
 
 	name := processor.ObjectValueName(appMeta, obj)
-	replicas, err := processReplicas(name, &depl, &values)
+	compName := strcase.ToLowerCamel(processor.GetComponent(obj))
+	replicas, err := processReplicas(compName, &depl, &values)
 	if err != nil {
 		return true, nil, err
 	}
 
-	revisionHistoryLimit, err := processRevisionHistoryLimit(name, &depl, &values)
+	revisionHistoryLimit, err := processRevisionHistoryLimit(compName, &depl, &values)
 	if err != nil {
 		return true, nil, err
 	}
 
-	strategy, err := processStrategy(name, &depl, &values)
+	strategy, err := processStrategy(compName, &depl, &values)
 	if err != nil {
 		return true, nil, err
 	}
@@ -127,7 +128,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 		podAnnotations = "\n" + podAnnotations
 	}
 
-	nameCamel := strcase.ToLowerCamel(name)
+	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 	specMap, podValues, err := pod.ProcessSpec(nameCamel, appMeta, depl.Spec.Template.Spec, 0)
 	if err != nil {
 		return true, nil, err

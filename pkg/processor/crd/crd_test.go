@@ -58,7 +58,7 @@ func Test_crd_Process(t *testing.T) {
 		assert.NotNil(t, tmpl)
 
 		data := string(tmpl.(*result).data)
-		expectedNestedPath := "app.crds.enabled"
+		expectedNestedPath := "api.crds.enabled"
 
 		assert.Contains(t, data, "{{- if .Values."+expectedNestedPath+" }}", "template should start with conditional")
 		assert.Contains(t, data, "{{- end }}", "template should end with conditional")

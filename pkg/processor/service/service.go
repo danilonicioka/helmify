@@ -77,7 +77,7 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 
 	name := processor.ObjectValueName(appMeta, obj)
 	shortName := strings.TrimPrefix(name, "controller-manager-")
-	shortNameCamel := strcase.ToLowerCamel(shortName)
+	shortNameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 
 	var selector string
 	if len(service.Spec.Selector) > 0 {
