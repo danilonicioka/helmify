@@ -88,10 +88,18 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 		return true, nil, err
 	}
 
-	matchLabels, err := yamlformat.Marshal(map[string]interface{}{"matchLabels": depl.Spec.Selector.MatchLabels}, 0)
-	if err != nil {
-		return true, nil, err
+	cleanedMatchLabels := cleanLabels(depl.Spec.Selector.MatchLabels)
+	var matchLabels string
+	if len(cleanedMatchLabels) > 0 {
+		m, err := yamlformat.Marshal(map[string]interface{}{"matchLabels": cleanedMatchLabels}, 0)
+		if err != nil {
+			return true, nil, err
+		}
+		matchLabels = m
+	} else {
+		matchLabels = "matchLabels:"
 	}
+
 	matchExpr := ""
 	if depl.Spec.Selector.MatchExpressions != nil {
 		matchExpr, err = yamlformat.Marshal(map[string]interface{}{"matchExpressions": depl.Spec.Selector.MatchExpressions}, 0)
@@ -108,11 +116,17 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	selector = strings.Trim(selector, " \n")
 	selector = string(yamlformat.Indent([]byte(selector), 4))
 
-	podLabels, err := yamlformat.Marshal(depl.Spec.Template.ObjectMeta.Labels, 8)
-	if err != nil {
-		return true, nil, err
+	cleanedPodLabels := cleanLabels(depl.Spec.Template.ObjectMeta.Labels)
+	var podLabels string
+	if len(cleanedPodLabels) > 0 {
+		m, err := yamlformat.Marshal(cleanedPodLabels, 8)
+		if err != nil {
+			return true, nil, err
+		}
+		podLabels = m + fmt.Sprintf("\n      {{- include \"%s\" . | nindent 8 }}", labelHelper)
+	} else {
+		podLabels = fmt.Sprintf("      {{- include \"%s\" . | nindent 8 }}", labelHelper)
 	}
-	podLabels += fmt.Sprintf("\n      {{- include \"%s\" . | nindent 8 }}", labelHelper)
 
 	podAnnotations := ""
 	annotations := depl.Spec.Template.ObjectMeta.Annotations
@@ -156,8 +170,13 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	spec = replaceSingleQuotes(spec)
 	spec = pod.ReplacePlaceholders(spec, appMeta.ChartName())
 
+	resultName := name
+	if name == appMeta.ChartName() {
+		resultName = ""
+	}
+
 	return true, &result{
-		name:   name,
+		name:   resultName,
 		values: values,
 		data: struct {
 			Meta                 string
@@ -179,6 +198,25 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 			Spec:                 spec,
 		},
 	}, nil
+}
+
+func cleanLabels(l map[string]string) map[string]string {
+	if l == nil {
+		return nil
+	}
+	res := map[string]string{}
+	for k, v := range l {
+		if k == "app.kubernetes.io/name" || k == "app.kubernetes.io/instance" ||
+			k == "app.kubernetes.io/version" || k == "app.kubernetes.io/managed-by" ||
+			k == "helm.sh/chart" || k == "deployment" {
+			continue
+		}
+		res[k] = v
+	}
+	if len(res) == 0 {
+		return nil
+	}
+	return res
 }
 
 func replaceSingleQuotes(s string) string {

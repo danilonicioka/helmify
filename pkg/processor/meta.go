@@ -126,7 +126,13 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		annotations = fmt.Sprintf(annotationsTemplate, name, kind)
 	}
 
-	metaStr = fmt.Sprintf(metaTemplate, apiVersion, kind, suffix, appMeta.ChartName(), labels, annotations, namespace)
+	nameTpl := `{{ include "%[4]s.fullname" . }}-%[3]s`
+	if suffix == "none" || suffix == "NONE" {
+		nameTpl = `{{ include "%[4]s.fullname" . }}`
+	}
+	customMetaTemplate := strings.Replace(metaTemplate, `{{ include "%[4]s.fullname" . }}-%[3]s`, nameTpl, 1)
+
+	metaStr = fmt.Sprintf(customMetaTemplate, apiVersion, kind, suffix, appMeta.ChartName(), labels, annotations, namespace)
 	metaStr = strings.Trim(metaStr, " \n")
 	metaStr = strings.ReplaceAll(metaStr, "\n\n", "\n")
 	return metaStr, nil
