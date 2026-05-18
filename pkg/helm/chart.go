@@ -236,51 +236,72 @@ func getPriority(key string, value interface{}) int {
 		return -1
 	}
 
-	// 1. Workload (Priority 1)
+	tjpaPriority := map[string]int{
+		"labels":                        1,
+		"image":                         2,
+		"repository":                    3,
+		"tag":                           4,
+		"pullPolicy":                    5,
+		"imagePullPolicy":               5,
+		"replicas":                      6,
+		"revisionHistoryLimit":          7,
+		"strategy":                      8,
+		"startupProbe":                  9,
+		"livenessProbe":                 10,
+		"readinessProbe":                11,
+		"terminationGracePeriodSeconds": 12,
+		"service":                       13,
+		"resources":                     14,
+		"route":                         15,
+		"routeExt":                      16,
+		"cm":                            17,
+		"secret":                        18,
+		"nodeSelector":                  19,
+		"tolerations":                   20,
+		"topologySpreadConstraints":     21,
+
+		// Sub-keys
+		"enabled":     30,
+		"host":        31,
+		"targetPort":  32,
+		"annotations": 33,
+		"tls":         34,
+		"type":        40,
+		"ports":       41,
+	}
+
+	if p, ok := tjpaPriority[key]; ok {
+		return p
+	}
+
+	// 1. Workload (Priority 100)
 	workloadKeys := map[string]bool{
-		"image": true, "repository": true, "tag": true, "imagePullPolicy": true,
-		"replicas": true, "strategy": true, "resources": true, "nodeSelector": true,
-		"tolerations": true, "topologySpreadConstraints": true, "revisionHistoryLimit": true,
 		"podLabels": true, "podAnnotations": true, "podSecurityContext": true,
 	}
 	if workloadKeys[key] {
-		return 1
+		return 100
 	}
 
-	// 2. Identity (Priority 2)
+	// 2. Identity (Priority 101)
 	if key == "serviceAccount" {
-		return 2
+		return 101
 	}
 
-	// 5. Networking (Priority 5-7)
-	if key == "route" {
-		return 5
-	}
+	// 5. Networking (Priority 105-107)
 	if key == "ingress" {
-		return 6
-	}
-	if key == "service" || key == "type" || key == "ports" || key == "clusterIP" || key == "loadBalancerIP" {
-		return 7
+		return 106
 	}
 
-	// 10+ Security & Extensions
+	// Security & Extensions
 	if strings.Contains(key, "role") || strings.Contains(key, "Role") {
-		return 10
+		return 110
 	}
 	if key == "webhook" {
-		return 11
+		return 111
 	}
 	if key == "crds" {
-		return 12
+		return 112
 	}
 
-	// 3-4 ConfigMap vs Secret Heuristic
-	if str, ok := value.(string); ok {
-		if str == "" {
-			return 4 // Secret (Priority 4)
-		}
-		return 3 // ConfigMap (Priority 3)
-	}
-
-	return 50 // Others
+	return 500 // Others
 }
