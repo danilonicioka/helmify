@@ -183,13 +183,15 @@ func toNode(v interface{}, depth int) *yaml.Node {
 			if isEmptyMap(val[k]) {
 				switch k {
 				case "strategy":
-					keyNode.FootComment = "  # strategy:\n  #   type: RollingUpdate\n  #   rollingUpdate:\n  #     maxSurge: 25%\n  #     maxUnavailable: 0"
+					keyNode.FootComment = "strategy:\n  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
 				case "resources":
-					keyNode.FootComment = "  limits:\n    cpu: 500m\n    memory: 512Mi\n  requests:\n    cpu: 100m\n    memory: 128Mi"
-				case "startupProbe", "livenessProbe":
-					keyNode.FootComment = "  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  failureThreshold: 30\n  successThreshold: 1\n  timeoutSeconds: 5"
+					keyNode.FootComment = "resources:\n  limits:\n    cpu: 500m\n    memory: 512Mi\n  requests:\n    cpu: 100m\n    memory: 256Mi"
+				case "startupProbe":
+					keyNode.FootComment = "startupProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 5\n  failureThreshold: 30"
+				case "livenessProbe":
+					keyNode.FootComment = "livenessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 20\n  failureThreshold: 3"
 				case "readinessProbe":
-					keyNode.FootComment = "  httpGet:\n    path: /health\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  failureThreshold: 3\n  successThreshold: 1\n  timeoutSeconds: 5"
+					keyNode.FootComment = "readinessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  successThreshold: 2\n  failureThreshold: 3"
 				}
 			}
 
