@@ -163,7 +163,7 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 	}
 
 	if spec.TerminationGracePeriodSeconds != nil {
-		err = unstructured.SetNestedField(specMap, fmt.Sprintf(numericTemplate, objName+".terminationGracePeriodSeconds", "terminationGracePeriodSeconds"), "terminationGracePeriodSeconds")
+		err = unstructured.SetNestedField(specMap, fmt.Sprintf("[HELMIFY_GRACE_PERIOD:%s]", objName), "terminationGracePeriodSeconds")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -469,7 +469,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 	}
 
 	// Always add checksum for global configmap
-	annotations["checksum/global-config"] = fmt.Sprintf("{{- if .Values.global }}\n  checksum/global-config: {{ include (print $.Template.BasePath \"/cm-global.yaml\") . | sha256sum }}\n  {{- end }}")
+	annotations["checksum/global-config"] = "[HELMIFY_CHECKSUM_GLOBAL:global-config]"
 
 	for cm := range configMaps {
 		valueName := processor.ResolveValueName(appMeta, cm)
@@ -481,7 +481,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 		if valueName == "chart" || valueName == "" {
 			key = "checksum/config"
 		}
-		annotations[key] = fmt.Sprintf("{{- if (index .Values \"%s\").cm }}\n  %s: {{ include (print $.Template.BasePath \"/%s\") . | sha256sum }}\n  {{- end }}", valueName, key, filename)
+		annotations[key] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:%s:%s]", valueName, key, filename)
 	}
 	for sec := range secrets {
 		valueName := processor.ResolveValueName(appMeta, sec)
@@ -493,7 +493,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 		if valueName == "chart" || valueName == "" {
 			key = "checksum/secret"
 		}
-		annotations[key] = fmt.Sprintf("{{- if (index .Values \"%s\").secret }}\n  %s: {{ include (print $.Template.BasePath \"/%s\") . | sha256sum }}\n  {{- end }}", valueName, key, filename)
+		annotations[key] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:%s:%s]", valueName, key, filename)
 	}
 
 	// Filter out static placeholders from Kustomize
@@ -506,7 +506,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 	return annotations
 }
 
-// ReplacePlaceholders replaces HELMIFY_WITH and HELMIFY_ENV_FROM placeholders with actual Helm templates.
+// ReplacePlaceholders replaces HELMIFY_WITH, HELMIFY_ENV_FROM, grace period, and checksum placeholders with actual Helm templates.
 func ReplacePlaceholders(s string, chartName string) string {
 	// 1. Handle single quotes: key: '[HELMIFY_WITH:path:indent]'
 	r1 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*'\[HELMIFY_WITH:([^:]+):([0-9]+)\]'`)
@@ -521,7 +521,7 @@ func ReplacePlaceholders(s string, chartName string) string {
 	s = r3.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
 ${1}{{- if .Values.global }}
 ${1}- configMapRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-global
+${1}    name: {{ include "%[1]s.fullname" . }}-global-cm
 ${1}{{- end }}
 ${1}{{- if (index .Values "${2}").cm }}
 ${1}- configMapRef:
@@ -531,6 +531,30 @@ ${1}{{- if (index .Values "${2}").secret }}
 ${1}- secretRef:
 ${1}    name: {{ include "%[1]s.fullname" . }}-secret
 ${1}{{- end }}`, chartName))
+
+	// 4. Handle global checksum placeholders
+	rGlobal := regexp.MustCompile(`(?m)^(\s*)checksum/global-config:\s*'\[HELMIFY_CHECKSUM_GLOBAL:global-config\]'`)
+	s = rGlobal.ReplaceAllString(s, `${1}{{- if .Values.global }}
+${1}checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}
+${1}{{- end }}`)
+
+	// 5. Handle CM checksum placeholders
+	rCM := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9\-/]+):\s*'\[HELMIFY_CHECKSUM_CM:([^:]+):([^:]+):([^\]]+)\]'`)
+	s = rCM.ReplaceAllString(s, `${1}{{- if (index .Values "${3}").cm }}
+${1}${2}: {{ include (print $.Template.BasePath "/${5}") . | sha256sum }}
+${1}{{- end }}`)
+
+	// 6. Handle Secret checksum placeholders
+	rSecret := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9\-/]+):\s*'\[HELMIFY_CHECKSUM_SECRET:([^:]+):([^:]+):([^\]]+)\]'`)
+	s = rSecret.ReplaceAllString(s, `${1}{{- if (index .Values "${3}").secret }}
+${1}${2}: {{ include (print $.Template.BasePath "/${5}") . | sha256sum }}
+${1}{{- end }}`)
+
+	// 7. Handle terminationGracePeriodSeconds placeholders
+	rGrace := regexp.MustCompile(`(?m)^(\s*)terminationGracePeriodSeconds:\s*'\[HELMIFY_GRACE_PERIOD:([^\]]+)\]'`)
+	s = rGrace.ReplaceAllString(s, `${1}{{- if not (kindIs "nil" .Values.${2}.terminationGracePeriodSeconds) }}
+${1}terminationGracePeriodSeconds: {{ .Values.${2}.terminationGracePeriodSeconds }}
+${1}{{- end }}`)
 
 	return s
 }

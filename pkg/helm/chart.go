@@ -182,6 +182,8 @@ func toNode(v interface{}, depth int) *yaml.Node {
 			// Inject Ultra-Lean comments for empty objects
 			if isEmptyMap(val[k]) {
 				switch k {
+				case "strategy":
+					keyNode.FootComment = "  # strategy:\n  #   type: RollingUpdate\n  #   rollingUpdate:\n  #     maxSurge: 25%\n  #     maxUnavailable: 0"
 				case "resources":
 					keyNode.FootComment = "  limits:\n    cpu: 500m\n    memory: 512Mi\n  requests:\n    cpu: 100m\n    memory: 128Mi"
 				case "startupProbe", "livenessProbe":
@@ -221,6 +223,19 @@ func isEmptyMap(v interface{}) bool {
 }
 
 func getPriority(key string, value interface{}) int {
+	if key == "global" {
+		return -4
+	}
+	if key == "kubernetesClusterDomain" {
+		return -3
+	}
+	if key == "fullnameOverride" {
+		return -2
+	}
+	if key == "dnsResolver" {
+		return -1
+	}
+
 	// 1. Workload (Priority 1)
 	workloadKeys := map[string]bool{
 		"image": true, "repository": true, "tag": true, "imagePullPolicy": true,

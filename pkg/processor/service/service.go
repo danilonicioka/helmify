@@ -70,18 +70,33 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		return true, nil, fmt.Errorf("%w: unable to cast to service", err)
 	}
 
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("svc"))
-	if err != nil {
-		return true, nil, err
-	}
-
 	name := processor.ObjectValueName(appMeta, obj)
 	shortName := strings.TrimPrefix(name, "controller-manager-")
 	shortNameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 
+	suffix := "svc"
+	if shortName == appMeta.ChartName() {
+		suffix = "none"
+	}
+
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
+	if err != nil {
+		return true, nil, err
+	}
+
+	cleanSelector := map[string]string{}
+	for k, v := range service.Spec.Selector {
+		if k == "app.kubernetes.io/name" || k == "app.kubernetes.io/instance" ||
+			k == "app.kubernetes.io/version" || k == "app.kubernetes.io/managed-by" ||
+			k == "helm.sh/chart" || k == "deployment" {
+			continue
+		}
+		cleanSelector[k] = v
+	}
+
 	var selector string
-	if len(service.Spec.Selector) > 0 {
-		selectorBytes, _ := yaml.Marshal(service.Spec.Selector)
+	if len(cleanSelector) > 0 {
+		selectorBytes, _ := yaml.Marshal(cleanSelector)
 		selectorBytes = yamlformat.Indent(selectorBytes, 4)
 		selector = "\n" + string(bytes.TrimRight(selectorBytes, "\n "))
 	}
@@ -129,8 +144,14 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	if shortNameCamel == "webhookService" && appMeta.Config().AddWebhookOption {
 		res = fmt.Sprintf("{{- if .Values.webhook.enabled }}\n%s\n{{- end }}", res)
 	}
+
+	resultName := shortName
+	if shortName == appMeta.ChartName() {
+		resultName = ""
+	}
+
 	return true, &result{
-		name:   shortName,
+		name:   resultName,
 		data:   res,
 		values: values,
 	}, nil

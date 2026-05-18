@@ -383,7 +383,7 @@ func Test_pod_Process(t *testing.T) {
 			"serviceAccountName":            `{{ include "chart.serviceAccountName" . }}`,
 			"tolerations":                   "{{- toYaml .Values.nginx.tolerations | nindent 8 }}",
 			"topologySpreadConstraints":     "{{- toYaml .Values.nginx.topologySpreadConstraints | nindent 8 }}",
-			"terminationGracePeriodSeconds": "{{- if not (kindIs \"nil\" .Values.nginx.terminationGracePeriodSeconds) }}\nterminationGracePeriodSeconds: {{ .Values.nginx.terminationGracePeriodSeconds }}\n{{- end }}",
+			"terminationGracePeriodSeconds": "[HELMIFY_GRACE_PERIOD:nginx]",
 		}, specMap)
 
 		assert.Equal(t, helmify.Values{
