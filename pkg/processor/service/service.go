@@ -75,9 +75,6 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	shortNameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 
 	suffix := "svc"
-	if shortName == appMeta.ChartName() {
-		suffix = "none"
-	}
 
 	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
 	if err != nil {

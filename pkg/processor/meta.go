@@ -197,3 +197,18 @@ func ResolveValueName(appMeta helmify.AppMetadata, name string) string {
 	// Mathematical Fallback
 	return appMeta.TrimName(name)
 }
+
+// GetDynamicSuffix extracts the suffix from the resource name if it has the chart name as a prefix.
+// If no suffix is found or the prefix doesn't match, it returns the provided fallback.
+func GetDynamicSuffix(appMeta helmify.AppMetadata, obj *unstructured.Unstructured, fallback string) string {
+	name := obj.GetName()
+	chartName := appMeta.ChartName()
+	if strings.HasPrefix(name, chartName) {
+		s := strings.TrimPrefix(name, chartName)
+		s = strings.TrimPrefix(s, "-")
+		if s != "" {
+			return s
+		}
+	}
+	return fallback
+}
