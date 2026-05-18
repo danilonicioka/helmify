@@ -35,27 +35,30 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	name := processor.ObjectValueName(appMeta, obj)
 	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 
-	suffix := "route"
-	if obj.GetName() == appMeta.ChartName() {
-		suffix = "none"
-	} else {
-		s := strings.TrimPrefix(obj.GetName(), appMeta.ChartName())
+	rawSuffix := "route"
+	if name != appMeta.ChartName() {
+		s := strings.TrimPrefix(name, appMeta.ChartName())
 		s = strings.TrimPrefix(s, "-")
 		s = strings.TrimPrefix(s, "route-")
 		s = strings.TrimPrefix(s, "route")
 		if s != "" {
-			suffix = s
+			rawSuffix = s
 		}
 	}
 
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
+	metadataSuffix := "route"
+	if rawSuffix != "route" {
+		metadataSuffix = "route-" + rawSuffix
+	}
+
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(metadataSuffix))
 	if err != nil {
 		return true, nil, err
 	}
 
 	routeKey := "route"
-	if suffix != "none" && suffix != "route" {
-		routeKey = "route" + strcase.ToCamel(suffix)
+	if rawSuffix != "route" {
+		routeKey = "route" + strcase.ToCamel(rawSuffix)
 	}
 
 	values := helmify.Values{}
@@ -122,9 +125,9 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	data := meta + "\n" + specStr + tlsTplStr
 	data = fmt.Sprintf("{{- if .Values.%s.%s.enabled -}}\n%s\n{{- end }}", nameCamel, routeKey, data)
 
-	resultName := name
-	if obj.GetName() == appMeta.ChartName() {
-		resultName = ""
+	resultName := ""
+	if rawSuffix != "route" {
+		resultName = rawSuffix
 	}
 
 	return true, &routeResult{
@@ -149,12 +152,7 @@ func (r *routeResult) Filename() string {
 	if r.name == "chart" || r.name == "" {
 		return "route.yaml"
 	}
-	name := strings.TrimPrefix(r.name, "route-")
-	name = strings.TrimPrefix(name, "route")
-	if name == "" {
-		return "route.yaml"
-	}
-	return fmt.Sprintf("route-%s.yaml", name)
+	return fmt.Sprintf("route-%s.yaml", r.name)
 }
 
 func (r *routeResult) Values() helmify.Values {

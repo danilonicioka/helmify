@@ -80,7 +80,8 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 		secretType = fmt.Sprintf("type: %s", string(sec.Type))
 	}
 
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("secret"))
+	suffix := processor.GetDynamicSuffix(appMeta, obj, "secret")
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
 	if err != nil {
 		return true, nil, err
 	}

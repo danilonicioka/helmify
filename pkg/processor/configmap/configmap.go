@@ -84,7 +84,8 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 		}
 	}
 
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("cm"))
+	suffix := processor.GetDynamicSuffix(appMeta, obj, "cm")
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
 	if err != nil {
 		return true, nil, err
 	}
