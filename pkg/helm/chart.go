@@ -149,6 +149,7 @@ func marshalOrdered(v interface{}) ([]byte, error) {
 	node := toNode(v, 0)
 	err := enc.Encode(node)
 	res := b.String()
+	res = strings.ReplaceAll(res, "\n\n  # helmify-newline\n", "\n\n")
 	res = strings.ReplaceAll(res, "\n  # helmify-newline\n", "\n\n")
 	return []byte(res), err
 }
