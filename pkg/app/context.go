@@ -62,12 +62,19 @@ func (c *appContext) CreateHelm(stop <-chan struct{}) error {
 			return err
 		}
 		if template != nil {
-			templates = append(templates, template)
-			filename := template.Filename()
-			if c.fileNames[i] != "" {
-				filename = c.fileNames[i]
+			if mt, ok := template.(interface{ Templates() []helmify.Template }); ok {
+				for _, t := range mt.Templates() {
+					templates = append(templates, t)
+					filenames = append(filenames, t.Filename())
+				}
+			} else {
+				templates = append(templates, template)
+				filename := template.Filename()
+				if c.fileNames[i] != "" {
+					filename = c.fileNames[i]
+				}
+				filenames = append(filenames, filename)
 			}
-			filenames = append(filenames, filename)
 		}
 		select {
 		case <-stop:
