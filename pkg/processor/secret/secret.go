@@ -17,21 +17,16 @@ import (
 )
 
 var secretTempl = template.Must(template.New("secret").Funcs(sprig.TxtFuncMap()).Parse(
-	`{{ .Meta }}
+	`{{ "{" }}{{ "{" }}- if and .Values.{{ .Name }} .Values.{{ .Name }}.secret {{ "}" }}{{ "}" }}
+{{ .Meta }}
 {{- if .Type }}
 {{ .Type }}
 {{- end }}
 data:
-{{- if (index .Values .Name).secret }}
-{{- range $key, $value := (index .Values .Name).secret }}
-  {{ $key }}: {{ $value | b64enc | quote }}
-{{- end }}
-{{- end }}
-{{- if .Values.globalSecret }}
-{{- range $key, $value := .Values.globalSecret }}
-  {{ $key }}: {{ $value | b64enc | quote }}
-{{- end }}
-{{- end }}`))
+{{ "{" }}{{ "{" }}- range $key, $value := .Values.{{ .Name }}.secret {{ "}" }}{{ "}" }}
+  {{ "{{ $key }}" }}: {{ "{{ $value | b64enc | quote }}" }}
+{{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}`))
 
 var secretGVC = schema.GroupVersionKind{
 	Group:   "",
