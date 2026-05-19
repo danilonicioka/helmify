@@ -134,15 +134,17 @@ Create the name of the service account to use
 {{- end }}
 `
 
-const globalConfigMapTempl = `apiVersion: v1
+const globalConfigMapTempl = `{{- if .Values.global -}}
+apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "<CHARTNAME>.fullname" . }}-global
+  name: {{ include "<CHARTNAME>.fullname" . }}-global-cm
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 data:
 {{- range $key, $val := .Values.global }}
   {{ $key }}: {{ $val | quote }}
+{{- end }}
 {{- end }}
 `
 const defaultChartfile = `apiVersion: v2
@@ -160,7 +162,7 @@ type: application
 # This is the chart version. This version number should be incremented each time you make changes
 # to the chart and its templates, including the app version.
 # Versions are expected to follow Semantic Versioning (https://semver.org/)
-version: 0.1.3
+version: 0.1.0
 # This is the version number of the application being deployed. This version number should be
 # incremented each time you make changes to the application. Versions are not expected to
 # follow Semantic Versioning. They should reflect the version the application is using.

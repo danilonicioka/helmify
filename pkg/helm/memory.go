@@ -29,6 +29,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	m.Files["Chart.yaml"] = chartYAML(chartName, certManagerAsSubchart, certManagerVersion)
 	m.Files[".helmignore"] = []byte(helmIgnore)
 	m.Files[filepath.Join("templates", "_helpers.tpl")] = helpersYAML(chartName)
+	m.Files[filepath.Join("templates", "cm-global.yaml")] = globalConfigMapYAML(chartName)
 
 	// Group templates into files
 	files := map[string][]helmify.Template{}
