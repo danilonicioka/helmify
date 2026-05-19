@@ -49,7 +49,7 @@ data:
 {{- end }}
 data:
 {{- range $key := .DataKeys }}
-  {{ $key }}: |
+  {{ if eq $key "nginx" }}nginx.conf{{ else }}{{ $key }}{{ end }}: |
 {{ "    " }}{{ "{{- tpl .Values." }}{{ $.Name }}{{ "." }}{{ $.Suffix }}{{ " . | nindent 4 }}" }}
 {{- end }}
 {{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
