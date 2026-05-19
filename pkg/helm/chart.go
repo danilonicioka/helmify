@@ -9,6 +9,7 @@ import (
 
 	"github.com/arttor/helmify/pkg/cluster"
 	"github.com/arttor/helmify/pkg/helmify"
+	"github.com/iancoleman/strcase"
 
 	"github.com/sirupsen/logrus"
 
@@ -71,6 +72,15 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	err = os.WriteFile(filepath.Join(cDir, "templates", "cm-global.yaml"), globalConfigMapYAML(chartName), 0600)
 	if err != nil {
 		return fmt.Errorf("%w: unable to write cm-global.yaml", err)
+	}
+	compName := strcase.ToLowerCamel(chartName)
+	err = os.WriteFile(filepath.Join(cDir, "templates", "cm.yaml"), []byte(fmt.Sprintf(defaultCmTempl, compName, chartName)), 0600)
+	if err != nil {
+		return fmt.Errorf("%w: unable to write cm.yaml", err)
+	}
+	err = os.WriteFile(filepath.Join(cDir, "templates", "secret.yaml"), []byte(fmt.Sprintf(defaultSecretTempl, compName, chartName)), 0600)
+	if err != nil {
+		return fmt.Errorf("%w: unable to write secret.yaml", err)
 	}
 	return nil
 }
@@ -331,3 +341,39 @@ func getPriority(key string, value interface{}) int {
 
 	return 500 // Others
 }
+
+const defaultCmTempl = `{{- range $component, $config := .Values }}
+{{- if and (kindIs "map" $config) $config.cm }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "%[2]s.fullname" $ }}-{{ $component | kebabcase | lower }}-cm
+  labels:
+    {{- include "%[2]s.labels" $ | nindent 4 }}
+data:
+{{- range $key, $val := $config.cm }}
+  {{ $key }}: {{ $val | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+`
+
+const defaultSecretTempl = `{{- range $component, $config := .Values }}
+{{- if and (kindIs "map" $config) $config.secret }}
+---
+apiVersion: v1
+kind: Secret
+type: Opaque
+metadata:
+  name: {{ include "%[2]s.fullname" $ }}-{{ $component | kebabcase | lower }}-secret
+  labels:
+    {{- include "%[2]s.labels" $ | nindent 4 }}
+data:
+{{- range $key, $val := $config.secret }}
+  {{ $key }}: {{ $val | b64enc | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+`
+

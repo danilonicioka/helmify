@@ -4,12 +4,14 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"path/filepath"
 	"strings"
 
 	"github.com/arttor/helmify/pkg/cluster"
 	"github.com/arttor/helmify/pkg/helmify"
+	"github.com/iancoleman/strcase"
 )
 
 // MemoryOutput captures the generated Helm chart in memory.
@@ -30,6 +32,9 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	m.Files[".helmignore"] = []byte(helmIgnore)
 	m.Files[filepath.Join("templates", "_helpers.tpl")] = helpersYAML(chartName)
 	m.Files[filepath.Join("templates", "cm-global.yaml")] = globalConfigMapYAML(chartName)
+	compName := strcase.ToLowerCamel(chartName)
+	m.Files[filepath.Join("templates", "cm.yaml")] = []byte(fmt.Sprintf(defaultCmTempl, compName, chartName))
+	m.Files[filepath.Join("templates", "secret.yaml")] = []byte(fmt.Sprintf(defaultSecretTempl, compName, chartName))
 
 	// Group templates into files
 	files := map[string][]helmify.Template{}
