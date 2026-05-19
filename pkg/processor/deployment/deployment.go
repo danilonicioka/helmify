@@ -110,7 +110,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	}
 	comp := processor.GetComponent(obj)
 	labelHelper := appMeta.ChartName() + ".selectorLabels"
-	if comp != "" {
+	if comp == "api" || comp == "app" {
 		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), comp)
 	}
 	selector := fmt.Sprintf(selectorTempl, matchLabels, labelHelper, matchExpr)

@@ -177,19 +177,19 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 
 				var tlsStr string
 				if originalHasTls {
-					tlsStr = fmt.Sprintf("\n  {{- with .Values.%s.%s.tls }}\n  tls:\n    {{- toYaml . | nindent 4 }}\n  {{- end }}", nameCamel, routeKey)
+					tlsStr = fmt.Sprintf("\n  {{- if .Values.%s.%s.tls }}\n  tls:\n    {{- toYaml .Values.%s.%s.tls | nindent 4 }}\n  {{- end }}", nameCamel, routeKey, nameCamel, routeKey)
 				}
 
 				extData := fmt.Sprintf(`{{- if .Values.%s.%s.enabled -}}
-%s
+%s%s
 spec:
   host: %s
   port:
-    targetPort: http%s%s
+    targetPort: http
   to:
     kind: Service
-    name: {{ include "%s.fullname" . }}-svc
-{{- end }}`, nameCamel, routeExtKey, extMeta, extHostTpl, annotationsStr, tlsStr, appMeta.ChartName())
+    name: {{ include "%s.fullname" . }}-svc%s
+{{- end }}`, nameCamel, routeExtKey, extMeta, annotationsStr, extHostTpl, appMeta.ChartName(), tlsStr)
 
 				extTemplate = &routeExtResult{
 					filename: extFilename,
