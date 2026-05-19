@@ -150,7 +150,7 @@ func marshalOrdered(v interface{}) ([]byte, error) {
 	var b strings.Builder
 	enc := yaml.NewEncoder(&b)
 	enc.SetIndent(2)
-	node := toNode(v, 0)
+	node := toNode(v, 0, "")
 	err := enc.Encode(node)
 	res := b.String()
 	res = strings.ReplaceAll(res, "\n\n  # helmify-newline\n", "\n\n")
@@ -158,7 +158,7 @@ func marshalOrdered(v interface{}) ([]byte, error) {
 	return []byte(res), err
 }
 
-func toNode(v interface{}, depth int) *yaml.Node {
+func toNode(v interface{}, depth int, path string) *yaml.Node {
 	switch val := v.(type) {
 	case map[string]interface{}:
 		content := make([]*yaml.Node, 0, len(val)*2)
@@ -186,33 +186,52 @@ func toNode(v interface{}, depth int) *yaml.Node {
 			
 			// Inject Ultra-Lean comments for empty objects
 			if isEmptyMap(val[k]) {
-				switch k {
-				case "strategy":
-					keyNode.FootComment = "strategy:\n  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
-				case "resources":
-					keyNode.FootComment = "resources:\n  limits:\n    cpu: 500m\n    memory: 512Mi\n  requests:\n    cpu: 100m\n    memory: 256Mi"
-				case "startupProbe":
-					keyNode.FootComment = "startupProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 5\n  failureThreshold: 30"
-				case "livenessProbe":
-					keyNode.FootComment = "livenessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 20\n  failureThreshold: 3"
-				case "readinessProbe":
-					keyNode.FootComment = "readinessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  successThreshold: 2\n  failureThreshold: 3"
+				var customComment string
+				lookupKey := k + "." + path
+				if rawVal, ok := helmify.OriginalValuesRegistry.Load(lookupKey); ok {
+					if strVal, ok := rawVal.(string); ok && strVal != "" {
+						customComment = strVal
+					}
+				}
+
+				if customComment != "" {
+					keyNode.FootComment = customComment
+				} else {
+					switch k {
+					case "strategy":
+						keyNode.FootComment = "strategy:\n  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
+					case "resources":
+						keyNode.FootComment = "resources:\n  limits:\n    cpu: 500m\n    memory: 512Mi\n  requests:\n    cpu: 100m\n    memory: 256Mi"
+					case "startupProbe":
+						keyNode.FootComment = "startupProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 5\n  failureThreshold: 30"
+					case "livenessProbe":
+						keyNode.FootComment = "livenessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 20\n  failureThreshold: 3"
+					case "readinessProbe":
+						keyNode.FootComment = "readinessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  successThreshold: 2\n  failureThreshold: 3"
+					}
 				}
 			}
 
+			var nextPath string
+			if path == "" {
+				nextPath = k
+			} else {
+				nextPath = path + "." + k
+			}
+
 			content = append(content, keyNode)
-			content = append(content, toNode(val[k], depth+1))
+			content = append(content, toNode(val[k], depth+1, nextPath))
 			prevPriority = p
 		}
 		return &yaml.Node{Kind: yaml.MappingNode, Content: content}
 	case []interface{}:
 		content := make([]*yaml.Node, len(val))
 		for i, item := range val {
-			content[i] = toNode(item, depth+1)
+			content[i] = toNode(item, depth+1, path)
 		}
 		return &yaml.Node{Kind: yaml.SequenceNode, Content: content}
 	case helmify.Values:
-		return toNode(map[string]interface{}(val), depth)
+		return toNode(map[string]interface{}(val), depth, path)
 	default:
 		var node yaml.Node
 		b, _ := k8syaml.Marshal(val)

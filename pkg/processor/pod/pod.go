@@ -10,6 +10,7 @@ import (
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/arttor/helmify/pkg/processor"
 	securityContext "github.com/arttor/helmify/pkg/processor/security-context"
+	yamlformat "github.com/arttor/helmify/pkg/yaml"
 	"github.com/iancoleman/strcase"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -333,6 +334,19 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 	if err != nil {
 		return c, err
 	}
+	if b, err := json.Marshal(c.Resources); err == nil {
+		var resMap map[string]interface{}
+		if err := json.Unmarshal(b, &resMap); err == nil {
+			cleanMap(resMap)
+			if len(resMap) > 0 {
+				resYaml, err := yamlformat.Marshal(map[string]interface{}{"resources": resMap}, 0)
+				if err == nil {
+					registryKey := "resources." + strcase.ToLowerCamel(strings.Join(valuePath, "."))
+					helmify.OriginalValuesRegistry.Store(registryKey, strings.TrimSpace(resYaml))
+				}
+			}
+		}
+	}
 
 	if c.ImagePullPolicy != "" {
 		err = unstructured.SetNestedField(*values, string(c.ImagePullPolicy), append(valuePath, "imagePullPolicy")...)
@@ -361,6 +375,21 @@ func processProbes(name, containerName string, c corev1.Container, values *helmi
 	processProbe := func(p *corev1.Probe, probeName string) error {
 		// Initialize as empty object {} per Zero-Default standard
 		_ = unstructured.SetNestedField(*values, map[string]interface{}{}, append(valuePath, probeName)...)
+		if p != nil {
+			if b, err := json.Marshal(p); err == nil {
+				var probeMap map[string]interface{}
+				if err := json.Unmarshal(b, &probeMap); err == nil {
+					cleanMap(probeMap)
+					if len(probeMap) > 0 {
+						probeYaml, err := yamlformat.Marshal(map[string]interface{}{probeName: probeMap}, 0)
+						if err == nil {
+							registryKey := probeName + "." + strcase.ToLowerCamel(strings.Join(valuePath, "."))
+							helmify.OriginalValuesRegistry.Store(registryKey, strings.TrimSpace(probeYaml))
+						}
+					}
+				}
+			}
+		}
 		return nil
 	}
 
@@ -557,4 +586,19 @@ ${1}terminationGracePeriodSeconds: {{ .Values.${2}.terminationGracePeriodSeconds
 ${1}{{- end }}`)
 
 	return s
+}
+
+func cleanMap(m map[string]interface{}) {
+	for k, v := range m {
+		if v == nil {
+			delete(m, k)
+			continue
+		}
+		if subMap, ok := v.(map[string]interface{}); ok {
+			cleanMap(subMap)
+			if len(subMap) == 0 {
+				delete(m, k)
+			}
+		}
+	}
 }

@@ -50,3 +50,23 @@ type AppMetadata interface {
 
 	Config() config.Config
 }
+
+type originalValuesRegistry struct {
+	m map[string]interface{}
+}
+
+// OriginalValuesRegistry stores original workload configurations for commented-out values.yaml examples.
+var OriginalValuesRegistry originalValuesRegistry
+
+func init() {
+	OriginalValuesRegistry.m = make(map[string]interface{})
+}
+
+func (o *originalValuesRegistry) Store(key string, val interface{}) {
+	o.m[key] = val
+}
+
+func (o *originalValuesRegistry) Load(key string) (interface{}, bool) {
+	val, ok := o.m[key]
+	return val, ok
+}
