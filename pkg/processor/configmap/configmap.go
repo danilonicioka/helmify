@@ -116,6 +116,15 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	isCustom := false
 	if !isGlobal && suffix != "cm" && suffix != "" {
 		isCustom = true
+		suffixLower := strings.ToLower(suffix)
+		compNameLower := strings.ToLower(compName)
+		if strings.HasSuffix(compNameLower, suffixLower) {
+			compName = compName[:len(compName)-len(suffixLower)]
+		}
+		compNameLower = strings.ToLower(compName)
+		if strings.HasSuffix(compNameLower, "-") {
+			compName = compName[:len(compName)-1]
+		}
 	}
 
 	var dataKeys []string
