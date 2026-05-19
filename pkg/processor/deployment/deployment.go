@@ -302,6 +302,12 @@ func processStrategy(name string, deployment *appsv1.Deployment, values *helmify
 		strategyMap["rollingUpdate"] = ruMap
 	}
 	_ = unstructured.SetNestedField(*values, strategyMap, nameCamel, "strategy")
+	if len(strategyMap) > 0 {
+		stratYaml, err := yamlformat.Marshal(map[string]interface{}{"strategy": strategyMap}, 0)
+		if err == nil {
+			helmify.OriginalValuesRegistry.Store("strategy."+nameCamel, strings.TrimSpace(stratYaml))
+		}
+	}
 	return fmt.Sprintf("{{- with .Values.%s.strategy }}\n  strategy:\n    {{- toYaml . | nindent 4 }}\n{{- end }}", nameCamel), nil
 }
 
