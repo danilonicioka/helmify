@@ -32,6 +32,11 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 		return false, nil, nil
 	}
 
+	// === TJPA SPECIFICATION: Skip standalone processing of existing external route manifests ===
+	if strings.HasSuffix(obj.GetName(), "-ext") {
+		return true, nil, nil
+	}
+
 	name := processor.ObjectValueName(appMeta, obj)
 	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 
@@ -73,9 +78,11 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 		return true, nil, fmt.Errorf("unable to read route spec")
 	}
 
+	var rawHost string
 	if host, hasHost := spec["host"]; hasHost && host != "" {
 		hostStr, ok := host.(string)
 		if ok {
+			rawHost = hostStr
 			hostTpl, err := values.Add(hostStr, nameCamel, routeKey, "host")
 			if err != nil {
 				return true, nil, err
@@ -106,7 +113,9 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	}
 
 	tlsTplStr := ""
+	var originalHasTls bool
 	if tlsRaw, hasTls := spec["tls"]; hasTls {
+		originalHasTls = true
 		delete(spec, "tls")
 		err := unstructured.SetNestedField(values, tlsRaw, nameCamel, routeKey, "tls")
 		if err != nil {
@@ -125,6 +134,71 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	data := meta + "\n" + specStr + tlsTplStr
 	data = fmt.Sprintf("{{- if .Values.%s.%s.enabled -}}\n%s\n{{- end }}", nameCamel, routeKey, data)
 
+	// === TJPA SPECIFICATION: Route Extension (.apps.oc* to .tjpa.jus.br) ===
+	var extTemplate helmify.Template
+	if rawHost != "" {
+		if idx := strings.Index(rawHost, ".apps.oc"); idx != -1 {
+			extHost := rawHost[:idx] + ".tjpa.jus.br"
+			routeExtKey := "routeExt"
+				if rawSuffix != "route" {
+					routeExtKey = "routeExt" + strcase.ToCamel(rawSuffix)
+				}
+
+				extValues := helmify.Values{}
+				_, err = extValues.Add(false, nameCamel, routeExtKey, "enabled")
+				if err != nil {
+					return true, nil, err
+				}
+				extHostTpl, err := extValues.Add(extHost, nameCamel, routeExtKey, "host")
+				if err != nil {
+					return true, nil, err
+				}
+
+				extFilename := "route-ext.yaml"
+				if rawSuffix != "route" {
+					extFilename = fmt.Sprintf("route-ext-%s.yaml", rawSuffix)
+				}
+
+				extMetaSuffix := "route-ext"
+				if rawSuffix != "route" {
+					extMetaSuffix = "route-ext-" + rawSuffix
+				}
+
+				// Re-process metadata with route-ext suffix
+				extMeta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(extMetaSuffix))
+				if err != nil {
+					return true, nil, err
+				}
+
+				var annotationsStr string
+				if _, hasAnnotations := obj.Object["metadata"].(map[string]interface{})["annotations"]; hasAnnotations {
+					annotationsStr = fmt.Sprintf("\n  {{- with .Values.%s.%s.annotations }}\n  annotations:\n    {{- toYaml . | nindent 4 }}\n  {{- end }}", nameCamel, routeKey)
+				}
+
+				var tlsStr string
+				if originalHasTls {
+					tlsStr = fmt.Sprintf("\n  {{- with .Values.%s.%s.tls }}\n  tls:\n    {{- toYaml . | nindent 4 }}\n  {{- end }}", nameCamel, routeKey)
+				}
+
+				extData := fmt.Sprintf(`{{- if .Values.%s.%s.enabled -}}
+%s
+spec:
+  host: %s
+  port:
+    targetPort: http%s%s
+  to:
+    kind: Service
+    name: {{ include "%s.fullname" . }}-svc
+{{- end }}`, nameCamel, routeExtKey, extMeta, extHostTpl, annotationsStr, tlsStr, appMeta.ChartName())
+
+				extTemplate = &routeExtResult{
+					filename: extFilename,
+					data:     extData,
+					values:   extValues,
+				}
+			}
+		}
+
 	resultName := ""
 	if rawSuffix != "route" {
 		resultName = rawSuffix
@@ -134,6 +208,7 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 		name:   resultName,
 		data:   data,
 		values: values,
+		ext:    extTemplate,
 	}, nil
 }
 
@@ -142,10 +217,38 @@ func replaceSingleQuotes(s string) string {
 	return re.ReplaceAllString(s, "${1}")
 }
 
+// === TJPA SPECIFICATION: Route Extension (.apps.oc* to .tjpa.jus.br) ===
+type routeExtResult struct {
+	filename string
+	data     string
+	values   helmify.Values
+}
+
+func (r *routeExtResult) Filename() string {
+	return r.filename
+}
+
+func (r *routeExtResult) Values() helmify.Values {
+	return r.values
+}
+
+func (r *routeExtResult) Write(writer io.Writer) error {
+	_, err := writer.Write([]byte(r.data))
+	return err
+}
+
 type routeResult struct {
 	name   string
 	data   string
 	values helmify.Values
+	ext    helmify.Template
+}
+
+func (r *routeResult) Templates() []helmify.Template {
+	if r.ext != nil {
+		return []helmify.Template{r, r.ext}
+	}
+	return []helmify.Template{r}
 }
 
 func (r *routeResult) Filename() string {
