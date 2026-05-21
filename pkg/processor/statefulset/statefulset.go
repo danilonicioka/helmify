@@ -50,8 +50,11 @@ func (d statefulset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unst
 		return true, nil, err
 	}
 
+	name := processor.ObjectValueName(appMeta, obj)
+	nameCamel := strcase.ToLowerCamel(name)
+
 	annotations := ss.Spec.Template.ObjectMeta.Annotations
-	ss.Spec.Template.ObjectMeta.Annotations = pod.AddReloadingAnnotations(appMeta, annotations, &ss.Spec.Template.Spec)
+	ss.Spec.Template.ObjectMeta.Annotations = pod.AddReloadingAnnotations(appMeta, nameCamel, annotations, &ss.Spec.Template.Spec)
 	ssSpec := ss.Spec
 	ssSpecMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&ssSpec)
 	if err != nil {
@@ -60,9 +63,6 @@ func (d statefulset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unst
 	delete((ssSpecMap["template"].(map[string]interface{}))["metadata"].(map[string]interface{}), "creationTimestamp")
 
 	values := helmify.Values{}
-
-	name := processor.ObjectValueName(appMeta, obj)
-	nameCamel := strcase.ToLowerCamel(name)
 
 	if ssSpec.ServiceName != "" {
 		servName := appMeta.TemplatedName(ssSpec.ServiceName)

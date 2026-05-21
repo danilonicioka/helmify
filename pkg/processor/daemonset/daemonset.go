@@ -88,9 +88,10 @@ func (d daemonset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	}
 	podLabels += fmt.Sprintf("\n      {{- include \"%s.selectorLabels\" . | nindent 8 }}", appMeta.ChartName())
 
+	nameCamel := strcase.ToLowerCamel(name)
 	podAnnotations := ""
 	annotations := dae.Spec.Template.ObjectMeta.Annotations
-	annotations = pod.AddReloadingAnnotations(appMeta, annotations, &dae.Spec.Template.Spec)
+	annotations = pod.AddReloadingAnnotations(appMeta, nameCamel, annotations, &dae.Spec.Template.Spec)
 	dae.Spec.Template.ObjectMeta.Annotations = annotations
 
 	if len(dae.Spec.Template.ObjectMeta.Annotations) != 0 {
@@ -98,11 +99,9 @@ func (d daemonset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 		if err != nil {
 			return true, nil, err
 		}
-
+		podAnnotations = pod.ReplacePlaceholders(podAnnotations, appMeta.ChartName())
 		podAnnotations = "\n" + podAnnotations
 	}
-
-	nameCamel := strcase.ToLowerCamel(name)
 	specMap, podValues, err := pod.ProcessSpec(nameCamel, appMeta, dae.Spec.Template.Spec, 0)
 	if err != nil {
 		return true, nil, err
