@@ -38,15 +38,19 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 		return nil, nil, err
 	}
 
-	// replace PVC to templated name
+	// replace PVC, ConfigMap and Secret to templated name
 	for i := 0; i < len(spec.Volumes); i++ {
 		vol := spec.Volumes[i]
-		if vol.PersistentVolumeClaim == nil {
-			continue
+		if vol.PersistentVolumeClaim != nil {
+			tempPVCName := appMeta.TemplatedName(vol.PersistentVolumeClaim.ClaimName)
+			spec.Volumes[i].PersistentVolumeClaim.ClaimName = tempPVCName
 		}
-		tempPVCName := appMeta.TemplatedName(vol.PersistentVolumeClaim.ClaimName)
-
-		spec.Volumes[i].PersistentVolumeClaim.ClaimName = tempPVCName
+		if vol.ConfigMap != nil {
+			spec.Volumes[i].ConfigMap.Name = ResolveConfigMapVolumeName(appMeta, vol.ConfigMap.Name)
+		}
+		if vol.Secret != nil {
+			spec.Volumes[i].Secret.SecretName = ResolveSecretVolumeName(appMeta, vol.Secret.SecretName)
+		}
 	}
 
 	// replace container resources with template to values.
@@ -450,9 +454,7 @@ func processEnv(name string, containerName string, appMeta helmify.AppMetadata, 
 	return c, nil
 }
 
-// AddReloadingAnnotations scans the PodSpec for ConfigMap and Secret references, and injects Helm checksum
-// annotations into the provided map so that pods restart when configurations change.
-func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string]string, spec *corev1.PodSpec) map[string]string {
+func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annotations map[string]string, spec *corev1.PodSpec) map[string]string {
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
@@ -501,28 +503,94 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, annotations map[string
 	annotations["checksum/global-config"] = "[HELMIFY_CHECKSUM_GLOBAL:global-config]"
 
 	for cm := range configMaps {
-		valueName := processor.ResolveValueName(appMeta, cm)
-		filename := "cm-" + valueName + ".yaml"
-		if valueName == "chart" || valueName == "" {
+		suffix := "cm"
+		nameLower := strings.ToLower(cm)
+		chartNameLower := strings.ToLower(appMeta.ChartName())
+		if strings.HasPrefix(nameLower, chartNameLower) {
+			s := strings.TrimPrefix(nameLower, chartNameLower)
+			s = strings.TrimPrefix(s, "-")
+			if s != "" && s != "cm" && s != "global" && s != "global-cm" && s != "cm-global" {
+				suffix = s
+			}
+		} else {
+			if nameLower != "cm" && nameLower != "configmap" && nameLower != "global" {
+				suffix = nameLower
+			}
+		}
+		baseName := cm
+		if suffix != "cm" {
+			suffixLower := strings.ToLower(suffix)
+			baseNameLower := strings.ToLower(baseName)
+			if strings.HasSuffix(baseNameLower, suffixLower) {
+				baseName = baseName[:len(baseName)-len(suffixLower)]
+			}
+			baseNameLower = strings.ToLower(baseName)
+			if strings.HasSuffix(baseNameLower, "-") {
+				baseName = baseName[:len(baseName)-1]
+			}
+		} else {
+			baseName = strings.TrimSuffix(baseName, "-cm")
+			baseName = strings.TrimSuffix(baseName, "-configmap")
+		}
+		compName := strcase.ToLowerCamel(appMeta.TrimName(baseName))
+		if compName == "" || compName == "chart" {
+			compName = objName
+		}
+
+		filename := "cm-" + suffix + ".yaml"
+		if suffix == "cm" {
 			filename = "cm.yaml"
 		}
-		key := "checksum/config-" + valueName
-		if valueName == "chart" || valueName == "" {
+		key := "checksum/config-" + suffix
+		if suffix == "cm" {
 			key = "checksum/config"
 		}
-		annotations[key] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:%s:%s]", valueName, key, filename)
+		annotations[key] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:%s:%s:%s]", compName, suffix, key, filename)
 	}
+
 	for sec := range secrets {
-		valueName := processor.ResolveValueName(appMeta, sec)
-		filename := "secret-" + valueName + ".yaml"
-		if valueName == "chart" || valueName == "" {
+		suffix := "secret"
+		nameLower := strings.ToLower(sec)
+		chartNameLower := strings.ToLower(appMeta.ChartName())
+		if strings.HasPrefix(nameLower, chartNameLower) {
+			s := strings.TrimPrefix(nameLower, chartNameLower)
+			s = strings.TrimPrefix(s, "-")
+			if s != "" && s != "secret" {
+				suffix = s
+			}
+		} else {
+			if nameLower != "secret" {
+				suffix = nameLower
+			}
+		}
+		baseName := sec
+		if suffix != "secret" {
+			suffixLower := strings.ToLower(suffix)
+			baseNameLower := strings.ToLower(baseName)
+			if strings.HasSuffix(baseNameLower, suffixLower) {
+				baseName = baseName[:len(baseName)-len(suffixLower)]
+			}
+			baseNameLower = strings.ToLower(baseName)
+			if strings.HasSuffix(baseNameLower, "-") {
+				baseName = baseName[:len(baseName)-1]
+			}
+		} else {
+			baseName = strings.TrimSuffix(baseName, "-secret")
+		}
+		compName := strcase.ToLowerCamel(appMeta.TrimName(baseName))
+		if compName == "" || compName == "chart" {
+			compName = objName
+		}
+
+		filename := "secret-" + suffix + ".yaml"
+		if suffix == "secret" {
 			filename = "secret.yaml"
 		}
-		key := "checksum/secret-" + valueName
-		if valueName == "chart" || valueName == "" {
+		key := "checksum/secret-" + suffix
+		if suffix == "secret" {
 			key = "checksum/secret"
 		}
-		annotations[key] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:%s:%s]", valueName, key, filename)
+		annotations[key] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:%s:%s:%s]", compName, suffix, key, filename)
 	}
 
 	// Filter out static placeholders from Kustomize
@@ -568,15 +636,15 @@ ${1}checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.ya
 ${1}{{- end }}`)
 
 	// 5. Handle CM checksum placeholders
-	rCM := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9\-/]+):\s*'\[HELMIFY_CHECKSUM_CM:([^:]+):([^:]+):([^\]]+)\]'`)
-	s = rCM.ReplaceAllString(s, `${1}{{- if (index .Values "${3}").cm }}
-${1}${2}: {{ include (print $.Template.BasePath "/${5}") . | sha256sum }}
+	rCM := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9\-/]+):\s*'\[HELMIFY_CHECKSUM_CM:([^:]+):([^:]+):([^:]+):([^\]]+)\]'`)
+	s = rCM.ReplaceAllString(s, `${1}{{- if and (index .Values "${3}") (index .Values "${3}" "${4}") }}
+${1}${2}: {{ include (print $.Template.BasePath "/${6}") . | sha256sum }}
 ${1}{{- end }}`)
 
 	// 6. Handle Secret checksum placeholders
-	rSecret := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9\-/]+):\s*'\[HELMIFY_CHECKSUM_SECRET:([^:]+):([^:]+):([^\]]+)\]'`)
-	s = rSecret.ReplaceAllString(s, `${1}{{- if (index .Values "${3}").secret }}
-${1}${2}: {{ include (print $.Template.BasePath "/${5}") . | sha256sum }}
+	rSecret := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9\-/]+):\s*'\[HELMIFY_CHECKSUM_SECRET:([^:]+):([^:]+):([^:]+):([^\]]+)\]'`)
+	s = rSecret.ReplaceAllString(s, `${1}{{- if and (index .Values "${3}") (index .Values "${3}" "${4}") }}
+${1}${2}: {{ include (print $.Template.BasePath "/${6}") . | sha256sum }}
 ${1}{{- end }}`)
 
 	// 7. Handle terminationGracePeriodSeconds placeholders
@@ -601,4 +669,48 @@ func cleanMap(m map[string]interface{}) {
 			}
 		}
 	}
+}
+
+func ResolveConfigMapVolumeName(appMeta helmify.AppMetadata, name string) string {
+	nameLower := strings.ToLower(name)
+	chartNameLower := strings.ToLower(appMeta.ChartName())
+
+	if strings.Contains(nameLower, "global") {
+		return fmt.Sprintf(`{{ include "%s.fullname" . }}-global-cm`, appMeta.ChartName())
+	}
+
+	suffix := "cm"
+	if strings.HasPrefix(nameLower, chartNameLower) {
+		s := strings.TrimPrefix(nameLower, chartNameLower)
+		s = strings.TrimPrefix(s, "-")
+		if s != "" && s != "cm" {
+			suffix = s
+		}
+	} else {
+		if nameLower != "cm" && nameLower != "configmap" {
+			suffix = nameLower
+		}
+	}
+
+	return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s`, appMeta.ChartName(), suffix)
+}
+
+func ResolveSecretVolumeName(appMeta helmify.AppMetadata, name string) string {
+	nameLower := strings.ToLower(name)
+	chartNameLower := strings.ToLower(appMeta.ChartName())
+
+	suffix := "secret"
+	if strings.HasPrefix(nameLower, chartNameLower) {
+		s := strings.TrimPrefix(nameLower, chartNameLower)
+		s = strings.TrimPrefix(s, "-")
+		if s != "" && s != "secret" {
+			suffix = s
+		}
+	} else {
+		if nameLower != "secret" {
+			suffix = nameLower
+		}
+	}
+
+	return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s`, appMeta.ChartName(), suffix)
 }

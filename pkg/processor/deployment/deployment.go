@@ -129,9 +129,10 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 		podLabels = fmt.Sprintf("      {{- include \"%s\" . | nindent 8 }}", labelHelper)
 	}
 
+	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 	podAnnotations := ""
 	annotations := depl.Spec.Template.ObjectMeta.Annotations
-	annotations = pod.AddReloadingAnnotations(appMeta, annotations, &depl.Spec.Template.Spec)
+	annotations = pod.AddReloadingAnnotations(appMeta, nameCamel, annotations, &depl.Spec.Template.Spec)
 	depl.Spec.Template.ObjectMeta.Annotations = annotations
 
 	if len(depl.Spec.Template.ObjectMeta.Annotations) != 0 {
@@ -139,11 +140,9 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 		if err != nil {
 			return true, nil, err
 		}
-
+		podAnnotations = pod.ReplacePlaceholders(podAnnotations, appMeta.ChartName())
 		podAnnotations = "\n" + podAnnotations
 	}
-
-	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
 	specMap, podValues, err := pod.ProcessSpec(nameCamel, appMeta, depl.Spec.Template.Spec, 0)
 	if err != nil {
 		return true, nil, err
