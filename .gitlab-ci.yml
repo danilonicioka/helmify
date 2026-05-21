@@ -10,6 +10,7 @@ variables:
 stages:
   - build
   - containerize
+  - release
 
 # ---------------------------------------------------------------------------
 # Stage: Build (UI & API)
@@ -84,3 +85,17 @@ push-to-quay:
     - podman login $QUAY_URL -u $QUAY_USER -p $QUAY_PASS --tls-verify=false
     - podman build --tls-verify=false -f Containerfile -t "$IMAGE" .
     - podman push "$IMAGE" --tls-verify=false
+
+release-version:
+  stage: release
+  image: quay.io/skopeo/stable:latest
+  variables:
+    QUAY_REPO: "docker://quay.io/your-namespace/your-repo"
+  rules:
+    - if: $CI_COMMIT_TAG
+  script:
+    - skopeo copy \
+        --src-creds="${QUAY_USER}:${QUAY_PASS}" \
+        --dest-creds="${QUAY_USER}:${QUAY_PASS}" \
+        ${QUAY_URL}:${CI_COMMIT_SHA} \
+        ${QUAY_URL}:prd-${CI_COMMIT_TAG}
