@@ -12,11 +12,19 @@ stages:
   - containerize
   - release
 
+# Reusable rule for standard branch-only jobs
+.branch_rules:
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
 # ---------------------------------------------------------------------------
 # Stage: Build (UI & API)
 # ---------------------------------------------------------------------------
 build-ui:
   stage: build
+  extends: .branch_rules
   image: registry.access.redhat.com/ubi8/nodejs-20:latest
   cache:
     key: "ui-deps-$CI_COMMIT_REF_SLUG"
@@ -33,6 +41,7 @@ build-ui:
 
 build-api:
   stage: build
+  extends: .branch_rules
   image: $BUILDER_IMAGE
   cache:
     key: "api-deps-$CI_COMMIT_REF_SLUG"
@@ -55,6 +64,7 @@ build-api:
 # ---------------------------------------------------------------------------
 setup-vars:
   stage: containerize
+  extends: .branch_rules
   image: $BUILDER_IMAGE
   script:
     - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
@@ -70,6 +80,7 @@ setup-vars:
 # ---------------------------------------------------------------------------
 push-to-quay:
   stage: containerize
+  extends: .branch_rules
   image: registry.access.redhat.com/ubi8/podman:latest
   tags:
     - rancher
@@ -89,8 +100,6 @@ push-to-quay:
 release-version:
   stage: release
   image: quay.io/skopeo/stable:latest
-  variables:
-    QUAY_REPO: "docker://quay.io/your-namespace/your-repo"
   rules:
     - if: $CI_COMMIT_TAG
   script:
