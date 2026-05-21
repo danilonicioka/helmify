@@ -38,12 +38,21 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 		return nil, nil, err
 	}
 
+	// Build a map of PVC-backed volumes for quick lookup
+	pvcVolumes := make(map[string]struct{})
+	for _, vol := range spec.Volumes {
+		if vol.PersistentVolumeClaim != nil {
+			pvcVolumes[vol.Name] = struct{}{}
+		}
+	}
+
 	// replace PVC, ConfigMap and Secret to templated name
 	for i := 0; i < len(spec.Volumes); i++ {
 		vol := spec.Volumes[i]
 		if vol.PersistentVolumeClaim != nil {
 			tempPVCName := appMeta.TemplatedName(vol.PersistentVolumeClaim.ClaimName)
 			spec.Volumes[i].PersistentVolumeClaim.ClaimName = tempPVCName
+			spec.Volumes[i].Name = fmt.Sprintf("[HELMIFY_PVC_VOL:%s:%s]", objName, vol.Name)
 		}
 		if vol.ConfigMap != nil {
 			spec.Volumes[i].ConfigMap.Name = ResolveConfigMapVolumeName(appMeta, vol.ConfigMap.Name)
@@ -52,6 +61,20 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 			spec.Volumes[i].Secret.SecretName = ResolveSecretVolumeName(appMeta, vol.Secret.SecretName)
 		}
 	}
+
+	// Update container and initContainer volume mounts to placeholder if PVC-backed
+	updateMounts := func(containers []corev1.Container) {
+		for i := range containers {
+			for j := range containers[i].VolumeMounts {
+				mountName := containers[i].VolumeMounts[j].Name
+				if _, ok := pvcVolumes[mountName]; ok {
+					containers[i].VolumeMounts[j].Name = fmt.Sprintf("[HELMIFY_PVC_MOUNT:%s:%s]", objName, mountName)
+				}
+			}
+		}
+	}
+	updateMounts(spec.Containers)
+	updateMounts(spec.InitContainers)
 
 	// replace container resources with template to values.
 	specMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&spec)
@@ -502,6 +525,12 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 	// Always add checksum for global configmap
 	annotations["checksum/global-config"] = "[HELMIFY_CHECKSUM_GLOBAL:global-config]"
 
+	// Always add checksum for default configmap and secret of the component
+	if objName != "" && objName != "global" && objName != "chart" {
+		annotations["checksum/config"] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:cm:checksum/config:cm.yaml]", objName)
+		annotations["checksum/secret"] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:secret:checksum/secret:secret.yaml]", objName)
+	}
+
 	for cm := range configMaps {
 		suffix := "cm"
 		nameLower := strings.ToLower(cm)
@@ -651,6 +680,21 @@ ${1}{{- end }}`)
 	rGrace := regexp.MustCompile(`(?m)^(\s*)terminationGracePeriodSeconds:\s*'\[HELMIFY_GRACE_PERIOD:([^\]]+)\]'`)
 	s = rGrace.ReplaceAllString(s, `${1}{{- if not (kindIs "nil" .Values.${2}.terminationGracePeriodSeconds) }}
 ${1}terminationGracePeriodSeconds: {{ .Values.${2}.terminationGracePeriodSeconds }}
+${1}{{- end }}`)
+
+	// 8. Handle PVC volumes conditional placement
+	rPVC := regexp.MustCompile(`(?m)^(\s{6})-\s*name:\s*'\[HELMIFY_PVC_VOL:([^:]+):([^\]]+)\]'\n(\s{8})persistentVolumeClaim:\n(\s{10})claimName:\s*([^\n]+)`)
+	s = rPVC.ReplaceAllString(s, `${1}{{- if and (index .Values "${2}") (index .Values "${2}" "persistence") (index .Values "${2}" "persistence" "enabled") }}
+${1}- name: ${3}
+${4}persistentVolumeClaim:
+${5}claimName: ${6}
+${1}{{- end }}`)
+
+	// 9. Handle PVC volume mounts conditional placement
+	rMount := regexp.MustCompile(`(?m)^(\s{8})-\s*mountPath:\s*([^\n]+)\n((\s{10}[a-zA-Z]+:\s*[^\n]+\n)*)\s{10}name:\s*'\[HELMIFY_PVC_MOUNT:([^:]+):([^\]]+)\]'((\n\s{10}[a-zA-Z]+:\s*[^\n]+)*)`)
+	s = rMount.ReplaceAllString(s, `${1}{{- if and (index .Values "${5}") (index .Values "${5}" "persistence") (index .Values "${5}" "persistence" "enabled") }}
+${1}- mountPath: ${2}
+${3}${1}  name: ${6}${7}
 ${1}{{- end }}`)
 
 	return s
