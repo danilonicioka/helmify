@@ -103,7 +103,8 @@ release-version:
   rules:
     - if: $CI_COMMIT_TAG
   script:
-    - skopeo copy \
+    - |
+      skopeo copy \
         --src-creds="${QUAY_USER}:${QUAY_PASS}" \
         --dest-creds="${QUAY_USER}:${QUAY_PASS}" \
         ${QUAY_URL}:${CI_COMMIT_SHA} \
