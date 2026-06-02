@@ -151,6 +151,13 @@ export default function HelmifyUI() {
           </div>
 
           <div className="flex items-center gap-4">
+             <a 
+                href="/wizard" 
+                className="text-xs font-semibold text-slate-300 hover:text-white px-3 py-1.5 hover:bg-slate-800 rounded-lg transition-all flex items-center gap-1.5 border border-slate-800"
+             >
+                <Layers size={14} />
+                <span>Switch to Wizard</span>
+             </a>
              <div className="hidden lg:flex items-center gap-2 px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20 text-xs">
                 <ShieldCheck size={14} />
                 <span>Production Ready</span>
