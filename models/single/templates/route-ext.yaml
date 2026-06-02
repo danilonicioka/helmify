@@ -1,0 +1,31 @@
+{{- $app := index .Values .Chart.Name | default dict -}}
+{{- if and $app $app.route $app.route.external $app.route.external.enabled -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-ext
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+  {{- with $app.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $app.route.external.host }}
+  host: {{ $app.route.external.host | quote }}
+  {{- end }}
+  {{- if $app.route.path }}
+  path: {{ $app.route.path | quote }}
+  {{- end }}
+  {{- if $app.route.tls }}
+  tls:
+    {{- toYaml $app.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "chart-model-single.fullname" . }}
+    weight: 100
+  port:
+    targetPort: http
+  wildcardPolicy: None
+{{- end }}

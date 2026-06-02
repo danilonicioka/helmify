@@ -1,0 +1,31 @@
+{{- if and .Values.web .Values.web.route .Values.web.route.internal.enabled -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "chart-model-multi.fullname" . }}-web-int
+  labels:
+    {{- include "chart-model-multi.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+  {{- with .Values.web.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.web.route.internal.host }}
+  host: {{ .Values.web.route.internal.host | quote }}
+  {{- end }}
+  {{- if .Values.web.route.path }}
+  path: {{ .Values.web.route.path | quote }}
+  {{- end }}
+  {{- if .Values.web.route.tls }}
+  tls:
+    {{- toYaml .Values.web.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "chart-model-multi.fullname" . }}-web
+    weight: 100
+  port:
+    targetPort: http
+  wildcardPolicy: None
+{{- end }}

@@ -1,0 +1,166 @@
+# Standardized TJPA Helm Chart values.yaml
+# Designed in compliance with OpenShift Security Context Constraints (SCC)
+# and the 6 Core Architectural Rules.
+
+# ==============================================================================
+# I. CHART-WIDE OPTIONS
+# ==============================================================================
+# -- Domain of the Kubernetes cluster.
+kubernetesClusterDomain: cluster.local
+
+# -- Overrides the default name/fullname.
+nameOverride: ""
+fullnameOverride: ""
+
+# -- Global configuration shared across all deployments in the chart.
+global:
+  TZ: "America/Belem"
+
+# ==============================================================================
+# II. APPLICATION DEPLOYMENT CONFIGURATION (chart-model-single)
+# ==============================================================================
+# For a single deployment, the key is the name of the application (chart name).
+chart-model-single:
+
+  # ----------------------------------------------------------------------------
+  # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
+  # ----------------------------------------------------------------------------
+  # -- Number of replica pods.
+  replicas: 2
+
+  image:
+    # -- Quay Registry is used to avoid Docker Hub rate limiting.
+    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-app
+    pullPolicy: IfNotPresent
+    # -- Defaults to Chart.appVersion if not specified.
+    tag: ""
+
+  # ----------------------------------------------------------------------------
+  # 2. APPLICATION CONFIGURATION (Variables & Credentials)
+  # ----------------------------------------------------------------------------
+  # ConfigMaps unique to this service container.
+  cm:
+    SPRING_PROFILES_ACTIVE: "prd"
+    JAVA_OPTS: "-XX:+UseG1GC -XX:+UseStringDeduplication"
+    DB_POOL_MIN_SIZE: "2"
+    DB_POOL_MAX_SIZE: "10"
+
+  # Sensitive variables unique to this service container (Secrets).
+  secret:
+    DB_PASSWORD: "vault-decrypted-secret-key-goes-here"
+
+  # ----------------------------------------------------------------------------
+  # 3. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  route:
+    # -- Shared annotations for routes.
+    annotations: {}
+    
+    # -- Shared TLS edge termination configuration.
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+
+    # -- Shared path for routes.
+    path: ""
+
+    # -- Internal Route with self-signed certificate (to default OCP apps).
+    default:
+      enabled: true
+      host: chart-model-single.apps.ocp-hub.i.tj.pa.gov.br
+
+    # -- Internal Route with valid certificate (to intranet TJPA).
+    internal:
+      enabled: false
+      host: chart-model-int.i.tjpa.jus.br
+
+    # -- External Route with valid certificate (to internet TJPA).
+    external:
+      enabled: false
+      host: chart-model.tjpa.jus.br
+
+  # -- Internal Kubernetes Service Configuration.
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: http
+
+  # ----------------------------------------------------------------------------
+  # 4. RESOURCES (Operational Overlay-Only)
+  # ----------------------------------------------------------------------------
+  # Kept empty by default; the recommended configuration is commented below.
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 256Mi
+
+  # ----------------------------------------------------------------------------
+  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
+  # ----------------------------------------------------------------------------
+  # Probes are empty by default; the recommended tcpSocket configuration is commented below.
+  startupProbe: {}
+  # startupProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 5
+  #   failureThreshold: 30
+  #   successThreshold: 1
+
+  livenessProbe: {}
+  # livenessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
+  readinessProbe: {}
+  # readinessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
+  # ----------------------------------------------------------------------------
+  # 6. LIFECYCLE & HA STRATEGY
+  # ----------------------------------------------------------------------------
+  # -- Deployment strategy. Use 'RollingUpdate' or 'Recreate' (e.g. for RWO volume claims).
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  
+  # -- Connection draining grace period for graceful shutdowns.
+  terminationGracePeriodSeconds: 30
+
+# ==============================================================================
+# III. GLOBAL SCHEDULING & COMMON CONFIGS
+# ==============================================================================
+imagePullSecrets: []
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - chart-model-single
+          topologyKey: kubernetes.io/hostname

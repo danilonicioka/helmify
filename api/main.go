@@ -48,8 +48,17 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/generate", handleGenerate)
+	mux.HandleFunc("/v1/generate-wizard", handleGenerateWizard)
 	mux.HandleFunc("/v1/preview", handlePreview)
 	mux.HandleFunc("/v1/download", handleDownload)
+	mux.HandleFunc("/wizard", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(wizardHTML)
+	})
+	mux.HandleFunc("/wizard/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(wizardHTML)
+	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
