@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TJPA Helm Chart Generator Wizard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: hsl(230, 25%, 8%);
+            --bg-surface: hsl(225, 20%, 12%);
+            --bg-card: hsl(225, 20%, 15%);
+            --border-color: hsl(225, 15%, 22%);
+            --text-primary: hsl(220, 30%, 96%);
+            --text-secondary: hsl(220, 15%, 70%);
+            --text-muted: hsl(220, 10%, 45%);
+            --accent: hsl(260, 85%, 65%);
+            --accent-glow: hsla(260, 85%, 65%, 0.15);
+            --accent-hover: hsl(260, 90%, 70%);
+            --accent-success: hsl(150, 75%, 45%);
+            --accent-danger: hsl(355, 75%, 55%);
+            --font-family-sans: 'Inter', sans-serif;
+            --font-family-title: 'Outfit', sans-serif;
+            --font-family-mono: 'Fira Code', monospace;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-family-sans);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* Ambient Glow Backdrop */
+        .ambient-glow {
+            position: fixed;
+            top: -200px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        header {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2.5rem 2rem 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section h1 {
+            font-family: var(--font-family-title);
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-section p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+
+        .badge {
+            background: var(--bg-card);
+            border: 1px border var(--border-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--accent-success);
+            box-shadow: 0 0 8px var(--accent-success);
+        }
+
+        /* Main Layout */
+        main {
+            max-width: 1400px;
+            margin: 0 auto 4rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1100px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Card Elements */
+        .card {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 2rem;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+            transition: var(--transition-smooth);
+        }
+
+        .card:hover {
+            border-color: hsla(260, 85%, 65%, 0.3);
+        }
+
+        .card-title {
+            font-family: var(--font-family-title);
+            font-size: 1.35rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+
+        /* Form Styling */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group.row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md);
+            font-family: var(--font-family-sans);
+            font-size: 0.95rem;
+            outline: none;
+            transition: var(--transition-smooth);
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        /* Toggle Button Group */
+        .toggle-group {
+            display: flex;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 0.3rem;
+            border-radius: var(--radius-md);
+        }
+
+        .toggle-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.6rem;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .toggle-btn.active {
+            background-color: var(--accent);
+            color: var(--text-primary);
+            box-shadow: 0 4px 12px rgba(120, 80, 255, 0.3);
+        }
+
+        /* Component tabs and headers */
+        .components-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .components-tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .tab-btn {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: var(--transition-smooth);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+
+        .tab-btn.active {
+            background-color: var(--accent-glow);
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        .tab-btn .remove-comp-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 0.9rem;
+            padding: 0 0.2rem;
+        }
+
+        .tab-btn .remove-comp-btn:hover {
+            color: var(--accent-danger);
+        }
+
+        .add-comp-btn {
+            background-color: transparent;
+            border: 1px dashed var(--accent);
+            color: var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: var(--transition-smooth);
+        }
+
+        .add-comp-btn:hover {
+            background-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        /* Routes / KV Section Styling */
+        .section-subtitle {
+            font-family: var(--font-family-title);
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 1.5rem 0 0.75rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .kv-row {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr auto;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            align-items: center;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            transition: var(--transition-smooth);
+        }
+
+        .btn-icon:hover {
+            color: var(--accent-danger);
+            background-color: rgba(255, 0, 0, 0.1);
+        }
+
+        .btn-add-item {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-add-item:hover {
+            border-color: var(--accent);
+            color: var(--text-primary);
+        }
+
+        /* Route config panel */
+        .route-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 0.75rem;
+        }
+
+        .route-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .route-card-header span {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .route-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+        }
+
+        .route-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border-color);
+            transition: .4s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Action Buttons */
+        .generate-btn {
+            background: linear-gradient(135deg, var(--accent) 0%, hsl(280, 85%, 60%) 100%);
+            border: none;
+            color: var(--text-primary);
+            width: 100%;
+            padding: 1.1rem;
+            border-radius: var(--radius-md);
+            font-family: var(--font-family-title);
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 20px rgba(120, 80, 255, 0.4);
+            transition: var(--transition-smooth);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 2rem;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(120, 80, 255, 0.5);
+            background: linear-gradient(135deg, var(--accent-hover) 0%, hsl(280, 90%, 65%) 100%);
+        }
+
+        .generate-btn:active {
+            transform: translateY(1px);
+        }
+
+        /* Preview Panel */
+        .preview-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .preview-header h2 {
+            font-family: var(--font-family-title);
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .preview-box {
+            flex: 1;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            font-family: var(--font-family-mono);
+            font-size: 0.85rem;
+            color: hsl(210, 40%, 85%);
+            overflow: auto;
+            white-space: pre-wrap;
+            max-height: 800px;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Toast Alert */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background-color: var(--bg-card);
+            border-left: 4px solid var(--accent);
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius-sm);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            display: none;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="ambient-glow"></div>
+
+    <header>
+        <div class="logo-section">
+            <h1>TJPA Helmify Wizard</h1>
+            <p>Generate production-grade TJPA Helm charts dynamically on-the-fly</p>
+        </div>
+        <div class="badge">
+            <div class="badge-dot"></div>
+            <span>TJPA Standards Compliant</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- Form Panel -->
+        <section class="card">
+            <div class="card-title">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sliders"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="2" y1="14" x2="6" y2="14"></line><line x1="10" y1="8" x2="14" y2="8"></line><line x1="18" y1="16" x2="22" y2="16"></line></svg>
+                <span>Chart Settings</span>
+            </div>
+
+            <!-- Chart Base Config -->
+            <div class="form-group row">
+                <div>
+                    <label for="chartName">Chart Name</label>
+                    <input type="text" id="chartName" value="portal-certidao" placeholder="e.g. portal-certidao">
+                </div>
+                <div>
+                    <label>Deployment Type</label>
+                    <div class="toggle-group">
+                        <button type="button" class="toggle-btn active" id="btn-type-single">Single</button>
+                        <button type="button" class="toggle-btn" id="btn-type-multi">Multi</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Global Env Vars -->
+            <div class="section-subtitle">
+                <span>Global ConfigMap Env Variables</span>
+                <button type="button" class="btn-add-item" onclick="addGlobalConfig()">+ Add Global Var</button>
+            </div>
+            <div id="global-config-list">
+                <!-- Dynamically populated -->
+            </div>
+
+            <!-- Components Config -->
+            <div class="components-header">
+                <div class="section-subtitle" style="margin: 0;">Components Config</div>
+                <button type="button" class="add-comp-btn" id="btn-add-comp" style="display: none;">+ Add Component</button>
+            </div>
+
+            <div class="components-tabs" id="components-tabs">
+                <!-- Tab buttons -->
+            </div>
+
+            <!-- Active Component Panel -->
+            <div id="component-config-panel" style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+                <div class="form-group row">
+                    <div>
+                        <label for="compReplicas">Replicas</label>
+                        <input type="number" id="compReplicas" value="2" min="1">
+                    </div>
+                    <div>
+                        <label for="compPort">Service Port</label>
+                        <input type="number" id="compPort" value="8080">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="compRepo">Image Repository</label>
+                    <input type="text" id="compRepo" value="tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-app" placeholder="image registry url">
+                </div>
+
+                <div class="form-group row">
+                    <div>
+                        <label for="compTag">Image Tag (Defaults to appVersion)</label>
+                        <input type="text" id="compTag" placeholder="e.g. 1.0.0">
+                    </div>
+                    <div>
+                        <label for="compRoutePath">Route Path Prefix</label>
+                        <input type="text" id="compRoutePath" placeholder="e.g. /api">
+                    </div>
+                </div>
+
+                <!-- Routes Configurations -->
+                <div class="section-subtitle">Routes</div>
+                
+                <!-- Default Route -->
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <span>Default OpenShift Route (Self-Signed)</span>
+                        <label class="route-switch">
+                            <input type="checkbox" id="routeDefaultEnabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div id="routeDefaultHostGroup">
+                        <label for="routeDefaultHost" style="font-size: 0.75rem;">Hostname</label>
+                        <input type="text" id="routeDefaultHost" placeholder="e.g. app.apps.ocp-hub.i.tj.pa.gov.br">
+                    </div>
+                </div>
+
+                <!-- Intranet Route -->
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <span>Intranet Route (Valid TLS)</span>
+                        <label class="route-switch">
+                            <input type="checkbox" id="routeIntEnabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div id="routeIntHostGroup" style="display: none;">
+                        <label for="routeIntHost" style="font-size: 0.75rem;">Hostname</label>
+                        <input type="text" id="routeIntHost" placeholder="e.g. app-int.i.tjpa.jus.br">
+                    </div>
+                </div>
+
+                <!-- Internet Route -->
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <span>Internet Route (Valid TLS)</span>
+                        <label class="route-switch">
+                            <input type="checkbox" id="routeExtEnabled">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div id="routeExtHostGroup" style="display: none;">
+                        <label for="routeExtHost" style="font-size: 0.75rem;">Hostname</label>
+                        <input type="text" id="routeExtHost" placeholder="e.g. app.tjpa.jus.br">
+                    </div>
+                </div>
+
+                <!-- ConfigMap variables -->
+                <div class="section-subtitle">
+                    <span>Component ConfigMap (Env Vars)</span>
+                    <button type="button" class="btn-add-item" onclick="addComponentCm()">+ Add Config</button>
+                </div>
+                <div id="comp-cm-list"></div>
+
+                <!-- Secret variables -->
+                <div class="section-subtitle">
+                    <span>Component Secrets</span>
+                    <button type="button" class="btn-add-item" onclick="addComponentSecret()">+ Add Secret</button>
+                </div>
+                <div id="comp-secret-list"></div>
+            </div>
+
+            <button type="button" class="generate-btn" id="btn-generate">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Generate & Download Chart</span>
+            </button>
+        </section>
+
+        <!-- Preview Panel -->
+        <section class="preview-container">
+            <div class="preview-header">
+                <h2>API Payload Preview</h2>
+                <div class="badge" style="background: transparent; border: none; font-size: 0.8rem;">
+                    <span>Real-time Sync</span>
+                </div>
+            </div>
+            <pre class="preview-box" id="json-preview"></pre>
+        </section>
+    </main>
+
+    <div class="toast" id="toast-message">Chart generated successfully!</div>
+
+    <script>
+        // State variables
+        let chartType = 'single'; // 'single' or 'multi'
+        let globalConfig = {
+            'TZ': 'America/Belem'
+        };
+
+        // Components dictionary
+        let components = {};
+
+        // Active component name in form view
+        let activeComponent = '';
+
+        // Initialize state
+        function init() {
+            if (chartType === 'single') {
+                const name = document.getElementById('chartName').value || 'chart-model-single';
+                components = {};
+                components[name] = createDefaultComponentConfig(name, 'app');
+                activeComponent = name;
+                document.getElementById('btn-add-comp').style.display = 'none';
+            } else {
+                components = {
+                    'api': createDefaultComponentConfig('api', 'api'),
+                    'web': createDefaultComponentConfig('web', 'web')
+                };
+                activeComponent = 'api';
+                document.getElementById('btn-add-comp').style.display = 'block';
+            }
+
+            renderGlobalConfigList();
+            renderTabs();
+            renderActiveComponent();
+            updatePreview();
+        }
+
+        function createDefaultComponentConfig(name, type) {
+            const isWeb = type === 'web';
+            return {
+                replicas: isWeb ? 1 : 2,
+                image: {
+                    repository: `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-${type}`,
+                    tag: ''
+                },
+                service: {
+                    port: isWeb ? 80 : 8080
+                },
+                cm: isWeb ? { 'BACKEND_API_URL': 'http://chart-model-multi-api:8080' } : {
+                    'SPRING_PROFILES_ACTIVE': 'prd',
+                    'JAVA_OPTS': '-XX:+UseG1GC -XX:+UseStringDeduplication'
+                },
+                secret: isWeb ? {} : { 'DB_PASSWORD': 'vault-decrypted-secret-key-goes-here' },
+                route: {
+                    path: '',
+                    default: { enabled: true, host: `chart-model-${type}.apps.ocp-hub.i.tj.pa.gov.br` },
+                    internal: { enabled: false, host: `chart-model-${type}-int.i.tjpa.jus.br` },
+                    external: { enabled: false, host: `chart-model-${type}.tjpa.jus.br` }
+                }
+            };
+        }
+
+        // Toggle Single/Multi type
+        document.getElementById('btn-type-single').addEventListener('click', () => {
+            if (chartType === 'single') return;
+            chartType = 'single';
+            document.getElementById('btn-type-single').classList.add('active');
+            document.getElementById('btn-type-multi').classList.remove('active');
+            init();
+        });
+
+        document.getElementById('btn-type-multi').addEventListener('click', () => {
+            if (chartType === 'multi') return;
+            chartType = 'multi';
+            document.getElementById('btn-type-multi').classList.add('active');
+            document.getElementById('btn-type-single').classList.remove('active');
+            init();
+        });
+
+        // Watch chart name changes for single deployment key renaming
+        document.getElementById('chartName').addEventListener('input', (e) => {
+            const newName = e.target.value.trim() || 'chart';
+            if (chartType === 'single') {
+                const oldName = Object.keys(components)[0];
+                if (oldName && oldName !== newName) {
+                    components[newName] = components[oldName];
+                    delete components[oldName];
+                    activeComponent = newName;
+                    renderTabs();
+                }
+            }
+            updatePreview();
+        });
+
+        // Render Tabs
+        function renderTabs() {
+            const tabsContainer = document.getElementById('components-tabs');
+            tabsContainer.innerHTML = '';
+
+            Object.keys(components).forEach(name => {
+                const tab = document.createElement('button');
+                tab.type = 'button';
+                tab.className = `tab-btn ${activeComponent === name ? 'active' : ''}`;
+                tab.innerHTML = `<span>${name}</span>`;
+                
+                // Allow removing tabs in multi type
+                if (chartType === 'multi' && Object.keys(components).length > 1) {
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'remove-comp-btn';
+                    removeBtn.innerHTML = '&times;';
+                    removeBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        delete components[name];
+                        if (activeComponent === name) {
+                            activeComponent = Object.keys(components)[0];
+                        }
+                        renderTabs();
+                        renderActiveComponent();
+                        updatePreview();
+                    };
+                    tab.appendChild(removeBtn);
+                }
+
+                tab.addEventListener('click', () => {
+                    saveActiveComponentState();
+                    activeComponent = name;
+                    renderTabs();
+                    renderActiveComponent();
+                });
+
+                tabsContainer.appendChild(tab);
+            });
+        }
+
+        // Add component in multi mode
+        document.getElementById('btn-add-comp').addEventListener('click', () => {
+            const compName = prompt("Enter component name (e.g. bff, backend):");
+            if (!compName) return;
+            const cleanName = compName.toLowerCase().replace(/[^a-z0-9-]/g, '');
+            if (!cleanName) {
+                alert("Invalid name.");
+                return;
+            }
+            if (components[cleanName]) {
+                alert("Component already exists.");
+                return;
+            }
+
+            saveActiveComponentState();
+            components[cleanName] = createDefaultComponentConfig(cleanName, cleanName);
+            activeComponent = cleanName;
+            renderTabs();
+            renderActiveComponent();
+            updatePreview();
+        });
+
+        // Save active component state from inputs to memory
+        function saveActiveComponentState() {
+            if (!activeComponent || !components[activeComponent]) return;
+
+            const config = components[activeComponent];
+            config.replicas = parseInt(document.getElementById('compReplicas').value, 10) || 1;
+            config.service.port = parseInt(document.getElementById('compPort').value, 10) || 8080;
+            config.image.repository = document.getElementById('compRepo').value;
+            config.image.tag = document.getElementById('compTag').value;
+            config.route.path = document.getElementById('compRoutePath').value;
+
+            config.route.default.enabled = document.getElementById('routeDefaultEnabled').checked;
+            config.route.default.host = document.getElementById('routeDefaultHost').value;
+
+            config.route.internal.enabled = document.getElementById('routeIntEnabled').checked;
+            config.route.internal.host = document.getElementById('routeIntHost').value;
+
+            config.route.external.enabled = document.getElementById('routeExtEnabled').checked;
+            config.route.external.host = document.getElementById('routeExtHost').value;
+
+            // Collect component ConfigMap
+            config.cm = {};
+            const cmRows = document.querySelectorAll('.comp-cm-row');
+            cmRows.forEach(row => {
+                const k = row.querySelector('.cm-key').value.trim();
+                const v = row.querySelector('.cm-value').value;
+                if (k) config.cm[k] = v;
+            });
+
+            // Collect component Secrets
+            config.secret = {};
+            const secretRows = document.querySelectorAll('.comp-secret-row');
+            secretRows.forEach(row => {
+                const k = row.querySelector('.secret-key').value.trim();
+                const v = row.querySelector('.secret-value').value;
+                if (k) config.secret[k] = v;
+            });
+        }
+
+        // Render inputs for active component
+        function renderActiveComponent() {
+            if (!activeComponent || !components[activeComponent]) return;
+
+            const config = components[activeComponent];
+
+            document.getElementById('compReplicas').value = config.replicas;
+            document.getElementById('compPort').value = config.service.port;
+            document.getElementById('compRepo').value = config.image.repository;
+            document.getElementById('compTag').value = config.image.tag || '';
+            document.getElementById('compRoutePath').value = config.route.path || '';
+
+            document.getElementById('routeDefaultEnabled').checked = config.route.default.enabled;
+            document.getElementById('routeDefaultHost').value = config.route.default.host || '';
+            toggleHostGroup('routeDefaultEnabled', 'routeDefaultHostGroup');
+
+            document.getElementById('routeIntEnabled').checked = config.route.internal.enabled;
+            document.getElementById('routeIntHost').value = config.route.internal.host || '';
+            toggleHostGroup('routeIntEnabled', 'routeIntHostGroup');
+
+            document.getElementById('routeExtEnabled').checked = config.route.external.enabled;
+            document.getElementById('routeExtHost').value = config.route.external.host || '';
+            toggleHostGroup('routeExtEnabled', 'routeExtHostGroup');
+
+            // Render ConfigMaps
+            const cmContainer = document.getElementById('comp-cm-list');
+            cmContainer.innerHTML = '';
+            Object.entries(config.cm || {}).forEach(([k, v]) => {
+                cmContainer.appendChild(createKeyValueRow(k, v, 'comp-cm-row', 'cm-key', 'cm-value'));
+            });
+
+            // Render Secrets
+            const secretContainer = document.getElementById('comp-secret-list');
+            secretContainer.innerHTML = '';
+            Object.entries(config.secret || {}).forEach(([k, v]) => {
+                secretContainer.appendChild(createKeyValueRow(k, v, 'comp-secret-row', 'secret-key', 'secret-value'));
+            });
+        }
+
+        // Helper to toggle visibility of host groups
+        function toggleHostGroup(switchId, groupId) {
+            const chk = document.getElementById(switchId);
+            const grp = document.getElementById(groupId);
+            if (chk.checked) {
+                grp.style.display = 'block';
+            } else {
+                grp.style.display = 'none';
+            }
+        }
+
+        document.getElementById('routeDefaultEnabled').addEventListener('change', () => toggleHostGroup('routeDefaultEnabled', 'routeDefaultHostGroup'));
+        document.getElementById('routeIntEnabled').addEventListener('change', () => toggleHostGroup('routeIntEnabled', 'routeIntHostGroup'));
+        document.getElementById('routeExtEnabled').addEventListener('change', () => toggleHostGroup('routeExtEnabled', 'routeExtHostGroup'));
+
+        // Handle Global Config lists
+        function renderGlobalConfigList() {
+            const container = document.getElementById('global-config-list');
+            container.innerHTML = '';
+            Object.entries(globalConfig).forEach(([k, v]) => {
+                const row = document.createElement('div');
+                row.className = 'kv-row global-config-row';
+                row.innerHTML = `
+                    <input type="text" class="global-key" value="${k}" placeholder="KEY" oninput="saveGlobalConfig()">
+                    <input type="text" class="global-value" value="${v}" placeholder="VALUE" oninput="saveGlobalConfig()">
+                    <button type="button" class="btn-icon" onclick="removeGlobalConfig(this)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    </button>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function addGlobalConfig() {
+            globalConfig[''] = '';
+            renderGlobalConfigList();
+            updatePreview();
+        }
+
+        function saveGlobalConfig() {
+            globalConfig = {};
+            const rows = document.querySelectorAll('.global-config-row');
+            rows.forEach(row => {
+                const k = row.querySelector('.global-key').value.trim();
+                const v = row.querySelector('.global-value').value;
+                if (k) globalConfig[k] = v;
+            });
+            updatePreview();
+        }
+
+        function removeGlobalConfig(btn) {
+            btn.parentElement.remove();
+            saveGlobalConfig();
+        }
+
+        // Generic Key Value Rows generator
+        function createKeyValueRow(k, v, rowClass, keyClass, valClass) {
+            const row = document.createElement('div');
+            row.className = `kv-row ${rowClass}`;
+            row.innerHTML = `
+                <input type="text" class="${keyClass}" value="${k}" placeholder="KEY" oninput="saveAndPreview()">
+                <input type="text" class="${valClass}" value="${v}" placeholder="VALUE" oninput="saveAndPreview()">
+                <button type="button" class="btn-icon" onclick="removeKvRow(this)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                </button>
+            `;
+            return row;
+        }
+
+        function addComponentCm() {
+            const container = document.getElementById('comp-cm-list');
+            container.appendChild(createKeyValueRow('', '', 'comp-cm-row', 'cm-key', 'cm-value'));
+            saveAndPreview();
+        }
+
+        function addComponentSecret() {
+            const container = document.getElementById('comp-secret-list');
+            container.appendChild(createKeyValueRow('', '', 'comp-secret-row', 'secret-key', 'secret-value'));
+            saveAndPreview();
+        }
+
+        function removeKvRow(btn) {
+            btn.parentElement.remove();
+            saveAndPreview();
+        }
+
+        function saveAndPreview() {
+            saveActiveComponentState();
+            updatePreview();
+        }
+
+        // Combine inputs and return JSON payload
+        function buildPayload() {
+            saveActiveComponentState();
+            return {
+                chartName: document.getElementById('chartName').value.trim() || 'chart',
+                type: chartType,
+                globalConfig: globalConfig,
+                deployments: components
+            };
+        }
+
+        // Update real-time preview
+        function updatePreview() {
+            const payload = buildPayload();
+            document.getElementById('json-preview').textContent = JSON.stringify(payload, null, 2);
+        }
+
+        // Input listeners for live updates
+        document.querySelectorAll('input, select').forEach(element => {
+            element.addEventListener('input', updatePreview);
+            element.addEventListener('change', updatePreview);
+        });
+
+        // Handle Download / Form Submission
+        document.getElementById('btn-generate').addEventListener('click', async () => {
+            const payload = buildPayload();
+            const btn = document.getElementById('btn-generate');
+            const originalText = btn.innerHTML;
+
+            btn.disabled = true;
+            btn.innerHTML = `<span style="display:inline-block; border: 2px solid #fff; border-top: 2px solid transparent; border-radius:50%; width:16px; height:16px; animation: spin 1s linear infinite; margin-right: 8px;"></span> Generating...`;
+
+            try {
+                const response = await fetch('/v1/generate-wizard', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(text || 'Failed to generate Helm chart.');
+                }
+
+                // Trigger file download
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${payload.chartName}.tar.gz`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+
+                showToast();
+
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+
+        // Toast feedback
+        function showToast() {
+            const toast = document.getElementById('toast-message');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // Add spinner CSS dynamically
+        const style = document.createElement('style');
+        style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
+
+        // Run on load
+        init();
+    </script>
+</body>
+</html>

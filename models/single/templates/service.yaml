@@ -1,0 +1,16 @@
+{{- $app := index .Values .Chart.Name | default dict -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+spec:
+  type: {{ $app.service.type }}
+  ports:
+    - port: {{ $app.service.port }}
+      targetPort: {{ $app.service.targetPort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "chart-model-single.selectorLabels" . | nindent 4 }}

@@ -1,0 +1,13 @@
+{{- $app := index .Values .Chart.Name | default dict -}}
+{{- if and $app $app.cm -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-cm
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+data:
+  {{- range $key, $val := $app.cm }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}

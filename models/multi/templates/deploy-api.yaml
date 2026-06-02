@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart-model-multi.fullname" . }}-api
+  labels:
+    {{- include "chart-model-multi.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  {{- if not (kindIs "nil" .Values.api.replicas) }}
+  replicas: {{ .Values.api.replicas }}
+  {{- end }}
+  {{- if .Values.api.strategy }}
+  strategy:
+    {{- toYaml .Values.api.strategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "chart-model-multi.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      annotations:
+        # Deterministic Rollouts: SHA256 checksum annotations to trigger automatic restarts
+        {{- if .Values.global }}
+        checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and .Values.api.cm }}
+        checksum/cm-config: '{{ include (print $.Template.BasePath "/cm-api.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and .Values.api.secret }}
+        checksum/secret: '{{ include (print $.Template.BasePath "/secret-api.yaml") . | sha256sum }}'
+        {{- end }}
+      labels:
+        {{- include "chart-model-multi.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.service.port }}
+              protocol: TCP
+          
+          # Clean Configuration Management: Full Decoupling via envFrom
+          envFrom:
+            {{- if .Values.global }}
+            - configMapRef:
+                name: {{ include "chart-model-multi.fullname" . }}-global
+            {{- end }}
+            {{- if and .Values.api.cm }}
+            - configMapRef:
+                name: {{ include "chart-model-multi.fullname" . }}-api-cm
+            {{- end }}
+            {{- if and .Values.api.secret }}
+            - secretRef:
+                name: {{ include "chart-model-multi.fullname" . }}-api-secrets
+            {{- end }}
+
+          # Tiered "Fail-Fast" Health Probes
+          {{- if and .Values.api.startupProbe .Values.api.startupProbe.tcpSocket }}
+          startupProbe:
+            {{- toYaml .Values.api.startupProbe | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.api.livenessProbe .Values.api.livenessProbe.tcpSocket }}
+          livenessProbe:
+            {{- toYaml .Values.api.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.api.readinessProbe .Values.api.readinessProbe.tcpSocket }}
+          readinessProbe:
+            {{- toYaml .Values.api.readinessProbe | nindent 12 }}
+          {{- end }}
+
+          # Resources (Operational Overlay-Only)
+          {{- if and .Values.api.resources .Values.api.resources.limits }}
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          {{- end }}
+      
+      # Graceful connection draining lifecycle settings
+      {{- if .Values.api.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds }}
+      {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

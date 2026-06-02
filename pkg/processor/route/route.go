@@ -3,12 +3,10 @@ package route
 import (
 	"fmt"
 	"io"
-	"regexp"
 	"strings"
 
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/arttor/helmify/pkg/processor"
-	yamlformat "github.com/arttor/helmify/pkg/yaml"
 	"github.com/iancoleman/strcase"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -38,39 +36,13 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	}
 
 	name := processor.ObjectValueName(appMeta, obj)
-	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
-
-	rawSuffix := "route"
-	if name != appMeta.ChartName() {
-		s := strings.TrimPrefix(name, appMeta.ChartName())
-		s = strings.TrimPrefix(s, "-")
-		s = strings.TrimPrefix(s, "route-")
-		s = strings.TrimPrefix(s, "route")
-		if s != "" {
-			rawSuffix = s
-		}
-	}
-
-	metadataSuffix := "route"
-	if rawSuffix != "route" {
-		metadataSuffix = "route-" + rawSuffix
-	}
-
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(metadataSuffix))
-	if err != nil {
-		return true, nil, err
-	}
-
-	routeKey := "route"
-	if rawSuffix != "route" {
-		routeKey = "route" + strcase.ToCamel(rawSuffix)
+	compName := processor.GetComponent(obj)
+	nameCamel := strcase.ToLowerCamel(compName)
+	if nameCamel == "" {
+		nameCamel = strcase.ToLowerCamel(name)
 	}
 
 	values := helmify.Values{}
-	_, err = values.Add(true, nameCamel, routeKey, "enabled")
-	if err != nil {
-		return true, nil, err
-	}
 
 	// Extract spec
 	spec, ok := obj.Object["spec"].(map[string]interface{})
@@ -78,184 +50,202 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 		return true, nil, fmt.Errorf("unable to read route spec")
 	}
 
-	var rawHost string
+	hostStr := ""
 	if host, hasHost := spec["host"]; hasHost && host != "" {
-		hostStr, ok := host.(string)
-		if ok {
-			rawHost = hostStr
-			hostTpl, err := values.Add(hostStr, nameCamel, routeKey, "host")
-			if err != nil {
-				return true, nil, err
-			}
-			spec["host"] = hostTpl
+		if h, ok := host.(string); ok {
+			hostStr = h
+		}
+	}
+	if hostStr == "" {
+		hostStr = fmt.Sprintf("%s.apps.ocp-hub.i.tj.pa.gov.br", name)
+	}
+
+	// Capture annotations
+	annotationsMap := map[string]interface{}{}
+	if len(obj.GetAnnotations()) != 0 {
+		for k, v := range obj.GetAnnotations() {
+			annotationsMap[k] = v
 		}
 	}
 
-	if toRaw, hasTo := spec["to"]; hasTo {
-		if to, ok := toRaw.(map[string]interface{}); ok {
-			if toName, ok := to["name"].(string); ok && toName != "" {
-				// Typically, it points to a service in the same app.
-				to["name"] = appMeta.TemplatedString(toName)
-			}
-		}
-	}
-
-	if portRaw, hasPort := spec["port"]; hasPort {
-		if port, ok := portRaw.(map[string]interface{}); ok {
-			if targetPort, ok := port["targetPort"]; ok {
-				portTpl, err := values.Add(targetPort, nameCamel, routeKey, "targetPort")
-				if err != nil {
-					return true, nil, err
-				}
-				port["targetPort"] = portTpl
-			}
-		}
-	}
-
-	tlsTplStr := ""
-	var originalHasTls bool
+	// Capture tls
+	var tlsVal interface{}
 	if tlsRaw, hasTls := spec["tls"]; hasTls {
-		originalHasTls = true
-		delete(spec, "tls")
-		err := unstructured.SetNestedField(values, tlsRaw, nameCamel, routeKey, "tls")
-		if err != nil {
-			return true, nil, err
+		tlsVal = tlsRaw
+	} else {
+		tlsVal = map[string]interface{}{
+			"termination":                   "edge",
+			"insecureEdgeTerminationPolicy": "Redirect",
 		}
-		tlsTplStr = fmt.Sprintf("\n  {{- if .Values.%s.%s.tls }}\n  tls:\n    {{- toYaml .Values.%s.%s.tls | nindent 4 }}\n  {{- end }}", nameCamel, routeKey, nameCamel, routeKey)
 	}
 
-	// Output spec
-	specYaml, err := yamlformat.Marshal(map[string]interface{}{"spec": spec}, 0)
+	// 3-Route structure for values.yaml
+	routeValues := map[string]interface{}{
+		"annotations": annotationsMap,
+		"tls":         tlsVal,
+		"path":        "",
+		"default": map[string]interface{}{
+			"enabled": true,
+			"host":    hostStr,
+		},
+		"internal": map[string]interface{}{
+			"enabled": false,
+			"host":    fmt.Sprintf("%s-int.i.tjpa.jus.br", name),
+		},
+		"external": map[string]interface{}{
+			"enabled": false,
+			"host":    fmt.Sprintf("%s.tjpa.jus.br", name),
+		},
+	}
+
+	err := unstructured.SetNestedField(values, routeValues, nameCamel, "route")
 	if err != nil {
 		return true, nil, err
 	}
-	specStr := replaceSingleQuotes(specYaml)
 
-	data := meta + "\n" + specStr + tlsTplStr
-	data = fmt.Sprintf("{{- if .Values.%s.%s.enabled -}}\n%s\n{{- end }}", nameCamel, routeKey, data)
+	// Resolve target service name
+	toServiceName := name
+	if toRaw, hasTo := spec["to"]; hasTo {
+		if to, ok := toRaw.(map[string]interface{}); ok {
+			if toName, ok := to["name"].(string); ok && toName != "" {
+				toServiceName = toName
+			}
+		}
+	}
+	templatedToService := appMeta.TemplatedString(toServiceName)
 
-	// === TJPA SPECIFICATION: Route Extension (.apps.oc* to .tjpa.jus.br) ===
-	var extTemplate helmify.Template
-	if rawHost != "" {
-		if idx := strings.Index(rawHost, ".apps.oc"); idx != -1 {
-			extHost := rawHost[:idx] + ".tjpa.jus.br"
-			routeExtKey := "routeExt"
-				if rawSuffix != "route" {
-					routeExtKey = "routeExt" + strcase.ToCamel(rawSuffix)
-				}
-
-				extValues := helmify.Values{}
-				_, err = extValues.Add(false, nameCamel, routeExtKey, "enabled")
-				if err != nil {
-					return true, nil, err
-				}
-				extHostTpl, err := extValues.Add(extHost, nameCamel, routeExtKey, "host")
-				if err != nil {
-					return true, nil, err
-				}
-
-				extFilename := "route-ext.yaml"
-				if rawSuffix != "route" {
-					extFilename = fmt.Sprintf("route-ext-%s.yaml", rawSuffix)
-				}
-
-				extMetaSuffix := "route-ext"
-				if rawSuffix != "route" {
-					extMetaSuffix = "route-ext-" + rawSuffix
-				}
-
-				// Re-process metadata with route-ext suffix
-				extMeta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(extMetaSuffix))
-				if err != nil {
-					return true, nil, err
-				}
-
-				var annotationsStr string
-				if _, hasAnnotations := obj.Object["metadata"].(map[string]interface{})["annotations"]; hasAnnotations {
-					annotationsStr = fmt.Sprintf("\n  {{- with .Values.%s.%s.annotations }}\n  annotations:\n    {{- toYaml . | nindent 4 }}\n  {{- end }}", nameCamel, routeKey)
-				}
-
-				var tlsStr string
-				if originalHasTls {
-					tlsStr = fmt.Sprintf("\n  {{- if .Values.%s.%s.tls }}\n  tls:\n    {{- toYaml .Values.%s.%s.tls | nindent 4 }}\n  {{- end }}", nameCamel, routeKey, nameCamel, routeKey)
-				}
-
-				extData := fmt.Sprintf(`{{- if .Values.%s.%s.enabled -}}
-%s%s
-spec:
-  host: %s
-  port:
-    targetPort: http
-  to:
-    kind: Service
-    name: {{ include "%s.fullname" . }}-svc%s
-{{- end }}`, nameCamel, routeExtKey, extMeta, annotationsStr, extHostTpl, appMeta.ChartName(), tlsStr)
-
-				extTemplate = &routeExtResult{
-					filename: extFilename,
-					data:     extData,
-					values:   extValues,
+	// Resolve target port
+	targetPortValue := "http"
+	if portRaw, hasPort := spec["port"]; hasPort {
+		if port, ok := portRaw.(map[string]interface{}); ok {
+			if targetPort, ok := port["targetPort"]; ok {
+				if tp, ok := targetPort.(string); ok && tp != "" {
+					targetPortValue = tp
+				} else if tpInt, ok := targetPort.(int64); ok {
+					targetPortValue = fmt.Sprintf("%d", tpInt)
 				}
 			}
 		}
-
-	resultName := ""
-	if rawSuffix != "route" {
-		resultName = rawSuffix
 	}
 
+	// Construct route templates matching models/multi/templates/route-*.yaml style but combined using ---
+	data := fmt.Sprintf(`{{- if and .Values.%[1]s .Values.%[1]s.route -}}
+
+{{- if .Values.%[1]s.route.default.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "%[2]s.fullname" . }}-%[3]s
+  labels:
+    {{- include "%[2]s.labels" . | nindent 4 }}
+    app.kubernetes.io/component: %[3]s
+  {{- with .Values.%[1]s.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.%[1]s.route.default.host }}
+  host: {{ .Values.%[1]s.route.default.host | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.path }}
+  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.tls }}
+  tls:
+    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: %[4]s
+    weight: 100
+  port:
+    targetPort: %[5]s
+  wildcardPolicy: None
+---
+{{- end }}
+
+{{- if .Values.%[1]s.route.internal.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "%[2]s.fullname" . }}-%[3]s-int
+  labels:
+    {{- include "%[2]s.labels" . | nindent 4 }}
+    app.kubernetes.io/component: %[3]s
+  {{- with .Values.%[1]s.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.%[1]s.route.internal.host }}
+  host: {{ .Values.%[1]s.route.internal.host | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.path }}
+  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.tls }}
+  tls:
+    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: %[4]s
+    weight: 100
+  port:
+    targetPort: %[5]s
+  wildcardPolicy: None
+---
+{{- end }}
+
+{{- if .Values.%[1]s.route.external.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "%[2]s.fullname" . }}-%[3]s-ext
+  labels:
+    {{- include "%[2]s.labels" . | nindent 4 }}
+    app.kubernetes.io/component: %[3]s
+  {{- with .Values.%[1]s.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.%[1]s.route.external.host }}
+  host: {{ .Values.%[1]s.route.external.host | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.path }}
+  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.tls }}
+  tls:
+    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: %[4]s
+    weight: 100
+  port:
+    targetPort: %[5]s
+  wildcardPolicy: None
+{{- end }}
+
+{{- end }}`, nameCamel, appMeta.ChartName(), name, templatedToService, targetPortValue)
+
 	return true, &routeResult{
-		name:   resultName,
+		name:   name,
 		data:   data,
 		values: values,
-		ext:    extTemplate,
 	}, nil
-}
-
-func replaceSingleQuotes(s string) string {
-	re := regexp.MustCompile(`'({{((.*|.*\n.*))}}.*)'`)
-	return re.ReplaceAllString(s, "${1}")
-}
-
-// === TJPA SPECIFICATION: Route Extension (.apps.oc* to .tjpa.jus.br) ===
-type routeExtResult struct {
-	filename string
-	data     string
-	values   helmify.Values
-}
-
-func (r *routeExtResult) Filename() string {
-	return r.filename
-}
-
-func (r *routeExtResult) Values() helmify.Values {
-	return r.values
-}
-
-func (r *routeExtResult) Write(writer io.Writer) error {
-	_, err := writer.Write([]byte(r.data))
-	return err
 }
 
 type routeResult struct {
 	name   string
 	data   string
 	values helmify.Values
-	ext    helmify.Template
-}
-
-func (r *routeResult) Templates() []helmify.Template {
-	if r.ext != nil {
-		return []helmify.Template{r, r.ext}
-	}
-	return []helmify.Template{r}
 }
 
 func (r *routeResult) Filename() string {
-	if r.name == "chart" || r.name == "" {
-		return "route.yaml"
-	}
-	return fmt.Sprintf("route-%s.yaml", r.name)
+	return fmt.Sprintf("%s-route.yaml", r.name)
 }
 
 func (r *routeResult) Values() helmify.Values {
@@ -266,3 +256,6 @@ func (r *routeResult) Write(writer io.Writer) error {
 	_, err := writer.Write([]byte(r.data))
 	return err
 }
+
+// Ensure Template interface is satisfied
+var _ helmify.Template = (*routeResult)(nil)

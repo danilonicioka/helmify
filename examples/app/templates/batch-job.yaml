@@ -5,7 +5,7 @@ metadata:
   labels:
   {{- include "app.labels" . | nindent 4 }}
 spec:
-  backoffLimit: {{ .Values.batchJob.backoffLimit }}
+  backoffLimit: {{ .Values.batch.backoffLimit }}
   template:
     spec:
       containers:
@@ -17,13 +17,13 @@ spec:
         env:
         - name: KUBERNETES_CLUSTER_DOMAIN
           value: {{ quote .Values.kubernetesClusterDomain }}
-        image: {{ .Values.batchJob.pi.image.repository }}:{{ .Values.batchJob.pi.image.tag
+        image: {{ .Values.batch.pi.image.repository }}:{{ .Values.batch.pi.image.tag
           | default .Chart.AppVersion }}
         name: pi
         resources: {}
-      nodeSelector: {{- toYaml .Values.batchJob.nodeSelector | nindent 8 }}
+      nodeSelector: {{- toYaml .Values.batch.nodeSelector | nindent 8 }}
       restartPolicy: Never
       serviceAccountName: {{ include "app.serviceAccountName" . }}
-      tolerations: {{- toYaml .Values.batchJob.tolerations | nindent 8 }}
-      topologySpreadConstraints: {{- toYaml .Values.batchJob.topologySpreadConstraints
+      tolerations: {{- toYaml .Values.batch.tolerations | nindent 8 }}
+      topologySpreadConstraints: {{- toYaml .Values.batch.topologySpreadConstraints
         | nindent 8 }}
