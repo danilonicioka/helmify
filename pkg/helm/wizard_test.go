@@ -15,7 +15,7 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 		},
 		Deployments: map[string]DeploymentParams{
 			"test-single-app": {
-				Replicas: 3,
+				Replicas: intPtr(3),
 				Image: ImageParams{
 					Repository: "quay.io/tjpa/my-app",
 					Tag:        "v2.1.0",
@@ -76,7 +76,7 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 		Type:      "multi",
 		Deployments: map[string]DeploymentParams{
 			"api": {
-				Replicas: 2,
+				Replicas: intPtr(2),
 				Image: ImageParams{
 					Repository: "quay.io/tjpa/api-app",
 					Tag:        "v1.0.0",
@@ -92,7 +92,7 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 				},
 			},
 			"bff": {
-				Replicas: 1,
+				Replicas: intPtr(1),
 				Image: ImageParams{
 					Repository: "quay.io/tjpa/bff-app",
 					Tag:        "v1.1.0",
@@ -153,5 +153,32 @@ func TestGetModelDefaults(t *testing.T) {
 		_, err := GetModelDefaults("invalid")
 		assert.Error(t, err)
 	})
+}
+
+func intPtr(val int) *int {
+	return &val
+}
+
+func TestGenerateWizardChart_ZeroReplicas(t *testing.T) {
+	params := WizardParams{
+		ChartName: "test-zero-replicas",
+		Type:      "single",
+		Deployments: map[string]DeploymentParams{
+			"test-zero-replicas": {
+				Replicas: intPtr(0),
+				Image: ImageParams{
+					Repository: "quay.io/tjpa/my-app",
+				},
+			},
+		},
+	}
+
+	files, err := GenerateWizardChart(params)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, files)
+
+	valuesBytes, ok := files["values.yaml"]
+	assert.True(t, ok)
+	assert.Contains(t, string(valuesBytes), "replicas: 0")
 }
 
