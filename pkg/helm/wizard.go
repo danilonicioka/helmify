@@ -74,7 +74,7 @@ type WizardParams struct {
 
 // DeploymentParams represents configuration for a component deployment.
 type DeploymentParams struct {
-	Replicas int               `json:"replicas"`
+	Replicas *int              `json:"replicas"`
 	Image    ImageParams       `json:"image"`
 	Service  ServiceParams     `json:"service"`
 	Cm       map[string]string `json:"cm"`
@@ -195,8 +195,8 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 		// Set overrides
 		appKey := params.ChartName
-		if depConfig.Replicas > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, depConfig.Replicas)
+		if depConfig.Replicas != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, *depConfig.Replicas)
 		}
 		if depConfig.Image.Repository != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "image", "repository"}, depConfig.Image.Repository)
@@ -240,7 +240,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if err := enc.Encode(&rootNode); err != nil {
 			return nil, fmt.Errorf("failed to encode values.yaml: %w", err)
 		}
-		outputFiles["values.yaml"] = buf.Bytes()
+		valuesStr := buf.String()
+		valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
+		outputFiles["values.yaml"] = []byte(valuesStr)
 
 	} else {
 		// Multi deployment supports api, web, and custom components dynamically
@@ -339,8 +341,8 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 
 			// Apply overrides to compName in values.yaml
-			if depConfig.Replicas > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "replicas"}, depConfig.Replicas)
+			if depConfig.Replicas != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "replicas"}, *depConfig.Replicas)
 			}
 			if depConfig.Image.Repository != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "image", "repository"}, depConfig.Image.Repository)
@@ -395,7 +397,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 }
 
 func replaceChartName(content string, oldChartName, newChartName string) string {
-	return strings.ReplaceAll(content, oldChartName, newChartName)
+	res := strings.ReplaceAll(content, oldChartName, newChartName)
+	res = strings.ReplaceAll(res, "chart-model-single", newChartName)
+	res = strings.ReplaceAll(res, "chart-model-multi", newChartName)
+	res = strings.ReplaceAll(res, "chart-model", newChartName)
+	return res
 }
 
 func replaceComponent(content string, oldComp, newComp string) string {

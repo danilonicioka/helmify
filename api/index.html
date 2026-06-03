@@ -554,10 +554,10 @@
                 <!-- Dynamically populated -->
             </div>
 
-            <!-- Components Config -->
+            <!-- Deployments Config -->
             <div class="components-header">
-                <div class="section-subtitle" style="margin: 0;">Components Config</div>
-                <button type="button" class="add-comp-btn" id="btn-add-comp" style="display: none;">+ Add Component</button>
+                <div class="section-subtitle" style="margin: 0;">Deployments Config</div>
+                <button type="button" class="add-comp-btn" id="btn-add-comp" style="display: none;">+ Add Deployment</button>
             </div>
 
             <div class="components-tabs" id="components-tabs">
@@ -569,7 +569,7 @@
                 <div class="form-group row">
                     <div>
                         <label for="compReplicas">Replicas</label>
-                        <input type="number" id="compReplicas" value="2" min="1">
+                        <input type="number" id="compReplicas" value="2" min="0">
                     </div>
                     <div>
                         <label for="compPort">Service Port</label>
@@ -643,14 +643,14 @@
 
                 <!-- ConfigMap variables -->
                 <div class="section-subtitle">
-                    <span>Component ConfigMap (Env Vars)</span>
+                    <span>Deployment ConfigMap (Env Vars)</span>
                     <button type="button" class="btn-add-item" onclick="addComponentCm()">+ Add Config</button>
                 </div>
                 <div id="comp-cm-list"></div>
 
                 <!-- Secret variables -->
                 <div class="section-subtitle">
-                    <span>Component Secrets</span>
+                    <span>Deployment Secrets</span>
                     <button type="button" class="btn-add-item" onclick="addComponentSecret()">+ Add Secret</button>
                 </div>
                 <div id="comp-secret-list"></div>
@@ -758,7 +758,7 @@
 
         function parseComponentConfig(compData) {
             return {
-                replicas: compData.replicas || 1,
+                replicas: compData.replicas !== undefined ? compData.replicas : 1,
                 image: {
                     repository: (compData.image && compData.image.repository) || '',
                     tag: (compData.image && compData.image.tag) || ''
@@ -894,7 +894,7 @@
                 return;
             }
             if (components[cleanName]) {
-                alert("Component already exists.");
+                alert("Deployment already exists.");
                 return;
             }
 
@@ -911,7 +911,8 @@
             if (!activeComponent || !components[activeComponent]) return;
 
             const config = components[activeComponent];
-            config.replicas = parseInt(document.getElementById('compReplicas').value, 10) || 1;
+            const repVal = parseInt(document.getElementById('compReplicas').value, 10);
+            config.replicas = isNaN(repVal) ? 1 : repVal;
             config.service.port = parseInt(document.getElementById('compPort').value, 10) || 8080;
             config.image.repository = document.getElementById('compRepo').value;
             config.image.tag = document.getElementById('compTag').value;
