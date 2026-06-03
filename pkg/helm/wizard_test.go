@@ -130,3 +130,28 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 	_, ok = files["templates/deploy-web.yaml"]
 	assert.False(t, ok) // web templates should be deleted
 }
+
+func TestGetModelDefaults(t *testing.T) {
+	t.Run("single defaults", func(t *testing.T) {
+		defaults, err := GetModelDefaults("single")
+		assert.NoError(t, err)
+		assert.NotNil(t, defaults)
+		assert.Contains(t, defaults, "global")
+		assert.Contains(t, defaults, "chart-model-single")
+	})
+
+	t.Run("multi defaults", func(t *testing.T) {
+		defaults, err := GetModelDefaults("multi")
+		assert.NoError(t, err)
+		assert.NotNil(t, defaults)
+		assert.Contains(t, defaults, "global")
+		assert.Contains(t, defaults, "api")
+		assert.Contains(t, defaults, "web")
+	})
+
+	t.Run("invalid type", func(t *testing.T) {
+		_, err := GetModelDefaults("invalid")
+		assert.Error(t, err)
+	})
+}
+
