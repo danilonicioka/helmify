@@ -152,6 +152,13 @@ export default function HelmifyUI() {
 
           <div className="flex items-center gap-4">
              <a 
+                href="/" 
+                className="text-xs font-semibold text-slate-300 hover:text-white px-3 py-1.5 hover:bg-slate-800 rounded-lg transition-all flex items-center gap-1.5 border border-slate-800"
+             >
+                <CheckCircle2 size={14} />
+                <span>Portal Home</span>
+             </a>
+             <a 
                 href="/wizard" 
                 className="text-xs font-semibold text-slate-300 hover:text-white px-3 py-1.5 hover:bg-slate-800 rounded-lg transition-all flex items-center gap-1.5 border border-slate-800"
              >

@@ -31,21 +31,18 @@ api:
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-api
     pullPolicy: IfNotPresent
     # -- Defaults to Chart.appVersion if not specified.
-    tag: ""
+    tag: "latest"
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION (Variables & Credentials)
   # ----------------------------------------------------------------------------
   # ConfigMaps unique to this service container.
   cm:
-    SPRING_PROFILES_ACTIVE: "prd"
-    JAVA_OPTS: "-XX:+UseG1GC -XX:+UseStringDeduplication"
-    DB_POOL_MIN_SIZE: "2"
-    DB_POOL_MAX_SIZE: "10"
+    DB_USER: "example"
 
   # Sensitive variables unique to this service container (Secrets).
   secret:
-    DB_PASSWORD: "vault-decrypted-secret-key-goes-here"
+    DB_PASSWORD: "pass"
 
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
@@ -60,12 +57,12 @@ api:
       insecureEdgeTerminationPolicy: Redirect
 
     # -- Shared path for routes.
-    path: ""
+    path: "/api"
 
     # -- Internal Route with self-signed certificate (to default OCP apps).
     default:
       enabled: true
-      host: chart-model-api.apps.ocp-hub.i.tj.pa.gov.br
+      host: chart-model-api.apps.ocp-dev.i.tj.pa.gov.br
 
     # -- Internal Route with valid certificate (to intranet TJPA).
     internal:
@@ -147,7 +144,7 @@ web:
   image:
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-web
     pullPolicy: IfNotPresent
-    tag: ""
+    tag: "latest"
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION
@@ -166,10 +163,10 @@ web:
     tls:
       termination: edge
       insecureEdgeTerminationPolicy: Redirect
-    path: ""
+    path: "/"
     default:
       enabled: true
-      host: chart-model-web.apps.ocp-hub.i.tj.pa.gov.br
+      host: chart-model-web.apps.ocp-dev.i.tj.pa.gov.br
     internal:
       enabled: false
       host: chart-model-web-int.i.tjpa.jus.br

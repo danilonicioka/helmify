@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TJPA Helmify Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: hsl(230, 25%, 8%);
+            --bg-surface: hsl(225, 20%, 12%);
+            --bg-card: hsl(225, 20%, 15%);
+            --border-color: hsl(225, 15%, 22%);
+            --text-primary: hsl(220, 30%, 96%);
+            --text-secondary: hsl(220, 15%, 70%);
+            --text-muted: hsl(220, 10%, 45%);
+            --accent-blue: hsl(210, 85%, 60%);
+            --accent-purple: hsl(260, 85%, 65%);
+            --accent-glow: hsla(260, 85%, 65%, 0.15);
+            --font-family-sans: 'Inter', sans-serif;
+            --font-family-title: 'Outfit', sans-serif;
+            --radius-lg: 20px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --transition-smooth: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-family-sans);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            justify-content: space-between;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Ambient Glow Backdrop */
+        .ambient-glow {
+            position: fixed;
+            top: -300px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1000px;
+            height: 800px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 65%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        header {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 3rem 2rem 2rem 2rem;
+            text-align: center;
+        }
+
+        header h1 {
+            font-family: var(--font-family-title);
+            font-size: 2.8rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent-blue) 70%, var(--accent-purple) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -1px;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+            font-weight: 300;
+        }
+
+        /* Portal Container */
+        .portal-container {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 1rem 2rem 4rem 2rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+            flex-grow: 1;
+            align-content: center;
+        }
+
+        @media (max-width: 768px) {
+            .portal-container {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            header h1 {
+                font-size: 2.2rem;
+            }
+        }
+
+        /* Glassmorphism Portal Cards */
+        .portal-card {
+            background: rgba(30, 30, 40, 0.45);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 3rem 2.5rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .portal-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03) 0%, transparent 100%);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .portal-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 48px 0 rgba(0, 0, 0, 0.4);
+        }
+
+        .portal-card.wizard:hover {
+            border-color: hsla(260, 85%, 65%, 0.35);
+            box-shadow: 0 20px 48px 0 hsla(260, 85%, 65%, 0.08);
+        }
+
+        .portal-card.converter:hover {
+            border-color: hsla(210, 85%, 60%, 0.35);
+            box-shadow: 0 20px 48px 0 hsla(210, 85%, 60%, 0.08);
+        }
+
+        /* Card Icon */
+        .card-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+            color: var(--text-primary);
+        }
+
+        .wizard .card-icon {
+            background: linear-gradient(135deg, var(--accent-purple) 0%, hsl(280, 85%, 60%) 100%);
+            box-shadow: 0 8px 24px rgba(120, 80, 255, 0.25);
+        }
+
+        .converter .card-icon {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, hsl(230, 85%, 60%) 100%);
+            box-shadow: 0 8px 24px rgba(30, 144, 255, 0.25);
+        }
+
+        /* Card Text Content */
+        .card-body h2 {
+            font-family: var(--font-family-title);
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.5px;
+        }
+
+        .card-body .subtitle {
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1.25rem;
+            display: block;
+        }
+
+        .wizard .subtitle {
+            color: var(--accent-purple);
+        }
+
+        .converter .subtitle {
+            color: var(--accent-blue);
+        }
+
+        .card-body p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 2.5rem;
+            font-weight: 300;
+        }
+
+        /* Navigation Buttons */
+        .card-btn {
+            text-decoration: none;
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius-md);
+            font-family: var(--font-family-title);
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: var(--transition-smooth);
+            z-index: 2;
+        }
+
+        .wizard .card-btn {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .wizard:hover .card-btn {
+            background: linear-gradient(135deg, var(--accent-purple) 0%, hsl(280, 85%, 60%) 100%);
+            border-color: transparent;
+            box-shadow: 0 8px 24px rgba(120, 80, 255, 0.3);
+        }
+
+        .converter .card-btn {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .converter:hover .card-btn {
+            background: linear-gradient(135deg, var(--accent-blue) 0%, hsl(230, 85%, 60%) 100%);
+            border-color: transparent;
+            box-shadow: 0 8px 24px rgba(30, 144, 255, 0.3);
+        }
+
+        /* Footer */
+        footer {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 2rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .footer-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: hsl(150, 75%, 45%);
+            box-shadow: 0 0 8px hsl(150, 75%, 45%);
+        }
+    </style>
+</head>
+<body>
+    <div class="ambient-glow"></div>
+
+    <header>
+        <h1>TJPA Helmify Engine</h1>
+        <p>Scaffold and translate Tribunal de Justiça do Pará Helm charts using production-grade standards</p>
+    </header>
+
+    <main class="portal-container">
+        <!-- Wizard Card -->
+        <section class="portal-card wizard">
+            <div>
+                <div class="card-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                </div>
+                <div class="card-body">
+                    <h2>Helm Chart Wizard</h2>
+                    <span class="subtitle">Zero-Manifest Scaffold</span>
+                    <p>Scaffold Helm charts dynamically by declaring parameters inside a clean form UI. Generates routes, ConfigMaps, and secrets in-place, aligned with TJPA standard templates.</p>
+                </div>
+            </div>
+            <a href="/wizard" class="card-btn">
+                <span>Go to Wizard</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </a>
+        </section>
+
+        <!-- Converter Card -->
+        <section class="portal-card converter">
+            <div>
+                <div class="card-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h1"></path><path d="M18 8h4a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3"></path><path d="M8 8h10V3a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v5z"></path></svg>
+                </div>
+                <div class="card-body">
+                    <h2>Manifest Converter</h2>
+                    <span class="subtitle">Manifest-to-Chart Engine</span>
+                    <p>Import existing Kubernetes or OpenShift YAML manifests and translate them live into templates. Automatically extracts variables into values.yaml with support for custom routes.</p>
+                </div>
+            </div>
+            <a href="/converter/" class="card-btn">
+                <span>Go to Converter</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+            </a>
+        </section>
+    </main>
+
+    <footer>
+        <div>© 2026 Tribunal de Justiça do Pará — DevOps Team</div>
+        <div class="footer-status">
+            <div class="status-dot"></div>
+            <span>TJPA Services Online</span>
+        </div>
+    </footer>
+</body>
+</html>
