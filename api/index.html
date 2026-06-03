@@ -534,7 +534,7 @@
             <div class="form-group row">
                 <div>
                     <label for="chartName">Chart Name</label>
-                    <input type="text" id="chartName" value="portal-certidao" placeholder="e.g. portal-certidao">
+                    <input type="text" id="chartName" value="" placeholder="e.g. portal-certidao">
                 </div>
                 <div>
                     <label>Deployment Type</label>
@@ -682,6 +682,7 @@
         let globalConfig = {
             'TZ': 'America/Belem'
         };
+        let chartNameManuallyEdited = false;
 
         // Components dictionary
         let components = {};
@@ -711,11 +712,21 @@
                     }
                 });
 
+                let oldKey = 'chart-model-single';
+                if (chartType === 'multi') {
+                    oldKey = 'chart-model-multi';
+                } else if (compKeys.length > 0) {
+                    oldKey = compKeys[0];
+                }
+
+                if (!chartNameManuallyEdited) {
+                    document.getElementById('chartName').value = oldKey;
+                }
+
                 if (chartType === 'single') {
                     // In single chart, the component key is chart-model-single.
                     // If user modified chartName, let's rename the component key to the current chartName.
-                    const currentName = document.getElementById('chartName').value.trim() || 'portal-certidao';
-                    const oldKey = compKeys[0] || 'chart-model-single';
+                    const currentName = document.getElementById('chartName').value.trim() || oldKey;
                     components[currentName] = components[oldKey] || createDefaultComponentConfig(currentName, 'app');
                     if (oldKey !== currentName) {
                         delete components[oldKey];
@@ -741,12 +752,18 @@
 
         function fallbackInit() {
             if (chartType === 'single') {
-                const name = document.getElementById('chartName').value || 'chart-model-single';
+                const name = chartNameManuallyEdited ? (document.getElementById('chartName').value || 'chart-model-single') : 'chart-model-single';
+                if (!chartNameManuallyEdited) {
+                    document.getElementById('chartName').value = name;
+                }
                 components = {};
                 components[name] = createDefaultComponentConfig(name, 'app');
                 activeComponent = name;
                 document.getElementById('btn-add-comp').style.display = 'none';
             } else {
+                if (!chartNameManuallyEdited) {
+                    document.getElementById('chartName').value = 'chart-model-multi';
+                }
                 components = {
                     'api': createDefaultComponentConfig('api', 'api'),
                     'web': createDefaultComponentConfig('web', 'web')
@@ -830,6 +847,7 @@
 
         // Watch chart name changes for single deployment key renaming
         document.getElementById('chartName').addEventListener('input', (e) => {
+            chartNameManuallyEdited = true;
             const newName = e.target.value.trim() || 'chart';
             if (chartType === 'single') {
                 const oldName = Object.keys(components)[0];
