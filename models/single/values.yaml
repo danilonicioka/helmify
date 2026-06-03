@@ -26,28 +26,25 @@ chart-model-single:
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
   # ----------------------------------------------------------------------------
   # -- Number of replica pods.
-  replicas: 2
+  replicas: 0
 
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-app
     pullPolicy: IfNotPresent
     # -- Defaults to Chart.appVersion if not specified.
-    tag: ""
+    tag: "latest"
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION (Variables & Credentials)
   # ----------------------------------------------------------------------------
   # ConfigMaps unique to this service container.
   cm:
-    SPRING_PROFILES_ACTIVE: "prd"
-    JAVA_OPTS: "-XX:+UseG1GC -XX:+UseStringDeduplication"
-    DB_POOL_MIN_SIZE: "2"
-    DB_POOL_MAX_SIZE: "10"
+    DB_USER: "example"
 
   # Sensitive variables unique to this service container (Secrets).
   secret:
-    DB_PASSWORD: "vault-decrypted-secret-key-goes-here"
+    DB_PASSWORD: "pass"
 
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
@@ -62,12 +59,12 @@ chart-model-single:
       insecureEdgeTerminationPolicy: Redirect
 
     # -- Shared path for routes.
-    path: ""
+    path: "/"
 
     # -- Internal Route with self-signed certificate (to default OCP apps).
     default:
       enabled: true
-      host: chart-model-single.apps.ocp-hub.i.tj.pa.gov.br
+      host: chart-model-single.apps.ocp-dev.i.tj.pa.gov.br
 
     # -- Internal Route with valid certificate (to intranet TJPA).
     internal:

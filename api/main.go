@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"compress/gzip"
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -37,6 +38,9 @@ func init() {
 	logrus.SetLevel(level)
 }
 
+//go:embed home.html
+var homeHTML []byte
+
 func main() {
 	port := os.Getenv("HELMIFY_PORT")
 	if port == "" {
@@ -64,8 +68,10 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
-	// Serve the UI for all other paths
-	mux.Handle("/", getUIHandler())
+	// Serve Next.js UI assets on /converter/
+	mux.Handle("/converter/", http.StripPrefix("/converter", getUIHandler()))
+	// Serve the portal homepage or other assets on /
+	mux.HandleFunc("/", handleHomeOrAssets)
 
 	server := &http.Server{
 		Addr:    ":" + port,
@@ -235,4 +241,13 @@ func parseConfig(r *http.Request) config.Config {
 		conf.CertManagerVersion = "v1.11.0"
 	}
 	return conf
+}
+
+func handleHomeOrAssets(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(homeHTML)
+		return
+	}
+	getUIHandler().ServeHTTP(w, r)
 }
