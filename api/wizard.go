@@ -42,3 +42,28 @@ func handleGenerateWizard(w http.ResponseWriter, r *http.Request) {
 		logrus.WithError(err).Error("Failed to write tar.gz stream")
 	}
 }
+
+func handleDefaults(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	chartType := r.URL.Query().Get("type")
+	if chartType == "" {
+		chartType = "single"
+	}
+
+	defaults, err := helm.GetModelDefaults(chartType)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to retrieve defaults")
+		sendError(w, fmt.Sprintf("Failed to retrieve defaults: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(defaults); err != nil {
+		logrus.WithError(err).Error("Failed to encode defaults to JSON")
+	}
+}
+

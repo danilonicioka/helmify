@@ -686,7 +686,56 @@
         let activeComponent = '';
 
         // Initialize state
-        function init() {
+        async function init() {
+            try {
+                const response = await fetch(`/v1/defaults?type=${chartType}`);
+                if (!response.ok) {
+                    throw new Error("Failed to fetch defaults");
+                }
+                const defaults = await response.json();
+
+                // Extract global configuration
+                globalConfig = defaults.global || { 'TZ': 'America/Belem' };
+
+                // Extract components
+                components = {};
+                let compKeys = [];
+                Object.entries(defaults).forEach(([key, val]) => {
+                    if (val && typeof val === 'object' && val.image && val.service) {
+                        components[key] = parseComponentConfig(val);
+                        compKeys.push(key);
+                    }
+                });
+
+                if (chartType === 'single') {
+                    // In single chart, the component key is chart-model-single.
+                    // If user modified chartName, let's rename the component key to the current chartName.
+                    const currentName = document.getElementById('chartName').value.trim() || 'portal-certidao';
+                    const oldKey = compKeys[0] || 'chart-model-single';
+                    components[currentName] = components[oldKey] || createDefaultComponentConfig(currentName, 'app');
+                    if (oldKey !== currentName) {
+                        delete components[oldKey];
+                    }
+                    activeComponent = currentName;
+                    document.getElementById('btn-add-comp').style.display = 'none';
+                } else {
+                    // For multi, let's set active component to the first component found
+                    activeComponent = compKeys.includes('api') ? 'api' : (compKeys[0] || 'api');
+                    document.getElementById('btn-add-comp').style.display = 'block';
+                }
+
+            } catch (err) {
+                console.error("Error loading defaults:", err);
+                fallbackInit();
+            }
+
+            renderGlobalConfigList();
+            renderTabs();
+            renderActiveComponent();
+            updatePreview();
+        }
+
+        function fallbackInit() {
             if (chartType === 'single') {
                 const name = document.getElementById('chartName').value || 'chart-model-single';
                 components = {};
@@ -701,11 +750,36 @@
                 activeComponent = 'api';
                 document.getElementById('btn-add-comp').style.display = 'block';
             }
+        }
 
-            renderGlobalConfigList();
-            renderTabs();
-            renderActiveComponent();
-            updatePreview();
+        function parseComponentConfig(compData) {
+            return {
+                replicas: compData.replicas || 1,
+                image: {
+                    repository: (compData.image && compData.image.repository) || '',
+                    tag: (compData.image && compData.image.tag) || ''
+                },
+                service: {
+                    port: (compData.service && compData.service.port) || 8080
+                },
+                cm: compData.cm || {},
+                secret: compData.secret || {},
+                route: {
+                    path: (compData.route && compData.route.path) || '',
+                    default: {
+                        enabled: !!(compData.route && compData.route.default && compData.route.default.enabled),
+                        host: (compData.route && compData.route.default && compData.route.default.host) || ''
+                    },
+                    internal: {
+                        enabled: !!(compData.route && compData.route.internal && compData.route.internal.enabled),
+                        host: (compData.route && compData.route.internal && compData.route.internal.host) || ''
+                    },
+                    external: {
+                        enabled: !!(compData.route && compData.route.external && compData.route.external.enabled),
+                        host: (compData.route && compData.route.external && compData.route.external.host) || ''
+                    }
+                }
+            };
         }
 
         function createDefaultComponentConfig(name, type) {

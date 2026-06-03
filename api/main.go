@@ -49,6 +49,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/generate", handleGenerate)
 	mux.HandleFunc("/v1/generate-wizard", handleGenerateWizard)
+	mux.HandleFunc("/v1/defaults", handleDefaults)
 	mux.HandleFunc("/v1/preview", handlePreview)
 	mux.HandleFunc("/v1/download", handleDownload)
 	mux.HandleFunc("/wizard", func(w http.ResponseWriter, r *http.Request) {

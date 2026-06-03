@@ -38,6 +38,31 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 	return nil
 }
 
+// GetModelDefaults returns the parsed values.yaml structure for a given chart type.
+func GetModelDefaults(chartType string) (map[string]interface{}, error) {
+	if chartType != "single" && chartType != "multi" {
+		return nil, fmt.Errorf("invalid chart type: %s", chartType)
+	}
+
+	basePath := "models/single"
+	if chartType == "multi" {
+		basePath = "models/multi"
+	}
+
+	data, err := helmify.ModelsFS.ReadFile(filepath.Join(basePath, "values.yaml"))
+	if err != nil {
+		return nil, err
+	}
+
+	var m map[string]interface{}
+	if err := yaml.Unmarshal(data, &m); err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+
 
 // WizardParams defines the JSON request payload for the Chart Generator Wizard.
 type WizardParams struct {
