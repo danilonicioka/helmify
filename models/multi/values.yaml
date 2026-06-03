@@ -24,7 +24,7 @@ api:
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
   # ----------------------------------------------------------------------------
   # -- Number of replica pods.
-  replicas: 2
+  replicas: 0
 
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
@@ -139,7 +139,7 @@ web:
   # ----------------------------------------------------------------------------
   # 1. CORE WORKLOAD SETTINGS
   # ----------------------------------------------------------------------------
-  replicas: 1
+  replicas: 0
 
   image:
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-web
