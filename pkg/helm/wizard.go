@@ -119,10 +119,8 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	}
 
 	basePath := "models/single"
-	oldChartName := "chart-model-single"
 	if params.Type == "multi" {
 		basePath = "models/multi"
-		oldChartName = "chart-model-multi"
 	}
 
 	// 1. Walk the embedded directory and read all files
@@ -147,6 +145,17 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to read embedded templates: %w", err)
+	}
+
+	oldChartName := ""
+	if chartYaml, ok := embeddedFiles["Chart.yaml"]; ok {
+		oldChartName = getChartNameFromMetadata(chartYaml)
+	}
+	if oldChartName == "" {
+		oldChartName = "chart-model-single"
+		if params.Type == "multi" {
+			oldChartName = "chart-model-multi"
+		}
 	}
 
 	// 2. Setup the output map and filters
@@ -540,4 +549,14 @@ func setYamlPath(node *yaml.Node, path []string, val interface{}) error {
 	}
 	node.Content = append(node.Content, keyNode, newMap)
 	return setYamlPath(newMap, path[1:], val)
+}
+
+func getChartNameFromMetadata(chartYaml []byte) string {
+	var meta struct {
+		Name string `yaml:"name"`
+	}
+	if err := yaml.Unmarshal(chartYaml, &meta); err == nil && meta.Name != "" {
+		return meta.Name
+	}
+	return ""
 }
