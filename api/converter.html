@@ -655,6 +655,12 @@
                     <input type="text" id="chartName" value="my-chart" placeholder="e.g. portal-certidao">
                 </div>
 
+                <!-- Developer Source Repository URL -->
+                <div class="form-group">
+                    <label for="devRepoUrl">Developer Source Repository URL (Argo CD GitOps)</label>
+                    <input type="text" id="devRepoUrl" value="" placeholder="e.g. http://gitlab-dev.i.tj.pa.gov.br/squad-seguranca/my-app.git">
+                </div>
+
                 <div class="section-subtitle">Generation Options</div>
 
                 <!-- Option 1: CRD Folder -->
@@ -842,7 +848,8 @@ spec:
                 'X-Crd': document.getElementById('optCrd').checked ? 'true' : 'false',
                 'X-Cert-Manager-Subchart': document.getElementById('optCertManager').checked ? 'true' : 'false',
                 'X-Add-Webhook-Option': document.getElementById('optWebhook').checked ? 'true' : 'false',
-                'X-Optional-Crds': document.getElementById('optOptionalCrds').checked ? 'true' : 'false'
+                'X-Optional-Crds': document.getElementById('optOptionalCrds').checked ? 'true' : 'false',
+                'X-Dev-Repo-Url': document.getElementById('devRepoUrl').value.trim()
             };
 
             try {
@@ -1070,6 +1077,7 @@ spec:
         document.getElementById('optWebhook').addEventListener('change', debouncedUpdatePreview);
         document.getElementById('optOptionalCrds').addEventListener('change', debouncedUpdatePreview);
         document.getElementById('chartName').addEventListener('input', debouncedUpdatePreview);
+        document.getElementById('devRepoUrl').addEventListener('input', debouncedUpdatePreview);
 
         // Handle Download / Form Submission
         document.getElementById('btn-download').addEventListener('click', async () => {

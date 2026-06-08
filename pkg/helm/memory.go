@@ -11,13 +11,15 @@ import (
 
 	"github.com/arttor/helmify/pkg/cluster"
 	"github.com/arttor/helmify/pkg/helmify"
-	"github.com/iancoleman/strcase"
+	"github.com/arttor/helmify/pkg/processor"
+	"gopkg.in/yaml.v3"
 )
 
 // MemoryOutput captures the generated Helm chart in memory.
 // It implements the helmify.Output interface.
 type MemoryOutput struct {
-	Files map[string][]byte
+	Files      map[string][]byte
+	DevRepoURL string
 }
 
 // NewMemoryOutput creates a new MemoryOutput.
@@ -29,12 +31,21 @@ func NewMemoryOutput() *MemoryOutput {
 
 func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerAsSubchart bool, certManagerVersion string, certManagerInstallCRD bool, templates []helmify.Template, filenames []string) error {
 	m.Files["Chart.yaml"] = chartYAML(chartName, certManagerAsSubchart, certManagerVersion)
+	if m.DevRepoURL != "" {
+		var chartNode yaml.Node
+		if err := yaml.Unmarshal(m.Files["Chart.yaml"], &chartNode); err == nil {
+			_ = setYamlPath(&chartNode, []string{"annotations", "tjpa.jus.br/dev-source-repo"}, m.DevRepoURL)
+			var buf bytes.Buffer
+			enc := yaml.NewEncoder(&buf)
+			enc.SetIndent(2)
+			if err := enc.Encode(&chartNode); err == nil {
+				m.Files["Chart.yaml"] = buf.Bytes()
+			}
+		}
+	}
 	m.Files[".helmignore"] = []byte(helmIgnore)
 	m.Files[filepath.Join("templates", "_helpers.tpl")] = helpersYAML(chartName)
 	m.Files[filepath.Join("templates", "cm-global.yaml")] = globalConfigMapYAML(chartName)
-	compName := strcase.ToLowerCamel(chartName)
-	m.Files[filepath.Join("templates", "cm.yaml")] = []byte(fmt.Sprintf(defaultCmTempl, compName, chartName))
-	m.Files[filepath.Join("templates", "secret.yaml")] = []byte(fmt.Sprintf(defaultSecretTempl, compName, chartName))
 
 	// Group templates into files
 	files := map[string][]helmify.Template{}
@@ -78,6 +89,29 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 			buf.Write([]byte("\n"))
 		}
 		m.Files[filepath.Join(subdir, filename)] = buf.Bytes()
+	}
+
+	// Generate component-specific ConfigMaps and Secrets for components that have variables but no templates generated yet
+	for key, val := range values {
+		compMap, ok := val.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		compKebab := processor.NormalizeComponentName(key)
+		if _, hasCm := compMap["cm"]; hasCm {
+			cmFilename := "cm-" + compKebab + ".yaml"
+			if _, exists := files[cmFilename]; !exists {
+				cmContent := fmt.Sprintf(compCmTemplate, key, chartName, compKebab)
+				m.Files[filepath.Join("templates", cmFilename)] = []byte(cmContent)
+			}
+		}
+		if _, hasSecret := compMap["secret"]; hasSecret {
+			secretFilename := "secret-" + compKebab + ".yaml"
+			if _, exists := files[secretFilename]; !exists {
+				secretContent := fmt.Sprintf(compSecretTemplate, key, chartName, compKebab)
+				m.Files[filepath.Join("templates", secretFilename)] = []byte(secretContent)
+			}
+		}
 	}
 
 	// Write values.yaml to memory

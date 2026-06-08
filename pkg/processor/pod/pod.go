@@ -55,10 +55,10 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 			spec.Volumes[i].Name = fmt.Sprintf("[HELMIFY_PVC_VOL:%s:%s]", objName, vol.Name)
 		}
 		if vol.ConfigMap != nil {
-			spec.Volumes[i].ConfigMap.Name = ResolveConfigMapVolumeName(appMeta, vol.ConfigMap.Name)
+			spec.Volumes[i].ConfigMap.Name = ResolveConfigMapVolumeName(appMeta, vol.ConfigMap.Name, objName)
 		}
 		if vol.Secret != nil {
-			spec.Volumes[i].Secret.SecretName = ResolveSecretVolumeName(appMeta, vol.Secret.SecretName)
+			spec.Volumes[i].Secret.SecretName = ResolveSecretVolumeName(appMeta, vol.Secret.SecretName, objName)
 		}
 	}
 
@@ -269,7 +269,8 @@ func processContainers(objName string, values helmify.Values, containerType stri
 		}
 
 		// Inject standardized envFrom block using placeholder
-		err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf("[HELMIFY_ENV_FROM:%s:%d]", objName, nindent), "envFrom")
+		kebabName := processor.NormalizeComponentName(objName)
+		err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf("[HELMIFY_ENV_FROM:%s:%s:%d]", objName, kebabName, nindent), "envFrom")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -525,101 +526,52 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 	// Always add checksum for global configmap
 	annotations["checksum/global-config"] = "[HELMIFY_CHECKSUM_GLOBAL:global-config]"
 
-	// Always add checksum for default configmap and secret of the component
-	if objName != "" && objName != "global" && objName != "chart" {
-		annotations["checksum/config"] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:cm:checksum/config:cm.yaml]", objName)
-		annotations["checksum/secret"] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:secret:checksum/secret:secret.yaml]", objName)
-	}
-
 	for cm := range configMaps {
-		suffix := "cm"
-		nameLower := strings.ToLower(cm)
-		chartNameLower := strings.ToLower(appMeta.ChartName())
-		if strings.HasPrefix(nameLower, chartNameLower) {
-			s := strings.TrimPrefix(nameLower, chartNameLower)
-			s = strings.TrimPrefix(s, "-")
-			if s != "" && s != "cm" && s != "global" && s != "global-cm" && s != "cm-global" {
-				suffix = s
-			}
-		} else {
-			if nameLower != "cm" && nameLower != "configmap" && nameLower != "global" {
-				suffix = nameLower
-			}
+		cmClean := processor.StripKustomizeHash(cm)
+		if strings.Contains(strings.ToLower(cmClean), "global") {
+			continue // Already handled by global-config
 		}
-		baseName := cm
-		if suffix != "cm" {
-			suffixLower := strings.ToLower(suffix)
-			baseNameLower := strings.ToLower(baseName)
-			if strings.HasSuffix(baseNameLower, suffixLower) {
-				baseName = baseName[:len(baseName)-len(suffixLower)]
-			}
-			baseNameLower = strings.ToLower(baseName)
-			if strings.HasSuffix(baseNameLower, "-") {
-				baseName = baseName[:len(baseName)-1]
-			}
-		} else {
-			baseName = strings.TrimSuffix(baseName, "-cm")
-			baseName = strings.TrimSuffix(baseName, "-configmap")
+		comp := processor.NormalizeComponentName(cmClean)
+		if comp == "" || comp == "chart" {
+			comp = processor.NormalizeComponentName(objName)
 		}
-		compName := strcase.ToLowerCamel(appMeta.TrimName(baseName))
-		if compName == "" || compName == "chart" {
-			compName = objName
-		}
+		compCamel := strcase.ToLowerCamel(comp)
+		compKebab := processor.NormalizeComponentName(comp)
 
-		filename := "cm-" + suffix + ".yaml"
-		if suffix == "cm" {
-			filename = "cm.yaml"
+		filename := "cm-" + compKebab + ".yaml"
+		key := "checksum/cm-config"
+		if compKebab != processor.NormalizeComponentName(objName) {
+			key = "checksum/config-" + compKebab
 		}
-		key := "checksum/config-" + suffix
-		if suffix == "cm" {
-			key = "checksum/config"
-		}
-		annotations[key] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:%s:%s:%s]", compName, suffix, key, filename)
+		annotations[key] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:cm:%s:%s]", compCamel, key, filename)
 	}
 
 	for sec := range secrets {
-		suffix := "secret"
-		nameLower := strings.ToLower(sec)
-		chartNameLower := strings.ToLower(appMeta.ChartName())
-		if strings.HasPrefix(nameLower, chartNameLower) {
-			s := strings.TrimPrefix(nameLower, chartNameLower)
-			s = strings.TrimPrefix(s, "-")
-			if s != "" && s != "secret" {
-				suffix = s
-			}
-		} else {
-			if nameLower != "secret" {
-				suffix = nameLower
-			}
+		secClean := processor.StripKustomizeHash(sec)
+		comp := processor.NormalizeComponentName(secClean)
+		if comp == "" || comp == "chart" || comp == "secrets" {
+			comp = processor.NormalizeComponentName(objName)
 		}
-		baseName := sec
-		if suffix != "secret" {
-			suffixLower := strings.ToLower(suffix)
-			baseNameLower := strings.ToLower(baseName)
-			if strings.HasSuffix(baseNameLower, suffixLower) {
-				baseName = baseName[:len(baseName)-len(suffixLower)]
-			}
-			baseNameLower = strings.ToLower(baseName)
-			if strings.HasSuffix(baseNameLower, "-") {
-				baseName = baseName[:len(baseName)-1]
-			}
-		} else {
-			baseName = strings.TrimSuffix(baseName, "-secret")
-		}
-		compName := strcase.ToLowerCamel(appMeta.TrimName(baseName))
-		if compName == "" || compName == "chart" {
-			compName = objName
-		}
+		compCamel := strcase.ToLowerCamel(comp)
+		compKebab := processor.NormalizeComponentName(comp)
 
-		filename := "secret-" + suffix + ".yaml"
-		if suffix == "secret" {
-			filename = "secret.yaml"
+		filename := "secret-" + compKebab + ".yaml"
+		key := "checksum/secret"
+		if compKebab != processor.NormalizeComponentName(objName) {
+			key = "checksum/secret-" + compKebab
 		}
-		key := "checksum/secret-" + suffix
-		if suffix == "secret" {
-			key = "checksum/secret"
+		annotations[key] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:secret:%s:%s]", compCamel, key, filename)
+	}
+
+	// Always add checksum for default configmap and secret of the component if not already added
+	if objName != "" && objName != "global" && objName != "chart" {
+		compKebab := processor.NormalizeComponentName(objName)
+		if _, exists := annotations["checksum/cm-config"]; !exists {
+			annotations["checksum/cm-config"] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:cm:checksum/cm-config:cm-%s.yaml]", objName, compKebab)
 		}
-		annotations[key] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:%s:%s:%s]", compName, suffix, key, filename)
+		if _, exists := annotations["checksum/secret"]; !exists {
+			annotations["checksum/secret"] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:secret:checksum/secret:secret-%s.yaml]", objName, compKebab)
+		}
 	}
 
 	// Filter out static placeholders from Kustomize
@@ -642,20 +594,36 @@ func ReplacePlaceholders(s string, chartName string) string {
 	r2 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*\|-\s*\n\s*\[HELMIFY_WITH:([^:]+):([0-9]+)\]`)
 	s = r2.ReplaceAllString(s, "{{- with .Values.${3} }}\n${1}${2}:\n${1}  {{- toYaml . | nindent ${4} }}\n${1}{{- end }}")
 
-	// 3. Handle HELMIFY_ENV_FROM: envFrom: '[HELMIFY_ENV_FROM:name:indent]'
-	r3 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([0-9]+)\]'`)
-	s = r3.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
+	// 3. Handle HELMIFY_ENV_FROM: envFrom: '[HELMIFY_ENV_FROM:name:kebabName:indent]'
+	r3_3 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([^:]+):([0-9]+)\]'`)
+	s = r3_3.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
 ${1}{{- if .Values.global }}
 ${1}- configMapRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-global-cm
+${1}    name: {{ include "%[1]s.fullname" . }}-global
 ${1}{{- end }}
 ${1}{{- if (index .Values "${2}").cm }}
 ${1}- configMapRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-cm
+${1}    name: {{ include "%[1]s.fullname" . }}-${3}-cm
 ${1}{{- end }}
 ${1}{{- if (index .Values "${2}").secret }}
 ${1}- secretRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-secret
+${1}    name: {{ include "%[1]s.fullname" . }}-${3}-secrets
+${1}{{- end }}`, chartName))
+
+	// Handle legacy 2-parameter placeholder for tests or non-component deployments
+	r3_2 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([0-9]+)\]'`)
+	s = r3_2.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
+${1}{{- if .Values.global }}
+${1}- configMapRef:
+${1}    name: {{ include "%[1]s.fullname" . }}-global
+${1}{{- end }}
+${1}{{- if (index .Values "${2}").cm }}
+${1}- configMapRef:
+${1}    name: {{ include "%[1]s.fullname" . }}-${2}-cm
+${1}{{- end }}
+${1}{{- if (index .Values "${2}").secret }}
+${1}- secretRef:
+${1}    name: {{ include "%[1]s.fullname" . }}-${2}-secrets
 ${1}{{- end }}`, chartName))
 
 	// 4. Handle global checksum placeholders
@@ -686,9 +654,9 @@ ${1}{{- end }}`)
 	rPVC := regexp.MustCompile(`(?m)^(\s{6})-\s*name:\s*'\[HELMIFY_PVC_VOL:([^:]+):([^\]]+)\]'\n(\s{8})persistentVolumeClaim:\n(\s{10})claimName:\s*([^\n]+)`)
 	s = rPVC.ReplaceAllString(s, `${1}{{- if and (index .Values "${2}") (index .Values "${2}" "persistence") (index .Values "${2}" "persistence" "enabled") }}
 ${1}- name: ${3}
-${4}persistentVolumeClaim:
-${5}claimName: ${6}
-${1}{{- end }}`)
+689: ${4}persistentVolumeClaim:
+690: ${5}claimName: ${6}
+691: ${1}{{- end }}`)
 
 	// 9. Handle PVC volume mounts conditional placement
 	rMount := regexp.MustCompile(`(?m)^(\s{8})-\s*mountPath:\s*([^\n]+)\n((\s{10}[a-zA-Z]+:\s*[^\n]+\n)*)\s{10}name:\s*'\[HELMIFY_PVC_MOUNT:([^:]+):([^\]]+)\]'((\n\s{10}[a-zA-Z]+:\s*[^\n]+)*)`)
@@ -715,46 +683,18 @@ func cleanMap(m map[string]interface{}) {
 	}
 }
 
-func ResolveConfigMapVolumeName(appMeta helmify.AppMetadata, name string) string {
-	nameLower := strings.ToLower(name)
-	chartNameLower := strings.ToLower(appMeta.ChartName())
+func ResolveConfigMapVolumeName(appMeta helmify.AppMetadata, name string, compName string) string {
+	nameLower := strings.ToLower(processor.StripKustomizeHash(name))
 
 	if strings.Contains(nameLower, "global") {
-		return fmt.Sprintf(`{{ include "%s.fullname" . }}-global-cm`, appMeta.ChartName())
+		return fmt.Sprintf(`{{ include "%s.fullname" . }}-global`, appMeta.ChartName())
 	}
 
-	suffix := "cm"
-	if strings.HasPrefix(nameLower, chartNameLower) {
-		s := strings.TrimPrefix(nameLower, chartNameLower)
-		s = strings.TrimPrefix(s, "-")
-		if s != "" && s != "cm" {
-			suffix = s
-		}
-	} else {
-		if nameLower != "cm" && nameLower != "configmap" {
-			suffix = nameLower
-		}
-	}
-
-	return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s`, appMeta.ChartName(), suffix)
+	compKebab := processor.NormalizeComponentName(compName)
+	return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s-cm`, appMeta.ChartName(), compKebab)
 }
 
-func ResolveSecretVolumeName(appMeta helmify.AppMetadata, name string) string {
-	nameLower := strings.ToLower(name)
-	chartNameLower := strings.ToLower(appMeta.ChartName())
-
-	suffix := "secret"
-	if strings.HasPrefix(nameLower, chartNameLower) {
-		s := strings.TrimPrefix(nameLower, chartNameLower)
-		s = strings.TrimPrefix(s, "-")
-		if s != "" && s != "secret" {
-			suffix = s
-		}
-	} else {
-		if nameLower != "secret" {
-			suffix = nameLower
-		}
-	}
-
-	return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s`, appMeta.ChartName(), suffix)
+func ResolveSecretVolumeName(appMeta helmify.AppMetadata, name string, compName string) string {
+	compKebab := processor.NormalizeComponentName(compName)
+	return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s-secrets`, appMeta.ChartName(), compKebab)
 }

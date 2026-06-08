@@ -2,8 +2,10 @@ package metadata
 
 import (
 	"fmt"
-	"github.com/arttor/helmify/pkg/config"
+	"regexp"
 	"strings"
+
+	"github.com/arttor/helmify/pkg/config"
 
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/sirupsen/logrus"
@@ -26,7 +28,7 @@ var crdGVK = schema.GroupVersionKind{
 }
 
 func New(conf config.Config) *Service {
-	return &Service{names: make(map[string]struct{}), conf: conf}
+	return &Service{names: make(map[string]struct{}), conf: conf, objects: []*unstructured.Unstructured{}}
 }
 
 type Service struct {
@@ -34,17 +36,30 @@ type Service struct {
 	namespace    string
 	names        map[string]struct{}
 	conf         config.Config
+	objects      []*unstructured.Unstructured
+}
+
+func (a *Service) Objects() []*unstructured.Unstructured {
+	return a.objects
 }
 
 func (a *Service) Config() config.Config {
 	return a.conf
 }
 
+var kustomizeHashRegex = regexp.MustCompile(`[-.][a-z0-9]{10}$`)
+
+func StripKustomizeHash(name string) string {
+	return kustomizeHashRegex.ReplaceAllString(name, "")
+}
+
 // TrimName - tries to trim app common prefix for object name if detected.
 // If no common prefix - returns name as it is.
 // It is better to trim common prefix because Helm also adds release name as common prefix.
 func (a *Service) TrimName(objName string) string {
+	objName = StripKustomizeHash(objName)
 	trimmed := strings.TrimPrefix(objName, a.commonPrefix)
+	trimmed = strings.TrimPrefix(trimmed, a.ChartName())
 	trimmed = strings.TrimLeft(trimmed, "-./_ ")
 	if trimmed == "" {
 		return objName
@@ -58,6 +73,7 @@ var _ helmify.AppMetadata = &Service{}
 // other app meta information.
 func (a *Service) Load(obj *unstructured.Unstructured) {
 	a.names[obj.GetName()] = struct{}{}
+	a.objects = append(a.objects, obj)
 	a.commonPrefix = detectCommonPrefix(obj, a.commonPrefix)
 	objNs := extractAppNamespace(obj)
 	if objNs == "" {

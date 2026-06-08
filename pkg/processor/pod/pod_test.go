@@ -159,7 +159,7 @@ func Test_pod_Process(t *testing.T) {
 							"value": "{{ quote .Values.KUBERNETES_CLUSTER_DOMAIN }}",
 						},
 					},
-					"envFrom": "[HELMIFY_ENV_FROM:nginx:8]",
+					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
 						map[string]interface{}{
@@ -215,7 +215,7 @@ func Test_pod_Process(t *testing.T) {
 							"value": "{{ quote .Values.KUBERNETES_CLUSTER_DOMAIN }}",
 						},
 					},
-					"envFrom": "[HELMIFY_ENV_FROM:nginx:8]",
+					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
 						map[string]interface{}{
@@ -267,7 +267,7 @@ func Test_pod_Process(t *testing.T) {
 							"value": "{{ quote .Values.KUBERNETES_CLUSTER_DOMAIN }}",
 						},
 					},
-					"envFrom": "[HELMIFY_ENV_FROM:nginx:8]",
+					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
 						map[string]interface{}{
@@ -319,7 +319,7 @@ func Test_pod_Process(t *testing.T) {
 							"value": "{{ quote .Values.KUBERNETES_CLUSTER_DOMAIN }}",
 						},
 					},
-					"envFrom": "[HELMIFY_ENV_FROM:nginx:8]",
+					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
 						map[string]interface{}{
@@ -369,7 +369,7 @@ func Test_pod_Process(t *testing.T) {
 							"value": "{{ quote .Values.KUBERNETES_CLUSTER_DOMAIN }}",
 						},
 					},
-					"envFrom": "[HELMIFY_ENV_FROM:nginx:8]",
+					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image":          "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":           "nginx",
 					"resources":      "[HELMIFY_WITH:nginx.resources:10]",

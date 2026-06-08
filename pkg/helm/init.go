@@ -138,7 +138,7 @@ const globalConfigMapTempl = `{{- if .Values.global -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "<CHARTNAME>.fullname" . }}-global-cm
+  name: {{ include "<CHARTNAME>.fullname" . }}-global
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 data:

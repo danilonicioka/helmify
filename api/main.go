@@ -149,6 +149,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}).Info("Generating chart")
 
 	memOut := helm.NewMemoryOutput()
+	memOut.DevRepoURL = conf.DevRepoURL
 	engine := app.NewEngine(conf, memOut)
 	trans := k8smanifest.New(conf, r.Body)
 
@@ -179,6 +180,7 @@ func handlePreview(w http.ResponseWriter, r *http.Request) {
 	}).Info("Generating preview")
 
 	memOut := helm.NewMemoryOutput()
+	memOut.DevRepoURL = conf.DevRepoURL
 	engine := app.NewEngine(conf, memOut)
 	trans := k8smanifest.New(conf, r.Body)
 
@@ -261,6 +263,7 @@ func parseConfig(r *http.Request) config.Config {
 	if conf.CertManagerVersion == "" {
 		conf.CertManagerVersion = "v1.11.0"
 	}
+	conf.DevRepoURL = r.Header.Get("X-Dev-Repo-Url")
 	return conf
 }
 

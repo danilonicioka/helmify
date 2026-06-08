@@ -327,9 +327,9 @@ type result struct {
 
 func (r *result) Filename() string {
 	if r.name == "chart" || r.name == "" {
-		return "deployment.yaml"
+		return "deploy.yaml"
 	}
-	return fmt.Sprintf("deployment-%s.yaml", r.name)
+	return fmt.Sprintf("deploy-%s.yaml", r.name)
 }
 
 func (r *result) Values() helmify.Values {

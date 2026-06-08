@@ -45,6 +45,8 @@ type Config struct {
 	AddWebhookOption bool
 	// OptionalCRDs - Enable optional CRD installation through values.
 	OptionalCRDs bool
+	// DevRepoURL - optional developer source repository URL to inject as annotation in Chart.yaml
+	DevRepoURL string
 }
 
 func (c *Config) Validate() error {

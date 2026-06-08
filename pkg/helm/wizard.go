@@ -68,6 +68,7 @@ func GetModelDefaults(chartType string) (map[string]interface{}, error) {
 type WizardParams struct {
 	ChartName    string                      `json:"chartName"`
 	Type         string                      `json:"type"` // "single" or "multi"
+	DevRepoURL   string                      `json:"devRepoUrl"`
 	GlobalConfig map[string]string           `json:"globalConfig"`
 	Deployments  map[string]DeploymentParams `json:"deployments"`
 }
@@ -400,6 +401,19 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		// Replace chart name inside values.yaml (e.g. in affinity matching labels)
 		valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
 		outputFiles["values.yaml"] = []byte(valuesStr)
+	}
+
+	if chartData, ok := outputFiles["Chart.yaml"]; ok && params.DevRepoURL != "" {
+		var chartNode yaml.Node
+		if err := yaml.Unmarshal(chartData, &chartNode); err == nil {
+			_ = setYamlPath(&chartNode, []string{"annotations", "tjpa.jus.br/dev-source-repo"}, params.DevRepoURL)
+			var buf bytes.Buffer
+			enc := yaml.NewEncoder(&buf)
+			enc.SetIndent(2)
+			if err := enc.Encode(&chartNode); err == nil {
+				outputFiles["Chart.yaml"] = buf.Bytes()
+			}
+		}
 	}
 
 	return outputFiles, nil
