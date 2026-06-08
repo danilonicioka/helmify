@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TJPA Helmify Engine — API Reference</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: hsl(230, 25%, 8%);
+            --bg-surface: hsl(225, 20%, 12%);
+            --bg-card: hsl(225, 20%, 15%);
+            --border-color: hsl(225, 15%, 22%);
+            --text-primary: hsl(220, 30%, 96%);
+            --text-secondary: hsl(220, 15%, 70%);
+            --text-muted: hsl(220, 10%, 45%);
+            --accent-blue: hsl(210, 85%, 60%);
+            --accent-purple: hsl(260, 85%, 65%);
+            --accent-glow: hsla(260, 85%, 65%, 0.15);
+            --font-family-sans: 'Inter', sans-serif;
+            --font-family-title: 'Outfit', sans-serif;
+            --font-family-mono: 'Fira Code', monospace;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-family-sans);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+
+
+        header {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background-color: hsla(230, 25%, 6%, 0.5);
+            backdrop-filter: blur(10px);
+            z-index: 50;
+            flex-shrink: 0;
+        }
+
+        .logo-section h1 {
+            font-family: var(--font-family-title);
+            font-size: 1.2rem;
+            font-weight: 850;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+
+        .logo-section p {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-top: 0.1rem;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .header-nav-btn {
+            text-decoration: none;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: var(--transition-smooth);
+        }
+
+        .header-nav-btn:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+            background-color: var(--bg-card);
+        }
+
+        main {
+            width: 100%;
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .sidebar {
+            width: 280px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border-color);
+            background-color: hsla(230, 25%, 6%, 0.3);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 1.5rem 1rem;
+        }
+
+        .sidebar-title {
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin: 0.5rem 0.5rem 1rem 0.5rem;
+        }
+
+        .sidebar-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 0.8rem;
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: var(--transition-smooth);
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .menu-item:hover {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .menu-item.active {
+            background-color: var(--accent-glow);
+            color: var(--text-primary);
+            border-color: var(--border-color);
+            font-weight: 500;
+        }
+
+        .method-badge {
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: var(--font-family-mono);
+        }
+
+        .method-badge.post {
+            background-color: rgba(30, 144, 255, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(30, 144, 255, 0.3);
+        }
+
+        .method-badge.get {
+            background-color: rgba(46, 204, 113, 0.15);
+            color: hsl(150, 75%, 45%);
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 2.5rem;
+            overflow-y: auto;
+            background-color: var(--bg-base);
+        }
+
+        .doc-section {
+            display: none;
+            max-width: 900px;
+        }
+
+        .doc-section.active {
+            display: block;
+            animation: fadeIn 0.2s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            font-family: var(--font-family-title);
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .endpoint-url-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md);
+            margin: 1.5rem 0;
+            font-family: var(--font-family-mono);
+            font-size: 0.9rem;
+        }
+
+        .endpoint-url-bar .path {
+            color: var(--text-primary);
+        }
+
+        .section-title {
+            font-family: var(--font-family-title);
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 2rem 0 1rem 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--text-primary);
+            background-color: hsla(230, 25%, 6%, 0.2);
+        }
+
+        td {
+            color: var(--text-secondary);
+        }
+
+        .param-name {
+            font-family: var(--font-family-mono);
+            color: var(--accent-blue);
+            font-weight: 500;
+        }
+
+        .param-type {
+            font-family: var(--font-family-mono);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* Code Blocks */
+        .code-block-container {
+            position: relative;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background-color: var(--bg-surface);
+        }
+
+        .code-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 1rem;
+            background-color: var(--bg-card);
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .btn-copy {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-copy:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+            background-color: var(--bg-surface);
+        }
+
+        pre {
+            padding: 1rem;
+            margin: 0;
+            overflow-x: auto;
+            font-family: var(--font-family-mono);
+            font-size: 0.8rem;
+            line-height: 1.5;
+            color: hsl(210, 40%, 85%);
+        }
+
+        /* Quick warning callout */
+        .callout {
+            background-color: hsla(210, 85%, 60%, 0.05);
+            border-left: 4px solid var(--accent-blue);
+            padding: 1rem;
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            margin-bottom: 1.5rem;
+        }
+
+        .callout p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+
+
+    <header>
+        <div class="logo-section">
+            <h1>TJPA Helmify Engine</h1>
+            <p>Developer REST API Reference Guide</p>
+        </div>
+        <div class="header-actions">
+            <a href="/" class="header-nav-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span>Portal Home</span>
+            </a>
+            <a href="/wizard" class="header-nav-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                <span>Go to Wizard</span>
+            </a>
+            <a href="/converter/" class="header-nav-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+                <span>Go to Converter</span>
+            </a>
+        </div>
+    </header>
+
+    <main>
+        <aside class="sidebar">
+            <div class="sidebar-title">REST Endpoints</div>
+            <nav class="sidebar-menu">
+                <div class="menu-item active" onclick="switchTab('intro')">
+                    <span>Introduction</span>
+                </div>
+                <div class="menu-item" onclick="switchTab('post-generate')">
+                    <span>POST /v1/generate</span>
+                    <span class="method-badge post">POST</span>
+                </div>
+                <div class="menu-item" onclick="switchTab('post-generate-wizard')">
+                    <span>POST /v1/generate-wizard</span>
+                    <span class="method-badge post">POST</span>
+                </div>
+            </nav>
+        </aside>
+
+        <section class="content-area">
+            <!-- SECTION: INTRO -->
+            <div class="doc-section active" id="intro">
+                <h2>Introduction</h2>
+                <p>The TJPA Helmify Engine provides a set of REST endpoints that allow automated pipelines, custom scripts, and integration services to generate or preview Helm charts programmatically from Kubernetes/OpenShift resource manifests or structured configs.</p>
+                
+                <div class="callout">
+                    <p><strong>Note:</strong> All API requests are fully offline-compatible. The engine generates chart outputs using in-memory templating models and does not communicate with external registries during runtime.</p>
+                </div>
+
+                <div class="section-title">Base URL</div>
+                <p>When running the container locally or in OpenShift, endpoints are exposed relative to your host URL (e.g. <code>http://localhost:8080</code>).</p>
+            </div>
+
+            <!-- SECTION: POST GENERATE -->
+            <div class="doc-section" id="post-generate">
+                <h2>Generate packaged Helm Chart</h2>
+                <p>Translates Kubernetes resource manifests and downloads a packed, gzip-compressed tar archive (<code>.tar.gz</code>) containing the completed chart layout.</p>
+
+                <div class="endpoint-url-bar">
+                    <span class="method-badge post">POST</span>
+                    <span class="path">/v1/generate</span>
+                </div>
+
+                <div class="section-title">Request Headers</div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Header</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="param-name">X-Chart-Name</td>
+                            <td class="param-type">string</td>
+                            <td>Required. The name of the target chart (e.g. <code>portal-certidao</code>).</td>
+                        </tr>
+                        <tr>
+                            <td class="param-name">X-Crd</td>
+                            <td class="param-type">boolean</td>
+                            <td>Whether to extract Custom Resource Definitions (default: <code>false</code>).</td>
+                        </tr>
+                        <tr>
+                            <td class="param-name">X-Cert-Manager-Subchart</td>
+                            <td class="param-type">boolean</td>
+                            <td>Add Cert-Manager subchart settings (default: <code>false</code>).</td>
+                        </tr>
+                        <tr>
+                            <td class="param-name">X-Cert-Manager-Install-Crd</td>
+                            <td class="param-type">boolean</td>
+                            <td>Install Cert-Manager CRDs automatically (default: <code>false</code>).</td>
+                        </tr>
+                        <tr>
+                            <td class="param-name">X-Add-Webhook-Option</td>
+                            <td class="param-type">boolean</td>
+                            <td>Enable Webhook support validation logic (default: <code>false</code>).</td>
+                        </tr>
+                        <tr>
+                            <td class="param-name">X-Optional-Crds</td>
+                            <td class="param-type">boolean</td>
+                            <td>Allow toggling CRD install dynamically via values (default: <code>false</code>).</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="section-title">Request Body</div>
+                <p>Raw string of the source Kubernetes resource manifests (YAML format). Multiple resources should be delimited by <code>---</code> lines.</p>
+
+                <div class="section-title">Example Command</div>
+                <div class="code-block-container">
+                    <div class="code-block-header">
+                        <span>cURL</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>curl -X POST "http://localhost:8080/v1/generate" \
+  -H "X-Chart-Name: portal-certidao" \
+  -H "X-Crd: false" \
+  -H "Content-Type: text/yaml" \
+  --data-binary @deployment.yaml \
+  --output portal-certidao.tar.gz</code></pre>
+                </div>
+            </div>
+
+            <!-- SECTION: POST GENERATE WIZARD -->
+            <div class="doc-section" id="post-generate-wizard">
+                <h2>Download Chart Wizard</h2>
+                <p>Processes a structured JSON configuration payload, translates it to Helm chart resources, and generates a packaged, gzip-compressed tarball (<code>.tar.gz</code>) stream for download.</p>
+
+                <div class="endpoint-url-bar">
+                    <span class="method-badge post">POST</span>
+                    <span class="path">/v1/generate-wizard</span>
+                </div>
+
+                <div class="section-title">Request Body (JSON)</div>
+                <div class="code-block-container">
+                    <div class="code-block-header">
+                        <span>JSON Body structure</span>
+                    </div>
+                    <pre><code>{
+  "chartName": "my-service",
+  "type": "single",
+  "globalConfig": {
+    "TZ": "America/Belem"
+  },
+  "deployments": {
+    "frontend": {
+      "replicas": 2,
+      "image": {
+        "repository": "quay.enterprise.tjpa.jus.br/devops/nginx",
+        "tag": "1.25"
+      },
+      "service": {
+        "port": 80
+      },
+      "cm": {
+        "DB_USER": "admin"
+      },
+      "secret": {},
+      "route": {
+        "path": "/",
+        "default": {
+          "enabled": true,
+          "host": "my-service.apps.ocp.tjpa.jus.br"
+        }
+      }
+    }
+  }
+}</code></pre>
+                </div>
+
+                <div class="section-title">Example Command</div>
+                <div class="code-block-container">
+                    <div class="code-block-header">
+                        <span>cURL</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>curl -X POST "http://localhost:8080/v1/generate-wizard" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "chartName": "my-service",
+    "type": "single",
+    "deployments": {
+      "frontend": {
+        "replicas": 2,
+        "image": {"repository": "nginx", "tag": "alpine"},
+        "service": {"port": 80}
+      }
+    }
+  }' \
+  --output my-service.tar.gz</code></pre>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        function switchTab(tabId) {
+            // Remove active classes
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.doc-section').forEach(el => el.classList.remove('active'));
+            
+            // Add active class to selected menu item
+            const activeMenuItem = Array.from(document.querySelectorAll('.menu-item')).find(el => {
+                return el.getAttribute('onclick').includes(tabId);
+            });
+            if (activeMenuItem) activeMenuItem.classList.add('active');
+
+            // Add active class to doc section
+            const activeSection = document.getElementById(tabId);
+            if (activeSection) activeSection.classList.add('active');
+        }
+
+        function copyCode(btn) {
+            const preElement = btn.parentElement.nextElementSibling;
+            const codeText = preElement.textContent;
+            
+            navigator.clipboard.writeText(codeText).then(() => {
+                const originalText = btn.textContent;
+                btn.textContent = 'Copied!';
+                btn.style.color = 'var(--accent-blue)';
+                btn.style.borderColor = 'var(--accent-blue)';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.style.color = '';
+                    btn.style.borderColor = '';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+    </script>
+</body>
+</html>

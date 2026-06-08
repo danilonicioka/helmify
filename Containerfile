@@ -2,7 +2,7 @@
 FROM registry.access.redhat.com/ubi9/ubi-minimal:latest
 
 LABEL org.opencontainers.image.source="https://github.com/danilonicioka/helmify"
-LABEL org.opencontainers.image.description="Helmify Pro - Kubernetes manifest to Helm chart converter with Web UI"
+LABEL org.opencontainers.image.description="Helmify - Kubernetes manifest to Helm chart converter with Web UI"
 
 WORKDIR /app
 

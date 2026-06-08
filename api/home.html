@@ -45,44 +45,29 @@
             position: relative;
         }
 
-        /* Ambient Glow Backdrop */
-        .ambient-glow {
-            position: fixed;
-            top: -300px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 1000px;
-            height: 800px;
-            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 65%);
-            z-index: -1;
-            pointer-events: none;
-        }
-
         header {
             max-width: 1200px;
             width: 100%;
             margin: 0 auto;
-            padding: 3rem 2rem 2rem 2rem;
+            padding: 3.5rem 2rem 2rem 2rem;
             text-align: center;
         }
 
         header h1 {
             font-family: var(--font-family-title);
-            font-size: 2.8rem;
+            font-size: 2.5rem;
             font-weight: 800;
-            background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent-blue) 70%, var(--accent-purple) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -1px;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
             margin-bottom: 0.5rem;
         }
 
         header p {
             color: var(--text-secondary);
-            font-size: 1.1rem;
+            font-size: 1rem;
             max-width: 600px;
             margin: 0 auto;
-            font-weight: 300;
+            font-weight: 400;
         }
 
         /* Portal Container */
@@ -277,8 +262,6 @@
     </style>
 </head>
 <body>
-    <div class="ambient-glow"></div>
-
     <header>
         <h1>TJPA Helmify Engine</h1>
         <p>Scaffold and translate Tribunal de Justiça do Pará Helm charts using production-grade standards</p>
@@ -324,9 +307,12 @@
 
     <footer>
         <div>© 2026 Tribunal de Justiça do Pará — DevOps Team</div>
-        <div class="footer-status">
-            <div class="status-dot"></div>
-            <span>TJPA Services Online</span>
+        <div style="display: flex; gap: 1.5rem; align-items: center;">
+            <a href="/instructions" style="color: var(--text-secondary); text-decoration: none; transition: var(--transition-smooth);" onmouseover="this.style.color='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'">API Reference</a>
+            <div class="footer-status">
+                <div class="status-dot"></div>
+                <span>TJPA Services Online</span>
+            </div>
         </div>
     </footer>
 </body>

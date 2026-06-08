@@ -1,29 +1,29 @@
-{{- if and .Values.api .Values.api.route .Values.api.route.internal.enabled -}}
+{{- if and .Values.backend .Values.backend.route .Values.backend.route.internal.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-api-int
+  name: {{ include "chart-model-multi.fullname" . }}-backend-int
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: api
-  {{- with .Values.api.route.annotations }}
+    app.kubernetes.io/component: backend
+  {{- with .Values.backend.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.api.route.internal.host }}
-  host: {{ .Values.api.route.internal.host | quote }}
+  {{- if .Values.backend.route.internal.host }}
+  host: {{ .Values.backend.route.internal.host | quote }}
   {{- end }}
-  {{- if .Values.api.route.path }}
-  path: {{ .Values.api.route.path | quote }}
+  {{- if .Values.backend.route.path }}
+  path: {{ .Values.backend.route.path | quote }}
   {{- end }}
-  {{- if .Values.api.route.tls }}
+  {{- if .Values.backend.route.tls }}
   tls:
-    {{- toYaml .Values.api.route.tls | nindent 4 }}
+    {{- toYaml .Values.backend.route.tls | nindent 4 }}
   {{- end }}
   to:
     kind: Service
-    name: {{ include "chart-model-multi.fullname" . }}-api
+    name: {{ include "chart-model-multi.fullname" . }}-backend
     weight: 100
   port:
     targetPort: http

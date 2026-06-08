@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TJPA Helm Chart Generator Converter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: hsl(230, 25%, 8%);
+            --bg-surface: hsl(225, 20%, 12%);
+            --bg-card: hsl(225, 20%, 15%);
+            --border-color: hsl(225, 15%, 22%);
+            --text-primary: hsl(220, 30%, 96%);
+            --text-secondary: hsl(220, 15%, 70%);
+            --text-muted: hsl(220, 10%, 45%);
+            --accent: hsl(210, 85%, 60%);
+            --accent-glow: hsla(210, 85%, 60%, 0.15);
+            --accent-hover: hsl(210, 90%, 65%);
+            --accent-success: hsl(150, 75%, 45%);
+            --accent-danger: hsl(355, 75%, 55%);
+            --font-family-sans: 'Inter', sans-serif;
+            --font-family-title: 'Outfit', sans-serif;
+            --font-family-mono: 'Fira Code', monospace;
+            --radius-lg: 16px;
+            --radius-md: 10px;
+            --radius-sm: 6px;
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
+            border-radius: var(--radius-sm);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: var(--text-muted);
+        }
+
+        .ide-code-pre::-webkit-scrollbar-thumb:hover,
+        .ide-code-textarea::-webkit-scrollbar-thumb:hover {
+            background-color: var(--accent);
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            font-family: var(--font-family-sans);
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            width: 100%;
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background-color: hsla(230, 25%, 6%, 0.5);
+            backdrop-filter: blur(10px);
+            z-index: 50;
+            flex-shrink: 0;
+        }
+
+        .logo-section h1 {
+            font-family: var(--font-family-title);
+            font-size: 1.25rem;
+            font-weight: 850;
+            background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-section p {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-top: 0.1rem;
+        }
+
+        .badge {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--accent-success);
+            box-shadow: 0 0 8px var(--accent-success);
+        }
+
+        /* Main Layout */
+        main {
+            width: 100%;
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Prevent children from blowing up column widths */
+        main > * {
+            min-width: 0;
+        }
+
+        @media (max-width: 1100px) {
+            main {
+                flex-direction: column;
+            }
+        }
+        /* Settings Sidebar Elements */
+        .settings-sidebar {
+            width: 25vw;
+            flex-shrink: 0;
+            background-color: hsla(230, 25%, 6%, 0.3);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 1.5rem;
+            transition: var(--transition-smooth);
+            z-index: 10;
+        }
+
+        @media (max-width: 1100px) {
+            .settings-sidebar {
+                width: 100% !important;
+            }
+        }
+
+        .settings-sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            border-right: 0px solid transparent;
+        }
+
+        .settings-sidebar-inner {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .card-title {
+            font-family: var(--font-family-title);
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+
+        /* Form Styling */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-md);
+            font-family: var(--font-family-sans);
+            font-size: 0.95rem;
+            outline: none;
+            transition: var(--transition-smooth);
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        /* Generation Options Sections */
+        .section-subtitle {
+            font-family: var(--font-family-title);
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 1.5rem 0 0.75rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        .route-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            padding: 1.2rem;
+            border-radius: var(--radius-md);
+            margin-bottom: 1rem;
+        }
+
+        .route-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .route-card-header span {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .route-card-header p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+            line-height: 1.4;
+        }
+
+        /* Switch Toggle */
+        .route-switch {
+            position: relative;
+            display: inline-block;
+            width: 40px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .route-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--border-color);
+            transition: .4s;
+            border-radius: 20px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Preview Panel (IDE Layout) */
+        .preview-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background-color: var(--bg-base);
+        }
+
+        .ide-wrapper {
+            flex: 1;
+            display: flex;
+            background-color: var(--bg-surface);
+            border-top: 1px solid var(--border-color);
+            overflow: hidden;
+            width: 100%;
+        }
+
+        /* Sidebar Toggle Button */
+        .sidebar-toggle-btn {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-smooth);
+        }
+
+        .sidebar-toggle-btn:hover {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+
+        .sidebar-toggle-btn.collapsed {
+            color: var(--accent);
+            border-color: var(--accent-glow);
+            background-color: var(--accent-glow);
+        }
+
+        /* Header Navigation Buttons */
+        .header-nav-btn {
+            text-decoration: none;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: var(--transition-smooth);
+        }
+
+        .header-nav-btn:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+            background-color: var(--bg-card);
+        }
+
+        /* Header Action Button (Download) */
+        .header-action-btn {
+            background: linear-gradient(135deg, var(--accent) 0%, hsl(230, 85%, 55%) 100%);
+            border: none;
+            color: var(--text-primary);
+            padding: 0.45rem 1rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px var(--accent-glow);
+            transition: var(--transition-smooth);
+        }
+
+        .header-action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(30, 144, 255, 0.4);
+            background: linear-gradient(135deg, var(--accent-hover) 0%, hsl(230, 90%, 60%) 100%);
+        }
+
+        .header-action-btn:active {
+            transform: translateY(1px);
+        }
+
+        /* File Explorer Sidebar */
+        .ide-sidebar {
+            width: 240px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border-color);
+            background-color: hsla(230, 25%, 6%, 0.4);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 1rem 0;
+        }
+
+        .ide-sidebar-section-header {
+            font-size: 0.65rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            padding: 0.75rem 1rem 0.4rem 1rem;
+            border-top: 1px solid hsla(225, 15%, 22%, 0.4);
+            margin-top: 0.5rem;
+        }
+
+        .ide-sidebar-section-header:first-of-type {
+            border-top: none;
+            margin-top: 0;
+        }
+
+        .ide-file-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding: 0.2rem 0.5rem;
+        }
+
+        .tree-folder-header {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.6rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: var(--transition-smooth);
+        }
+
+        .tree-folder-header:hover {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .tree-folder-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding-left: 1.1rem;
+            margin-top: 0.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .tree-file {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.6rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            transition: var(--transition-smooth);
+        }
+
+        .tree-file:hover {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .tree-file.active {
+            background-color: var(--accent-glow);
+            color: var(--text-primary);
+            border-left: 2px solid var(--accent);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            font-weight: 500;
+        }
+
+        .ide-editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-base);
+            overflow: hidden;
+        }
+
+        .ide-editor-header {
+            height: 38px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            flex-shrink: 0;
+        }
+
+        .ide-editor-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .ide-line-numbers {
+            width: 45px;
+            padding: 1rem 0.75rem 1rem 0;
+            border-right: 1px solid var(--border-color);
+            background-color: hsla(230, 25%, 6%, 0.2);
+            text-align: right;
+            font-family: var(--font-family-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            user-select: none;
+            line-height: 1.5;
+            overflow-y: hidden;
+            white-space: pre;
+        }
+
+        /* Code text area */
+        .ide-code-textarea {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            background-color: transparent;
+            color: hsl(210, 40%, 85%);
+            border: none;
+            padding: 1rem;
+            font-family: var(--font-family-mono);
+            font-size: 0.75rem;
+            line-height: 1.5;
+            resize: none;
+            outline: none;
+            overflow-x: auto;
+            overflow-y: auto;
+            white-space: pre;
+            tab-size: 2;
+        }
+
+        .ide-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            height: 100%;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 2rem;
+            width: 100%;
+        }
+
+        .ide-placeholder svg {
+            color: var(--border-color);
+        }
+
+        /* Toast Alert */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background-color: var(--bg-card);
+            border-left: 4px solid var(--accent);
+            padding: 1rem 1.5rem;
+            border-radius: var(--radius-sm);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            display: none;
+            animation: slideIn 0.3s ease;
+            z-index: 1000;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* Spinner for loading overlays */
+        .spinner {
+            display: inline-block;
+            border: 2px solid var(--border-color);
+            border-top: 2px solid var(--accent);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-section" style="display: flex; align-items: center; gap: 1rem;">
+            <button id="btn-toggle-sidebar" class="sidebar-toggle-btn" aria-label="Toggle settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+            </button>
+            <div>
+                <h1>TJPA Helmify Converter</h1>
+                <p>Convert raw Kubernetes resource manifests into production-grade Helm charts</p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <a href="/" class="header-nav-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <span>Portal Home</span>
+            </a>
+            <a href="/wizard" class="header-nav-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                <span>Switch to Wizard</span>
+            </a>
+            <div class="badge" style="margin-right: 0.5rem;">
+                <div class="badge-dot"></div>
+                <span>TJPA Standards Compliant</span>
+            </div>
+            <button id="btn-download" class="header-action-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Download Chart</span>
+            </button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Settings Sidebar -->
+        <aside class="settings-sidebar" id="settings-sidebar">
+            <div class="settings-sidebar-inner">
+                <div class="card-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <span>Chart Settings</span>
+                </div>
+
+                <div class="form-group">
+                    <label for="chartName">Chart Name</label>
+                    <input type="text" id="chartName" value="my-chart" placeholder="e.g. portal-certidao">
+                </div>
+
+                <div class="section-subtitle">Generation Options</div>
+
+                <!-- Option 1: CRD Folder -->
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <div>
+                            <span>Separate CRDs Folder</span>
+                            <p>Places Custom Resource Definitions in a dedicated /crds folder.</p>
+                        </div>
+                        <label class="route-switch">
+                            <input type="checkbox" id="optCrd">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Option 2: Cert-Manager -->
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <div>
+                            <span>Cert-Manager Subchart</span>
+                            <p>Include cert-manager subchart settings for automated TLS management.</p>
+                        </div>
+                        <label class="route-switch">
+                            <input type="checkbox" id="optCertManager">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Option 3: Webhook -->
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <div>
+                            <span>Webhook Support</span>
+                            <p>Inject webhook enable/disable validation logic in the templates.</p>
+                        </div>
+                        <label class="route-switch">
+                            <input type="checkbox" id="optWebhook">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Option 4: Optional CRDs -->
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <div>
+                            <span>Optional CRDs</span>
+                            <p>Allow toggling CRDs installation dynamically via values.yaml.</p>
+                        </div>
+                        <label class="route-switch">
+                            <input type="checkbox" id="optOptionalCrds">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div style="margin-top: 1rem; padding: 1rem; background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
+                    <p style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
+                        ⚡ Live Preview Active
+                    </p>
+                    Your manifests are translated in real-time as you type or adjust options. You can also edit the output files directly before downloading.
+                </div>
+            </div>
+        </aside>
+
+        <!-- Preview Panel (IDE Layout) -->
+        <section class="preview-container">
+            <div class="ide-wrapper">
+                <!-- Sidebar File Explorer -->
+                <div class="ide-sidebar">
+                    <div class="ide-sidebar-section-header">Input Source</div>
+                    <div class="ide-file-tree" id="ide-input-tree">
+                        <!-- Populated dynamically -->
+                    </div>
+
+                    <div class="ide-sidebar-section-header">Generated Chart</div>
+                    <div class="ide-file-tree" id="ide-generated-tree">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+                <!-- Editor Pane -->
+                <div class="ide-editor-container">
+                    <div class="ide-editor-header">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <span id="active-filename">Select a file</span>
+                            <span id="preview-spinner" style="display: none; border: 2px solid var(--border-color); border-top: 2px solid var(--accent); border-radius: 50%; width: 12px; height: 12px; animation: spin 1s linear infinite; margin-left: 6px;"></span>
+                        </div>
+                        <span id="editor-badge" style="display: none; background-color: var(--border-color); color: var(--text-secondary); font-size: 0.65rem; padding: 0.15rem 0.4rem; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px;">EDITABLE PREVIEW</span>
+                    </div>
+                    <div class="ide-editor-body" id="ide-editor-body">
+                        <!-- Default placeholder -->
+                        <div class="ide-placeholder" id="editor-placeholder">
+                            <div class="spinner"></div>
+                            <p>Loading template converter...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div class="toast" id="toast-message">Chart generated successfully!</div>
+
+    <script>
+        const defaultManifest = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+      - name: my-app
+        image: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/my-app:1.0.0
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: prd
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-app
+  labels:
+    app: my-app
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+  selector:
+    app: my-app
+`;
+
+        let activeFile = 'source.yaml';
+        let isFirstLoad = true;
+        let templatesFolderOpen = true;
+        let generatedFiles = {
+            'source.yaml': defaultManifest
+        };
+        let previewLoading = false;
+
+        // Initialize state
+        function init() {
+            renderFileTree();
+            updatePreview();
+        }
+
+        // Debounce updates
+        let debounceTimer;
+        function debouncedUpdatePreview() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(updatePreview, 800);
+        }
+
+        async function updatePreview() {
+            const chartName = document.getElementById('chartName').value.trim() || 'my-chart';
+            const body = generatedFiles['source.yaml'] || '';
+            if (!body) {
+                generatedFiles = { 'source.yaml': '' };
+                renderFileTree();
+                renderActiveFileContent();
+                return;
+            }
+
+            previewLoading = true;
+            const spinner = document.getElementById('preview-spinner');
+            if (spinner) spinner.style.display = 'inline-block';
+
+            const headers = {
+                'X-Chart-Name': chartName,
+                'X-Crd': document.getElementById('optCrd').checked ? 'true' : 'false',
+                'X-Cert-Manager-Subchart': document.getElementById('optCertManager').checked ? 'true' : 'false',
+                'X-Add-Webhook-Option': document.getElementById('optWebhook').checked ? 'true' : 'false',
+                'X-Optional-Crds': document.getElementById('optOptionalCrds').checked ? 'true' : 'false'
+            };
+
+            try {
+                const response = await fetch('/v1/preview', {
+                    method: 'POST',
+                    headers: headers,
+                    body: body
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    const oldSource = generatedFiles['source.yaml'];
+                    generatedFiles = data;
+                    generatedFiles['source.yaml'] = oldSource;
+
+                    renderFileTree();
+                    
+                    if (isFirstLoad) {
+                        activeFile = 'source.yaml';
+                        isFirstLoad = false;
+                    } else if (activeFile !== 'source.yaml' && !generatedFiles[activeFile]) {
+                        activeFile = 'source.yaml';
+                    }
+                    renderActiveFileContent();
+                } else {
+                    const text = await response.text();
+                    console.error("Preview failed:", text);
+                }
+            } catch (err) {
+                console.error("Preview error:", err);
+            } finally {
+                previewLoading = false;
+                if (spinner) spinner.style.display = 'none';
+            }
+        }
+
+        function renderFileTree() {
+            // Render Input Source Tree
+            const inputTree = document.getElementById('ide-input-tree');
+            inputTree.innerHTML = '';
+            
+            const sourceFile = document.createElement('div');
+            sourceFile.className = `tree-file ${activeFile === 'source.yaml' ? 'active' : ''}`;
+            sourceFile.innerHTML = `<span style="font-size: 0.95rem; margin-right: 0.2rem;">📥</span> <span>source.yaml</span>`;
+            sourceFile.onclick = () => selectFile('source.yaml');
+            inputTree.appendChild(sourceFile);
+
+            // Render Generated Chart Tree
+            const generatedTree = document.getElementById('ide-generated-tree');
+            generatedTree.innerHTML = '';
+
+            const rootFiles = [];
+            const templateFiles = [];
+
+            Object.keys(generatedFiles).forEach(path => {
+                if (path === 'source.yaml') return;
+                if (path.startsWith('templates/')) {
+                    templateFiles.push(path);
+                } else {
+                    rootFiles.push(path);
+                }
+            });
+
+            // Sort lists
+            rootFiles.sort((a, b) => {
+                if (a === 'values.yaml') return -1;
+                if (b === 'values.yaml') return 1;
+                if (a === 'Chart.yaml') return -1;
+                if (b === 'Chart.yaml') return 1;
+                return a.localeCompare(b);
+            });
+            templateFiles.sort();
+
+            // Render root files
+            rootFiles.forEach(path => {
+                const fileEl = createFileNode(path, path);
+                generatedTree.appendChild(fileEl);
+            });
+
+            // Render templates folder
+            if (templateFiles.length > 0) {
+                const folderEl = document.createElement('div');
+                folderEl.className = 'tree-folder';
+                
+                const headerEl = document.createElement('div');
+                headerEl.className = 'tree-folder-header';
+                headerEl.innerHTML = `<span class="arrow">${templatesFolderOpen ? '&#9662;' : '&#9656;'}</span> <span style="font-size: 0.95rem; margin-right: 0.2rem;">📁</span> <span>templates</span>`;
+                headerEl.onclick = () => {
+                    templatesFolderOpen = !templatesFolderOpen;
+                    renderFileTree();
+                };
+                folderEl.appendChild(headerEl);
+
+                const contentEl = document.createElement('div');
+                contentEl.className = 'tree-folder-content';
+                contentEl.style.display = templatesFolderOpen ? 'flex' : 'none';
+
+                templateFiles.forEach(path => {
+                    const shortName = path.substring('templates/'.length);
+                    const fileEl = createFileNode(path, shortName);
+                    contentEl.appendChild(fileEl);
+                });
+
+                folderEl.appendChild(contentEl);
+                generatedTree.appendChild(folderEl);
+            }
+        }
+
+        function createFileNode(path, displayName) {
+            const fileEl = document.createElement('div');
+            fileEl.className = `tree-file ${activeFile === path ? 'active' : ''}`;
+            
+            let icon = '📄';
+            if (path.endsWith('.yaml') || path.endsWith('.yml')) icon = '📝';
+            if (path.endsWith('.tpl')) icon = '⚙️';
+            if (path === '.helmignore') icon = '🚫';
+
+            fileEl.innerHTML = `<span style="font-size: 0.95rem; margin-right: 0.2rem;">${icon}</span> <span>${displayName}</span>`;
+            fileEl.onclick = () => selectFile(path);
+            return fileEl;
+        }
+
+        function selectFile(path) {
+            activeFile = path;
+            renderFileTree();
+            renderActiveFileContent();
+        }
+
+        function renderActiveFileContent() {
+            const activeFilenameSpan = document.getElementById('active-filename');
+            const editorBadge = document.getElementById('editor-badge');
+            const editorBody = document.getElementById('ide-editor-body');
+
+            if (!activeFile) {
+                activeFilenameSpan.textContent = 'Select a file';
+                editorBadge.style.display = 'none';
+                editorBody.innerHTML = `
+                    <div class="ide-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+                        <p>No file selected</p>
+                    </div>
+                `;
+                return;
+            }
+
+            activeFilenameSpan.textContent = activeFile;
+            editorBadge.style.display = activeFile !== 'source.yaml' ? 'inline-block' : 'none';
+
+            const code = generatedFiles[activeFile] || '';
+
+            editorBody.innerHTML = `
+                <pre class="ide-line-numbers" id="line-numbers"></pre>
+                <textarea id="code-editor" class="ide-code-textarea" spellcheck="false" wrap="off"></textarea>
+            `;
+
+            const textarea = document.getElementById('code-editor');
+            textarea.value = code;
+
+            // Sync scrolling
+            textarea.onscroll = () => {
+                const lineNums = document.getElementById('line-numbers');
+                if (lineNums) lineNums.scrollTop = textarea.scrollTop;
+            };
+
+            // Sync line numbers
+            const updateLineNums = () => {
+                const lineNums = document.getElementById('line-numbers');
+                if (lineNums) {
+                    const lines = textarea.value.split('\n').length;
+                    let html = '';
+                    for (let i = 1; i <= lines; i++) {
+                        html += `${i}\n`;
+                    }
+                    lineNums.textContent = html;
+                }
+            };
+            updateLineNums();
+
+            textarea.oninput = (e) => {
+                const val = e.target.value;
+                generatedFiles[activeFile] = val;
+                updateLineNums();
+
+                if (activeFile === 'source.yaml') {
+                    debouncedUpdatePreview();
+                }
+            };
+
+            // Support Tab key inside textarea
+            textarea.onkeydown = (e) => {
+                if (e.key === 'Tab') {
+                    e.preventDefault();
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const val = textarea.value;
+                    textarea.value = val.substring(0, start) + '  ' + val.substring(end);
+                    textarea.selectionStart = textarea.selectionEnd = start + 2;
+                    textarea.dispatchEvent(new Event('input'));
+                }
+            };
+        }
+
+        // Sidebar Toggle Script
+        const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+        const settingsSidebar = document.getElementById('settings-sidebar');
+        let isSidebarOpen = true;
+
+        if (btnToggleSidebar && settingsSidebar) {
+            btnToggleSidebar.addEventListener('click', () => {
+                isSidebarOpen = !isSidebarOpen;
+                if (isSidebarOpen) {
+                    settingsSidebar.classList.remove('collapsed');
+                    btnToggleSidebar.classList.remove('collapsed');
+                } else {
+                    settingsSidebar.classList.add('collapsed');
+                    btnToggleSidebar.classList.add('collapsed');
+                }
+            });
+        }
+
+        // Event listeners for settings change
+        document.getElementById('optCrd').addEventListener('change', debouncedUpdatePreview);
+        document.getElementById('optCertManager').addEventListener('change', debouncedUpdatePreview);
+        document.getElementById('optWebhook').addEventListener('change', debouncedUpdatePreview);
+        document.getElementById('optOptionalCrds').addEventListener('change', debouncedUpdatePreview);
+        document.getElementById('chartName').addEventListener('input', debouncedUpdatePreview);
+
+        // Handle Download / Form Submission
+        document.getElementById('btn-download').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-download');
+            const originalText = btn.innerHTML;
+            const chartName = document.getElementById('chartName').value.trim() || 'my-chart';
+
+            // Filter out source.yaml from the download payload, only send generated files
+            const filesPayload = {};
+            Object.entries(generatedFiles).forEach(([name, content]) => {
+                if (name !== 'source.yaml') {
+                    filesPayload[name] = content;
+                }
+            });
+
+            if (Object.keys(filesPayload).length === 0) {
+                alert("Nothing to download yet.");
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = `<span style="display:inline-block; border: 2px solid #fff; border-top: 2px solid transparent; border-radius:50%; width:12px; height:12px; animation: spin 1s linear infinite; margin-right: 6px;"></span> Downloading...`;
+
+            try {
+                const response = await fetch('/v1/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        chartName: chartName,
+                        files: filesPayload
+                    })
+                });
+
+                if (!response.ok) {
+                    const text = await response.text();
+                    throw new Error(text || 'Failed to download Helm chart.');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${chartName}.tar.gz`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+
+                showToast();
+
+            } catch (err) {
+                alert(`Error: ${err.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+
+        function showToast() {
+            const toast = document.getElementById('toast-message');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+
+        // Run on load
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

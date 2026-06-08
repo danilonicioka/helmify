@@ -1,29 +1,29 @@
-{{- if and .Values.web .Values.web.route .Values.web.route.default.enabled -}}
+{{- if and .Values.frontend .Values.frontend.route .Values.frontend.route.default.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-web
+  name: {{ include "chart-model-multi.fullname" . }}-frontend
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: web
-  {{- with .Values.web.route.annotations }}
+    app.kubernetes.io/component: frontend
+  {{- with .Values.frontend.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.web.route.default.host }}
-  host: {{ .Values.web.route.default.host | quote }}
+  {{- if .Values.frontend.route.default.host }}
+  host: {{ .Values.frontend.route.default.host | quote }}
   {{- end }}
-  {{- if .Values.web.route.path }}
-  path: {{ .Values.web.route.path | quote }}
+  {{- if .Values.frontend.route.path }}
+  path: {{ .Values.frontend.route.path | quote }}
   {{- end }}
-  {{- if .Values.web.route.tls }}
+  {{- if .Values.frontend.route.tls }}
   tls:
-    {{- toYaml .Values.web.route.tls | nindent 4 }}
+    {{- toYaml .Values.frontend.route.tls | nindent 4 }}
   {{- end }}
   to:
     kind: Service
-    name: {{ include "chart-model-multi.fullname" . }}-web
+    name: {{ include "chart-model-multi.fullname" . }}-frontend
     weight: 100
   port:
     targetPort: http

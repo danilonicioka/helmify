@@ -17,7 +17,10 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Download,
-  Edit3
+  Edit3,
+  Folder,
+  FolderOpen,
+  File
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -27,11 +30,18 @@ export default function HelmifyUI() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewFiles, setPreviewFiles] = useState<Record<string, string>>({});
-  const [selectedFile, setSelectedFile] = useState<string>('values.yaml');
+  const [activeFile, setActiveFile] = useState<string>('source.yaml');
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState<boolean>(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [options, setOptions] = useState({
+    crd: false,
+    certManager: false,
+    webhook: false,
+    optionalCrds: false,
+  });
 
   // Debounced preview update
-  const updatePreview = useCallback(async (currentManifest: string, name: string) => {
+  const updatePreview = useCallback(async (currentManifest: string, name: string, currentOptions: typeof options) => {
     if (!currentManifest) {
       setPreviewFiles({});
       return;
@@ -43,10 +53,10 @@ export default function HelmifyUI() {
         method: 'POST',
         headers: {
           'X-Chart-Name': name,
-          'X-Crd': 'false',
-          'X-Cert-Manager-Subchart': 'false',
-          'X-Add-Webhook-Option': 'false',
-          'X-Optional-Crds': 'false',
+          'X-Crd': String(currentOptions.crd),
+          'X-Cert-Manager-Subchart': String(currentOptions.certManager),
+          'X-Add-Webhook-Option': String(currentOptions.webhook),
+          'X-Optional-Crds': String(currentOptions.optionalCrds),
         },
         body: currentManifest,
       });
@@ -54,10 +64,10 @@ export default function HelmifyUI() {
       if (response.ok) {
         const data = await response.json();
         setPreviewFiles(data);
-        if (!data[selectedFile]) {
+        if (activeFile !== 'source.yaml' && !data[activeFile]) {
           const files = Object.keys(data);
-          if (files.includes('values.yaml')) setSelectedFile('values.yaml');
-          else if (files.length > 0) setSelectedFile(files[0]);
+          if (files.includes('values.yaml')) setActiveFile('values.yaml');
+          else if (files.length > 0) setActiveFile(files[0]);
         }
       }
     } catch (err) {
@@ -65,14 +75,14 @@ export default function HelmifyUI() {
     } finally {
       setIsPreviewLoading(false);
     }
-  }, [selectedFile]);
+  }, [activeFile]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      updatePreview(manifest, chartName);
+      updatePreview(manifest, chartName, options);
     }, 800); // Slightly longer debounce to allow for more complex manifests
     return () => clearTimeout(timer);
-  }, [manifest, chartName, updatePreview]);
+  }, [manifest, chartName, options, updatePreview]);
 
   const handleDownload = async () => {
     if (Object.keys(previewFiles).length === 0) return;
@@ -109,28 +119,43 @@ export default function HelmifyUI() {
   };
 
   const handlePreviewEdit = (newValue: string | undefined) => {
-    if (newValue === undefined) return;
+    if (newValue === undefined || activeFile === 'source.yaml') return;
     setPreviewFiles(prev => ({
       ...prev,
-      [selectedFile]: newValue
+      [activeFile]: newValue
     }));
   };
 
-  const sortedFiles = Object.keys(previewFiles).sort((a, b) => {
+  const handleEditorChange = (newValue: string | undefined) => {
+    if (newValue === undefined) return;
+    if (activeFile === 'source.yaml') {
+      setManifest(newValue);
+    } else {
+      handlePreviewEdit(newValue);
+    }
+  };
+
+  const rootFiles: string[] = [];
+  const templateFiles: string[] = [];
+  Object.keys(previewFiles).forEach(file => {
+    if (file.startsWith('templates/')) {
+      templateFiles.push(file);
+    } else {
+      rootFiles.push(file);
+    }
+  });
+
+  rootFiles.sort((a, b) => {
     if (a === 'values.yaml') return -1;
     if (b === 'values.yaml') return 1;
     if (a === 'Chart.yaml') return -1;
     if (b === 'Chart.yaml') return 1;
     return a.localeCompare(b);
   });
+  templateFiles.sort();
 
   return (
     <div className="h-screen bg-[#020617] text-slate-100 font-sans selection:bg-blue-500/30 overflow-hidden flex flex-col">
-      {/* Background Orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/5 blur-[120px] rounded-full" />
-      </div>
 
       {/* Header */}
       <nav className="border-b border-slate-800/50 bg-slate-950/80 backdrop-blur-md z-50 flex-shrink-0">
@@ -146,7 +171,7 @@ export default function HelmifyUI() {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
                 <Rocket className="text-white w-5 h-5" />
               </div>
-              <h1 className="text-lg font-bold tracking-tight hidden sm:block">Helmify <span className="text-blue-400 font-medium text-sm">Pro</span></h1>
+              <h1 className="text-lg font-bold tracking-tight hidden sm:block">Helmify</h1>
             </div>
           </div>
 
@@ -185,28 +210,120 @@ export default function HelmifyUI() {
         </div>
       </nav>
 
-      <div className="flex flex-1 overflow-hidden relative z-10">
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden relative z-10">
         {/* Sidebar */}
-        <motion.aside 
-          initial={false}
-          animate={{ width: isSidebarOpen ? 280 : 0, opacity: isSidebarOpen ? 1 : 0 }}
-          className="border-r border-slate-800/50 bg-slate-950/30 backdrop-blur-sm overflow-hidden flex-shrink-0"
+        <aside 
+          className={`border-b lg:border-b-0 lg:border-r border-slate-800/50 bg-slate-950/30 backdrop-blur-sm overflow-y-auto flex-shrink-0 transition-all duration-300 ease-in-out ${
+            isSidebarOpen ? 'w-full lg:w-[50vw] opacity-100 p-6 space-y-8' : 'w-0 opacity-0 p-0 pointer-events-none'
+          }`}
         >
-          <div className="w-[280px] p-6 space-y-8">
+          <div className="w-full space-y-8 min-w-[280px]">
             <div className="space-y-4">
-              <div className="flex items-center gap-2 text-slate-300">
-                <Settings2 size={16} className="text-blue-400" />
-                <span className="text-xs font-bold uppercase tracking-widest">Configuration</span>
+              <div className="flex items-center gap-3 border-b border-slate-800/50 pb-3 mb-6">
+                <Settings2 size={20} className="text-blue-500" />
+                <h2 className="text-base font-bold tracking-tight text-slate-100">Chart Settings</h2>
               </div>
               
               <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Chart Name</label>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider">Chart Name</label>
                 <input 
                   type="text" 
                   value={chartName}
                   onChange={(e) => setChartName(e.target.value)}
-                  className="w-full bg-slate-950/50 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all text-slate-200"
+                  placeholder="e.g. portal-certidao"
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all text-slate-200"
                 />
+              </div>
+            </div>
+
+            {/* Generation Options */}
+            <div className="space-y-4">
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-800/50 pb-2">
+                Generation Options
+              </div>
+
+              {/* Toggle 1: Separate CRD */}
+              <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="pr-4">
+                    <span className="text-xs font-semibold text-slate-300">Separate CRDs Folder</span>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      Places Custom Resource Definitions in a dedicated /crds directory.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none flex-shrink-0">
+                    <input 
+                      type="checkbox" 
+                      checked={options.crd}
+                      onChange={(e) => setOptions(prev => ({ ...prev, crd: e.target.checked }))}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Toggle 2: Cert Manager */}
+              <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="pr-4">
+                    <span className="text-xs font-semibold text-slate-300">Cert-Manager Subchart</span>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      Include cert-manager subchart settings for automated TLS management.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none flex-shrink-0">
+                    <input 
+                      type="checkbox" 
+                      checked={options.certManager}
+                      onChange={(e) => setOptions(prev => ({ ...prev, certManager: e.target.checked }))}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Toggle 3: Webhook */}
+              <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="pr-4">
+                    <span className="text-xs font-semibold text-slate-300">Webhook Support</span>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      Inject webhook enable/disable validation logic in the templates.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none flex-shrink-0">
+                    <input 
+                      type="checkbox" 
+                      checked={options.webhook}
+                      onChange={(e) => setOptions(prev => ({ ...prev, webhook: e.target.checked }))}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Toggle 4: Optional CRDs */}
+              <div className="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="pr-4">
+                    <span className="text-xs font-semibold text-slate-300">Optional CRDs</span>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      Allow toggling CRDs installation dynamically via values.yaml.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer select-none flex-shrink-0">
+                    <input 
+                      type="checkbox" 
+                      checked={options.optionalCrds}
+                      onChange={(e) => setOptions(prev => ({ ...prev, optionalCrds: e.target.checked }))}
+                      className="sr-only peer" 
+                    />
+                    <div className="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-4 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
               </div>
             </div>
 
@@ -237,107 +354,157 @@ export default function HelmifyUI() {
                </p>
             </div>
           </div>
-        </motion.aside>
+        </aside>
 
-        {/* Main Content (Editors with strict 50/50 split) */}
-        <main className="flex-1 flex overflow-hidden bg-[#020617]">
-          {/* Left Editor - Source */}
-          <div className="w-1/2 flex flex-col border-r border-slate-800/50 overflow-hidden">
-            <div className="h-10 border-b border-slate-800/50 bg-slate-900/30 flex items-center px-4 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <Package size={14} className="text-blue-400" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Kubernetes Source</span>
-              </div>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <Editor
-                height="100%"
-                defaultLanguage="yaml"
-                theme="vs-dark"
-                value={manifest}
-                onChange={(v) => setManifest(v || '')}
-                options={{
-                  minimap: { enabled: false },
-                  fontSize: 13,
-                  fontFamily: 'JetBrains Mono, Menlo, monospace',
-                  padding: { top: 16 },
-                  lineNumbers: 'on',
-                  roundedSelection: true,
-                  scrollBeyondLastLine: false,
-                  automaticLayout: true,
-                }}
-              />
+        {/* File Explorer Sidebar */}
+        <div className="w-60 bg-slate-950/50 border-r border-slate-800/50 flex flex-col flex-shrink-0 overflow-y-auto">
+          {/* Section: INPUT */}
+          <div className="flex items-center gap-2 px-4 py-3 text-slate-500 font-bold text-[10px] tracking-wider uppercase border-b border-slate-900/40">
+            <span>Input Source</span>
+          </div>
+          <div className="py-2">
+            <div 
+              onClick={() => setActiveFile('source.yaml')}
+              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium cursor-pointer transition-all hover:bg-slate-800/40 ${
+                activeFile === 'source.yaml' ? 'bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 font-semibold' : 'text-slate-400'
+              }`}
+            >
+              <FileCode size={14} className="text-blue-500" />
+              <span>source.yaml</span>
             </div>
           </div>
 
-          {/* Right Editor - Preview & Edit */}
-          <div className="w-1/2 flex flex-col overflow-hidden">
-            <div className="h-10 border-b border-slate-800/50 bg-slate-900/30 flex items-center px-2 overflow-x-auto no-scrollbar flex-shrink-0">
-              {sortedFiles.length === 0 ? (
-                <div className="px-4 text-[10px] text-slate-500 italic uppercase">Preview Output</div>
-              ) : (
-                sortedFiles.map(file => (
-                  <button
-                    key={file}
-                    onClick={() => setSelectedFile(file)}
-                    className={`px-3 h-7 rounded-md text-[10px] font-bold transition-all whitespace-nowrap flex items-center gap-2 uppercase tracking-tighter ${
-                      selectedFile === file 
-                        ? 'bg-blue-600/20 text-blue-400 border border-blue-500/20' 
-                        : 'text-slate-500 hover:bg-slate-800 hover:text-slate-300 border border-transparent'
-                    }`}
-                  >
-                    <Layers size={12} />
-                    {file}
-                  </button>
-                ))
-              )}
+          {/* Section: GENERATED HELM CHART */}
+          <div className="flex items-center gap-2 px-4 py-3 text-slate-500 font-bold text-[10px] tracking-wider uppercase border-t border-b border-slate-900/40">
+            <span>Generated Chart</span>
+          </div>
+          <div className="py-2 flex-1 flex flex-col gap-0.5">
+            {Object.keys(previewFiles).length === 0 ? (
+              <div className="px-4 py-3 text-[10px] text-slate-600 italic">No output generated</div>
+            ) : (
+              <>
+                {/* Root level files */}
+                {rootFiles.map(file => {
+                  let icon = <FileCode size={14} className="text-slate-400" />;
+                  if (file === '.helmignore') icon = <AlertCircle size={14} className="text-slate-500" />;
+                  
+                  return (
+                    <div 
+                      key={file}
+                      onClick={() => setActiveFile(file)}
+                      className={`flex items-center gap-2 px-4 py-2 text-xs font-medium cursor-pointer transition-all hover:bg-slate-800/40 ${
+                        activeFile === file ? 'bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 font-semibold' : 'text-slate-400'
+                      }`}
+                    >
+                      {icon}
+                      <span>{file}</span>
+                    </div>
+                  );
+                })}
+
+                {/* Templates Folder */}
+                {templateFiles.length > 0 && (
+                  <div>
+                    <div 
+                      onClick={() => setIsTemplatesOpen(!isTemplatesOpen)}
+                      className="flex items-center justify-between px-4 py-2 text-xs font-medium text-slate-400 cursor-pointer hover:bg-slate-800/40"
+                    >
+                      <div className="flex items-center gap-2">
+                        {isTemplatesOpen ? <FolderOpen size={14} className="text-blue-400" /> : <Folder size={14} className="text-blue-400" />}
+                        <span>templates</span>
+                      </div>
+                      <ChevronRight 
+                        size={12} 
+                        className={`text-slate-500 transition-transform ${isTemplatesOpen ? 'rotate-90' : ''}`} 
+                      />
+                    </div>
+
+                    {isTemplatesOpen && (
+                      <div className="pl-4 flex flex-col gap-0.5">
+                        {templateFiles.map(file => {
+                          const shortName = file.substring('templates/'.length);
+                          return (
+                            <div 
+                              key={file}
+                              onClick={() => setActiveFile(file)}
+                              className={`flex items-center gap-2 px-4 py-2 text-xs font-medium cursor-pointer transition-all hover:bg-slate-800/40 ${
+                                activeFile === file ? 'bg-blue-500/10 text-blue-400 border-l-2 border-blue-500 font-semibold' : 'text-slate-400'
+                              }`}
+                            >
+                              <File size={14} className="text-slate-500" />
+                              <span>{shortName}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Main Content (Single Active Editor) */}
+        <main className="flex-1 flex flex-col overflow-hidden bg-[#020617]">
+          <div className="h-10 border-b border-slate-800/50 bg-slate-900/30 flex items-center justify-between px-4 flex-shrink-0">
+            <div className="flex items-center gap-2">
+              <Package size={14} className="text-blue-400" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                {activeFile === 'source.yaml' ? 'Kubernetes Source Editor' : `Generated File: ${activeFile}`}
+              </span>
             </div>
-            <div className="flex-1 relative overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={selectedFile}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.1 }}
-                  className="h-full"
-                >
-                  <Editor
-                    height="100%"
-                    language="yaml"
-                    theme="vs-dark"
-                    value={previewFiles[selectedFile] || ''}
-                    onChange={handlePreviewEdit}
-                    options={{
-                      readOnly: false,
-                      minimap: { enabled: false },
-                      fontSize: 12,
-                      fontFamily: 'JetBrains Mono, Menlo, monospace',
-                      padding: { top: 16 },
-                      lineNumbers: 'on',
-                      roundedSelection: true,
-                      scrollBeyondLastLine: false,
-                      automaticLayout: true,
-                    }}
-                  />
-                </motion.div>
-              </AnimatePresence>
-              {isPreviewLoading && (
-                <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px] flex items-center justify-center z-20">
-                  <Loader2 size={24} className="text-blue-500 animate-spin" />
-                </div>
-              )}
-            </div>
+            {activeFile !== 'source.yaml' && (
+              <span className="text-[9px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded font-mono border border-slate-700/50">
+                EDITABLE PREVIEW
+              </span>
+            )}
+          </div>
+          <div className="flex-1 relative overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeFile}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.1 }}
+                className="h-full"
+              >
+                <Editor
+                  height="100%"
+                  language="yaml"
+                  theme="vs-dark"
+                  value={activeFile === 'source.yaml' ? manifest : (previewFiles[activeFile] || '')}
+                  onChange={handleEditorChange}
+                  options={{
+                    readOnly: false,
+                    minimap: { enabled: false },
+                    fontSize: 13,
+                    fontFamily: 'JetBrains Mono, Menlo, monospace',
+                    padding: { top: 16 },
+                    lineNumbers: 'on',
+                    roundedSelection: true,
+                    scrollBeyondLastLine: false,
+                    automaticLayout: true,
+                  }}
+                />
+              </motion.div>
+            </AnimatePresence>
+            {isPreviewLoading && (
+              <div className="absolute inset-0 bg-slate-950/20 backdrop-blur-[1px] flex items-center justify-center z-20">
+                <Loader2 size={24} className="text-blue-500 animate-spin" />
+              </div>
+            )}
           </div>
         </main>
       </div>
       
       {/* Minimal Footer */}
       <footer className="h-8 border-t border-slate-800/50 bg-slate-950/80 backdrop-blur-md flex items-center px-4 justify-between flex-shrink-0 text-[10px] text-slate-600">
-        <div>© 2026 Helmify Pro — Advanced Agentic Coding</div>
+        <div>© 2026 Helmify — Advanced Agentic Coding</div>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 bg-green-500 rounded-full" /> API Online</span>
-          <span>v1.3.0-pro</span>
+          <span>v1.3.0</span>
         </div>
       </footer>
     </div>

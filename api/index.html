@@ -34,6 +34,34 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border-color) transparent;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: var(--border-color);
+            border-radius: var(--radius-sm);
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: var(--text-muted);
+        }
+
+        .ide-code-pre::-webkit-scrollbar-thumb:hover,
+        .ide-code-textarea::-webkit-scrollbar-thumb:hover {
+            background-color: var(--accent);
         }
 
         body {
@@ -42,35 +70,31 @@
             font-family: var(--font-family-sans);
             line-height: 1.5;
             -webkit-font-smoothing: antialiased;
-            overflow-x: hidden;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Ambient Glow Backdrop */
-        .ambient-glow {
-            position: fixed;
-            top: -200px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 800px;
-            height: 600px;
-            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
-            z-index: -1;
-            pointer-events: none;
-        }
+
 
         header {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2.5rem 2rem 1.5rem 2rem;
+            width: 100%;
+            padding: 0.75rem 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            background-color: hsla(230, 25%, 6%, 0.5);
+            backdrop-filter: blur(10px);
+            z-index: 50;
+            flex-shrink: 0;
         }
 
         .logo-section h1 {
             font-family: var(--font-family-title);
-            font-size: 2rem;
-            font-weight: 800;
+            font-size: 1.25rem;
+            font-weight: 850;
             background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent) 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -79,18 +103,17 @@
 
         .logo-section p {
             color: var(--text-secondary);
-            font-size: 0.9rem;
-            margin-top: 0.25rem;
+            font-size: 0.75rem;
+            margin-top: 0.1rem;
         }
 
         .badge {
             background: var(--bg-card);
-            border: 1px border var(--border-color);
+            border: 1px solid var(--border-color);
             padding: 0.4rem 0.8rem;
             border-radius: var(--radius-sm);
             font-size: 0.8rem;
             color: var(--text-secondary);
-            border: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -106,39 +129,60 @@
 
         /* Main Layout */
         main {
-            max-width: 1400px;
-            margin: 0 auto 4rem auto;
-            padding: 0 2rem;
-            display: grid;
-            grid-template-columns: 1.4fr 1fr;
-            gap: 2rem;
+            width: 100%;
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Prevent children (like code blocks) from blowing up column widths */
+        main > * {
+            min-width: 0;
         }
 
         @media (max-width: 1100px) {
             main {
-                grid-template-columns: 1fr;
+                flex-direction: column;
+            }
+            .settings-sidebar {
+                width: 100% !important;
             }
         }
 
-        /* Card Elements */
-        .card {
-            background-color: var(--bg-surface);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 2rem;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+        /* Settings Sidebar Elements */
+        .settings-sidebar {
+            width: 50vw;
+            flex-shrink: 0;
+            background-color: hsla(230, 25%, 6%, 0.3);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 1.5rem;
             transition: var(--transition-smooth);
+            z-index: 10;
         }
 
-        .card:hover {
-            border-color: hsla(260, 85%, 65%, 0.3);
+        .settings-sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            border-right: 0px solid transparent;
+        }
+
+        .settings-sidebar-inner {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
         }
 
         .card-title {
             font-family: var(--font-family-title);
-            font-size: 1.35rem;
+            font-size: 1.25rem;
             font-weight: 600;
-            margin-bottom: 1.5rem;
+            margin-bottom: 0.5rem;
             display: flex;
             align-items: center;
             gap: 0.75rem;
@@ -441,39 +485,250 @@
             transform: translateY(1px);
         }
 
-        /* Preview Panel */
+        /* Preview Panel (IDE Layout) */
         .preview-container {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-base);
         }
 
-        .preview-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .preview-header h2 {
-            font-family: var(--font-family-title);
-            font-size: 1.2rem;
-            font-weight: 600;
-        }
-
-        .preview-box {
+        .ide-wrapper {
             flex: 1;
+            display: flex;
             background-color: var(--bg-surface);
+            border-top: 1px solid var(--border-color);
+            overflow: hidden;
+            width: 100%;
+        }
+
+        /* Sidebar Toggle Button */
+        .sidebar-toggle-btn {
+            background: transparent;
             border: 1px solid var(--border-color);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
+            color: var(--text-secondary);
+            padding: 0.5rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-smooth);
+        }
+
+        .sidebar-toggle-btn:hover {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+
+        .sidebar-toggle-btn.collapsed {
+            color: var(--accent);
+            border-color: var(--accent-glow);
+            background-color: var(--accent-glow);
+        }
+
+        /* Header Navigation Buttons */
+        .header-nav-btn {
+            text-decoration: none;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: var(--transition-smooth);
+        }
+
+        .header-nav-btn:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+            background-color: var(--bg-card);
+        }
+
+        /* Header Action Button (Download) */
+        .header-action-btn {
+            background: linear-gradient(135deg, var(--accent) 0%, hsl(280, 85%, 60%) 100%);
+            border: none;
+            color: var(--text-primary);
+            padding: 0.45rem 1rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(120, 80, 255, 0.3);
+            transition: var(--transition-smooth);
+        }
+
+        .header-action-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(120, 80, 255, 0.4);
+            background: linear-gradient(135deg, var(--accent-hover) 0%, hsl(280, 90%, 65%) 100%);
+        }
+
+        .header-action-btn:active {
+            transform: translateY(1px);
+        }
+
+        .ide-sidebar {
+            width: 220px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--border-color);
+            background-color: hsla(230, 25%, 6%, 0.4);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 1rem 0.5rem;
+        }
+
+        .ide-sidebar-title {
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin: 0.5rem 0.75rem 1rem 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ide-file-tree {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .tree-folder-header {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.6rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: var(--transition-smooth);
+        }
+
+        .tree-folder-header:hover {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .tree-folder-content {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            padding-left: 1.1rem;
+            margin-top: 0.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .tree-file {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.4rem 0.6rem;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            transition: var(--transition-smooth);
+        }
+
+        .tree-file:hover {
+            background-color: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .tree-file.active {
+            background-color: var(--accent-glow);
+            color: var(--accent);
+            border-left: 2px solid var(--accent);
+            border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+            font-weight: 500;
+        }
+
+        .ide-editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-base);
+            overflow: hidden;
+        }
+
+        .ide-editor-header {
+            height: 38px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: var(--bg-card);
+            display: flex;
+            align-items: center;
+            padding: 0 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            gap: 0.5rem;
+        }
+
+        .ide-editor-body {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .ide-line-numbers {
+            width: 45px;
+            padding: 1rem 0.75rem 1rem 0;
+            border-right: 1px solid var(--border-color);
+            background-color: hsla(230, 25%, 6%, 0.2);
+            text-align: right;
             font-family: var(--font-family-mono);
-            font-size: 0.85rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            user-select: none;
+            line-height: 1.5;
+            overflow-y: hidden;
+            white-space: pre;
+        }
+
+        .ide-code-pre {
+            flex: 1;
+            padding: 1rem;
+            margin: 0;
+            font-family: var(--font-family-mono);
+            font-size: 0.75rem;
             color: hsl(210, 40%, 85%);
             overflow: auto;
-            white-space: pre-wrap;
-            max-height: 800px;
-            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.3);
+            line-height: 1.5;
+        }
+
+        .ide-placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            height: 100%;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-align: center;
+            padding: 2rem;
+            width: 100%;
+        }
+
+        .ide-placeholder svg {
+            color: var(--border-color);
         }
 
         /* Toast Alert */
@@ -496,35 +751,149 @@
             to { transform: translateX(0); opacity: 1; }
         }
 
+        /* Custom Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(6, 6, 9, 0.7);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition-smooth);
+        }
+
+        .modal-backdrop.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            width: 440px;
+            max-width: 90%;
+            padding: 2rem;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+            transform: scale(0.95);
+            transition: var(--transition-smooth);
+        }
+
+        .modal-backdrop.show .modal-box {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-header h3 {
+            font-family: var(--font-family-title);
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--text-primary) 30%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .modal-body {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .modal-footer {
+            margin-top: 2rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+        }
+
+        .modal-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .modal-btn.cancel {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .modal-btn.cancel:hover {
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+        }
+
+        .modal-btn.confirm {
+            background-color: var(--accent);
+            border: none;
+            color: var(--text-primary);
+            box-shadow: 0 4px 12px rgba(120, 80, 255, 0.3);
+        }
+
+        .modal-btn.confirm:hover {
+            background-color: var(--accent-hover);
+            box-shadow: 0 6px 16px rgba(120, 80, 255, 0.4);
+        }
+
+        .modal-error {
+            color: var(--accent-danger);
+            font-size: 0.85rem;
+            margin-top: 0.5rem;
+            display: none;
+        }
+
     </style>
 </head>
 <body>
-    <div class="ambient-glow"></div>
-
     <header>
-        <div class="logo-section">
-            <h1>TJPA Helmify Wizard</h1>
-            <p>Generate production-grade TJPA Helm charts dynamically on-the-fly</p>
+        <div class="logo-section" style="display: flex; align-items: center; gap: 1rem;">
+            <button id="btn-toggle-sidebar" class="sidebar-toggle-btn" aria-label="Toggle settings">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+            </button>
+            <div>
+                <h1>TJPA Helmify Wizard</h1>
+                <p>Generate production-grade TJPA Helm charts dynamically on-the-fly</p>
+            </div>
         </div>
-        <div style="display: flex; gap: 1rem; align-items: center;">
-            <a href="/" style="text-decoration: none; color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.4rem 0.8rem; border-radius: var(--radius-sm); font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; transition: var(--transition-smooth);" onmouseover="this.style.color='var(--text-primary)'; this.style.borderColor='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'; this.style.borderColor='var(--border-color)'">
+        <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <a href="/" class="header-nav-btn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                 <span>Portal Home</span>
             </a>
-            <a href="/converter/" style="text-decoration: none; color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.4rem 0.8rem; border-radius: var(--radius-sm); font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem; transition: var(--transition-smooth);" onmouseover="this.style.color='var(--text-primary)'; this.style.borderColor='var(--text-primary)'" onmouseout="this.style.color='var(--text-secondary)'; this.style.borderColor='var(--border-color)'">
+            <a href="/converter/" class="header-nav-btn">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
-                <span>Go to Converter</span>
+                <span>Switch to Converter</span>
             </a>
-            <div class="badge">
+            <div class="badge" style="margin-right: 0.5rem;">
                 <div class="badge-dot"></div>
                 <span>TJPA Standards Compliant</span>
             </div>
+            <button id="btn-generate-header" class="header-action-btn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Download Chart</span>
+            </button>
         </div>
     </header>
 
     <main>
-        <!-- Form Panel -->
-        <section class="card">
+        <!-- Settings Sidebar -->
+        <aside class="settings-sidebar" id="settings-sidebar">
+            <div class="settings-sidebar-inner">
             <div class="card-title">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sliders"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="2" y1="14" x2="6" y2="14"></line><line x1="10" y1="8" x2="14" y2="8"></line><line x1="18" y1="16" x2="22" y2="16"></line></svg>
                 <span>Chart Settings</span>
@@ -656,23 +1025,67 @@
                 <div id="comp-secret-list"></div>
             </div>
 
-            <button type="button" class="generate-btn" id="btn-generate">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                <span>Generate & Download Chart</span>
-            </button>
-        </section>
+            </div>
+        </aside>
 
-        <!-- Preview Panel -->
+        <!-- Preview Panel (IDE Layout) -->
         <section class="preview-container">
-            <div class="preview-header">
-                <h2>API Payload Preview</h2>
-                <div class="badge" style="background: transparent; border: none; font-size: 0.8rem;">
-                    <span>Real-time Sync</span>
+            <div class="ide-wrapper">
+                <!-- Sidebar File Explorer -->
+                <div class="ide-sidebar">
+                    <div class="ide-sidebar-title">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        <span>EXPLORER</span>
+                    </div>
+                    <div class="ide-file-tree" id="ide-file-tree">
+                        <!-- Dynamically populated file tree -->
+                    </div>
+                </div>
+
+                <!-- Editor Pane -->
+                <div class="ide-editor-container">
+                    <div class="ide-editor-header" id="ide-editor-header">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <span id="active-filename">Select a file</span>
+                    </div>
+                    <div class="ide-editor-body" id="ide-editor-body">
+                        <!-- Default placeholder -->
+                        <div class="ide-placeholder">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+                            <p>Loading generated files...</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <pre class="preview-box" id="json-preview"></pre>
         </section>
     </main>
+
+    <!-- Custom Modal for adding deployment -->
+    <div class="modal-backdrop" id="add-deployment-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Add New Deployment</h3>
+            </div>
+            <div class="modal-body">
+                <div class="form-group" style="margin-bottom: 0.5rem;">
+                    <label for="modal-comp-name">Deployment Name</label>
+                    <input type="text" id="modal-comp-name" placeholder="e.g. bff, auth-service" autocomplete="off">
+                    <div class="modal-error" id="modal-comp-error"></div>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Base Template Preset</label>
+                    <div class="toggle-group" style="margin-top: 0.5rem;">
+                        <button type="button" class="toggle-btn active" id="modal-preset-backend">Backend</button>
+                        <button type="button" class="toggle-btn" id="modal-preset-frontend">Frontend</button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="modal-btn cancel" id="modal-btn-cancel">Cancel</button>
+                <button type="button" class="modal-btn confirm" id="modal-btn-confirm">Add Deployment</button>
+            </div>
+        </div>
+    </div>
 
     <div class="toast" id="toast-message">Chart generated successfully!</div>
 
@@ -735,7 +1148,7 @@
                     document.getElementById('btn-add-comp').style.display = 'none';
                 } else {
                     // For multi, let's set active component to the first component found
-                    activeComponent = compKeys.includes('api') ? 'api' : (compKeys[0] || 'api');
+                    activeComponent = compKeys.includes('backend') ? 'backend' : (compKeys[0] || 'backend');
                     document.getElementById('btn-add-comp').style.display = 'block';
                 }
 
@@ -765,10 +1178,10 @@
                     document.getElementById('chartName').value = 'chart-model-multi';
                 }
                 components = {
-                    'api': createDefaultComponentConfig('api', 'api'),
-                    'web': createDefaultComponentConfig('web', 'web')
+                    'backend': createDefaultComponentConfig('backend', 'backend'),
+                    'frontend': createDefaultComponentConfig('frontend', 'frontend')
                 };
-                activeComponent = 'api';
+                activeComponent = 'backend';
                 document.getElementById('btn-add-comp').style.display = 'block';
             }
         }
@@ -804,26 +1217,27 @@
         }
 
         function createDefaultComponentConfig(name, type) {
-            const isWeb = type === 'web';
+            const isFrontend = type === 'frontend' || type === 'web';
+            const suffix = isFrontend ? 'frontend' : 'backend';
             return {
-                replicas: isWeb ? 1 : 2,
+                replicas: isFrontend ? 0 : 2,
                 image: {
-                    repository: `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-${type}`,
+                    repository: `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-${suffix}`,
                     tag: ''
                 },
                 service: {
-                    port: isWeb ? 80 : 8080
+                    port: isFrontend ? 80 : 8080
                 },
-                cm: isWeb ? { 'BACKEND_API_URL': 'http://chart-model-multi-api:8080' } : {
+                cm: isFrontend ? { 'BACKEND_API_URL': 'http://chart-model-multi-backend:8080' } : {
                     'SPRING_PROFILES_ACTIVE': 'prd',
                     'JAVA_OPTS': '-XX:+UseG1GC -XX:+UseStringDeduplication'
                 },
-                secret: isWeb ? {} : { 'DB_PASSWORD': 'vault-decrypted-secret-key-goes-here' },
+                secret: isFrontend ? {} : { 'DB_PASSWORD': 'vault-decrypted-secret-key-goes-here' },
                 route: {
                     path: '',
-                    default: { enabled: true, host: `chart-model-${type}.apps.ocp-hub.i.tj.pa.gov.br` },
-                    internal: { enabled: false, host: `chart-model-${type}-int.i.tjpa.jus.br` },
-                    external: { enabled: false, host: `chart-model-${type}.tjpa.jus.br` }
+                    default: { enabled: true, host: `chart-model-${name}.apps.ocp-hub.i.tj.pa.gov.br` },
+                    internal: { enabled: false, host: `chart-model-${name}-int.i.tjpa.jus.br` },
+                    external: { enabled: false, host: `chart-model-${name}.tjpa.jus.br` }
                 }
             };
         }
@@ -834,6 +1248,7 @@
             chartType = 'single';
             document.getElementById('btn-type-single').classList.add('active');
             document.getElementById('btn-type-multi').classList.remove('active');
+            isFirstLoad = true;
             init();
         });
 
@@ -842,6 +1257,7 @@
             chartType = 'multi';
             document.getElementById('btn-type-multi').classList.add('active');
             document.getElementById('btn-type-single').classList.remove('active');
+            isFirstLoad = true;
             init();
         });
 
@@ -902,26 +1318,102 @@
             });
         }
 
-        // Add component in multi mode
+        // Add component in multi mode - Custom Modal
+        const addModal = document.getElementById('add-deployment-modal');
+        const modalInput = document.getElementById('modal-comp-name');
+        const modalError = document.getElementById('modal-comp-error');
+        const modalConfirmBtn = document.getElementById('modal-btn-confirm');
+        const modalCancelBtn = document.getElementById('modal-btn-cancel');
+        
+        let modalPreset = 'backend';
+        const presetBackendBtn = document.getElementById('modal-preset-backend');
+        const presetFrontendBtn = document.getElementById('modal-preset-frontend');
+        
+        presetBackendBtn.addEventListener('click', () => {
+            modalPreset = 'backend';
+            presetBackendBtn.classList.add('active');
+            presetFrontendBtn.classList.remove('active');
+        });
+        
+        presetFrontendBtn.addEventListener('click', () => {
+            modalPreset = 'frontend';
+            presetFrontendBtn.classList.add('active');
+            presetBackendBtn.classList.remove('active');
+        });
+
+        function showAddDeploymentModal() {
+            modalInput.value = '';
+            modalError.style.display = 'none';
+            modalError.textContent = '';
+            modalPreset = 'backend';
+            presetBackendBtn.classList.add('active');
+            presetFrontendBtn.classList.remove('active');
+            addModal.classList.add('show');
+            setTimeout(() => modalInput.focus(), 150);
+        }
+
+        function hideAddDeploymentModal() {
+            addModal.classList.remove('show');
+        }
+
         document.getElementById('btn-add-comp').addEventListener('click', () => {
-            const compName = prompt("Enter component name (e.g. bff, backend):");
-            if (!compName) return;
+            showAddDeploymentModal();
+        });
+
+        modalCancelBtn.addEventListener('click', () => {
+            hideAddDeploymentModal();
+        });
+
+        // Close on backdrop click
+        addModal.addEventListener('click', (e) => {
+            if (e.target === addModal) {
+                hideAddDeploymentModal();
+            }
+        });
+
+        // Close on ESC key
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && addModal.classList.contains('show')) {
+                hideAddDeploymentModal();
+            }
+        });
+
+        function handleModalConfirm() {
+            const compName = modalInput.value.trim();
+            if (!compName) {
+                modalError.textContent = 'Deployment name is required.';
+                modalError.style.display = 'block';
+                return;
+            }
             const cleanName = compName.toLowerCase().replace(/[^a-z0-9-]/g, '');
             if (!cleanName) {
-                alert("Invalid name.");
+                modalError.textContent = 'Name must contain only letters, numbers, or dashes.';
+                modalError.style.display = 'block';
                 return;
             }
             if (components[cleanName]) {
-                alert("Deployment already exists.");
+                modalError.textContent = 'A deployment with this name already exists.';
+                modalError.style.display = 'block';
                 return;
             }
 
             saveActiveComponentState();
-            components[cleanName] = createDefaultComponentConfig(cleanName, cleanName);
+            components[cleanName] = createDefaultComponentConfig(cleanName, modalPreset);
             activeComponent = cleanName;
+            
             renderTabs();
             renderActiveComponent();
             updatePreview();
+            hideAddDeploymentModal();
+        }
+
+        modalConfirmBtn.addEventListener('click', handleModalConfirm);
+        
+        modalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleModalConfirm();
+            }
         });
 
         // Save active component state from inputs to memory
@@ -1105,10 +1597,178 @@
             };
         }
 
+        let generatedFiles = {};
+        let activeFile = 'values.yaml';
+        let isFirstLoad = true;
+        let templatesFolderOpen = true;
+
         // Update real-time preview
-        function updatePreview() {
+        async function updatePreview() {
             const payload = buildPayload();
-            document.getElementById('json-preview').textContent = JSON.stringify(payload, null, 2);
+            
+            try {
+                const response = await fetch('/v1/preview-wizard', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    generatedFiles = await response.json();
+                    
+                    // Render the file tree
+                    renderFileTree();
+                    
+                    // Render the currently selected file content
+                    if (isFirstLoad) {
+                        // Find first available file (prefer values.yaml)
+                        if (generatedFiles['values.yaml']) {
+                            activeFile = 'values.yaml';
+                        } else {
+                            const keys = Object.keys(generatedFiles);
+                            if (keys.length > 0) activeFile = keys[0];
+                        }
+                        isFirstLoad = false;
+                    }
+                    
+                    renderActiveFileContent();
+                } else {
+                    const text = await response.text();
+                    console.error("Preview failed:", text);
+                }
+            } catch (err) {
+                console.error("Preview error:", err);
+            }
+        }
+
+        function renderFileTree() {
+            const treeContainer = document.getElementById('ide-file-tree');
+            treeContainer.innerHTML = '';
+
+            const rootFiles = [];
+            const templateFiles = [];
+
+            Object.keys(generatedFiles).forEach(path => {
+                if (path.startsWith('templates/')) {
+                    templateFiles.push(path);
+                } else {
+                    rootFiles.push(path);
+                }
+            });
+
+            // Sort lists
+            rootFiles.sort((a, b) => {
+                if (a === 'values.yaml') return -1;
+                if (b === 'values.yaml') return 1;
+                if (a === 'Chart.yaml') return -1;
+                if (b === 'Chart.yaml') return 1;
+                return a.localeCompare(b);
+            });
+            templateFiles.sort();
+
+            // Render root files
+            rootFiles.forEach(path => {
+                const fileEl = createFileNode(path, path);
+                treeContainer.appendChild(fileEl);
+            });
+
+            // Render templates folder if we have template files
+            if (templateFiles.length > 0) {
+                const folderEl = document.createElement('div');
+                folderEl.className = 'tree-folder';
+                
+                const headerEl = document.createElement('div');
+                headerEl.className = 'tree-folder-header';
+                headerEl.innerHTML = `<span class="arrow">${templatesFolderOpen ? '&#9662;' : '&#9656;'}</span> <span style="font-size: 0.95rem; margin-right: 0.2rem;">📁</span> <span>templates</span>`;
+                headerEl.addEventListener('click', () => {
+                    templatesFolderOpen = !templatesFolderOpen;
+                    renderFileTree();
+                });
+                folderEl.appendChild(headerEl);
+
+                const contentEl = document.createElement('div');
+                contentEl.className = 'tree-folder-content';
+                contentEl.style.display = templatesFolderOpen ? 'flex' : 'none';
+
+                templateFiles.forEach(path => {
+                    const shortName = path.substring('templates/'.length);
+                    const fileEl = createFileNode(path, shortName);
+                    contentEl.appendChild(fileEl);
+                });
+
+                folderEl.appendChild(contentEl);
+                treeContainer.appendChild(folderEl);
+            }
+        }
+
+        function createFileNode(path, displayName) {
+            const fileEl = document.createElement('div');
+            fileEl.className = `tree-file ${activeFile === path ? 'active' : ''}`;
+            
+            // Icon
+            let icon = '📄';
+            if (path.endsWith('.yaml') || path.endsWith('.yml')) icon = '📝';
+            if (path.endsWith('.tpl')) icon = '⚙️';
+            if (path === '.helmignore') icon = '🚫';
+
+            fileEl.innerHTML = `<span style="font-size: 0.95rem; margin-right: 0.2rem;">${icon}</span> <span>${displayName}</span>`;
+            
+            fileEl.addEventListener('click', () => {
+                activeFile = path;
+                // Highlight active item
+                document.querySelectorAll('.tree-file').forEach(el => el.classList.remove('active'));
+                fileEl.classList.add('active');
+                renderActiveFileContent();
+            });
+            return fileEl;
+        }
+
+        function renderActiveFileContent() {
+            const activeFilenameSpan = document.getElementById('active-filename');
+            const editorBody = document.getElementById('ide-editor-body');
+
+            if (!activeFile || !generatedFiles[activeFile]) {
+                activeFilenameSpan.textContent = 'Select a file';
+                editorBody.innerHTML = `
+                    <div class="ide-placeholder">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+                        <p>No file selected</p>
+                    </div>
+                `;
+                return;
+            }
+
+            activeFilenameSpan.textContent = activeFile;
+
+            const code = generatedFiles[activeFile];
+            const lineCount = code.split('\n').length;
+            
+            // Generate line numbers column
+            let lineNumsHTML = '';
+            for (let i = 1; i <= lineCount; i++) {
+                lineNumsHTML += `${i}\n`;
+            }
+
+            // Replace characters for HTML rendering
+            const escapedCode = code
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+            editorBody.innerHTML = `
+                <pre class="ide-line-numbers" id="ide-line-numbers">${lineNumsHTML}</pre>
+                <pre class="ide-code-pre" id="ide-code-pre"><code>${escapedCode}</code></pre>
+            `;
+
+            const codePre = document.getElementById('ide-code-pre');
+            const lineNums = document.getElementById('ide-line-numbers');
+            if (codePre && lineNums) {
+                codePre.onscroll = () => {
+                    lineNums.scrollTop = codePre.scrollTop;
+                };
+            }
         }
 
         // Input listeners for live updates
@@ -1117,14 +1777,32 @@
             element.addEventListener('change', updatePreview);
         });
 
+        // Sidebar Toggle Script
+        const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+        const settingsSidebar = document.getElementById('settings-sidebar');
+        let isSidebarOpen = true;
+
+        if (btnToggleSidebar && settingsSidebar) {
+            btnToggleSidebar.addEventListener('click', () => {
+                isSidebarOpen = !isSidebarOpen;
+                if (isSidebarOpen) {
+                    settingsSidebar.classList.remove('collapsed');
+                    btnToggleSidebar.classList.remove('collapsed');
+                } else {
+                    settingsSidebar.classList.add('collapsed');
+                    btnToggleSidebar.classList.add('collapsed');
+                }
+            });
+        }
+
         // Handle Download / Form Submission
-        document.getElementById('btn-generate').addEventListener('click', async () => {
+        document.getElementById('btn-generate-header').addEventListener('click', async () => {
             const payload = buildPayload();
-            const btn = document.getElementById('btn-generate');
+            const btn = document.getElementById('btn-generate-header');
             const originalText = btn.innerHTML;
 
             btn.disabled = true;
-            btn.innerHTML = `<span style="display:inline-block; border: 2px solid #fff; border-top: 2px solid transparent; border-radius:50%; width:16px; height:16px; animation: spin 1s linear infinite; margin-right: 8px;"></span> Generating...`;
+            btn.innerHTML = `<span style="display:inline-block; border: 2px solid #fff; border-top: 2px solid transparent; border-radius:50%; width:12px; height:12px; animation: spin 1s linear infinite; margin-right: 6px;"></span> Downloading...`;
 
             try {
                 const response = await fetch('/v1/generate-wizard', {
@@ -1145,7 +1823,7 @@
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `${payload.chartName}.tar.gz`;
+                a.download = `${payload.chartName || 'chart'}.tar.gz`;
                 document.body.appendChild(a);
                 a.click();
                 a.remove();

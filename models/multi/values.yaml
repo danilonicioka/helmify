@@ -17,9 +17,9 @@ global:
   TZ: "America/Belem"
 
 # ==============================================================================
-# II. API COMPONENT CONFIGURATION
+# II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
-api:
+backend:
   # ----------------------------------------------------------------------------
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
   # ----------------------------------------------------------------------------
@@ -28,7 +28,7 @@ api:
 
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
-    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-api
+    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-backend
     pullPolicy: IfNotPresent
     # -- Defaults to Chart.appVersion if not specified.
     tag: "latest"
@@ -62,17 +62,17 @@ api:
     # -- Internal Route with self-signed certificate (to default OCP apps).
     default:
       enabled: true
-      host: chart-model-api.apps.ocp-dev.i.tj.pa.gov.br
+      host: chart-model-backend.apps.ocp-dev.i.tj.pa.gov.br
 
     # -- Internal Route with valid certificate (to intranet TJPA).
     internal:
       enabled: false
-      host: chart-model-api-int.i.tjpa.jus.br
+      host: chart-model-backend-int.i.tjpa.jus.br
 
     # -- External Route with valid certificate (to internet TJPA).
     external:
       enabled: false
-      host: chart-model-api.tjpa.jus.br
+      host: chart-model-backend.tjpa.jus.br
 
   # -- Internal Kubernetes Service Configuration.
   service:
@@ -133,16 +133,16 @@ api:
   terminationGracePeriodSeconds: 30
 
 # ==============================================================================
-# III. WEB COMPONENT CONFIGURATION
+# III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
-web:
+frontend:
   # ----------------------------------------------------------------------------
   # 1. CORE WORKLOAD SETTINGS
   # ----------------------------------------------------------------------------
   replicas: 0
 
   image:
-    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-web
+    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-frontend
     pullPolicy: IfNotPresent
     tag: "latest"
 
@@ -150,7 +150,7 @@ web:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
-    BACKEND_API_URL: "http://chart-model-multi-api:8080"
+    BACKEND_API_URL: "http://chart-model-multi-backend:8080"
   
   # No default secrets for web frontend component
   secret: {}
@@ -166,13 +166,13 @@ web:
     path: "/"
     default:
       enabled: true
-      host: chart-model-web.apps.ocp-dev.i.tj.pa.gov.br
+      host: chart-model-frontend.apps.ocp-dev.i.tj.pa.gov.br
     internal:
       enabled: false
-      host: chart-model-web-int.i.tjpa.jus.br
+      host: chart-model-frontend-int.i.tjpa.jus.br
     external:
       enabled: false
-      host: chart-model-web.tjpa.jus.br
+      host: chart-model-frontend.tjpa.jus.br
 
   service:
     type: ClusterIP
