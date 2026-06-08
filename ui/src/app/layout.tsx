@@ -13,7 +13,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Helmify Pro | Production-Grade Helm Chart Generator",
+  title: "Helmify | Production-Grade Helm Chart Generator",
   description: "Automate the creation of TJPA-standard Helm charts from Kubernetes manifests with zero-delay probes and deterministic rollouts.",
 };
 

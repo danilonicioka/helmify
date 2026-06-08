@@ -1,13 +1,13 @@
-{{- if and .Values.api .Values.api.cm -}}
+{{- if and .Values.backend .Values.backend.cm -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-api-cm
+  name: {{ include "chart-model-multi.fullname" . }}-backend-cm
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: api
+    app.kubernetes.io/component: backend
 data:
-  {{- range $key, $val := .Values.api.cm }}
+  {{- range $key, $val := .Values.backend.cm }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
 {{- end }}

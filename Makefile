@@ -1,6 +1,6 @@
 .PHONY: build ui-build lint container-build clean
 
-APP_NAME = helmify-pro
+APP_NAME = helmify-api
 IMAGE_TAG = latest
 
 # Build the Go API

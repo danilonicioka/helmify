@@ -268,18 +268,18 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 
 		// Delete default components if not requested
-		if _, ok := params.Deployments["api"]; !ok {
-			deleteYamlPath(&rootNode, "api")
+		if _, ok := params.Deployments["backend"]; !ok {
+			deleteYamlPath(&rootNode, "backend")
 		}
-		if _, ok := params.Deployments["web"]; !ok {
-			deleteYamlPath(&rootNode, "web")
+		if _, ok := params.Deployments["frontend"]; !ok {
+			deleteYamlPath(&rootNode, "frontend")
 		}
 
 		// Process each user component
 		for compName, depConfig := range params.Deployments {
-			baseComp := "api"
-			if compName == "web" {
-				baseComp = "web"
+			baseComp := "backend"
+			if compName == "frontend" || compName == "web" {
+				baseComp = "frontend"
 			}
 
 			// 1. Copy/rename templates
@@ -330,7 +330,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 						origMapping := origRoot.Content[0]
 						if origMapping.Kind == yaml.MappingNode {
 							for i := 0; i < len(origMapping.Content); i += 2 {
-								if origMapping.Content[i].Value == "api" {
+								if origMapping.Content[i].Value == "backend" {
 									baseNode = origMapping.Content[i+1]
 									break
 								}

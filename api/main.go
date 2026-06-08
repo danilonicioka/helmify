@@ -41,6 +41,12 @@ func init() {
 //go:embed home.html
 var homeHTML []byte
 
+//go:embed instructions.html
+var instructionsHTML []byte
+
+//go:embed converter.html
+var converterHTML []byte
+
 func main() {
 	port := os.Getenv("HELMIFY_PORT")
 	if port == "" {
@@ -53,6 +59,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/v1/generate", handleGenerate)
 	mux.HandleFunc("/v1/generate-wizard", handleGenerateWizard)
+	mux.HandleFunc("/v1/preview-wizard", handlePreviewWizard)
 	mux.HandleFunc("/v1/defaults", handleDefaults)
 	mux.HandleFunc("/v1/preview", handlePreview)
 	mux.HandleFunc("/v1/download", handleDownload)
@@ -64,12 +71,26 @@ func main() {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write(wizardHTML)
 	})
+	mux.HandleFunc("/instructions", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(instructionsHTML)
+	})
+	mux.HandleFunc("/instructions/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(instructionsHTML)
+	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
-	// Serve Next.js UI assets on /converter/
-	mux.Handle("/converter/", http.StripPrefix("/converter", getUIHandler()))
+	mux.HandleFunc("/converter", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(converterHTML)
+	})
+	mux.HandleFunc("/converter/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write(converterHTML)
+	})
 	// Serve the portal homepage or other assets on /
 	mux.HandleFunc("/", handleHomeOrAssets)
 

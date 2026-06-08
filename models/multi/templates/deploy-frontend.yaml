@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-web
+  name: {{ include "chart-model-multi.fullname" . }}-frontend
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: web
+    app.kubernetes.io/component: frontend
 spec:
-  {{- if not (kindIs "nil" .Values.web.replicas) }}
-  replicas: {{ .Values.web.replicas }}
+  {{- if not (kindIs "nil" .Values.frontend.replicas) }}
+  replicas: {{ .Values.frontend.replicas }}
   {{- end }}
-  {{- if .Values.web.strategy }}
+  {{- if .Values.frontend.strategy }}
   strategy:
-    {{- toYaml .Values.web.strategy | nindent 4 }}
+    {{- toYaml .Values.frontend.strategy | nindent 4 }}
   {{- end }}
   selector:
     matchLabels:
       {{- include "chart-model-multi.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: web
+      app.kubernetes.io/component: frontend
   template:
     metadata:
       annotations:
@@ -24,15 +24,15 @@ spec:
         {{- if .Values.global }}
         checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.web.cm }}
-        checksum/cm-config: '{{ include (print $.Template.BasePath "/cm-web.yaml") . | sha256sum }}'
+        {{- if and .Values.frontend.cm }}
+        checksum/cm-config: '{{ include (print $.Template.BasePath "/cm-frontend.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.web.secret }}
-        checksum/secret: '{{ include (print $.Template.BasePath "/secret-web.yaml") . | sha256sum }}'
+        {{- if and .Values.frontend.secret }}
+        checksum/secret: '{{ include (print $.Template.BasePath "/secret-frontend.yaml") . | sha256sum }}'
         {{- end }}
       labels:
         {{- include "chart-model-multi.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: web
+        app.kubernetes.io/component: frontend
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -40,12 +40,12 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
       containers:
-        - name: web
-          image: "{{ .Values.web.image.repository }}:{{ .Values.web.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.web.image.pullPolicy }}
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.web.service.port }}
+              containerPort: {{ .Values.frontend.service.port }}
               protocol: TCP
           
           # Clean Configuration Management: Full Decoupling via envFrom
@@ -54,38 +54,38 @@ spec:
             - configMapRef:
                 name: {{ include "chart-model-multi.fullname" . }}-global
             {{- end }}
-            {{- if and .Values.web.cm }}
+            {{- if and .Values.frontend.cm }}
             - configMapRef:
-                name: {{ include "chart-model-multi.fullname" . }}-web-cm
+                name: {{ include "chart-model-multi.fullname" . }}-frontend-cm
             {{- end }}
-            {{- if and .Values.web.secret }}
+            {{- if and .Values.frontend.secret }}
             - secretRef:
-                name: {{ include "chart-model-multi.fullname" . }}-web-secrets
+                name: {{ include "chart-model-multi.fullname" . }}-frontend-secrets
             {{- end }}
 
           # Tiered "Fail-Fast" Health Probes
-          {{- if and .Values.web.startupProbe .Values.web.startupProbe.tcpSocket }}
+          {{- if and .Values.frontend.startupProbe .Values.frontend.startupProbe.tcpSocket }}
           startupProbe:
-            {{- toYaml .Values.web.startupProbe | nindent 12 }}
+            {{- toYaml .Values.frontend.startupProbe | nindent 12 }}
           {{- end }}
-          {{- if and .Values.web.livenessProbe .Values.web.livenessProbe.tcpSocket }}
+          {{- if and .Values.frontend.livenessProbe .Values.frontend.livenessProbe.tcpSocket }}
           livenessProbe:
-            {{- toYaml .Values.web.livenessProbe | nindent 12 }}
+            {{- toYaml .Values.frontend.livenessProbe | nindent 12 }}
           {{- end }}
-          {{- if and .Values.web.readinessProbe .Values.web.readinessProbe.tcpSocket }}
+          {{- if and .Values.frontend.readinessProbe .Values.frontend.readinessProbe.tcpSocket }}
           readinessProbe:
-            {{- toYaml .Values.web.readinessProbe | nindent 12 }}
+            {{- toYaml .Values.frontend.readinessProbe | nindent 12 }}
           {{- end }}
 
           # Resources (Operational Overlay-Only)
-          {{- if and .Values.web.resources .Values.web.resources.limits }}
+          {{- if and .Values.frontend.resources .Values.frontend.resources.limits }}
           resources:
-            {{- toYaml .Values.web.resources | nindent 12 }}
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
           {{- end }}
       
       # Graceful connection draining lifecycle settings
-      {{- if .Values.web.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ .Values.web.terminationGracePeriodSeconds }}
+      {{- if .Values.frontend.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.frontend.terminationGracePeriodSeconds }}
       {{- end }}
 
       {{- with .Values.nodeSelector }}

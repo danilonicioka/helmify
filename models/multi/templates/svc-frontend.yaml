@@ -1,17 +1,17 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-web
+  name: {{ include "chart-model-multi.fullname" . }}-frontend
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: web
+    app.kubernetes.io/component: frontend
 spec:
-  type: {{ .Values.web.service.type }}
+  type: {{ .Values.frontend.service.type }}
   ports:
-    - port: {{ .Values.web.service.port }}
-      targetPort: {{ .Values.web.service.targetPort }}
+    - port: {{ .Values.frontend.service.port }}
+      targetPort: {{ .Values.frontend.service.targetPort }}
       protocol: TCP
       name: http
   selector:
     {{- include "chart-model-multi.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: web
+    app.kubernetes.io/component: frontend

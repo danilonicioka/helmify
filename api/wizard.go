@@ -67,3 +67,34 @@ func handleDefaults(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handlePreviewWizard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		sendError(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var params helm.WizardParams
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		logrus.WithError(err).Error("Failed to parse request body")
+		sendError(w, fmt.Sprintf("Invalid JSON request: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	files, err := helm.GenerateWizardChart(params)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to generate wizard chart preview")
+		sendError(w, fmt.Sprintf("Failed to generate preview: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	preview := make(map[string]string)
+	for name, content := range files {
+		preview[name] = string(content)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(preview); err != nil {
+		logrus.WithError(err).Error("Failed to encode preview to JSON")
+	}
+}
+

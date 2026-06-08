@@ -75,10 +75,10 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 		ChartName: "test-multi-app",
 		Type:      "multi",
 		Deployments: map[string]DeploymentParams{
-			"api": {
+			"backend": {
 				Replicas: intPtr(2),
 				Image: ImageParams{
-					Repository: "quay.io/tjpa/api-app",
+					Repository: "quay.io/tjpa/backend-app",
 					Tag:        "v1.0.0",
 				},
 				Service: ServiceParams{
@@ -87,7 +87,7 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 				Route: RouteParams{
 					Default: SubRouteParams{
 						Enabled: true,
-						Host:    "api.default.host.com",
+						Host:    "backend.default.host.com",
 					},
 				},
 			},
@@ -118,17 +118,17 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 	valuesBytes, ok := files["values.yaml"]
 	assert.True(t, ok)
 	valuesStr := string(valuesBytes)
-	assert.Contains(t, valuesStr, "api:")
+	assert.Contains(t, valuesStr, "backend:")
 	assert.Contains(t, valuesStr, "bff:")
-	assert.NotContains(t, valuesStr, "web:") // web should be deleted because it wasn't requested
+	assert.NotContains(t, valuesStr, "frontend:") // frontend should be deleted because it wasn't requested
 
 	// Check if bff templates are created
-	_, ok = files["templates/deploy-api.yaml"]
+	_, ok = files["templates/deploy-backend.yaml"]
 	assert.True(t, ok)
 	_, ok = files["templates/deploy-bff.yaml"]
 	assert.True(t, ok)
-	_, ok = files["templates/deploy-web.yaml"]
-	assert.False(t, ok) // web templates should be deleted
+	_, ok = files["templates/deploy-frontend.yaml"]
+	assert.False(t, ok) // frontend templates should be deleted
 }
 
 func TestGetModelDefaults(t *testing.T) {
@@ -145,8 +145,8 @@ func TestGetModelDefaults(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, defaults)
 		assert.Contains(t, defaults, "global")
-		assert.Contains(t, defaults, "api")
-		assert.Contains(t, defaults, "web")
+		assert.Contains(t, defaults, "backend")
+		assert.Contains(t, defaults, "frontend")
 	})
 
 	t.Run("invalid type", func(t *testing.T) {
