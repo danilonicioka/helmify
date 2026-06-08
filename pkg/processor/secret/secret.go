@@ -52,10 +52,19 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 		return true, nil, fmt.Errorf("%w: unable to cast to secret", err)
 	}
 
-	valueName := processor.ObjectValueName(appMeta, obj)
-	nameCamelCase := strcase.ToLowerCamel(processor.GetComponent(obj))
+	referencingComps := processor.FindReferencingComponents(appMeta, obj.GetName(), true)
+	if len(referencingComps) == 0 {
+		compName := processor.GetComponent(obj)
+		if compName != "" && compName != "chart" && compName != "secrets" {
+			referencingComps = []string{compName}
+		}
+	}
 
-	values := helmify.Values{}
+	if len(referencingComps) == 0 {
+		// If no components reference this secret, we skip writing it to prevent pollution
+		return true, nil, nil
+	}
+
 	secValues := map[string]interface{}{}
 	for key, value := range sec.Data {
 		secValues[key] = string(value)
@@ -64,69 +73,86 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 		secValues[key] = value
 	}
 
-	values = helmify.Values{
-		nameCamelCase: map[string]interface{}{
-			"secret": secValues,
-		},
-	}
-
 	secretType := ""
 	if sec.Type != "" {
 		secretType = fmt.Sprintf("type: %s", string(sec.Type))
 	}
 
-	suffix := processor.GetDynamicSuffix(appMeta, obj, "secret")
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
-	if err != nil {
-		return true, nil, err
+	var templates []helmify.Template
+	for _, comp := range referencingComps {
+		nameCamelCase := strcase.ToLowerCamel(comp)
+		values := helmify.Values{
+			nameCamelCase: map[string]interface{}{
+				"secret": secValues,
+			},
+		}
+
+		suffix := comp + "-secrets"
+		meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
+		if err != nil {
+			return true, nil, err
+		}
+
+		templates = append(templates, &secretTemplate{
+			compName:      comp,
+			nameCamelCase: nameCamelCase,
+			secretType:    secretType,
+			meta:          meta,
+			values:        values,
+		})
 	}
 
-	return true, &result{
-		name: valueName,
-		data: struct {
-			Name string
-			Type string
-			Meta string
-		}{
-			Name: nameCamelCase,
-			Type: secretType,
-			Meta: meta,
-		},
-		values: values,
-	}, nil
+	return true, &multiTemplate{templates: templates}, nil
 }
 
-type result struct {
-	name string
-	data struct {
+type secretTemplate struct {
+	compName      string
+	nameCamelCase string
+	secretType    string
+	meta          string
+	values        helmify.Values
+}
+
+func (s *secretTemplate) Filename() string {
+	return fmt.Sprintf("secret-%s.yaml", s.compName)
+}
+
+func (s *secretTemplate) Values() helmify.Values {
+	return s.values
+}
+
+func (s *secretTemplate) Write(writer io.Writer) error {
+	return secretTempl.Execute(writer, struct {
 		Name string
 		Type string
 		Meta string
-	}
-	values helmify.Values
-}
-
-func (r *result) Filename() string {
-	if r.name == "chart" || r.name == "" {
-		return "secret.yaml"
-	}
-	return fmt.Sprintf("secret-%s.yaml", r.name)
-}
-
-func (r *result) Values() helmify.Values {
-	return r.values
-}
-
-func (r *result) Write(writer io.Writer) error {
-	return secretTempl.Execute(writer, struct {
-		Name   string
-		Type   string
-		Meta   string
-		Values helmify.Values
 	}{
-		Name:   r.data.Name,
-		Type:   r.data.Type,
-		Meta:   r.data.Meta,
-		Values: r.values,
+		Name: s.nameCamelCase,
+		Type: s.secretType,
+		Meta: s.meta,
 	})
+}
+
+type multiTemplate struct {
+	templates []helmify.Template
+}
+
+func (m *multiTemplate) Templates() []helmify.Template {
+	return m.templates
+}
+
+func (m *multiTemplate) Filename() string {
+	return ""
+}
+
+func (m *multiTemplate) Values() helmify.Values {
+	merged := helmify.Values{}
+	for _, t := range m.templates {
+		_ = merged.Merge(t.Values())
+	}
+	return merged
+}
+
+func (m *multiTemplate) Write(writer io.Writer) error {
+	return nil
 }

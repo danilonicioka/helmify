@@ -914,6 +914,12 @@
                 </div>
             </div>
 
+            <!-- Developer Source Repository URL -->
+            <div class="form-group">
+                <label for="devRepoUrl">Developer Source Repository URL (Argo CD GitOps)</label>
+                <input type="text" id="devRepoUrl" value="" placeholder="e.g. http://gitlab-dev.i.tj.pa.gov.br/squad-seguranca/my-app.git">
+            </div>
+
             <!-- Global Env Vars -->
             <div class="section-subtitle">
                 <span>Global ConfigMap Env Variables</span>
@@ -1592,6 +1598,7 @@
             return {
                 chartName: document.getElementById('chartName').value.trim() || 'chart',
                 type: chartType,
+                devRepoUrl: document.getElementById('devRepoUrl').value.trim() || '',
                 globalConfig: globalConfig,
                 deployments: components
             };

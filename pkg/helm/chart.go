@@ -9,12 +9,42 @@ import (
 
 	"github.com/arttor/helmify/pkg/cluster"
 	"github.com/arttor/helmify/pkg/helmify"
-	"github.com/iancoleman/strcase"
+	"github.com/arttor/helmify/pkg/processor"
 
 	"github.com/sirupsen/logrus"
 
 	"gopkg.in/yaml.v3"
 	k8syaml "sigs.k8s.io/yaml"
+)
+
+const (
+	compCmTemplate = `{{- if and .Values.%[1]s .Values.%[1]s.cm -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "%[2]s.fullname" . }}-%[3]s-cm
+  labels:
+    {{- include "%[2]s.labels" . | nindent 4 }}
+data:
+{{- range $key, $val := .Values.%[1]s.cm }}
+  {{ $key }}: {{ $val | quote }}
+{{- end }}
+{{- end }}
+`
+	compSecretTemplate = `{{- if and .Values.%[1]s .Values.%[1]s.secret -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "%[2]s.fullname" . }}-%[3]s-secrets
+  labels:
+    {{- include "%[2]s.labels" . | nindent 4 }}
+type: Opaque
+data:
+{{- range $key, $val := .Values.%[1]s.secret }}
+  {{ $key }}: {{ $val | b64enc | quote }}
+{{- end }}
+{{- end }}
+`
 )
 
 // NewOutput creates interface to dump processed input to filesystem in Helm chart format.
@@ -65,6 +95,36 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 			return err
 		}
 	}
+
+	// Generate component-specific ConfigMaps and Secrets for components that have variables but no templates generated yet
+	for key, val := range values {
+		compMap, ok := val.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		compKebab := processor.NormalizeComponentName(key)
+		if _, hasCm := compMap["cm"]; hasCm {
+			cmFilename := "cm-" + compKebab + ".yaml"
+			if _, exists := files[cmFilename]; !exists {
+				cmContent := fmt.Sprintf(compCmTemplate, key, chartName, compKebab)
+				err = os.WriteFile(filepath.Join(cDir, "templates", cmFilename), []byte(cmContent), 0600)
+				if err != nil {
+					return fmt.Errorf("%w: unable to write %s", err, cmFilename)
+				}
+			}
+		}
+		if _, hasSecret := compMap["secret"]; hasSecret {
+			secretFilename := "secret-" + compKebab + ".yaml"
+			if _, exists := files[secretFilename]; !exists {
+				secretContent := fmt.Sprintf(compSecretTemplate, key, chartName, compKebab)
+				err = os.WriteFile(filepath.Join(cDir, "templates", secretFilename), []byte(secretContent), 0600)
+				if err != nil {
+					return fmt.Errorf("%w: unable to write %s", err, secretFilename)
+				}
+			}
+		}
+	}
+
 	err = overwriteValuesFile(cDir, values, certManagerAsSubchart, certManagerInstallCRD)
 	if err != nil {
 		return err
@@ -72,15 +132,6 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	err = os.WriteFile(filepath.Join(cDir, "templates", "cm-global.yaml"), globalConfigMapYAML(chartName), 0600)
 	if err != nil {
 		return fmt.Errorf("%w: unable to write cm-global.yaml", err)
-	}
-	compName := strcase.ToLowerCamel(chartName)
-	err = os.WriteFile(filepath.Join(cDir, "templates", "cm.yaml"), []byte(fmt.Sprintf(defaultCmTempl, compName, chartName)), 0600)
-	if err != nil {
-		return fmt.Errorf("%w: unable to write cm.yaml", err)
-	}
-	err = os.WriteFile(filepath.Join(cDir, "templates", "secret.yaml"), []byte(fmt.Sprintf(defaultSecretTempl, compName, chartName)), 0600)
-	if err != nil {
-		return fmt.Errorf("%w: unable to write secret.yaml", err)
 	}
 	return nil
 }

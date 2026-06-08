@@ -49,6 +49,7 @@ type AppMetadata interface {
 	TrimName(objName string) string
 
 	Config() config.Config
+	Objects() []*unstructured.Unstructured
 }
 
 type originalValuesRegistry struct {

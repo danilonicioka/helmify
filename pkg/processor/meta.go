@@ -3,6 +3,7 @@ package processor
 import (
 	"flag"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/iancoleman/strcase"
@@ -161,10 +162,10 @@ func GetAppName(obj *unstructured.Unstructured) string {
 func GetComponent(obj *unstructured.Unstructured) string {
 	labels := obj.GetLabels()
 	if comp, ok := labels["app.kubernetes.io/component"]; ok && comp != "" {
-		return comp
+		return NormalizeComponentName(comp)
 	}
 
-	name := strings.ToLower(obj.GetName())
+	name := strings.ToLower(StripKustomizeHash(obj.GetName()))
 	
 	// Suffix extraction based on standard resource delimiters
 	delimiters := []string{"-deploy-", "-deployment-", "-svc-", "-service-", "-route-", "-cm-", "-configmap-", "-secret-", "-job-", "-cronjob-", "-pdb-"}
@@ -175,17 +176,17 @@ func GetComponent(obj *unstructured.Unstructured) string {
 			comp = strings.TrimPrefix(comp, "ext")
 			comp = strings.TrimSuffix(comp, "-ext")
 			if comp != "" {
-				return comp
+				return NormalizeComponentName(comp)
 			}
 		}
 	}
 
 	// Heuristic detection based on name
 	if strings.Contains(name, "web") || strings.Contains(name, "front") || strings.Contains(name, "gui") {
-		return "app"
+		return NormalizeComponentName("app")
 	}
 	if strings.Contains(name, "api") || strings.Contains(name, "server") || strings.Contains(name, "back") {
-		return "api"
+		return NormalizeComponentName("api")
 	}
 
 	// Default fallback to camel-cased chart/app name instead of hardcoded "api"
@@ -194,7 +195,7 @@ func GetComponent(obj *unstructured.Unstructured) string {
 	}
 
 	if appName := GetAppName(obj); appName != "" {
-		return strcase.ToLowerCamel(appName)
+		return NormalizeComponentName(appName)
 	}
 	
 	baseName := name
@@ -205,7 +206,7 @@ func GetComponent(obj *unstructured.Unstructured) string {
 			break
 		}
 	}
-	return strcase.ToLowerCamel(baseName)
+	return NormalizeComponentName(baseName)
 }
 
 // ObjectValueName creates a smart, unified values.yaml root key name for a Kubernetes object.
@@ -216,12 +217,14 @@ func ObjectValueName(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		return appName
 	}
 
-	return ResolveValueName(appMeta, obj.GetName())
+	name := StripKustomizeHash(obj.GetName())
+	return ResolveValueName(appMeta, name)
 }
 
 // ResolveValueName tries to reconcile a raw resource name with its likely component-based root name.
 // Used when only the name string is available (e.g. for reloading annotations).
 func ResolveValueName(appMeta helmify.AppMetadata, name string) string {
+	name = StripKustomizeHash(name)
 	suffixes := []string{"-deploy", "-deployment", "-svc", "-service", "-route", "-cm", "-configmap", "-secret", "-job", "-cronjob", "-pdb"}
 	for _, s := range suffixes {
 		if strings.HasSuffix(name, s) {
@@ -236,14 +239,181 @@ func ResolveValueName(appMeta helmify.AppMetadata, name string) string {
 // GetDynamicSuffix extracts the suffix from the resource name if it has the chart name as a prefix.
 // If no suffix is found or the prefix doesn't match, it returns the provided fallback.
 func GetDynamicSuffix(appMeta helmify.AppMetadata, obj *unstructured.Unstructured, fallback string) string {
-	name := obj.GetName()
+	name := StripKustomizeHash(obj.GetName())
 	chartName := appMeta.ChartName()
 	if strings.HasPrefix(name, chartName) {
 		s := strings.TrimPrefix(name, chartName)
 		s = strings.TrimPrefix(s, "-")
+		s = strings.TrimPrefix(s, ".")
 		if s != "" {
 			return s
 		}
 	}
 	return fallback
+}
+
+var kustomizeHashRegex = regexp.MustCompile(`[-.][a-z0-9]{10}$`)
+
+// StripKustomizeHash removes a 10-character Kustomize hash suffix.
+func StripKustomizeHash(name string) string {
+	return kustomizeHashRegex.ReplaceAllString(name, "")
+}
+
+// NormalizeComponentName maps variations of component names to their canonical kebab-case representation.
+func NormalizeComponentName(comp string) string {
+	comp = strings.ToLower(comp)
+	comp = strings.TrimLeft(comp, "-./_ ")
+	comp = strings.TrimRight(comp, "-./_ ")
+	
+	// Strip known application prefix
+	if idx := strings.Index(comp, "portal-certidao"); idx != -1 {
+		comp = comp[idx+len("portal-certidao"):]
+		comp = strings.TrimLeft(comp, "-./_ ")
+	}
+	if idx := strings.LastIndex(comp, "."); idx != -1 {
+		comp = comp[idx+1:]
+	}
+
+	comp = strings.ReplaceAll(comp, "_", "-")
+	comp = strings.ReplaceAll(comp, ".", "-")
+	comp = strings.TrimLeft(comp, "- ")
+	comp = strings.TrimRight(comp, "- ")
+	
+	switch comp {
+	case "api", "api-emissor", "apiemissor", "emissor", "api-secrets":
+		return "api-emissor"
+	case "app", "app-emissor", "appemissor", "app-conf":
+		return "app-emissor"
+	case "bff", "bff-emissor", "bffemissor", "bff-certidao", "bffcertidao":
+		return "bff-emissor"
+	case "libra", "libra-service", "libraservice", "libra-service-2":
+		return "libra-service-2"
+	case "pje-service-1g", "pjeservice1g", "pje-service.1g", "pje-service1g", "pje1g", "pje-1g", "1g", "service-1g":
+		return "pje-service-1g"
+	case "pje-service-2g", "pjeservice2g", "pje-service.2g", "pje-service2g", "pje2g", "pje-2g", "2g", "service-2g":
+		return "pje-service-2g"
+	}
+	return comp
+}
+
+// FindReferencingComponents scans all loaded workload resources to find components that reference the given configmap/secret name.
+func FindReferencingComponents(appMeta helmify.AppMetadata, resourceName string, isSecret bool) []string {
+	resourceNameClean := strings.ToLower(StripKustomizeHash(resourceName))
+	var components []string
+	seen := make(map[string]struct{})
+
+	for _, obj := range appMeta.Objects() {
+		kind := strings.ToLower(obj.GetKind())
+		if kind != "deployment" && kind != "statefulset" && kind != "daemonset" && kind != "job" && kind != "cronjob" {
+			continue
+		}
+
+		comp := GetComponent(obj)
+		if comp == "" || comp == "chart" {
+			continue
+		}
+
+		// Look for PodSpec in the resource
+		podSpecMap, found, _ := unstructured.NestedMap(obj.Object, "spec", "template", "spec")
+		if !found {
+			// Maybe it's a raw spec for Job
+			podSpecMap, found, _ = unstructured.NestedMap(obj.Object, "spec")
+			if !found {
+				continue
+			}
+		}
+
+		// Check envFrom
+		var hasRef bool
+		containers, _, _ := unstructured.NestedSlice(podSpecMap, "containers")
+		initContainers, _, _ := unstructured.NestedSlice(podSpecMap, "initContainers")
+		allContainers := append(containers, initContainers...)
+
+		for _, c := range allContainers {
+			cMap, ok := c.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			envFrom, _, _ := unstructured.NestedSlice(cMap, "envFrom")
+			for _, ef := range envFrom {
+				efMap, ok := ef.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				if isSecret {
+					secretRef, _, _ := unstructured.NestedMap(efMap, "secretRef")
+					if name, _, _ := unstructured.NestedString(secretRef, "name"); name != "" {
+						if strings.ToLower(StripKustomizeHash(name)) == resourceNameClean {
+							hasRef = true
+						}
+					}
+				} else {
+					cmRef, _, _ := unstructured.NestedMap(efMap, "configMapRef")
+					if name, _, _ := unstructured.NestedString(cmRef, "name"); name != "" {
+						if strings.ToLower(StripKustomizeHash(name)) == resourceNameClean {
+							hasRef = true
+						}
+					}
+				}
+			}
+
+			// Check env valueFrom
+			env, _, _ := unstructured.NestedSlice(cMap, "env")
+			for _, ev := range env {
+				evMap, ok := ev.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				valueFrom, _, _ := unstructured.NestedMap(evMap, "valueFrom")
+				if isSecret {
+					secretKeyRef, _, _ := unstructured.NestedMap(valueFrom, "secretKeyRef")
+					if name, _, _ := unstructured.NestedString(secretKeyRef, "name"); name != "" {
+						if strings.ToLower(StripKustomizeHash(name)) == resourceNameClean {
+							hasRef = true
+						}
+					}
+				} else {
+					configMapKeyRef, _, _ := unstructured.NestedMap(valueFrom, "configMapKeyRef")
+					if name, _, _ := unstructured.NestedString(configMapKeyRef, "name"); name != "" {
+						if strings.ToLower(StripKustomizeHash(name)) == resourceNameClean {
+							hasRef = true
+						}
+					}
+				}
+			}
+		}
+
+		// Check volumes
+		volumes, _, _ := unstructured.NestedSlice(podSpecMap, "volumes")
+		for _, v := range volumes {
+			vMap, ok := v.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			if isSecret {
+				secretVol, _, _ := unstructured.NestedMap(vMap, "secret")
+				if name, _, _ := unstructured.NestedString(secretVol, "secretName"); name != "" {
+					if strings.ToLower(StripKustomizeHash(name)) == resourceNameClean {
+						hasRef = true
+					}
+				}
+			} else {
+				cmVol, _, _ := unstructured.NestedMap(vMap, "configMap")
+				if name, _, _ := unstructured.NestedString(cmVol, "name"); name != "" {
+					if strings.ToLower(StripKustomizeHash(name)) == resourceNameClean {
+						hasRef = true
+					}
+				}
+			}
+		}
+
+		if hasRef {
+			if _, exists := seen[comp]; !exists {
+				seen[comp] = struct{}{}
+				components = append(components, comp)
+			}
+		}
+	}
+
+	return components
 }
