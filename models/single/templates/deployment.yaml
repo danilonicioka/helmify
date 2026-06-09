@@ -36,7 +36,6 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "chart-model-single.serviceAccountName" . }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ $app.image.repository }}:{{ $app.image.tag | default .Chart.AppVersion }}"
