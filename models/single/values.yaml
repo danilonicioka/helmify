@@ -142,10 +142,6 @@ chart-model-single:
 # III. GLOBAL SCHEDULING & COMMON CONFIGS
 # ==============================================================================
 imagePullSecrets: []
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
 
 nodeSelector: {}
 tolerations: []

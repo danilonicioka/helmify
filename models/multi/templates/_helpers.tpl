@@ -49,14 +49,3 @@ Selector labels
 app.kubernetes.io/name: {{ include "chart-model-multi.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
-
-{{/*
-Create the name of the service account to use
-*/}}
-{{- define "chart-model-multi.serviceAccountName" -}}
-{{- if .Values.serviceAccount.create }}
-{{- default (include "chart-model-multi.fullname" .) .Values.serviceAccount.name }}
-{{- else }}
-{{- default "default" .Values.serviceAccount.name }}
-{{- end }}
-{{- end }}

@@ -63,6 +63,7 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	assert.Contains(t, valuesStr, "default.host.com")
 	assert.Contains(t, valuesStr, "internal.host.com")
 	assert.Contains(t, valuesStr, "TZ: America/Sao_Paulo")
+	assert.Contains(t, valuesStr, "fullnameOverride: test-single-app")
 
 	// Check deployment.yaml has renamed references
 	deployBytes, ok := files["templates/deployment.yaml"]
@@ -121,6 +122,7 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 	assert.Contains(t, valuesStr, "backend:")
 	assert.Contains(t, valuesStr, "bff:")
 	assert.NotContains(t, valuesStr, "frontend:") // frontend should be deleted because it wasn't requested
+	assert.Contains(t, valuesStr, "fullnameOverride: test-multi-app")
 
 	// Check if bff templates are created
 	_, ok = files["templates/deploy-backend.yaml"]

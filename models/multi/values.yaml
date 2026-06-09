@@ -206,10 +206,6 @@ frontend:
 # IV. GLOBAL SCHEDULING & COMMON CONFIGS
 # ==============================================================================
 imagePullSecrets: []
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
 
 nodeSelector: {}
 tolerations: []

@@ -202,6 +202,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 		// Rename root key chart-model-single to params.ChartName
 		renameRootKey(&rootNode, oldChartName, params.ChartName)
+		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
 		// Set overrides
 		appKey := params.ChartName
@@ -275,6 +276,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if _, ok := params.Deployments["frontend"]; !ok {
 			deleteYamlPath(&rootNode, "frontend")
 		}
+		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
 		// Process each user component
 		for compName, depConfig := range params.Deployments {
