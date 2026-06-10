@@ -69,6 +69,20 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	deployBytes, ok := files["templates/deployment.yaml"]
 	assert.True(t, ok)
 	assert.Contains(t, string(deployBytes), "test-single-app.fullname")
+
+	// Check if values-ca.yaml was generated
+	devValuesBytes, ok := files["values-ca.yaml"]
+	assert.True(t, ok)
+	devValuesStr := string(devValuesBytes)
+	assert.Contains(t, devValuesStr, "global:")
+	assert.Contains(t, devValuesStr, "TZ: America/Sao_Paulo")
+	assert.Contains(t, devValuesStr, "test-single-app:")
+	assert.Contains(t, devValuesStr, "VAR_A: VAL_A")
+	assert.Contains(t, devValuesStr, "SECRET_B: VAL_B")
+	// values-ca.yaml must NOT contain infrastructure-only parameters like replicas, image, port, etc.
+	assert.NotContains(t, devValuesStr, "replicas:")
+	assert.NotContains(t, devValuesStr, "repository:")
+	assert.NotContains(t, devValuesStr, "port:")
 }
 
 func TestGenerateWizardChart_Multi(t *testing.T) {

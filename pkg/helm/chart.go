@@ -204,6 +204,19 @@ func overwriteValuesFile(chartDir string, values helmify.Values, certManagerAsSu
 		return fmt.Errorf("%w: unable to write values.yaml", err)
 	}
 	logrus.WithField("file", file).Info("overwritten")
+
+	fileDev := filepath.Join(chartDir, "values-ca.yaml")
+	var valuesNode yaml.Node
+	if err := yaml.Unmarshal(res, &valuesNode); err == nil {
+		if devVals, err := generateDevValues(&valuesNode); err == nil {
+			err = os.WriteFile(fileDev, devVals, 0600)
+			if err != nil {
+				return fmt.Errorf("%w: unable to write values-ca.yaml", err)
+			}
+			logrus.WithField("file", fileDev).Info("overwritten")
+		}
+	}
+
 	return nil
 }
 
