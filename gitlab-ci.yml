@@ -55,7 +55,7 @@ variables:
 get_chart_version:
   stage: prepare
   rules:
-    - if: '$PIPELINE_ACTION == "deploy_new_env"'
+    - if: '$PIPELINE_ACTION == "deploy_update_env"'
   script:
     - export CHART_VERSION="$(grep -E '^[[:space:]]*version:[[:space:]]*' chart/Chart.yaml | head -n1 | sed -E 's/^[[:space:]]*version:[[:space:]]*//')"
     - echo "Detected chart version $CHART_VERSION"
@@ -76,7 +76,7 @@ deploy_new_env:
   stage: deploy
   needs: ["get_chart_version"]
   rules:
-    - if: '$PIPELINE_ACTION == "deploy_new_env"'
+    - if: '$PIPELINE_ACTION == "deploy_update_env"'
   trigger:
     project: "devops/cicd"
     branch: main
