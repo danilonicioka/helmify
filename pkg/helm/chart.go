@@ -35,7 +35,7 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ include "%[2]s.fullname" . }}-%[3]s-secrets
+  name: {{ include "%[2]s.fullname" . }}-%[3]s-secret
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
 type: Opaque

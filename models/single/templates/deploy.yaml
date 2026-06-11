@@ -57,7 +57,7 @@ spec:
             {{- end }}
             {{- if and $app.secret }}
             - secretRef:
-                name: {{ include "chart-model-single.fullname" . }}-secrets
+                name: {{ include "chart-model-single.fullname" . }}-secret
             {{- end }}
 
           # 2. Tiered "Fail-Fast" Health Probes
