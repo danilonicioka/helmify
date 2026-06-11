@@ -42,7 +42,7 @@ spec:
           imagePullPolicy: {{ $app.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ $app.service.port }}
+              containerPort: {{ $app.service.targetPort }}
               protocol: TCP
           
           # 4. Clean Configuration Management: Full Decoupling via envFrom

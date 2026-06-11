@@ -44,7 +44,7 @@ spec:
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.backend.service.port }}
+              containerPort: {{ .Values.backend.service.targetPort }}
               protocol: TCP
           
           # Clean Configuration Management: Full Decoupling via envFrom
