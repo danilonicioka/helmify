@@ -78,7 +78,7 @@ backend:
   service:
     type: ClusterIP
     port: 8080
-    targetPort: http
+    targetPort: 8080
 
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
@@ -177,7 +177,7 @@ frontend:
   service:
     type: ClusterIP
     port: 80
-    targetPort: http
+    targetPort: 8080
 
   # ----------------------------------------------------------------------------
   # 4. RESOURCES

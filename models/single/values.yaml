@@ -80,7 +80,7 @@ chart-model-single:
   service:
     type: ClusterIP
     port: 8080
-    targetPort: http
+    targetPort: 8080
 
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
