@@ -442,7 +442,7 @@ func replaceComponent(content string, oldComp, newComp string) string {
 	repls := []struct{ old, new string }{
 		{"chart-model-multi.fullname\" . }}-" + oldComp, "chart-model-multi.fullname\" . }}-" + newComp},
 		{"-" + oldComp + "-cm", "-" + newComp + "-cm"},
-		{"-" + oldComp + "-secrets", "-" + newComp + "-secrets"},
+		{"-" + oldComp + "-secret", "-" + newComp + "-secret"},
 		{"component: " + oldComp, "component: " + newComp},
 		{"name: " + oldComp, "name: " + newComp},
 		{"cm-" + oldComp + ".yaml", "cm-" + newComp + ".yaml"},

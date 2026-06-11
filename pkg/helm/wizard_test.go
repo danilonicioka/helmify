@@ -65,8 +65,8 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	assert.Contains(t, valuesStr, "TZ: America/Sao_Paulo")
 	assert.Contains(t, valuesStr, "fullnameOverride: test-single-app")
 
-	// Check deployment.yaml has renamed references
-	deployBytes, ok := files["templates/deployment.yaml"]
+	// Check deploy.yaml has renamed references
+	deployBytes, ok := files["templates/deploy.yaml"]
 	assert.True(t, ok)
 	assert.Contains(t, string(deployBytes), "test-single-app.fullname")
 

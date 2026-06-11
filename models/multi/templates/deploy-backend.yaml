@@ -59,7 +59,7 @@ spec:
             {{- end }}
             {{- if and .Values.backend.secret }}
             - secretRef:
-                name: {{ include "chart-model-multi.fullname" . }}-backend-secrets
+                name: {{ include "chart-model-multi.fullname" . }}-backend-secret
             {{- end }}
 
           # Tiered "Fail-Fast" Health Probes
