@@ -22,7 +22,12 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 	defer tw.Close()
 
 	for name, content := range files {
-		path := filepath.Join("chart", name)
+		var path string
+		if name == ".gitlab-ci.yml" {
+			path = name
+		} else {
+			path = filepath.Join("chart", name)
+		}
 		header := &tar.Header{
 			Name: path,
 			Mode: 0644,
@@ -426,6 +431,8 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 		}
 	}
+
+	outputFiles[".gitlab-ci.yml"] = helmify.GitLabCI
 
 	return outputFiles, nil
 }

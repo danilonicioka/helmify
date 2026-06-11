@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	roothelmify "github.com/arttor/helmify"
 	"github.com/arttor/helmify/pkg/cluster"
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/arttor/helmify/pkg/processor"
@@ -132,6 +133,8 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		}
 	}
 
+	m.Files[".gitlab-ci.yml"] = roothelmify.GitLabCI
+
 	return nil
 }
 
@@ -143,8 +146,12 @@ func (m *MemoryOutput) ToTarGz(chartName string, w io.Writer) error {
 	defer tw.Close()
 
 	for name, content := range m.Files {
-		// All files should be nested inside a directory named "chart"
-		path := filepath.Join("chart", name)
+		var path string
+		if name == ".gitlab-ci.yml" {
+			path = name
+		} else {
+			path = filepath.Join("chart", name)
+		}
 		header := &tar.Header{
 			Name: path,
 			Mode: 0644,
