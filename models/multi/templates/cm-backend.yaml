@@ -1,4 +1,4 @@
-{{- if and .Values.backend .Values.backend.cm -}}
+{{- if and .Values.backend .Values.backend.cm (not (empty .Values.backend.cm)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:

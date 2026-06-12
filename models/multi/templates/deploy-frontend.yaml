@@ -24,10 +24,10 @@ spec:
         {{- if .Values.global }}
         checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.frontend.cm }}
+        {{- if and .Values.frontend.cm (not (empty .Values.frontend.cm)) }}
         checksum/cm-config: '{{ include (print $.Template.BasePath "/cm-frontend.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.frontend.secret }}
+        {{- if and .Values.frontend.secret (not (empty .Values.frontend.secret)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret-frontend.yaml") . | sha256sum }}'
         {{- end }}
       labels:
@@ -53,11 +53,11 @@ spec:
             - configMapRef:
                 name: {{ include "chart-model-multi.fullname" . }}-global
             {{- end }}
-            {{- if and .Values.frontend.cm }}
+            {{- if and .Values.frontend.cm (not (empty .Values.frontend.cm)) }}
             - configMapRef:
                 name: {{ include "chart-model-multi.fullname" . }}-frontend-cm
             {{- end }}
-            {{- if and .Values.frontend.secret }}
+            {{- if and .Values.frontend.secret (not (empty .Values.frontend.secret)) }}
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" . }}-frontend-secret
             {{- end }}
