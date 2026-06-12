@@ -23,10 +23,10 @@ spec:
         {{- if .Values.global }}
         checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and $app.cm }}
+        {{- if and $app.cm (not (empty $app.cm)) }}
         checksum/cm-config: '{{ include (print $.Template.BasePath "/cm.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and $app.secret }}
+        {{- if and $app.secret (not (empty $app.secret)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}'
         {{- end }}
       labels:
@@ -51,11 +51,11 @@ spec:
             - configMapRef:
                 name: {{ include "chart-model-single.fullname" . }}-global
             {{- end }}
-            {{- if and $app.cm }}
+            {{- if and $app.cm (not (empty $app.cm)) }}
             - configMapRef:
                 name: {{ include "chart-model-single.fullname" . }}-cm
             {{- end }}
-            {{- if and $app.secret }}
+            {{- if and $app.secret (not (empty $app.secret)) }}
             - secretRef:
                 name: {{ include "chart-model-single.fullname" . }}-secret
             {{- end }}

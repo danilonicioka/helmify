@@ -39,12 +39,10 @@ chart-model-single:
   # 2. APPLICATION CONFIGURATION (Variables & Credentials)
   # ----------------------------------------------------------------------------
   # ConfigMaps unique to this service container.
-  cm:
-    DB_USER: "example"
+  cm: {}
 
   # Sensitive variables unique to this service container (Secrets).
-  secret:
-    DB_PASSWORD: "pass"
+  secret: {}
 
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING

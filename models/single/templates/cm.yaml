@@ -1,5 +1,5 @@
 {{- $app := index .Values .Chart.Name | default dict -}}
-{{- if and $app $app.cm -}}
+{{- if and $app $app.cm (not (empty $app.cm)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
