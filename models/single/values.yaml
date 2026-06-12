@@ -67,7 +67,7 @@ chart-model-single:
     # -- Internal Route with valid certificate (to intranet TJPA).
     internal:
       enabled: false
-      host: chart-model-int.i.tjpa.jus.br
+      host: chart-model-single-i.i.tjpa.jus.br
 
     # -- External Route with valid certificate (to internet TJPA).
     external:
