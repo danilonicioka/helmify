@@ -65,7 +65,7 @@ backend:
     # -- Internal Route with valid certificate (to intranet TJPA).
     internal:
       enabled: false
-      host: chart-model-backend-int.i.tjpa.jus.br
+      host: chart-model-backend-i.i.tjpa.jus.br
 
     # -- External Route with valid certificate (to internet TJPA).
     external:
@@ -166,7 +166,7 @@ frontend:
       host: chart-model-frontend.apps.ocp-dev.i.tj.pa.gov.br
     internal:
       enabled: false
-      host: chart-model-frontend-int.i.tjpa.jus.br
+      host: chart-model-frontend-i.i.tjpa.jus.br
     external:
       enabled: false
       host: chart-model-frontend.tjpa.jus.br
