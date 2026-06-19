@@ -156,7 +156,7 @@ func Test_pod_Process(t *testing.T) {
 					"env": []interface{}{
 						map[string]interface{}{
 							"name":  "KUBERNETES_CLUSTER_DOMAIN",
-							"value": "{{ quote .Values.KUBERNETES_CLUSTER_DOMAIN }}",
+							"value": "{{ quote .Values.kubernetesClusterDomain }}",
 						},
 					},
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
@@ -212,7 +212,7 @@ func Test_pod_Process(t *testing.T) {
 					"env": []interface{}{
 						map[string]interface{}{
 							"name":  "KUBERNETES_CLUSTER_DOMAIN",
-							"value": "{{ quote .Values.KUBERNETES_CLUSTER_DOMAIN }}",
+							"value": "{{ quote .Values.kubernetesClusterDomain }}",
 						},
 					},
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
@@ -264,7 +264,7 @@ func Test_pod_Process(t *testing.T) {
 					"env": []interface{}{
 						map[string]interface{}{
 							"name":  "KUBERNETES_CLUSTER_DOMAIN",
-							"value": "{{ quote .Values.KUBERNETES_CLUSTER_DOMAIN }}",
+							"value": "{{ quote .Values.kubernetesClusterDomain }}",
 						},
 					},
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
@@ -316,7 +316,7 @@ func Test_pod_Process(t *testing.T) {
 					"env": []interface{}{
 						map[string]interface{}{
 							"name":  "KUBERNETES_CLUSTER_DOMAIN",
-							"value": "{{ quote .Values.KUBERNETES_CLUSTER_DOMAIN }}",
+							"value": "{{ quote .Values.kubernetesClusterDomain }}",
 						},
 					},
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
@@ -366,7 +366,7 @@ func Test_pod_Process(t *testing.T) {
 					"env": []interface{}{
 						map[string]interface{}{
 							"name":  "KUBERNETES_CLUSTER_DOMAIN",
-							"value": "{{ quote .Values.KUBERNETES_CLUSTER_DOMAIN }}",
+							"value": "{{ quote .Values.kubernetesClusterDomain }}",
 						},
 					},
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",

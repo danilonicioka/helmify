@@ -26,7 +26,7 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 		if name == ".gitlab-ci.yml" {
 			path = name
 		} else {
-			path = filepath.Join("chart", name)
+			path = filepath.Join(chartName, name)
 		}
 		header := &tar.Header{
 			Name: path,
@@ -232,18 +232,24 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Route.Path != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "route", "path"}, depConfig.Route.Path)
 		}
+		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)
 		_ = setYamlPath(&rootNode, []string{appKey, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
 		if depConfig.Route.Default.Host != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "route", "default", "host"}, depConfig.Route.Default.Host)
+			defaultHost = depConfig.Route.Default.Host
 		}
+		_ = setYamlPath(&rootNode, []string{appKey, "route", "default", "host"}, defaultHost)
+
 		_ = setYamlPath(&rootNode, []string{appKey, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
 		if depConfig.Route.Internal.Host != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "route", "internal", "host"}, depConfig.Route.Internal.Host)
+			internalHost = depConfig.Route.Internal.Host
 		}
+		_ = setYamlPath(&rootNode, []string{appKey, "route", "internal", "host"}, internalHost)
+
 		_ = setYamlPath(&rootNode, []string{appKey, "route", "external", "enabled"}, depConfig.Route.External.Enabled)
 		if depConfig.Route.External.Host != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "route", "external", "host"}, depConfig.Route.External.Host)
+			externalHost = depConfig.Route.External.Host
 		}
+		_ = setYamlPath(&rootNode, []string{appKey, "route", "external", "host"}, externalHost)
 
 		if len(params.GlobalConfig) > 0 {
 			_ = setYamlPath(&rootNode, []string{"global"}, params.GlobalConfig)
@@ -379,18 +385,24 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.Route.Path != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
 			}
+			defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, compName, depConfig.Route.Path, true)
 			_ = setYamlPath(&rootNode, []string{compName, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
 			if depConfig.Route.Default.Host != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "route", "default", "host"}, depConfig.Route.Default.Host)
+				defaultHost = depConfig.Route.Default.Host
 			}
+			_ = setYamlPath(&rootNode, []string{compName, "route", "default", "host"}, defaultHost)
+
 			_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
 			if depConfig.Route.Internal.Host != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "host"}, depConfig.Route.Internal.Host)
+				internalHost = depConfig.Route.Internal.Host
 			}
+			_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "host"}, internalHost)
+
 			_ = setYamlPath(&rootNode, []string{compName, "route", "external", "enabled"}, depConfig.Route.External.Enabled)
 			if depConfig.Route.External.Host != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "route", "external", "host"}, depConfig.Route.External.Host)
+				externalHost = depConfig.Route.External.Host
 			}
+			_ = setYamlPath(&rootNode, []string{compName, "route", "external", "host"}, externalHost)
 		}
 
 		if len(params.GlobalConfig) > 0 {

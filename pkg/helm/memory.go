@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	roothelmify "github.com/arttor/helmify"
-	"github.com/arttor/helmify/pkg/cluster"
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/arttor/helmify/pkg/processor"
 	"gopkg.in/yaml.v3"
@@ -56,11 +55,11 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	// Group templates into files
 	files := map[string][]helmify.Template{}
 	values := helmify.Values{
-		"fullnameOverride": chartName,
-		"dnsResolver":     "dns-default.openshift-dns.svc.cluster.local",
+		"kubernetesClusterDomain": "cluster.local",
+		"nameOverride":            "",
+		"fullnameOverride":        chartName,
 		"global": map[string]interface{}{
-			"TZ":                        "America/Belem",
-			"KUBERNETES_CLUSTER_DOMAIN": cluster.DefaultDomain,
+			"TZ": "America/Belem",
 		},
 	}
 
@@ -107,7 +106,6 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 			if !ok {
 				continue
 			}
-			compKebab := processor.NormalizeComponentName(key)
 
 			if _, hasCm := compMap["cm"]; !hasCm {
 				compMap["cm"] = map[string]interface{}{}
@@ -116,6 +114,17 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 				compMap["secret"] = map[string]interface{}{}
 			}
 			if _, hasRoute := compMap["route"]; !hasRoute {
+				isMulti := false
+				compCount := 0
+				for k := range values {
+					if k != "global" && k != "nodeSelector" && k != "affinity" {
+						compCount++
+					}
+				}
+				if compCount > 1 {
+					isMulti = true
+				}
+				defaultHost, internalHost, externalHost := computeRouteHosts(chartName, key, "/", isMulti)
 				compMap["route"] = map[string]interface{}{
 					"annotations": map[string]interface{}{},
 					"tls": map[string]interface{}{
@@ -125,15 +134,15 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 					"path": "/",
 					"default": map[string]interface{}{
 						"enabled": true,
-						"host":    fmt.Sprintf("%s.apps.ocp-dev.i.tj.pa.gov.br", compKebab),
+						"host":    defaultHost,
 					},
 					"internal": map[string]interface{}{
 						"enabled": false,
-						"host":    fmt.Sprintf("%s-i.i.tjpa.jus.br", compKebab),
+						"host":    internalHost,
 					},
 					"external": map[string]interface{}{
 						"enabled": false,
-						"host":    fmt.Sprintf("%s.tjpa.jus.br", compKebab),
+						"host":    externalHost,
 					},
 				}
 			}
@@ -142,6 +151,9 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 
 	// Generate component-specific ConfigMaps and Secrets for components that have variables but no templates generated yet
 	for key, val := range values {
+		if key == "global" || key == "nodeSelector" || key == "affinity" {
+			continue
+		}
 		compMap, ok := val.(map[string]interface{})
 		if !ok {
 			continue
@@ -202,11 +214,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	}
 
 	// Write values.yaml to memory
-	if certManagerAsSubchart {
-		_, _ = values.Add(certManagerInstallCRD, "certmanager", "installCRDs")
-		_, _ = values.Add(true, "certmanager", "enabled")
-	}
-	res, err := marshalOrdered(values)
+	res, err := generateValuesYAML(chartName, values, certManagerAsSubchart, certManagerInstallCRD)
 	if err != nil {
 		return err
 	}

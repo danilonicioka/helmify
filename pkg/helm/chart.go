@@ -1,13 +1,14 @@
 package helm
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/arttor/helmify/pkg/cluster"
+	roothelmify "github.com/arttor/helmify"
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/arttor/helmify/pkg/processor"
 
@@ -183,11 +184,11 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	// group templates into files
 	files := map[string][]helmify.Template{}
 	values := helmify.Values{
-		"fullnameOverride": chartName,
-		"dnsResolver":     "dns-default.openshift-dns.svc.cluster.local",
+		"kubernetesClusterDomain": "cluster.local",
+		"nameOverride":            "",
+		"fullnameOverride":        chartName,
 		"global": map[string]interface{}{
-			"TZ":                        "America/Belem",
-			"KUBERNETES_CLUSTER_DOMAIN": cluster.DefaultDomain,
+			"TZ": "America/Belem",
 		},
 	}
 	for i, template := range templates {
@@ -217,7 +218,6 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 			if !ok {
 				continue
 			}
-			compKebab := processor.NormalizeComponentName(key)
 
 			if _, hasCm := compMap["cm"]; !hasCm {
 				compMap["cm"] = map[string]interface{}{}
@@ -226,6 +226,17 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 				compMap["secret"] = map[string]interface{}{}
 			}
 			if _, hasRoute := compMap["route"]; !hasRoute {
+				isMulti := false
+				compCount := 0
+				for k := range values {
+					if k != "global" && k != "nodeSelector" && k != "affinity" {
+						compCount++
+					}
+				}
+				if compCount > 1 {
+					isMulti = true
+				}
+				defaultHost, internalHost, externalHost := computeRouteHosts(chartName, key, "/", isMulti)
 				compMap["route"] = map[string]interface{}{
 					"annotations": map[string]interface{}{},
 					"tls": map[string]interface{}{
@@ -235,15 +246,15 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 					"path": "/",
 					"default": map[string]interface{}{
 						"enabled": true,
-						"host":    fmt.Sprintf("%s.apps.ocp-dev.i.tj.pa.gov.br", compKebab),
+						"host":    defaultHost,
 					},
 					"internal": map[string]interface{}{
 						"enabled": false,
-						"host":    fmt.Sprintf("%s-i.i.tjpa.jus.br", compKebab),
+						"host":    internalHost,
 					},
 					"external": map[string]interface{}{
 						"enabled": false,
-						"host":    fmt.Sprintf("%s.tjpa.jus.br", compKebab),
+						"host":    externalHost,
 					},
 				}
 			}
@@ -252,6 +263,9 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 
 	// Generate component-specific ConfigMaps and Secrets for components that have variables but no templates generated yet
 	for key, val := range values {
+		if key == "global" || key == "nodeSelector" || key == "affinity" {
+			continue
+		}
 		compMap, ok := val.(map[string]interface{})
 		if !ok {
 			continue
@@ -320,7 +334,11 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		}
 	}
 
-	err = overwriteValuesFile(cDir, values, certManagerAsSubchart, certManagerInstallCRD)
+	res, err := generateValuesYAML(chartName, values, certManagerAsSubchart, certManagerInstallCRD)
+	if err != nil {
+		return err
+	}
+	err = overwriteValuesFile(cDir, res)
 	if err != nil {
 		return err
 	}
@@ -375,26 +393,100 @@ func overwriteTemplateFile(filename, chartDir string, crd bool, templates []helm
 	return nil
 }
 
-func overwriteValuesFile(chartDir string, values helmify.Values, certManagerAsSubchart bool, certManagerInstallCRD bool) error {
+func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSubchart bool, certManagerInstallCRD bool) ([]byte, error) {
 	if certManagerAsSubchart {
-		_, err := values.Add(certManagerInstallCRD, "certmanager", "installCRDs")
-		if err != nil {
-			return fmt.Errorf("%w: unable to add cert-manager.installCRDs", err)
-		}
+		_, _ = values.Add(certManagerInstallCRD, "certmanager", "installCRDs")
+		_, _ = values.Add(true, "certmanager", "enabled")
+	}
 
-		_, err = values.Add(true, "certmanager", "enabled")
-		if err != nil {
-			return fmt.Errorf("%w: unable to add cert-manager.enabled", err)
+	// Count components
+	compCount := 0
+	var compKey string
+	for key, val := range values {
+		if key == "global" || key == "nodeSelector" || key == "affinity" || key == "fullnameOverride" || key == "kubernetesClusterDomain" || key == "nameOverride" || key == "dnsResolver" {
+			continue
+		}
+		isMap := false
+		if _, ok := val.(map[string]interface{}); ok {
+			isMap = true
+		} else if _, ok := val.(helmify.Values); ok {
+			isMap = true
+		}
+		if isMap {
+			compCount++
+			compKey = key
 		}
 	}
-	// Use custom marshaler to preserve desired logical ordering
-	res, err := marshalOrdered(values)
+
+	basePath := "models/single"
+	oldChartName := "chart-model-single"
+	if compCount > 1 {
+		basePath = "models/multi"
+		oldChartName = "chart-model-multi"
+	}
+
+	valuesData, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values.yaml"))
 	if err != nil {
-		return fmt.Errorf("%w: unable to write marshal values.yaml", err)
+		return nil, err
 	}
 
+	var rootNode yaml.Node
+	if err := yaml.Unmarshal(valuesData, &rootNode); err != nil {
+		return nil, err
+	}
+
+	if compCount > 1 {
+		if _, exists := values["backend"]; !exists {
+			deleteYamlPath(&rootNode, "backend")
+		}
+		if _, exists := values["frontend"]; !exists {
+			deleteYamlPath(&rootNode, "frontend")
+		}
+	} else if compKey != "" {
+		renameRootKey(&rootNode, oldChartName, compKey)
+	}
+
+	_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, chartName)
+
+	if err := mergeYamlNode(&rootNode, values, []string{}); err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&rootNode); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func mergeYamlNode(dest *yaml.Node, src interface{}, path []string) error {
+	if srcMap, ok := src.(map[string]interface{}); ok {
+		for k, v := range srcMap {
+			err := mergeYamlNode(dest, v, append(path, k))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if srcValues, ok := src.(helmify.Values); ok {
+		for k, v := range srcValues {
+			err := mergeYamlNode(dest, v, append(path, k))
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	return setYamlPath(dest, path, src)
+}
+
+func overwriteValuesFile(chartDir string, res []byte) error {
 	file := filepath.Join(chartDir, "values.yaml")
-	err = os.WriteFile(file, res, 0600)
+	err := os.WriteFile(file, res, 0600)
 	if err != nil {
 		return fmt.Errorf("%w: unable to write values.yaml", err)
 	}
