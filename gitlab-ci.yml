@@ -116,17 +116,17 @@ update_tag_job:
       # This creates a list of paths like: 
       # image
       # services.api.image
-      TAG_PATHS=$(yq eval '.. | select(has("tag")) | path | join(".")' values-ca.yaml)
+      TAG_PATHS=$(yq eval '.. | select(has("tag")) | path | join(".")' values-dev.yaml)
 
       if [ -z "$TAG_PATHS" ]; then
-        echo "No 'tag' keys found in values-ca.yaml. Skipping."
+        echo "No 'tag' keys found in values-dev.yaml. Skipping."
         exit 0
       fi
 
       # 3. Iterate through every path found and update the target file
       for PATH_NAME in $TAG_PATHS; do
         # Get the tag value from the DEV file for this specific path
-        NEW_TAG=$(yq eval ".${PATH_NAME}.tag" values-ca.yaml)
+        NEW_TAG=$(yq eval ".${PATH_NAME}.tag" values-dev.yaml)
         
         echo "Updating .${PATH_NAME}.tag to ${NEW_TAG} in values-${ENV_}.yaml"
         

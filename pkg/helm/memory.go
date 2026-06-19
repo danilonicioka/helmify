@@ -241,7 +241,7 @@ func (m *MemoryOutput) ToTarGz(chartName string, w io.Writer) error {
 
 	for name, content := range m.Files {
 		var path string
-		if name == ".gitlab-ci.yml" {
+		if name == ".gitlab-ci.yml" || name == "README.md" {
 			path = name
 		} else {
 			path = filepath.Join("chart", name)

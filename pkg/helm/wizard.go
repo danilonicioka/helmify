@@ -23,10 +23,10 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 
 	for name, content := range files {
 		var path string
-		if name == ".gitlab-ci.yml" {
+		if name == ".gitlab-ci.yml" || name == "README.md" {
 			path = name
 		} else {
-			path = filepath.Join(chartName, name)
+			path = filepath.Join("chart", name)
 		}
 		header := &tar.Header{
 			Name: path,
