@@ -663,61 +663,7 @@
 
                 <div class="section-subtitle">Generation Options</div>
 
-                <!-- Option 1: CRD Folder -->
-                <div class="route-card">
-                    <div class="route-card-header">
-                        <div>
-                            <span>Separate CRDs Folder</span>
-                            <p>Places Custom Resource Definitions in a dedicated /crds folder.</p>
-                        </div>
-                        <label class="route-switch">
-                            <input type="checkbox" id="optCrd">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
 
-                <!-- Option 2: Cert-Manager -->
-                <div class="route-card">
-                    <div class="route-card-header">
-                        <div>
-                            <span>Cert-Manager Subchart</span>
-                            <p>Include cert-manager subchart settings for automated TLS management.</p>
-                        </div>
-                        <label class="route-switch">
-                            <input type="checkbox" id="optCertManager">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Option 3: Webhook -->
-                <div class="route-card">
-                    <div class="route-card-header">
-                        <div>
-                            <span>Webhook Support</span>
-                            <p>Inject webhook enable/disable validation logic in the templates.</p>
-                        </div>
-                        <label class="route-switch">
-                            <input type="checkbox" id="optWebhook">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Option 4: Optional CRDs -->
-                <div class="route-card">
-                    <div class="route-card-header">
-                        <div>
-                            <span>Optional CRDs</span>
-                            <p>Allow toggling CRDs installation dynamically via values.yaml.</p>
-                        </div>
-                        <label class="route-switch">
-                            <input type="checkbox" id="optOptionalCrds">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                </div>
 
                 <!-- Option 5: Generate All Model Templates -->
                 <div class="route-card">
@@ -859,10 +805,10 @@ spec:
 
             const headers = {
                 'X-Chart-Name': chartName,
-                'X-Crd': document.getElementById('optCrd').checked ? 'true' : 'false',
-                'X-Cert-Manager-Subchart': document.getElementById('optCertManager').checked ? 'true' : 'false',
-                'X-Add-Webhook-Option': document.getElementById('optWebhook').checked ? 'true' : 'false',
-                'X-Optional-Crds': document.getElementById('optOptionalCrds').checked ? 'true' : 'false',
+                'X-Crd': 'false',
+                'X-Cert-Manager-Subchart': 'false',
+                'X-Add-Webhook-Option': 'false',
+                'X-Optional-Crds': 'false',
                 'X-Generate-All-Templates': document.getElementById('optGenerateAllTemplates').checked ? 'true' : 'false',
                 'X-Dev-Repo-Url': document.getElementById('devRepoUrl').value.trim()
             };
@@ -1087,10 +1033,6 @@ spec:
         }
 
         // Event listeners for settings change
-        document.getElementById('optCrd').addEventListener('change', debouncedUpdatePreview);
-        document.getElementById('optCertManager').addEventListener('change', debouncedUpdatePreview);
-        document.getElementById('optWebhook').addEventListener('change', debouncedUpdatePreview);
-        document.getElementById('optOptionalCrds').addEventListener('change', debouncedUpdatePreview);
         document.getElementById('optGenerateAllTemplates').addEventListener('change', debouncedUpdatePreview);
         document.getElementById('chartName').addEventListener('input', debouncedUpdatePreview);
         document.getElementById('devRepoUrl').addEventListener('input', debouncedUpdatePreview);
