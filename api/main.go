@@ -259,6 +259,7 @@ func parseConfig(r *http.Request) config.Config {
 	conf.CertManagerInstallCRD, _ = strconv.ParseBool(r.Header.Get("X-Cert-Manager-Install-Crd"))
 	conf.AddWebhookOption, _ = strconv.ParseBool(r.Header.Get("X-Add-Webhook-Option"))
 	conf.OptionalCRDs, _ = strconv.ParseBool(r.Header.Get("X-Optional-Crds"))
+	conf.GenerateAllTemplates, _ = strconv.ParseBool(r.Header.Get("X-Generate-All-Templates"))
 	conf.CertManagerVersion = r.Header.Get("X-Cert-Manager-Version")
 	if conf.CertManagerVersion == "" {
 		conf.CertManagerVersion = "v1.11.0"
