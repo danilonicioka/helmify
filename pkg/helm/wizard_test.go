@@ -198,3 +198,25 @@ func TestGenerateWizardChart_ZeroReplicas(t *testing.T) {
 	assert.Contains(t, string(valuesBytes), "replicas: 0")
 }
 
+func TestRouteHostPrefixCalculation(t *testing.T) {
+	// Single deployment
+	prefix1 := getRouteHostPrefix("gotenberg", "gotenberg", "", false)
+	assert.Equal(t, "gotenberg", prefix1)
+
+	// Multi deployment - frontend component should omit suffix
+	prefix2 := getRouteHostPrefix("gotenberg", "app", "", true)
+	assert.Equal(t, "gotenberg", prefix2)
+
+	// Multi deployment - path specified should omit suffix
+	prefix3 := getRouteHostPrefix("gotenberg", "api", "/api", true)
+	assert.Equal(t, "gotenberg", prefix3)
+
+	// Multi deployment - generic component (api), no path, should append suffix (api normalizes to api-emissor)
+	prefix4 := getRouteHostPrefix("gotenberg", "api", "", true)
+	assert.Equal(t, "gotenberg-api-emissor", prefix4)
+
+	// Multi deployment - suffix already exists in component name, no double suffix
+	prefix5 := getRouteHostPrefix("gotenberg", "gotenberg-api-emissor", "", true)
+	assert.Equal(t, "gotenberg-api-emissor", prefix5)
+}
+

@@ -980,10 +980,6 @@
                             <span class="slider"></span>
                         </label>
                     </div>
-                    <div id="routeDefaultHostGroup">
-                        <label for="routeDefaultHost" style="font-size: 0.75rem;">Hostname</label>
-                        <input type="text" id="routeDefaultHost" placeholder="e.g. app.apps.ocp-hub.i.tj.pa.gov.br">
-                    </div>
                 </div>
 
                 <!-- Intranet Route -->
@@ -995,10 +991,6 @@
                             <span class="slider"></span>
                         </label>
                     </div>
-                    <div id="routeIntHostGroup" style="display: none;">
-                        <label for="routeIntHost" style="font-size: 0.75rem;">Hostname</label>
-                        <input type="text" id="routeIntHost" placeholder="e.g. app-int.i.tjpa.jus.br">
-                    </div>
                 </div>
 
                 <!-- Internet Route -->
@@ -1009,10 +1001,6 @@
                             <input type="checkbox" id="routeExtEnabled">
                             <span class="slider"></span>
                         </label>
-                    </div>
-                    <div id="routeExtHostGroup" style="display: none;">
-                        <label for="routeExtHost" style="font-size: 0.75rem;">Hostname</label>
-                        <input type="text" id="routeExtHost" placeholder="e.g. app.tjpa.jus.br">
                     </div>
                 </div>
 
@@ -1435,13 +1423,13 @@
             config.route.path = document.getElementById('compRoutePath').value;
 
             config.route.default.enabled = document.getElementById('routeDefaultEnabled').checked;
-            config.route.default.host = document.getElementById('routeDefaultHost').value;
+            config.route.default.host = '';
 
             config.route.internal.enabled = document.getElementById('routeIntEnabled').checked;
-            config.route.internal.host = document.getElementById('routeIntHost').value;
+            config.route.internal.host = '';
 
             config.route.external.enabled = document.getElementById('routeExtEnabled').checked;
-            config.route.external.host = document.getElementById('routeExtHost').value;
+            config.route.external.host = '';
 
             // Collect component ConfigMap
             config.cm = {};
@@ -1475,16 +1463,10 @@
             document.getElementById('compRoutePath').value = config.route.path || '';
 
             document.getElementById('routeDefaultEnabled').checked = config.route.default.enabled;
-            document.getElementById('routeDefaultHost').value = config.route.default.host || '';
-            toggleHostGroup('routeDefaultEnabled', 'routeDefaultHostGroup');
 
             document.getElementById('routeIntEnabled').checked = config.route.internal.enabled;
-            document.getElementById('routeIntHost').value = config.route.internal.host || '';
-            toggleHostGroup('routeIntEnabled', 'routeIntHostGroup');
 
             document.getElementById('routeExtEnabled').checked = config.route.external.enabled;
-            document.getElementById('routeExtHost').value = config.route.external.host || '';
-            toggleHostGroup('routeExtEnabled', 'routeExtHostGroup');
 
             // Render ConfigMaps
             const cmContainer = document.getElementById('comp-cm-list');
@@ -1500,21 +1482,6 @@
                 secretContainer.appendChild(createKeyValueRow(k, v, 'comp-secret-row', 'secret-key', 'secret-value'));
             });
         }
-
-        // Helper to toggle visibility of host groups
-        function toggleHostGroup(switchId, groupId) {
-            const chk = document.getElementById(switchId);
-            const grp = document.getElementById(groupId);
-            if (chk.checked) {
-                grp.style.display = 'block';
-            } else {
-                grp.style.display = 'none';
-            }
-        }
-
-        document.getElementById('routeDefaultEnabled').addEventListener('change', () => toggleHostGroup('routeDefaultEnabled', 'routeDefaultHostGroup'));
-        document.getElementById('routeIntEnabled').addEventListener('change', () => toggleHostGroup('routeIntEnabled', 'routeIntHostGroup'));
-        document.getElementById('routeExtEnabled').addEventListener('change', () => toggleHostGroup('routeExtEnabled', 'routeExtHostGroup'));
 
         // Handle Global Config lists
         function renderGlobalConfigList() {

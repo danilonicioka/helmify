@@ -539,6 +539,9 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 		compKebab := processor.NormalizeComponentName(comp)
 
 		filename := "cm-" + compKebab + ".yaml"
+		if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) {
+			filename = "cm.yaml"
+		}
 		key := "checksum/cm-config"
 		if compKebab != processor.NormalizeComponentName(objName) {
 			key = "checksum/config-" + compKebab
@@ -556,6 +559,9 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 		compKebab := processor.NormalizeComponentName(comp)
 
 		filename := "secret-" + compKebab + ".yaml"
+		if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) {
+			filename = "secret.yaml"
+		}
 		key := "checksum/secret"
 		if compKebab != processor.NormalizeComponentName(objName) {
 			key = "checksum/secret-" + compKebab
@@ -567,10 +573,18 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 	if objName != "" && objName != "global" && objName != "chart" {
 		compKebab := processor.NormalizeComponentName(objName)
 		if _, exists := annotations["checksum/cm-config"]; !exists {
-			annotations["checksum/cm-config"] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:cm:checksum/cm-config:cm-%s.yaml]", objName, compKebab)
+			cmFilename := "cm-" + compKebab + ".yaml"
+			if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) {
+				cmFilename = "cm.yaml"
+			}
+			annotations["checksum/cm-config"] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:cm:checksum/cm-config:%s]", objName, cmFilename)
 		}
 		if _, exists := annotations["checksum/secret"]; !exists {
-			annotations["checksum/secret"] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:secret:checksum/secret:secret-%s.yaml]", objName, compKebab)
+			secretFilename := "secret-" + compKebab + ".yaml"
+			if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) {
+				secretFilename = "secret.yaml"
+			}
+			annotations["checksum/secret"] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:secret:checksum/secret:%s]", objName, secretFilename)
 		}
 	}
 
