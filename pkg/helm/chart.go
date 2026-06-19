@@ -45,6 +45,111 @@ data:
 {{- end }}
 {{- end }}
 `
+
+	compRouteDefaultTemplate = `{{- if and .Values.%[1]s .Values.%[1]s.route .Values.%[1]s.route.default .Values.%[1]s.route.default.enabled -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "%[2]s.fullname" . }}%[4]s
+  labels:
+    {{- include "%[2]s.labels" . | nindent 4 }}
+    {{- if %[5]s }}
+    app.kubernetes.io/component: %[3]s
+    {{- end }}
+  {{- with .Values.%[1]s.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.%[1]s.route.default.host }}
+  host: {{ .Values.%[1]s.route.default.host | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.path }}
+  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.tls }}
+  tls:
+    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "%[2]s.fullname" . }}%[4]s
+    weight: 100
+  port:
+    targetPort: http
+  wildcardPolicy: None
+{{- end }}
+`
+
+	compRouteInternalTemplate = `{{- if and .Values.%[1]s .Values.%[1]s.route .Values.%[1]s.route.internal .Values.%[1]s.route.internal.enabled -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "%[2]s.fullname" . }}%[4]s-int
+  labels:
+    {{- include "%[2]s.labels" . | nindent 4 }}
+    {{- if %[5]s }}
+    app.kubernetes.io/component: %[3]s
+    {{- end }}
+  {{- with .Values.%[1]s.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.%[1]s.route.internal.host }}
+  host: {{ .Values.%[1]s.route.internal.host | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.path }}
+  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.tls }}
+  tls:
+    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "%[2]s.fullname" . }}%[4]s
+    weight: 100
+  port:
+    targetPort: http
+  wildcardPolicy: None
+{{- end }}
+`
+
+	compRouteExternalTemplate = `{{- if and .Values.%[1]s .Values.%[1]s.route .Values.%[1]s.route.external .Values.%[1]s.route.external.enabled -}}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "%[2]s.fullname" . }}%[4]s-ext
+  labels:
+    {{- include "%[2]s.labels" . | nindent 4 }}
+    {{- if %[5]s }}
+    app.kubernetes.io/component: %[3]s
+    {{- end }}
+  {{- with .Values.%[1]s.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.%[1]s.route.external.host }}
+  host: {{ .Values.%[1]s.route.external.host | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.path }}
+  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- end }}
+  {{- if .Values.%[1]s.route.tls }}
+  tls:
+    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "%[2]s.fullname" . }}%[4]s
+    weight: 100
+  port:
+    targetPort: http
+  wildcardPolicy: None
+{{- end }}
+`
 )
 
 // NewOutput creates interface to dump processed input to filesystem in Helm chart format.
@@ -52,7 +157,13 @@ func NewOutput() helmify.Output {
 	return &output{}
 }
 
-type output struct{}
+type output struct {
+	GenerateAllTemplates bool
+}
+
+func (o *output) SetGenerateAllTemplates(enabled bool) {
+	o.GenerateAllTemplates = enabled
+}
 
 // Create a helm chart in the current directory:
 // chartName/
@@ -96,6 +207,49 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		}
 	}
 
+	// Initialize default keys and structures for GenerateAllTemplates
+	if o.GenerateAllTemplates {
+		for key, val := range values {
+			if key == "global" || key == "nodeSelector" || key == "affinity" {
+				continue
+			}
+			compMap, ok := val.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			compKebab := processor.NormalizeComponentName(key)
+
+			if _, hasCm := compMap["cm"]; !hasCm {
+				compMap["cm"] = map[string]interface{}{}
+			}
+			if _, hasSecret := compMap["secret"]; !hasSecret {
+				compMap["secret"] = map[string]interface{}{}
+			}
+			if _, hasRoute := compMap["route"]; !hasRoute {
+				compMap["route"] = map[string]interface{}{
+					"annotations": map[string]interface{}{},
+					"tls": map[string]interface{}{
+						"termination": "edge",
+						"insecureEdgeTerminationPolicy": "Redirect",
+					},
+					"path": "/",
+					"default": map[string]interface{}{
+						"enabled": true,
+						"host":    fmt.Sprintf("%s.apps.ocp-dev.i.tj.pa.gov.br", compKebab),
+					},
+					"internal": map[string]interface{}{
+						"enabled": false,
+						"host":    fmt.Sprintf("%s-i.i.tjpa.jus.br", compKebab),
+					},
+					"external": map[string]interface{}{
+						"enabled": false,
+						"host":    fmt.Sprintf("%s.tjpa.jus.br", compKebab),
+					},
+				}
+			}
+		}
+	}
+
 	// Generate component-specific ConfigMaps and Secrets for components that have variables but no templates generated yet
 	for key, val := range values {
 		compMap, ok := val.(map[string]interface{})
@@ -105,6 +259,9 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		compKebab := processor.NormalizeComponentName(key)
 		if _, hasCm := compMap["cm"]; hasCm {
 			cmFilename := "cm-" + compKebab + ".yaml"
+			if compKebab == chartName {
+				cmFilename = "cm.yaml"
+			}
 			if _, exists := files[cmFilename]; !exists {
 				cmContent := fmt.Sprintf(compCmTemplate, key, chartName, compKebab)
 				err = os.WriteFile(filepath.Join(cDir, "templates", cmFilename), []byte(cmContent), 0600)
@@ -115,11 +272,49 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		}
 		if _, hasSecret := compMap["secret"]; hasSecret {
 			secretFilename := "secret-" + compKebab + ".yaml"
+			if compKebab == chartName {
+				secretFilename = "secret.yaml"
+			}
 			if _, exists := files[secretFilename]; !exists {
 				secretContent := fmt.Sprintf(compSecretTemplate, key, chartName, compKebab)
 				err = os.WriteFile(filepath.Join(cDir, "templates", secretFilename), []byte(secretContent), 0600)
 				if err != nil {
 					return fmt.Errorf("%w: unable to write %s", err, secretFilename)
+				}
+			}
+		}
+
+		// Generate component-specific Routes if GenerateAllTemplates is enabled
+		if o.GenerateAllTemplates {
+			nameSuffix := "-" + compKebab
+			isComponent := "true"
+			if compKebab == chartName {
+				nameSuffix = ""
+				isComponent = "false"
+			}
+
+			routes := []struct {
+				filename string
+				template string
+			}{
+				{filename: "route" + nameSuffix + "-default.yaml", template: compRouteDefaultTemplate},
+				{filename: "route" + nameSuffix + "-int.yaml", template: compRouteInternalTemplate},
+				{filename: "route" + nameSuffix + "-ext.yaml", template: compRouteExternalTemplate},
+			}
+
+			if compKebab == chartName {
+				routes[0].filename = "route-default.yaml"
+				routes[1].filename = "route-int.yaml"
+				routes[2].filename = "route-ext.yaml"
+			}
+
+			for _, r := range routes {
+				if _, exists := files[r.filename]; !exists {
+					routeContent := fmt.Sprintf(r.template, key, chartName, compKebab, nameSuffix, isComponent)
+					err = os.WriteFile(filepath.Join(cDir, "templates", r.filename), []byte(routeContent), 0600)
+					if err != nil {
+						return fmt.Errorf("%w: unable to write %s", err, r.filename)
+					}
 				}
 			}
 		}

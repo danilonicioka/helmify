@@ -719,6 +719,20 @@
                     </div>
                 </div>
 
+                <!-- Option 5: Generate All Model Templates -->
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <div>
+                            <span>Generate All Templates</span>
+                            <p>Ensure standard routes, secret, configmap templates are always created.</p>
+                        </div>
+                        <label class="route-switch">
+                            <input type="checkbox" id="optGenerateAllTemplates">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+
                 <div style="margin-top: 1rem; padding: 1rem; background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.5;">
                     <p style="font-weight: 600; color: var(--text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.4rem;">
                         ⚡ Live Preview Active
@@ -849,6 +863,7 @@ spec:
                 'X-Cert-Manager-Subchart': document.getElementById('optCertManager').checked ? 'true' : 'false',
                 'X-Add-Webhook-Option': document.getElementById('optWebhook').checked ? 'true' : 'false',
                 'X-Optional-Crds': document.getElementById('optOptionalCrds').checked ? 'true' : 'false',
+                'X-Generate-All-Templates': document.getElementById('optGenerateAllTemplates').checked ? 'true' : 'false',
                 'X-Dev-Repo-Url': document.getElementById('devRepoUrl').value.trim()
             };
 
@@ -1076,6 +1091,7 @@ spec:
         document.getElementById('optCertManager').addEventListener('change', debouncedUpdatePreview);
         document.getElementById('optWebhook').addEventListener('change', debouncedUpdatePreview);
         document.getElementById('optOptionalCrds').addEventListener('change', debouncedUpdatePreview);
+        document.getElementById('optGenerateAllTemplates').addEventListener('change', debouncedUpdatePreview);
         document.getElementById('chartName').addEventListener('input', debouncedUpdatePreview);
         document.getElementById('devRepoUrl').addEventListener('input', debouncedUpdatePreview);
 

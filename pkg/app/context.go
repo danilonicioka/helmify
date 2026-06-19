@@ -82,6 +82,9 @@ func (c *appContext) CreateHelm(stop <-chan struct{}) error {
 		default:
 		}
 	}
+	if co, ok := c.output.(interface{ SetGenerateAllTemplates(bool) }); ok {
+		co.SetGenerateAllTemplates(c.config.GenerateAllTemplates)
+	}
 	return c.output.Create(c.config.ChartDir, c.config.ChartName, c.config.Crd, c.config.CertManagerAsSubchart, c.config.CertManagerVersion, c.config.CertManagerInstallCRD, templates, filenames)
 }
 

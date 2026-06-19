@@ -19,8 +19,13 @@ import (
 // MemoryOutput captures the generated Helm chart in memory.
 // It implements the helmify.Output interface.
 type MemoryOutput struct {
-	Files      map[string][]byte
-	DevRepoURL string
+	Files                map[string][]byte
+	DevRepoURL           string
+	GenerateAllTemplates bool
+}
+
+func (m *MemoryOutput) SetGenerateAllTemplates(enabled bool) {
+	m.GenerateAllTemplates = enabled
 }
 
 // NewMemoryOutput creates a new MemoryOutput.
@@ -92,6 +97,49 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		m.Files[filepath.Join(subdir, filename)] = buf.Bytes()
 	}
 
+	// Initialize default keys and structures for GenerateAllTemplates
+	if m.GenerateAllTemplates {
+		for key, val := range values {
+			if key == "global" || key == "nodeSelector" || key == "affinity" {
+				continue
+			}
+			compMap, ok := val.(map[string]interface{})
+			if !ok {
+				continue
+			}
+			compKebab := processor.NormalizeComponentName(key)
+
+			if _, hasCm := compMap["cm"]; !hasCm {
+				compMap["cm"] = map[string]interface{}{}
+			}
+			if _, hasSecret := compMap["secret"]; !hasSecret {
+				compMap["secret"] = map[string]interface{}{}
+			}
+			if _, hasRoute := compMap["route"]; !hasRoute {
+				compMap["route"] = map[string]interface{}{
+					"annotations": map[string]interface{}{},
+					"tls": map[string]interface{}{
+						"termination": "edge",
+						"insecureEdgeTerminationPolicy": "Redirect",
+					},
+					"path": "/",
+					"default": map[string]interface{}{
+						"enabled": true,
+						"host":    fmt.Sprintf("%s.apps.ocp-dev.i.tj.pa.gov.br", compKebab),
+					},
+					"internal": map[string]interface{}{
+						"enabled": false,
+						"host":    fmt.Sprintf("%s-i.i.tjpa.jus.br", compKebab),
+					},
+					"external": map[string]interface{}{
+						"enabled": false,
+						"host":    fmt.Sprintf("%s.tjpa.jus.br", compKebab),
+					},
+				}
+			}
+		}
+	}
+
 	// Generate component-specific ConfigMaps and Secrets for components that have variables but no templates generated yet
 	for key, val := range values {
 		compMap, ok := val.(map[string]interface{})
@@ -101,6 +149,9 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		compKebab := processor.NormalizeComponentName(key)
 		if _, hasCm := compMap["cm"]; hasCm {
 			cmFilename := "cm-" + compKebab + ".yaml"
+			if compKebab == chartName {
+				cmFilename = "cm.yaml"
+			}
 			if _, exists := files[cmFilename]; !exists {
 				cmContent := fmt.Sprintf(compCmTemplate, key, chartName, compKebab)
 				m.Files[filepath.Join("templates", cmFilename)] = []byte(cmContent)
@@ -108,9 +159,44 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		}
 		if _, hasSecret := compMap["secret"]; hasSecret {
 			secretFilename := "secret-" + compKebab + ".yaml"
+			if compKebab == chartName {
+				secretFilename = "secret.yaml"
+			}
 			if _, exists := files[secretFilename]; !exists {
 				secretContent := fmt.Sprintf(compSecretTemplate, key, chartName, compKebab)
 				m.Files[filepath.Join("templates", secretFilename)] = []byte(secretContent)
+			}
+		}
+
+		// Generate component-specific Routes if GenerateAllTemplates is enabled
+		if m.GenerateAllTemplates {
+			nameSuffix := "-" + compKebab
+			isComponent := "true"
+			if compKebab == chartName {
+				nameSuffix = ""
+				isComponent = "false"
+			}
+
+			routes := []struct {
+				filename string
+				template string
+			}{
+				{filename: "route" + nameSuffix + "-default.yaml", template: compRouteDefaultTemplate},
+				{filename: "route" + nameSuffix + "-int.yaml", template: compRouteInternalTemplate},
+				{filename: "route" + nameSuffix + "-ext.yaml", template: compRouteExternalTemplate},
+			}
+
+			if compKebab == chartName {
+				routes[0].filename = "route-default.yaml"
+				routes[1].filename = "route-int.yaml"
+				routes[2].filename = "route-ext.yaml"
+			}
+
+			for _, r := range routes {
+				if _, exists := files[r.filename]; !exists {
+					routeContent := fmt.Sprintf(r.template, key, chartName, compKebab, nameSuffix, isComponent)
+					m.Files[filepath.Join("templates", r.filename)] = []byte(routeContent)
+				}
 			}
 		}
 	}

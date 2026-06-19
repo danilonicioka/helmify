@@ -47,6 +47,8 @@ type Config struct {
 	OptionalCRDs bool
 	// DevRepoURL - optional developer source repository URL to inject as annotation in Chart.yaml
 	DevRepoURL string
+	// GenerateAllTemplates - Enable the generation of all default templates (CM, Secret, Routes) for all components
+	GenerateAllTemplates bool
 }
 
 func (c *Config) Validate() error {
