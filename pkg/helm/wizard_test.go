@@ -1,6 +1,10 @@
 package helm
 
 import (
+	"archive/tar"
+	"bytes"
+	"compress/gzip"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -219,4 +223,42 @@ func TestRouteHostPrefixCalculation(t *testing.T) {
 	prefix5 := getRouteHostPrefix("gotenberg", "gotenberg-api-emissor", "", true)
 	assert.Equal(t, "gotenberg-api-emissor", prefix5)
 }
+
+func TestWriteTarGzStructure(t *testing.T) {
+	mockFiles := map[string][]byte{
+		"README.md":        []byte("readme content"),
+		".gitlab-ci.yml":   []byte("ci content"),
+		"Chart.yaml":       []byte("chart content"),
+		"values.yaml":      []byte("values content"),
+		"templates/d.yaml": []byte("deploy content"),
+	}
+
+	var buf bytes.Buffer
+	err := WriteTarGz(mockFiles, "mychart", &buf)
+	assert.NoError(t, err)
+
+	// Read tar.gz content back
+	gr, err := gzip.NewReader(&buf)
+	assert.NoError(t, err)
+	defer gr.Close()
+
+	tr := tar.NewReader(gr)
+	paths := make(map[string]bool)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		paths[hdr.Name] = true
+	}
+
+	assert.True(t, paths["README.md"])
+	assert.True(t, paths[".gitlab-ci.yml"])
+	assert.True(t, paths["chart/Chart.yaml"])
+	assert.True(t, paths["chart/values.yaml"])
+	assert.True(t, paths["chart/templates/d.yaml"])
+	assert.False(t, paths["mychart/Chart.yaml"])
+}
+
 

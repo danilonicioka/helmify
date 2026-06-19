@@ -229,7 +229,12 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	defer tw.Close()
 
 	for name, content := range req.Files {
-		path := filepath.Join(req.ChartName, name)
+		var path string
+		if name == ".gitlab-ci.yml" || name == "README.md" {
+			path = name
+		} else {
+			path = filepath.Join("chart", name)
+		}
 		header := &tar.Header{
 			Name: path,
 			Mode: 0644,
