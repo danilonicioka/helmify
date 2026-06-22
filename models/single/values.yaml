@@ -31,9 +31,9 @@ chart-model-single:
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-app
-    pullPolicy: IfNotPresent
     # -- Defaults to Chart.appVersion if not specified.
     tag: "latest"
+    pullPolicy: IfNotPresent
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION (Variables & Credentials)
