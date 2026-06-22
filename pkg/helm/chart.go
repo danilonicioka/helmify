@@ -74,10 +74,10 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "%[2]s.fullname" . }}%[4]s
+    name: {{ include "%[2]s.fullname" . }}%[4]s-svc
     weight: 100
   port:
-    targetPort: http
+    targetPort: {{ if and .Values.%[1]s.service .Values.%[1]s.service.ports }}{{ (index .Values.%[1]s.service.ports 0).name | default "http" }}{{ else }}http{{ end }}
   wildcardPolicy: None
 {{- end }}
 `
@@ -109,10 +109,10 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "%[2]s.fullname" . }}%[4]s
+    name: {{ include "%[2]s.fullname" . }}%[4]s-svc
     weight: 100
   port:
-    targetPort: http
+    targetPort: {{ if and .Values.%[1]s.service .Values.%[1]s.service.ports }}{{ (index .Values.%[1]s.service.ports 0).name | default "http" }}{{ else }}http{{ end }}
   wildcardPolicy: None
 {{- end }}
 `
@@ -144,10 +144,10 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "%[2]s.fullname" . }}%[4]s
+    name: {{ include "%[2]s.fullname" . }}%[4]s-svc
     weight: 100
   port:
-    targetPort: http
+    targetPort: {{ if and .Values.%[1]s.service .Values.%[1]s.service.ports }}{{ (index .Values.%[1]s.service.ports 0).name | default "http" }}{{ else }}http{{ end }}
   wildcardPolicy: None
 {{- end }}
 `
