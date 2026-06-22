@@ -829,13 +829,16 @@ spec:
 
                     renderFileTree();
                     
+                    const previousActiveFile = activeFile;
                     if (isFirstLoad) {
                         activeFile = 'source.yaml';
                         isFirstLoad = false;
                     } else if (activeFile !== 'source.yaml' && !generatedFiles[activeFile]) {
                         activeFile = 'source.yaml';
                     }
-                    renderActiveFileContent();
+                    if (activeFile !== 'source.yaml' || previousActiveFile !== activeFile) {
+                        renderActiveFileContent();
+                    }
                 } else {
                     const text = await response.text();
                     console.error("Preview failed:", text);
