@@ -521,6 +521,18 @@ func deleteYamlPath(node *yaml.Node, key string) {
 	}
 }
 
+func setBlockStyle(node *yaml.Node) {
+	if node == nil {
+		return
+	}
+	if node.Kind == yaml.MappingNode {
+		node.Style &= ^yaml.FlowStyle
+	}
+	for _, child := range node.Content {
+		setBlockStyle(child)
+	}
+}
+
 func setYamlPath(node *yaml.Node, path []string, val interface{}) error {
 	if node.Kind == yaml.DocumentNode {
 		if len(node.Content) == 0 {
@@ -554,6 +566,7 @@ func setYamlPath(node *yaml.Node, path []string, val interface{}) error {
 				} else {
 					insertValNode = &valNode
 				}
+				setBlockStyle(insertValNode)
 				node.Content[i+1] = insertValNode
 				return nil
 			}
@@ -580,6 +593,7 @@ func setYamlPath(node *yaml.Node, path []string, val interface{}) error {
 		} else {
 			insertValNode = &valNode
 		}
+		setBlockStyle(insertValNode)
 		node.Content = append(node.Content, keyNode, insertValNode)
 		return nil
 	}
