@@ -1703,6 +1703,12 @@
             const activeFilenameSpan = document.getElementById('active-filename');
             const editorBody = document.getElementById('ide-editor-body');
 
+            let oldScrollTop = 0;
+            const oldCodePre = document.getElementById('ide-code-pre');
+            if (oldCodePre) {
+                oldScrollTop = oldCodePre.scrollTop;
+            }
+
             if (!activeFile || !generatedFiles[activeFile]) {
                 activeFilenameSpan.textContent = 'Select a file';
                 editorBody.innerHTML = `
@@ -1742,6 +1748,8 @@
                 codePre.onscroll = () => {
                     lineNums.scrollTop = codePre.scrollTop;
                 };
+                codePre.scrollTop = oldScrollTop;
+                lineNums.scrollTop = oldScrollTop;
             }
         }
 
