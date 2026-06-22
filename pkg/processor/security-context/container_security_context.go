@@ -12,7 +12,6 @@ import (
 const (
 	sc           = "securityContext"
 	cscValueName = "containerSecurityContext"
-	helmTemplate = "{{- with .Values.%[1]s.containerSecurityContext }}\nsecurityContext:\n  {{- toYaml . | nindent %[3]d }}\n{{- end }}"
 )
 
 // ProcessContainerSecurityContext adds 'securityContext' to the podSpec in specMap, if it doesn't have one already defined.
@@ -65,7 +64,6 @@ func setSecContextValue(resourceName string, containerName string, castedContain
 		return err
 	}
 
-	valueString := fmt.Sprintf(helmTemplate, valuePathStr, 0, nindent+2)
-	castedContainer[sc] = valueString
+	castedContainer[sc] = fmt.Sprintf("[HELMIFY_WITH:%s.%s:%d]", valuePathStr, cscValueName, nindent+2)
 	return nil
 }
