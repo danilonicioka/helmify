@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/arttor/helmify"
+	"github.com/arttor/helmify/pkg/processor"
 	"gopkg.in/yaml.v3"
 )
 
@@ -304,7 +305,8 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 				filename := filepath.Base(relPath)
 				if strings.Contains(filename, "-"+baseComp) || strings.Contains(filename, baseComp+"-") || strings.Contains(filename, baseComp+".") {
-					newFilename := strings.Replace(filename, baseComp, compName, 1)
+					compKebab := processor.NormalizeComponentName(compName)
+					newFilename := strings.Replace(filename, baseComp, compKebab, 1)
 					newRelPath := filepath.Join("templates", newFilename)
 
 					contentStr := string(data)
@@ -458,14 +460,15 @@ func replaceChartName(content string, oldChartName, newChartName string) string 
 }
 
 func replaceComponent(content string, oldComp, newComp string) string {
+	newCompKebab := processor.NormalizeComponentName(newComp)
 	repls := []struct{ old, new string }{
-		{"chart-model-multi.fullname\" . }}-" + oldComp, "chart-model-multi.fullname\" . }}-" + newComp},
-		{"-" + oldComp + "-cm", "-" + newComp + "-cm"},
-		{"-" + oldComp + "-secret", "-" + newComp + "-secret"},
-		{"component: " + oldComp, "component: " + newComp},
-		{"name: " + oldComp, "name: " + newComp},
-		{"cm-" + oldComp + ".yaml", "cm-" + newComp + ".yaml"},
-		{"secret-" + oldComp + ".yaml", "secret-" + newComp + ".yaml"},
+		{"chart-model-multi.fullname\" . }}-" + oldComp, "chart-model-multi.fullname\" . }}-" + newCompKebab},
+		{"-" + oldComp + "-cm", "-" + newCompKebab + "-cm"},
+		{"-" + oldComp + "-secret", "-" + newCompKebab + "-secret"},
+		{"component: " + oldComp, "component: " + newCompKebab},
+		{"name: " + oldComp, "name: " + newCompKebab},
+		{"cm-" + oldComp + ".yaml", "cm-" + newCompKebab + ".yaml"},
+		{"secret-" + oldComp + ".yaml", "secret-" + newCompKebab + ".yaml"},
 		{".Values." + oldComp, ".Values." + newComp},
 	}
 	res := content
