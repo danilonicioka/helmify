@@ -259,6 +259,32 @@ func StripKustomizeHash(name string) string {
 	return kustomizeHashRegex.ReplaceAllString(name, "")
 }
 
+// TemplatedServiceName resolves the exact templated name that the Service processor will generate for a given service name.
+func TemplatedServiceName(appMeta helmify.AppMetadata, serviceName string) string {
+	var svcObj *unstructured.Unstructured
+	serviceNameClean := strings.ToLower(StripKustomizeHash(serviceName))
+	for _, obj := range appMeta.Objects() {
+		if strings.ToLower(obj.GetKind()) == "service" {
+			objNameClean := strings.ToLower(StripKustomizeHash(obj.GetName()))
+			if objNameClean == serviceNameClean {
+				svcObj = obj
+				break
+			}
+		}
+	}
+
+	if svcObj != nil {
+		suffix := GetDynamicSuffix(appMeta, svcObj, "svc")
+		if suffix == "none" || suffix == "NONE" {
+			return fmt.Sprintf(`{{ include "%s.fullname" . }}`, appMeta.ChartName())
+		}
+		return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s`, appMeta.ChartName(), suffix)
+	}
+
+	return appMeta.TemplatedString(serviceName)
+}
+
+
 // NormalizeComponentName maps variations of component names to their canonical kebab-case representation.
 func NormalizeComponentName(comp string) string {
 	comp = strings.ToLower(comp)

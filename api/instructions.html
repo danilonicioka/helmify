@@ -450,13 +450,23 @@
                             <td class="param-type">boolean</td>
                             <td>Allow toggling CRD install dynamically via values (default: <code>false</code>).</td>
                         </tr>
+                        <tr>
+                            <td class="param-name">X-Generate-All-Templates</td>
+                            <td class="param-type">boolean</td>
+                            <td>Generate all standard boilerplate templates (CM, Secret, Routes) for all components (default: <code>false</code>).</td>
+                        </tr>
+                        <tr>
+                            <td class="param-name">X-Dev-Repo-Url</td>
+                            <td class="param-type">string</td>
+                            <td>TJPA developer source repository URL annotation for Chart.yaml (default: <code>""</code>).</td>
+                        </tr>
                     </tbody>
                 </table>
 
                 <div class="section-title">Request Body</div>
                 <p>Raw string of the source Kubernetes resource manifests (YAML format). Multiple resources should be delimited by <code>---</code> lines.</p>
 
-                <div class="section-title">Example Command</div>
+                <div class="section-title">Example Command (Local Manifest)</div>
                 <div class="code-block-container">
                     <div class="code-block-header">
                         <span>cURL</span>
@@ -467,6 +477,21 @@
   -H "X-Crd: false" \
   -H "Content-Type: text/yaml" \
   --data-binary @deployment.yaml \
+  --output portal-certidao.tar.gz</code></pre>
+                </div>
+
+                <div class="section-title">Example Command (Kustomize Output Pipe)</div>
+                <div class="code-block-container">
+                    <div class="code-block-header">
+                        <span>cURL</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>kustomize build config/default | curl -X POST "http://localhost:8080/v1/generate" \
+  -H "X-Chart-Name: portal-certidao" \
+  -H "X-Generate-All-Templates: true" \
+  -H "X-Dev-Repo-Url: https://github.com/my-org/my-app" \
+  -H "Content-Type: text/yaml" \
+  --data-binary @- \
   --output portal-certidao.tar.gz</code></pre>
                 </div>
             </div>

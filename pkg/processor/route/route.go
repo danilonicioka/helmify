@@ -112,7 +112,7 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 			}
 		}
 	}
-	templatedToService := appMeta.TemplatedString(toServiceName)
+	templatedToService := processor.TemplatedServiceName(appMeta, toServiceName)
 
 	// Resolve target port
 	targetPortValue := "http"
