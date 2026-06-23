@@ -69,7 +69,10 @@ func (c cert) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 	for _, dnsName := range dnsNames {
 		dns := dnsName.(string)
 		templatedDns := appMeta.TemplatedString(dns)
-		processedDns := strings.ReplaceAll(templatedDns, appMeta.Namespace(), "{{ .Release.Namespace }}")
+		processedDns := templatedDns
+		if appMeta.Namespace() != "" {
+			processedDns = strings.ReplaceAll(processedDns, appMeta.Namespace(), "{{ .Release.Namespace }}")
+		}
 		processedDns = strings.ReplaceAll(processedDns, cluster.DefaultDomain, fmt.Sprintf("{{ .Values.%s }}", cluster.DomainKey))
 		processedDnsNames = append(processedDnsNames, processedDns)
 	}

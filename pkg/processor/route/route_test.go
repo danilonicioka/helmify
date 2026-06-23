@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/arttor/helmify/internal"
+	"github.com/arttor/helmify/pkg/config"
 	"github.com/arttor/helmify/pkg/metadata"
 	"github.com/stretchr/testify/assert"
 )
@@ -72,5 +73,36 @@ metadata:
 		assert.NoError(t, err)
 		assert.Equal(t, false, processed)
 		assert.Nil(t, template)
+	})
+
+	t.Run("templated target service name matches service suffix", func(t *testing.T) {
+		appMeta := metadata.New(config.Config{ChartName: "my-app"})
+
+		// Load a Service resource matching the target service name
+		serviceYaml := `apiVersion: v1
+kind: Service
+metadata:
+  name: my-app-api-service
+spec:
+  ports:
+  - port: 8080`
+		svcObj := internal.GenerateObj(serviceYaml)
+		appMeta.Load(svcObj)
+
+		// Load the Route resource
+		routeObj := internal.GenerateObj(routeYaml)
+		appMeta.Load(routeObj)
+
+		processed, template, err := testInstance.Process(appMeta, routeObj)
+		assert.NoError(t, err)
+		assert.True(t, processed)
+
+		var buf bytes.Buffer
+		err = template.Write(&buf)
+		assert.NoError(t, err)
+
+		content := buf.String()
+		// The target Service name in route template should be aligned.
+		assert.Contains(t, content, `name: {{ include "my-app.fullname" . }}-api-service`)
 	})
 }

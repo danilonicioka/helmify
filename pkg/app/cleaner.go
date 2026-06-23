@@ -1,10 +1,57 @@
 package app
 
 import (
+	"regexp"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
+
+var portNameRegex = regexp.MustCompile(`^(\d+)-(tcp|udp)$`)
+
+// sanitizeObject pre-processes and cleans K8s manifests prior to Helmify translation.
+// Returns false if the object should be discarded entirely.
+func sanitizeObject(obj *unstructured.Unstructured) bool {
+	if strings.ToLower(obj.GetKind()) == "namespace" {
+		return false
+	}
+
+	// Normalize port names throughout the object
+	normalizePorts(obj.Object)
+
+	return true
+}
+
+func normalizePortName(name string) string {
+	matches := portNameRegex.FindStringSubmatch(strings.ToLower(name))
+	if len(matches) == 3 {
+		return matches[2] + "-" + matches[1]
+	}
+	return name
+}
+
+func normalizePorts(obj interface{}) {
+	switch val := obj.(type) {
+	case map[string]interface{}:
+		if portNameVal, exists := val["name"]; exists {
+			if name, ok := portNameVal.(string); ok {
+				val["name"] = normalizePortName(name)
+			}
+		}
+		if targetPortVal, exists := val["targetPort"]; exists {
+			if targetPortStr, ok := targetPortVal.(string); ok {
+				val["targetPort"] = normalizePortName(targetPortStr)
+			}
+		}
+		for _, v := range val {
+			normalizePorts(v)
+		}
+	case []interface{}:
+		for _, v := range val {
+			normalizePorts(v)
+		}
+	}
+}
 
 // cleanKomposeMetadata deeply iterates through a K8s object and removes any
 // label, annotation, or selector key starting with "io.kompose."
@@ -47,3 +94,4 @@ func cleanKeys(m map[string]interface{}, containerKey string) {
 		}
 	}
 }
+

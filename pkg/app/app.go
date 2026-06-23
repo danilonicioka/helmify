@@ -78,6 +78,9 @@ func (e *Engine) Run(ctx context.Context, trans translator.Translator) error {
 	}
 
 	for payload := range payloads {
+		if !sanitizeObject(payload.Object) {
+			continue
+		}
 		cleanKomposeMetadata(payload.Object)
 		appCtx.Add(payload.Object, payload.Filename)
 	}
