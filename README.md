@@ -206,12 +206,13 @@ Helmify is designed to generate production-ready charts that follow TJPA standar
 - **Global Configuration**: Centralized environment settings via `cm-global.yaml` and automatic `envFrom` injection.
 - **Deterministic Rollouts**: Automatic SHA256 checksum annotations on PodSpecs to trigger restarts when configurations change.
 - **Standardized Labels**: Consistent application of `component` and `part-of` labels across all resources.
+- **Dynamic Route Association**: Automatically associates OpenShift Routes with their target `Service` components by checking the target `spec.to.name`. If a Route targets a Service belonging to the same component, it maps to `.Values.<component>.route`. If it routes to a Service in a different component (additional routes), it is isolated under `.Values.<component>.routes.<routeName>` to prevent configuration overrides.
 
 ## Status
 Supported k8s resources:
 - Deployment, DaemonSet, StatefulSet
 - Job, CronJob
-- Service, Ingress
+- Service, Ingress, Route (OpenShift)
 - PersistentVolumeClaim
 - RBAC (ServiceAccount, (cluster-)role, (cluster-)roleBinding)
 - configs (ConfigMap, Secret)

@@ -145,7 +145,7 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 	// Check if bff templates are created
 	_, ok = files["templates/deploy-backend.yaml"]
 	assert.True(t, ok)
-	_, ok = files["templates/deploy-bff.yaml"]
+	_, ok = files["templates/deploy-bff-emissor.yaml"]
 	assert.True(t, ok)
 	_, ok = files["templates/deploy-frontend.yaml"]
 	assert.False(t, ok) // frontend templates should be deleted

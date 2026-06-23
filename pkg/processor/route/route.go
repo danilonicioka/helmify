@@ -36,19 +36,46 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	}
 
 	name := processor.ObjectValueName(appMeta, obj)
-	compName := processor.GetComponent(obj)
-	nameCamel := strcase.ToLowerCamel(compName)
-	if nameCamel == "" {
-		nameCamel = strcase.ToLowerCamel(name)
-	}
-
-	values := helmify.Values{}
 
 	// Extract spec
 	spec, ok := obj.Object["spec"].(map[string]interface{})
 	if !ok {
 		return true, nil, fmt.Errorf("unable to read route spec")
 	}
+
+	// Resolve target service name
+	toServiceName := name
+	if toRaw, hasTo := spec["to"]; hasTo {
+		if to, ok := toRaw.(map[string]interface{}); ok {
+			if toName, ok := to["name"].(string); ok && toName != "" {
+				toServiceName = toName
+			}
+		}
+	}
+
+	// Find the component of the target service
+	targetComponent := ""
+	serviceNameClean := strings.ToLower(processor.StripKustomizeHash(toServiceName))
+	for _, o := range appMeta.Objects() {
+		if strings.ToLower(o.GetKind()) == "service" {
+			objNameClean := strings.ToLower(processor.StripKustomizeHash(o.GetName()))
+			if objNameClean == serviceNameClean {
+				targetComponent = processor.GetComponent(o)
+				break
+			}
+		}
+	}
+
+	if targetComponent == "" {
+		targetComponent = processor.GetComponent(obj)
+	}
+
+	nameCamel := strcase.ToLowerCamel(targetComponent)
+	if nameCamel == "" {
+		nameCamel = strcase.ToLowerCamel(name)
+	}
+
+	values := helmify.Values{}
 
 	hostStr := ""
 	if host, hasHost := spec["host"]; hasHost && host != "" {
@@ -98,20 +125,23 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 		},
 	}
 
-	err := unstructured.SetNestedField(values, routeValues, nameCamel, "route")
-	if err != nil {
-		return true, nil, err
-	}
-
-	// Resolve target service name
-	toServiceName := name
-	if toRaw, hasTo := spec["to"]; hasTo {
-		if to, ok := toRaw.(map[string]interface{}); ok {
-			if toName, ok := to["name"].(string); ok && toName != "" {
-				toServiceName = toName
-			}
+	isPrimary := strings.ToLower(name) == strings.ToLower(targetComponent)
+	var valuesPath string
+	if isPrimary {
+		valuesPath = fmt.Sprintf("%s.route", nameCamel)
+		err := unstructured.SetNestedField(values, routeValues, nameCamel, "route")
+		if err != nil {
+			return true, nil, err
+		}
+	} else {
+		routeNameCamel := strcase.ToLowerCamel(name)
+		valuesPath = fmt.Sprintf("%s.routes.%s", nameCamel, routeNameCamel)
+		err := unstructured.SetNestedField(values, routeValues, nameCamel, "routes", routeNameCamel)
+		if err != nil {
+			return true, nil, err
 		}
 	}
+
 	templatedToService := processor.TemplatedServiceName(appMeta, toServiceName)
 
 	// Resolve target port
@@ -129,9 +159,9 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	}
 
 	// Construct route templates matching models/multi/templates/route-*.yaml style but combined using ---
-	data := fmt.Sprintf(`{{- if and .Values.%[1]s .Values.%[1]s.route -}}
+	data := fmt.Sprintf(`{{- if .Values.%[1]s -}}
 
-{{- if .Values.%[1]s.route.default.enabled }}
+{{- if .Values.%[1]s.default.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -139,20 +169,20 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     app.kubernetes.io/component: %[3]s
-  {{- with .Values.%[1]s.route.annotations }}
+  {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.%[1]s.route.default.host }}
-  host: {{ .Values.%[1]s.route.default.host | quote }}
+  {{- if .Values.%[1]s.default.host }}
+  host: {{ .Values.%[1]s.default.host | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.path }}
-  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- if .Values.%[1]s.path }}
+  path: {{ .Values.%[1]s.path | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.tls }}
+  {{- if .Values.%[1]s.tls }}
   tls:
-    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+    {{- toYaml .Values.%[1]s.tls | nindent 4 }}
   {{- end }}
   to:
     kind: Service
@@ -164,7 +194,7 @@ spec:
 ---
 {{- end }}
 
-{{- if .Values.%[1]s.route.internal.enabled }}
+{{- if .Values.%[1]s.internal.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -172,20 +202,20 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     app.kubernetes.io/component: %[3]s
-  {{- with .Values.%[1]s.route.annotations }}
+  {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.%[1]s.route.internal.host }}
-  host: {{ .Values.%[1]s.route.internal.host | quote }}
+  {{- if .Values.%[1]s.internal.host }}
+  host: {{ .Values.%[1]s.internal.host | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.path }}
-  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- if .Values.%[1]s.path }}
+  path: {{ .Values.%[1]s.path | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.tls }}
+  {{- if .Values.%[1]s.tls }}
   tls:
-    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+    {{- toYaml .Values.%[1]s.tls | nindent 4 }}
   {{- end }}
   to:
     kind: Service
@@ -197,7 +227,7 @@ spec:
 ---
 {{- end }}
 
-{{- if .Values.%[1]s.route.external.enabled }}
+{{- if .Values.%[1]s.external.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -205,20 +235,20 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     app.kubernetes.io/component: %[3]s
-  {{- with .Values.%[1]s.route.annotations }}
+  {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.%[1]s.route.external.host }}
-  host: {{ .Values.%[1]s.route.external.host | quote }}
+  {{- if .Values.%[1]s.external.host }}
+  host: {{ .Values.%[1]s.external.host | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.path }}
-  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- if .Values.%[1]s.path }}
+  path: {{ .Values.%[1]s.path | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.tls }}
+  {{- if .Values.%[1]s.tls }}
   tls:
-    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+    {{- toYaml .Values.%[1]s.tls | nindent 4 }}
   {{- end }}
   to:
     kind: Service
@@ -229,7 +259,7 @@ spec:
   wildcardPolicy: None
 {{- end }}
 
-{{- end }}`, nameCamel, appMeta.ChartName(), name, templatedToService, targetPortValue)
+{{- end }}`, valuesPath, appMeta.ChartName(), name, templatedToService, targetPortValue)
 
 	return true, &routeResult{
 		name:   name,

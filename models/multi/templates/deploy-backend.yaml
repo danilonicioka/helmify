@@ -21,7 +21,7 @@ spec:
     metadata:
       annotations:
         # Deterministic Rollouts: SHA256 checksum annotations to trigger automatic restarts
-        {{- if .Values.global }}
+        {{- if and .Values.global (not (empty .Values.global)) }}
         checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and .Values.backend.cm (not (empty .Values.backend.cm)) }}
@@ -48,8 +48,9 @@ spec:
               protocol: TCP
           
           # Clean Configuration Management: Full Decoupling via envFrom
+          {{- if or (and .Values.global (not (empty .Values.global))) (and .Values.backend.cm (not (empty .Values.backend.cm))) (and .Values.backend.secret (not (empty .Values.backend.secret))) }}
           envFrom:
-            {{- if .Values.global }}
+            {{- if and .Values.global (not (empty .Values.global)) }}
             - configMapRef:
                 name: {{ include "chart-model-multi.fullname" . }}-global
             {{- end }}
@@ -61,6 +62,7 @@ spec:
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" . }}-backend-secret
             {{- end }}
+          {{- end }}
 
           # Tiered "Fail-Fast" Health Probes
           {{- if and .Values.backend.startupProbe .Values.backend.startupProbe.tcpSocket }}
