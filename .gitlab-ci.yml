@@ -68,7 +68,7 @@ setup-vars:
   image: $BUILDER_IMAGE
   script:
     - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
-    - IMAGE="${QUAY_URL}/${CI_PROJECT_PATH}:${TAG}"
+    - IMAGE="${QUAY_URL}/ca/helmify:${TAG}"
     - echo "TAG=$TAG" > build.env
     - echo "IMAGE=$IMAGE" >> build.env
   artifacts:
@@ -109,5 +109,5 @@ release-version:
         --dest-creds="${QUAY_USER}:${QUAY_PASS}" \
         --src-tls-verify=false \
         --dest-tls-verify=false \
-        "docker://${QUAY_URL}/${CI_PROJECT_PATH}:${CI_COMMIT_SHORT_SHA}" \
-        "docker://${QUAY_URL}/${CI_PROJECT_PATH}:prd-${CI_COMMIT_TAG}"
+        "docker://${QUAY_URL}/ca/helmify:${CI_COMMIT_SHORT_SHA}" \
+        "docker://${QUAY_URL}/ca/helmify:prd-${CI_COMMIT_TAG}"
