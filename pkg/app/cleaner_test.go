@@ -155,6 +155,79 @@ spec:
         ports:
         - containerPort: 22650
 ---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: worker
+    app.kubernetes.io/instance: jurisprudencia-dev
+    app.kubernetes.io/name: celery
+  name: celery-dev
+  namespace: tjpa-iande
+spec:
+  replicas: 20
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: jurisprudencia-dev
+      app.kubernetes.io/name: celery
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: worker
+        app.kubernetes.io/instance: jurisprudencia-dev
+        app.kubernetes.io/name: celery
+    spec:
+      containers:
+      - command:
+        - uv
+        - run
+        - celery
+        - worker
+        envFrom:
+        - secretRef:
+            name: jurisprudencia-dev-5tt65kb6bk
+        - configMapRef:
+            name: jurisprudencia-dev-g88f7cc858
+        image: quay.io/ca/ia/jurisprudencia:main-3fb7da28
+        imagePullPolicy: Always
+        name: celery
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: listener
+    app.kubernetes.io/instance: jurisprudencia-dev
+    app.kubernetes.io/name: kombu
+  name: kombu-dev
+  namespace: tjpa-iande
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: jurisprudencia-dev
+      app.kubernetes.io/name: kombu
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: listener
+        app.kubernetes.io/instance: jurisprudencia-dev
+        app.kubernetes.io/name: kombu
+    spec:
+      containers:
+      - command:
+        - uv
+        - run
+        - python
+        envFrom:
+        - secretRef:
+            name: jurisprudencia-dev-5tt65kb6bk
+        - configMapRef:
+            name: jurisprudencia-dev-g88f7cc858
+        image: quay.io/ca/ia/jurisprudencia:main-3fb7da28
+        imagePullPolicy: Always
+        name: kombu
+---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -187,5 +260,15 @@ func TestUserManifestConversion(t *testing.T) {
 	assert.NoError(t, err)
 
 	defer os.RemoveAll("jurisprudencia")
+
+	valuesBytes, err := os.ReadFile("jurisprudencia/values.yaml")
+	assert.NoError(t, err)
+	valuesStr := string(valuesBytes)
+
+	assert.Contains(t, valuesStr, "global:")
+	assert.Contains(t, valuesStr, "  cm:")
+	assert.Contains(t, valuesStr, "    JURISPRUDENCIA_AGENT_LLM: azure")
+	assert.Contains(t, valuesStr, "  secret:")
+	assert.Contains(t, valuesStr, "    JURISPRUDENCIA_QDRANT_API_KEY: agDxQwYzpIV1w#Vnf")
 }
 

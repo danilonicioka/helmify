@@ -18,6 +18,7 @@ import (
 
 var configMapTempl = template.Must(template.New("configMap").Funcs(sprig.TxtFuncMap()).Parse(
 	`{{- if .IsGlobal -}}
+{{- if and .Values.global .Values.global.cm -}}
 {{ .Meta }}
 {{- if .Immutable }}
 {{ .Immutable }}
@@ -26,8 +27,9 @@ var configMapTempl = template.Must(template.New("configMap").Funcs(sprig.TxtFunc
 {{ .BinaryData }}
 {{- end }}
 data:
-{{- range $key, $value := .Values.global }}
+{{- range $key, $value := .Values.global.cm }}
   {{ $key }}: {{ $value | quote }}
+{{- end }}
 {{- end }}
 {{- else -}}
 {{ "{" }}{{ "{" }}- if and .Values.{{ .Name }} .Values.{{ .Name }}.cm {{ "}" }}{{ "}" }}
@@ -79,9 +81,11 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 		}
 	}
 
+	referencingComps := processor.FindReferencingComponents(appMeta, obj.GetName(), false)
+
 	nameLower := strings.ToLower(obj.GetName())
 	isGlobal := false
-	if strings.HasSuffix(nameLower, "global") || strings.HasSuffix(nameLower, "global-cm") || strings.HasSuffix(nameLower, "cm-global") {
+	if strings.HasSuffix(nameLower, "global") || strings.HasSuffix(nameLower, "global-cm") || strings.HasSuffix(nameLower, "cm-global") || len(referencingComps) > 1 {
 		isGlobal = true
 	}
 
@@ -93,7 +97,9 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 			}
 		}
 		values := helmify.Values{
-			"global": globalValues,
+			"global": map[string]interface{}{
+				"cm": globalValues,
+			},
 		}
 
 		meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("global"))
@@ -112,7 +118,6 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	}
 
 	// Non-global configmap processing
-	referencingComps := processor.FindReferencingComponents(appMeta, obj.GetName(), false)
 	if len(referencingComps) == 0 {
 		compName := processor.GetComponent(obj)
 		if compName != "" && compName != "chart" {
