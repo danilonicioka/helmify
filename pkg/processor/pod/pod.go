@@ -551,6 +551,9 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 
 	for sec := range secrets {
 		secClean := processor.StripKustomizeHash(sec)
+		if strings.Contains(strings.ToLower(secClean), "global") {
+			continue // Handled by global checksum
+		}
 		comp := processor.NormalizeComponentName(secClean)
 		if comp == "" || comp == "chart" || comp == "secrets" {
 			comp = processor.NormalizeComponentName(objName)
@@ -611,8 +614,12 @@ func ReplacePlaceholders(s string, chartName string) string {
 	// 3. Handle HELMIFY_ENV_FROM: envFrom: '[HELMIFY_ENV_FROM:name:kebabName:indent]'
 	r3_3 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([^:]+):([0-9]+)\]'`)
 	s = r3_3.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
-${1}{{- if .Values.global }}
+${1}{{- if and .Values.global .Values.global.cm }}
 ${1}- configMapRef:
+${1}    name: {{ include "%[1]s.fullname" . }}-global
+${1}{{- end }}
+${1}{{- if and .Values.global .Values.global.secret }}
+${1}- secretRef:
 ${1}    name: {{ include "%[1]s.fullname" . }}-global
 ${1}{{- end }}
 ${1}{{- if (index .Values "${2}").cm }}
@@ -627,8 +634,12 @@ ${1}{{- end }}`, chartName))
 	// Handle legacy 2-parameter placeholder for tests or non-component deployments
 	r3_2 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([0-9]+)\]'`)
 	s = r3_2.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
-${1}{{- if .Values.global }}
+${1}{{- if and .Values.global .Values.global.cm }}
 ${1}- configMapRef:
+${1}    name: {{ include "%[1]s.fullname" . }}-global
+${1}{{- end }}
+${1}{{- if and .Values.global .Values.global.secret }}
+${1}- secretRef:
 ${1}    name: {{ include "%[1]s.fullname" . }}-global
 ${1}{{- end }}
 ${1}{{- if (index .Values "${2}").cm }}
@@ -642,8 +653,11 @@ ${1}{{- end }}`, chartName))
 
 	// 4. Handle global checksum placeholders
 	rGlobal := regexp.MustCompile(`(?m)^(\s*)checksum/global-config:\s*'\[HELMIFY_CHECKSUM_GLOBAL:global-config\]'`)
-	s = rGlobal.ReplaceAllString(s, `${1}{{- if .Values.global }}
+	s = rGlobal.ReplaceAllString(s, `${1}{{- if and .Values.global .Values.global.cm }}
 ${1}checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}
+${1}{{- end }}
+${1}{{- if and .Values.global .Values.global.secret }}
+${1}checksum/global-secret: {{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}
 ${1}{{- end }}`)
 
 	// 5. Handle CM checksum placeholders

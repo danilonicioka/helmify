@@ -3,6 +3,7 @@ package secret
 import (
 	"fmt"
 	"io"
+	"strings"
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
@@ -17,7 +18,19 @@ import (
 )
 
 var secretTempl = template.Must(template.New("secret").Funcs(sprig.TxtFuncMap()).Parse(
-	`{{ "{" }}{{ "{" }}- if and .Values.{{ .Name }} .Values.{{ .Name }}.secret {{ "}" }}{{ "}" }}
+	`{{- if .IsGlobal -}}
+{{- if and .Values.global .Values.global.secret -}}
+{{ .Meta }}
+{{- if .Type }}
+{{ .Type }}
+{{- end }}
+data:
+{{- range $key, $value := .Values.global.secret }}
+  {{ $key }}: {{ $value | b64enc | quote }}
+{{- end }}
+{{- end }}
+{{- else -}}
+{{ "{" }}{{ "{" }}- if and .Values.{{ .Name }} .Values.{{ .Name }}.secret {{ "}" }}{{ "}" }}
 {{ .Meta }}
 {{- if .Type }}
 {{ .Type }}
@@ -26,7 +39,8 @@ data:
 {{ "{" }}{{ "{" }}- range $key, $value := .Values.{{ .Name }}.secret {{ "}" }}{{ "}" }}
   {{ "{{ $key }}" }}: {{ "{{ $value | b64enc | quote }}" }}
 {{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
-{{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}`))
+{{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
+{{- end }}`))
 
 var secretGVC = schema.GroupVersionKind{
 	Group:   "",
@@ -53,6 +67,47 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 	}
 
 	referencingComps := processor.FindReferencingComponents(appMeta, obj.GetName(), true)
+
+	nameLower := strings.ToLower(obj.GetName())
+	isGlobal := false
+	if strings.HasSuffix(nameLower, "global") || strings.HasSuffix(nameLower, "global-secrets") || strings.HasSuffix(nameLower, "secrets-global") || strings.HasSuffix(nameLower, "secret-global") || len(referencingComps) > 1 {
+		isGlobal = true
+	}
+
+	secretType := ""
+	if sec.Type != "" {
+		secretType = fmt.Sprintf("type: %s", string(sec.Type))
+	}
+
+	if isGlobal {
+		globalValues := map[string]interface{}{}
+		for key, value := range sec.Data {
+			globalValues[key] = string(value)
+		}
+		for key, value := range sec.StringData {
+			globalValues[key] = value
+		}
+		values := helmify.Values{
+			"global": map[string]interface{}{
+				"secret": globalValues,
+			},
+		}
+
+		suffix := "global"
+		meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
+		if err != nil {
+			return true, nil, err
+		}
+
+		return true, &secretTemplate{
+			compName:   "global",
+			secretType: secretType,
+			meta:       meta,
+			values:     values,
+			isGlobal:   true,
+		}, nil
+	}
+
 	if len(referencingComps) == 0 {
 		compName := processor.GetComponent(obj)
 		if compName != "" && compName != "chart" && compName != "secrets" {
@@ -71,11 +126,6 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 	}
 	for key, value := range sec.StringData {
 		secValues[key] = value
-	}
-
-	secretType := ""
-	if sec.Type != "" {
-		secretType = fmt.Sprintf("type: %s", string(sec.Type))
 	}
 
 	var templates []helmify.Template
@@ -99,6 +149,7 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 			secretType:    secretType,
 			meta:          meta,
 			values:        values,
+			isGlobal:      false,
 		})
 	}
 
@@ -111,9 +162,13 @@ type secretTemplate struct {
 	secretType    string
 	meta          string
 	values        helmify.Values
+	isGlobal      bool
 }
 
 func (s *secretTemplate) Filename() string {
+	if s.isGlobal {
+		return "secret-global.yaml"
+	}
 	return fmt.Sprintf("secret-%s.yaml", s.compName)
 }
 
@@ -123,13 +178,17 @@ func (s *secretTemplate) Values() helmify.Values {
 
 func (s *secretTemplate) Write(writer io.Writer) error {
 	return secretTempl.Execute(writer, struct {
-		Name string
-		Type string
-		Meta string
+		Name     string
+		Type     string
+		Meta     string
+		Values   helmify.Values
+		IsGlobal bool
 	}{
-		Name: s.nameCamelCase,
-		Type: s.secretType,
-		Meta: s.meta,
+		Name:     s.nameCamelCase,
+		Type:     s.secretType,
+		Meta:     s.meta,
+		Values:   s.values,
+		IsGlobal: s.isGlobal,
 	})
 }
 
