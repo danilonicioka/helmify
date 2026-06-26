@@ -614,15 +614,14 @@ func ReplacePlaceholders(s string, chartName string) string {
 	// 2. Handle block scalars if they occur: key: |-\n  [HELMIFY_WITH:path:indent]
 	r2 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*\|-\s*\n\s*\[HELMIFY_WITH:([^:]+):([0-9]+)\]`)
 	s = r2.ReplaceAllString(s, "{{- with .Values.${3} }}\n${1}${2}:\n${1}  {{- toYaml . | nindent ${4} }}\n${1}{{- end }}")
-
 	// 3. Handle HELMIFY_ENV_FROM: envFrom: '[HELMIFY_ENV_FROM:name:kebabName:indent]'
 	r3_3 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([^:]+):([0-9]+)\]'`)
 	s = r3_3.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
-${1}{{- if and .Values.global .Values.global.cm }}
+${1}{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
 ${1}- configMapRef:
 ${1}    name: {{ include "%[1]s.fullname" . }}-global
 ${1}{{- end }}
-${1}{{- if and .Values.global .Values.global.secret }}
+${1}{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
 ${1}- secretRef:
 ${1}    name: {{ include "%[1]s.fullname" . }}-global
 ${1}{{- end }}
@@ -638,11 +637,11 @@ ${1}{{- end }}`, chartName))
 	// Handle legacy 2-parameter placeholder for tests or non-component deployments
 	r3_2 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([0-9]+)\]'`)
 	s = r3_2.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
-${1}{{- if and .Values.global .Values.global.cm }}
+${1}{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
 ${1}- configMapRef:
 ${1}    name: {{ include "%[1]s.fullname" . }}-global
 ${1}{{- end }}
-${1}{{- if and .Values.global .Values.global.secret }}
+${1}{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
 ${1}- secretRef:
 ${1}    name: {{ include "%[1]s.fullname" . }}-global
 ${1}{{- end }}
@@ -657,10 +656,10 @@ ${1}{{- end }}`, chartName))
 
 	// 4. Handle global checksum placeholders
 	rGlobal := regexp.MustCompile(`(?m)^(\s*)checksum/global-config:\s*'\[HELMIFY_CHECKSUM_GLOBAL:global-config\]'`)
-	s = rGlobal.ReplaceAllString(s, `${1}{{- if and .Values.global .Values.global.cm }}
+	s = rGlobal.ReplaceAllString(s, `${1}{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
 ${1}checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}
 ${1}{{- end }}
-${1}{{- if and .Values.global .Values.global.secret }}
+${1}{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
 ${1}checksum/global-secret: {{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}
 ${1}{{- end }}`)
 

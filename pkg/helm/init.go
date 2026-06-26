@@ -134,7 +134,7 @@ Create the name of the service account to use
 {{- end }}
 `
 
-const globalConfigMapTempl = `{{- if .Values.global -}}
+const globalConfigMapTempl = `{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -142,7 +142,7 @@ metadata:
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 data:
-{{- range $key, $val := .Values.global }}
+{{- range $key, $val := .Values.global.cm }}
   {{ $key }}: {{ $val | quote }}
 {{- end }}
 {{- end }}
