@@ -284,6 +284,65 @@ func TemplatedServiceName(appMeta helmify.AppMetadata, serviceName string) strin
 	return appMeta.TemplatedString(serviceName)
 }
 
+// TemplatedSecretName resolves the exact templated name that the Secret processor will generate for a given secret name.
+func TemplatedSecretName(appMeta helmify.AppMetadata, secretName string) string {
+	secretNameClean := strings.ToLower(StripKustomizeHash(secretName))
+	if strings.Contains(secretNameClean, "global") {
+		return fmt.Sprintf(`{{ include "%s.fullname" . }}-global`, appMeta.ChartName())
+	}
+
+	var secObj *unstructured.Unstructured
+	for _, obj := range appMeta.Objects() {
+		if strings.ToLower(obj.GetKind()) == "secret" {
+			objNameClean := strings.ToLower(StripKustomizeHash(obj.GetName()))
+			if objNameClean == secretNameClean {
+				secObj = obj
+				break
+			}
+		}
+	}
+
+	if secObj != nil {
+		comp := GetComponent(secObj)
+		if comp == "" || comp == "chart" || comp == "secrets" {
+			return fmt.Sprintf(`{{ include "%s.fullname" . }}-secrets`, appMeta.ChartName())
+		}
+		return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s-secrets`, appMeta.ChartName(), comp)
+	}
+
+	return appMeta.TemplatedString(secretName)
+}
+
+// TemplatedConfigMapName resolves the exact templated name that the ConfigMap processor will generate for a given configmap name.
+func TemplatedConfigMapName(appMeta helmify.AppMetadata, cmName string) string {
+	cmNameClean := strings.ToLower(StripKustomizeHash(cmName))
+	if strings.Contains(cmNameClean, "global") {
+		return fmt.Sprintf(`{{ include "%s.fullname" . }}-global`, appMeta.ChartName())
+	}
+
+	var cmObj *unstructured.Unstructured
+	for _, obj := range appMeta.Objects() {
+		if strings.ToLower(obj.GetKind()) == "configmap" {
+			objNameClean := strings.ToLower(StripKustomizeHash(obj.GetName()))
+			if objNameClean == cmNameClean {
+				cmObj = obj
+				break
+			}
+		}
+	}
+
+	if cmObj != nil {
+		comp := GetComponent(cmObj)
+		if comp == "" || comp == "chart" {
+			return fmt.Sprintf(`{{ include "%s.fullname" . }}-cm`, appMeta.ChartName())
+		}
+		return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s-cm`, appMeta.ChartName(), comp)
+	}
+
+	return appMeta.TemplatedString(cmName)
+}
+
+
 
 // NormalizeComponentName maps variations of component names to their canonical kebab-case representation.
 func NormalizeComponentName(comp string) string {

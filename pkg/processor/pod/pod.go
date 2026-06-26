@@ -452,12 +452,16 @@ func processEnv(name string, containerName string, appMeta helmify.AppMetadata, 
 				cmName := processor.ResolveValueName(appMeta, e.ValueFrom.ConfigMapKeyRef.Name)
 				if cmName == name {
 					redundant = true
+				} else {
+					e.ValueFrom.ConfigMapKeyRef.Name = processor.TemplatedConfigMapName(appMeta, e.ValueFrom.ConfigMapKeyRef.Name)
 				}
 			}
 			if e.ValueFrom.SecretKeyRef != nil {
 				secName := processor.ResolveValueName(appMeta, e.ValueFrom.SecretKeyRef.Name)
 				if secName == name {
 					redundant = true
+				} else {
+					e.ValueFrom.SecretKeyRef.Name = processor.TemplatedSecretName(appMeta, e.ValueFrom.SecretKeyRef.Name)
 				}
 			}
 			
@@ -712,17 +716,9 @@ func cleanMap(m map[string]interface{}) {
 }
 
 func ResolveConfigMapVolumeName(appMeta helmify.AppMetadata, name string, compName string) string {
-	nameLower := strings.ToLower(processor.StripKustomizeHash(name))
-
-	if strings.Contains(nameLower, "global") {
-		return fmt.Sprintf(`{{ include "%s.fullname" . }}-global`, appMeta.ChartName())
-	}
-
-	compKebab := processor.NormalizeComponentName(compName)
-	return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s-cm`, appMeta.ChartName(), compKebab)
+	return processor.TemplatedConfigMapName(appMeta, name)
 }
 
 func ResolveSecretVolumeName(appMeta helmify.AppMetadata, name string, compName string) string {
-	compKebab := processor.NormalizeComponentName(compName)
-	return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s-secrets`, appMeta.ChartName(), compKebab)
+	return processor.TemplatedSecretName(appMeta, name)
 }
