@@ -34,6 +34,4 @@ testbin/*
 # Build artifacts
 dist/
 vendor/
-chart-model/
-test-output/
-entremanas.tar.gz
+tjpa-binarios/
