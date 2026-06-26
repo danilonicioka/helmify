@@ -1,161 +1,113 @@
 default:
-  image: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/runner-tools:latest
   tags:
     - ocp-dev-global
 
-workflow:
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "web"'  # Trigger manual
-    - when: never                         # Bloqueia outros
+variables:
+  BUILDER_IMAGE: "registry.access.redhat.com/ubi8/go-toolset:1.21"
+  GOPATH: $CI_PROJECT_DIR/.go
+  GOCACHE: $CI_PROJECT_DIR/.gocache
 
 stages:
-  - prepare
-  - deploy
+  - build
+  - containerize
+  - release
 
-variables:
-  # 1. The Action Selector
-  PIPELINE_ACTION:
-    description: "Deploy/update env or update tag"
-    value: "deploy_update_env"
-    options:
-      - "update_tag"   # Promotes the tags currently in DEV to the chosen ENV
-      - "deploy_update_env"       # Triggers devops/cicd pipeline for a fresh setup
-
-  # 2. Target Environment
-  ENV_: 
-    description: "Target Environment (If promoting, DEV will be copied to this env):"
-    value: "prd"
-    options:
-      - "hml"
-      - "prd"
-      - "dev"
-
-  # 3. Enable Custom Application (CA) source
-  ENABLE_CA_SOURCE:
-    description: "Enable values from gitlab-ca as source"
-    value: "false"
-    options:
-      - "false"
-      - "true"
-
-  # 4. Dev Application Repository Revision
-  DEV_APP_REPO_REVISION:
-    description: "Branch, tag or commit SHA for the developer CA source repository:"
-    value: "main"
-    options:
-      - "main"
-      - "hml"
-      - "dev"
-      - "develop"
-      - "homolog"
-
-# ==========================================
-# PATH A: Trigger the devops/cicd pipeline
-# ==========================================
-get_chart_version:
-  stage: prepare
+# Reusable rule for standard branch-only jobs
+.branch_rules:
   rules:
-    - if: '$PIPELINE_ACTION == "deploy_update_env"'
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_BRANCH
+
+# ---------------------------------------------------------------------------
+# Stage: Build (UI & API)
+# ---------------------------------------------------------------------------
+build-ui:
+  stage: build
+  extends: .branch_rules
+  image: registry.access.redhat.com/ubi8/nodejs-20:latest
+  cache:
+    key: "ui-deps-$CI_COMMIT_REF_SLUG"
+    paths:
+      - ui/node_modules
   script:
-    - export CHART_VERSION="$(grep -E '^[[:space:]]*version:[[:space:]]*' chart/Chart.yaml | head -n1 | sed -E 's/^[[:space:]]*version:[[:space:]]*//')"
-    - echo "Detected chart version $CHART_VERSION"
-    - export DEV_APP_REPO_URL="$(grep -E '^[[:space:]]*tjpa.jus.br/dev-source-repo:[[:space:]]*' chart/Chart.yaml | head -n1 | sed -E 's|^[[:space:]]*tjpa.jus.br/dev-source-repo:[[:space:]]*||' | tr -d '\"' | tr -d "\'")"
-    - |
-      if [ -z "$DEV_APP_REPO_URL" ]; then
-        echo "Aviso: Anotação 'tjpa.jus.br/dev-source-repo' não encontrada no Chart.yaml."
-      else
-        echo "Detected dev source repo $DEV_APP_REPO_URL"
-      fi
-    - echo "CHART_VERSION=$CHART_VERSION" > variables.env
-    - echo "DEV_APP_REPO_URL=$DEV_APP_REPO_URL" >> variables.env
+    - cd ui
+    - npm install
+    - npm run build
   artifacts:
-      reports:
-        dotenv: variables.env
+    paths:
+      - ui/out
+    expire_in: 1 hour
 
-deploy_new_env:
-  stage: deploy
-  needs: ["get_chart_version"]
-  rules:
-    - if: '$PIPELINE_ACTION == "deploy_update_env"'
-  trigger:
-    project: "devops/cicd"
-    branch: main
-    strategy: depend
+build-api:
+  stage: build
+  extends: .branch_rules
+  image: $BUILDER_IMAGE
+  cache:
+    key: "api-deps-$CI_COMMIT_REF_SLUG"
+    paths:
+      - .go/pkg/mod
+      - .gocache
+  needs:
+    - build-ui
+  script:
+    - mkdir -p api/ui/out
+    - cp -a ui/out/. api/ui/out/
+    - go build -buildvcs=false -o helmify-api ./api
+  artifacts:
+    paths:
+      - helmify-api
+    expire_in: 1 hour
+
+# ---------------------------------------------------------------------------
+# Stage: Containerize (Assemble Image)
+# ---------------------------------------------------------------------------
+setup-vars:
+  stage: containerize
+  extends: .branch_rules
+  image: $BUILDER_IMAGE
+  script:
+    - TAG="${CI_COMMIT_TAG:-$CI_COMMIT_SHORT_SHA}"
+    - IMAGE="${QUAY_URL}/ca/helmify:${TAG}"
+    - echo "TAG=$TAG" > build.env
+    - echo "IMAGE=$IMAGE" >> build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+
+# ---------------------------------------------------------------------------
+# Stage: Containerize (Build -> Image)
+# ---------------------------------------------------------------------------
+push-to-quay:
+  stage: containerize
+  extends: .branch_rules
+  image: registry.access.redhat.com/ubi8/podman:latest
+  tags:
+    - rancher
+  needs:
+    - job: setup-vars
+      artifacts: true
+    - job: build-api
+      artifacts: true
   variables:
-    APP_NAME: $CI_PROJECT_NAME
-    DEPLOY_MODE: "helm"
-    ENV: $ENV_
-    PROJ_CHART_VERSION: $CHART_VERSION
-    ENABLE_CA_SOURCE: $ENABLE_CA_SOURCE
-    DEV_APP_REPO_URL: $DEV_APP_REPO_URL
-    DEV_APP_REPO_REVISION: $DEV_APP_REPO_REVISION
+    STORAGE_DRIVER: vfs
+    BUILDAH_ISOLATION: chroot
+  script:
+    - podman login $QUAY_URL -u $QUAY_USER -p $QUAY_PASS --tls-verify=false
+    - podman build --tls-verify=false -f Containerfile -t "$IMAGE" .
+    - podman push "$IMAGE" --tls-verify=false
 
-# ==========================================
-# PATH B: Promote the tags locally and Sync
-# ==========================================
-update_tag_job:
-  stage: deploy
-  image:
-    name: alpine/kubectl:latest
-    entrypoint: [""]
+release-version:
+  stage: release
+  image: quay.io/skopeo/stable:latest
   rules:
-    - if: '$PIPELINE_ACTION == "update_tag"'
-  before_script:
-    - apk add --no-cache curl git jq yq
+    - if: $CI_COMMIT_TAG
   script:
     - |
-      echo "Promoting all image tags from DEV to $ENV_..."
-
-      # 1. Git Authentication & Checkout
-      git remote set-url origin "http://oauth2:${GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
-      git config --global user.name "GitLab CI Promotion Bot"
-      git config --global user.email "ci-bot@tj.pa.gov.br"
-      git checkout -B $CI_COMMIT_BRANCH
-
-      # 2. Extract all paths that have a "tag" key (e.g., "image.tag", "api.image.tag")
-      # This creates a list of paths like: 
-      # image
-      # services.api.image
-      TAG_PATHS=$(yq eval '.. | select(has("tag")) | path | join(".")' values-dev.yaml)
-
-      if [ -z "$TAG_PATHS" ]; then
-        echo "No 'tag' keys found in values-dev.yaml. Skipping."
-        exit 0
-      fi
-
-      # 3. Iterate through every path found and update the target file
-      for PATH_NAME in $TAG_PATHS; do
-        # Get the tag value from the DEV file for this specific path
-        NEW_TAG=$(yq eval ".${PATH_NAME}.tag" values-dev.yaml)
-        
-        echo "Updating .${PATH_NAME}.tag to ${NEW_TAG} in values-${ENV_}.yaml"
-        
-        # Apply the update to the target environment file
-        yq eval -i ".${PATH_NAME}.tag = \"${NEW_TAG}\"" "values-${ENV_}.yaml"
-      done
-
-      # 4. Commit and Push
-      git add "values-${ENV_}.yaml"
-      
-      # Check if there are actually changes to avoid 'empty commit' errors
-      if git diff --cached --quiet; then
-        echo "No changes detected. The $ENV_ environment is already up to date."
-      else
-        git commit -m "chore(release): promote all image tags to ${ENV_}"
-        git push origin $CI_COMMIT_BRANCH
-        echo "✅ Successfully promoted tags to Git!"
-
-        # 5. Trigger ArgoCD Sync
-        ARGOCD_APP_NAME="${CI_PROJECT_NAME}-${ENV_}"
-        ARGOCD_SERVER="https://openshift-gitops-server-openshift-gitops.apps.ocp-hub.i.tj.pa.gov.br"
-        
-        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -k -X POST "${ARGOCD_SERVER}/api/v1/applications/${ARGOCD_APP_NAME}/sync" \
-          -H "Authorization: Bearer $ARGOCD_TOKEN" \
-          -H "Content-Type: application/json")
-
-        if [ "$HTTP_STATUS" -eq 200 ]; then
-          echo "✅ Successfully triggered ArgoCD sync!"
-        else
-          echo "⚠️ ArgoCD sync trigger returned status: $HTTP_STATUS"
-        fi
-      fi
+      skopeo copy \
+        --src-creds="${QUAY_USER}:${QUAY_PASS}" \
+        --dest-creds="${QUAY_USER}:${QUAY_PASS}" \
+        --src-tls-verify=false \
+        --dest-tls-verify=false \
+        "docker://${QUAY_URL}/ca/helmify:${CI_COMMIT_SHORT_SHA}" \
+        "docker://${QUAY_URL}/ca/helmify:prd-${CI_COMMIT_TAG}"
