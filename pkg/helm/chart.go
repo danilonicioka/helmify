@@ -188,14 +188,20 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		"nameOverride":            "",
 		"fullnameOverride":        chartName,
 		"global": map[string]interface{}{
-			"TZ": "America/Belem",
+			"TZ":     "America/Belem",
+			"cm":     map[string]interface{}{},
+			"secret": map[string]interface{}{},
 		},
 	}
 	for i, template := range templates {
 		file := files[filenames[i]]
 		file = append(file, template)
 		files[filenames[i]] = file
-		err = values.Merge(template.Values())
+		tplVals := template.Values()
+		if g, ok := tplVals["global"]; ok {
+			logrus.Errorf("DEBUG: template %T yields global: %+v", template, g)
+		}
+		err = values.Merge(tplVals)
 		if err != nil {
 			return err
 		}
@@ -464,6 +470,9 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 
 func mergeYamlNode(dest *yaml.Node, src interface{}, path []string) error {
 	if srcMap, ok := src.(map[string]interface{}); ok {
+		if len(srcMap) == 0 {
+			return setYamlPath(dest, path, srcMap)
+		}
 		for k, v := range srcMap {
 			err := mergeYamlNode(dest, v, append(path, k))
 			if err != nil {
@@ -473,6 +482,9 @@ func mergeYamlNode(dest *yaml.Node, src interface{}, path []string) error {
 		return nil
 	}
 	if srcValues, ok := src.(helmify.Values); ok {
+		if len(srcValues) == 0 {
+			return setYamlPath(dest, path, map[string]interface{}{})
+		}
 		for k, v := range srcValues {
 			err := mergeYamlNode(dest, v, append(path, k))
 			if err != nil {
