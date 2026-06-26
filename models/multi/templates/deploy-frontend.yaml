@@ -101,3 +101,7 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if .Values.frontend.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml .Values.frontend.topologySpreadConstraints | nindent 8 }}
+      {{- end }}
