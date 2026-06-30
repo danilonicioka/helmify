@@ -45,7 +45,8 @@ func (d statefulset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unst
 	if err != nil {
 		return true, nil, fmt.Errorf("%w: unable to cast to StatefulSet", err)
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("statefulset"))
+	suffix := processor.GetDynamicSuffix(appMeta, obj, "statefulset")
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
 	if err != nil {
 		return true, nil, err
 	}

@@ -241,6 +241,9 @@ func ResolveValueName(appMeta helmify.AppMetadata, name string) string {
 func GetDynamicSuffix(appMeta helmify.AppMetadata, obj *unstructured.Unstructured, fallback string) string {
 	name := StripKustomizeHash(obj.GetName())
 	chartName := appMeta.ChartName()
+	if name == chartName {
+		return "none"
+	}
 	if strings.HasPrefix(name, chartName) {
 		s := strings.TrimPrefix(name, chartName)
 		s = strings.TrimPrefix(s, "-")
@@ -249,6 +252,10 @@ func GetDynamicSuffix(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 			return s
 		}
 	}
+	cleanName := ResolveValueName(appMeta, name)
+	if cleanName != "" && cleanName != chartName {
+		return cleanName
+	}
 	return fallback
 }
 
@@ -256,6 +263,9 @@ var kustomizeHashRegex = regexp.MustCompile(`[-.][a-z0-9]{10}$`)
 
 // StripKustomizeHash removes a 10-character Kustomize hash suffix.
 func StripKustomizeHash(name string) string {
+	if strings.HasSuffix(name, "-postgresql") || strings.HasSuffix(name, "-prometheus") {
+		return name
+	}
 	return kustomizeHashRegex.ReplaceAllString(name, "")
 }
 
