@@ -601,8 +601,8 @@ func toNode(v interface{}, depth int, path string) *yaml.Node {
 		}
 
 		sort.Slice(keys, func(i, j int) bool {
-			pi := getPriority(keys[i], val[keys[i]])
-			pj := getPriority(keys[j], val[keys[j]])
+			pi := getPriority(keys[i], val[keys[i]], depth)
+			pj := getPriority(keys[j], val[keys[j]], depth)
 			if pi != pj {
 				return pi < pj
 			}
@@ -611,7 +611,7 @@ func toNode(v interface{}, depth int, path string) *yaml.Node {
 
 		var prevPriority int
 		for _, k := range keys {
-			p := getPriority(k, val[k])
+			p := getPriority(k, val[k], depth)
 			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: k}
 			if depth == 1 && prevPriority != 0 && p != prevPriority {
 				keyNode.HeadComment = "helmify-newline"
@@ -681,7 +681,32 @@ func isEmptyMap(v interface{}) bool {
 	return ok && len(m) == 0
 }
 
-func getPriority(key string, value interface{}) int {
+func getPriority(key string, value interface{}, depth int) int {
+	if depth == 1 {
+		switch key {
+		case "global":
+			return -5
+		case "kubernetesClusterDomain":
+			return -4
+		case "nameOverride":
+			return -3
+		case "fullnameOverride":
+			return -2
+		case "dnsResolver":
+			return -1
+		case "imagePullSecrets":
+			return 1000
+		case "nodeSelector":
+			return 1001
+		case "tolerations":
+			return 1002
+		case "affinity":
+			return 1003
+		default:
+			return 500
+		}
+	}
+
 	if key == "global" {
 		return -4
 	}
