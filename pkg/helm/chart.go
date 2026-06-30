@@ -188,8 +188,9 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		"nameOverride":            "",
 		"fullnameOverride":        chartName,
 		"global": map[string]interface{}{
-			"TZ":     "America/Belem",
-			"cm":     map[string]interface{}{},
+			"cm": map[string]interface{}{
+				"TZ": "America/Belem",
+			},
 			"secret": map[string]interface{}{},
 		},
 	}
@@ -517,6 +518,7 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 	if err := mergeYamlNode(&rootNode, values, []string{}); err != nil {
 		return nil, err
 	}
+	setBlockStyle(&rootNode)
 
 	var sortMapping *yaml.Node
 	if rootNode.Kind == yaml.DocumentNode && len(rootNode.Content) > 0 {
