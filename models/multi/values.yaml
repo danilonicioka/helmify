@@ -14,7 +14,9 @@ fullnameOverride: ""
 
 # -- Global configuration shared across all deployments in the chart.
 global:
-  TZ: "America/Belem"
+  cm:
+    TZ: "America/Belem"
+  secret: {}
 
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION

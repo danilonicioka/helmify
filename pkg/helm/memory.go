@@ -59,8 +59,9 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		"nameOverride":            "",
 		"fullnameOverride":        chartName,
 		"global": map[string]interface{}{
-			"TZ":     "America/Belem",
-			"cm":     map[string]interface{}{},
+			"cm": map[string]interface{}{
+				"TZ": "America/Belem",
+			},
 			"secret": map[string]interface{}{},
 		},
 	}
