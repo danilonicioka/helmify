@@ -16,6 +16,17 @@ func sanitizeObject(obj *unstructured.Unstructured) bool {
 		return false
 	}
 
+	// Remove system/status fields that shouldn't be in a Helm chart
+	delete(obj.Object, "status")
+	if metadata, ok := obj.Object["metadata"].(map[string]interface{}); ok {
+		delete(metadata, "creationTimestamp")
+		delete(metadata, "resourceVersion")
+		delete(metadata, "uid")
+		delete(metadata, "generation")
+		delete(metadata, "selfLink")
+		delete(metadata, "managedFields")
+	}
+
 	// Normalize port names throughout the object
 	normalizePorts(obj.Object)
 
@@ -54,7 +65,7 @@ func normalizePorts(obj interface{}) {
 }
 
 // cleanKomposeMetadata deeply iterates through a K8s object and removes any
-// label, annotation, or selector key starting with "io.kompose."
+// label, annotation, or selector key starting with "io.kompose." or "kompose."
 func cleanKomposeMetadata(obj *unstructured.Unstructured) {
 	cleanMap(obj.Object)
 }
@@ -82,7 +93,7 @@ func cleanMap(obj interface{}) {
 func cleanKeys(m map[string]interface{}, containerKey string) {
 	if container, ok := m[containerKey].(map[string]interface{}); ok {
 		for k := range container {
-			if strings.HasPrefix(k, "io.kompose.") || strings.HasPrefix(k, "kompose.cmd") {
+			if strings.HasPrefix(k, "io.kompose.") || strings.HasPrefix(k, "kompose.") {
 				delete(container, k)
 			}
 		}
