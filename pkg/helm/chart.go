@@ -442,6 +442,66 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 	}
 
 	if compCount > 1 {
+		var mapping *yaml.Node
+		if rootNode.Kind == yaml.DocumentNode && len(rootNode.Content) > 0 {
+			mapping = rootNode.Content[0]
+		} else if rootNode.Kind == yaml.MappingNode {
+			mapping = &rootNode
+		}
+
+		if mapping != nil && mapping.Kind == yaml.MappingNode {
+			var backendKeyNode, backendValNode *yaml.Node
+			var frontendKeyNode, frontendValNode *yaml.Node
+			for i := 0; i < len(mapping.Content); i += 2 {
+				if mapping.Content[i].Value == "backend" {
+					backendKeyNode = mapping.Content[i]
+					backendValNode = mapping.Content[i+1]
+				}
+				if mapping.Content[i].Value == "frontend" {
+					frontendKeyNode = mapping.Content[i]
+					frontendValNode = mapping.Content[i+1]
+				}
+			}
+
+			for key, val := range values {
+				if key == "global" || key == "nodeSelector" || key == "affinity" || key == "fullnameOverride" || key == "kubernetesClusterDomain" || key == "nameOverride" || key == "dnsResolver" {
+					continue
+				}
+				isMap := false
+				if _, ok := val.(map[string]interface{}); ok {
+					isMap = true
+				} else if _, ok := val.(helmify.Values); ok {
+					isMap = true
+				}
+				if !isMap {
+					continue
+				}
+
+				exists := false
+				for i := 0; i < len(mapping.Content); i += 2 {
+					if mapping.Content[i].Value == key {
+						exists = true
+						break
+					}
+				}
+
+				if !exists {
+					baseKey := backendKeyNode
+					baseVal := backendValNode
+					if (key == "frontend" || key == "web" || strings.Contains(strings.ToLower(key), "front") || strings.Contains(strings.ToLower(key), "app")) && frontendValNode != nil {
+						baseKey = frontendKeyNode
+						baseVal = frontendValNode
+					}
+					if baseKey != nil && baseVal != nil {
+						newKeyNode := cloneYamlNode(baseKey)
+						newKeyNode.Value = key
+						newValNode := cloneYamlNode(baseVal)
+						mapping.Content = append(mapping.Content, newKeyNode, newValNode)
+					}
+				}
+			}
+		}
+
 		if _, exists := values["backend"]; !exists {
 			deleteYamlPath(&rootNode, "backend")
 		}
