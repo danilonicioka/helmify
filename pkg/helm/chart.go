@@ -518,6 +518,42 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 		return nil, err
 	}
 
+	var sortMapping *yaml.Node
+	if rootNode.Kind == yaml.DocumentNode && len(rootNode.Content) > 0 {
+		sortMapping = rootNode.Content[0]
+	} else if rootNode.Kind == yaml.MappingNode {
+		sortMapping = &rootNode
+	}
+
+	if sortMapping != nil && sortMapping.Kind == yaml.MappingNode {
+		type pair struct {
+			key *yaml.Node
+			val *yaml.Node
+		}
+		pairs := make([]pair, len(sortMapping.Content)/2)
+		for i := 0; i < len(sortMapping.Content); i += 2 {
+			pairs[i/2] = pair{
+				key: sortMapping.Content[i],
+				val: sortMapping.Content[i+1],
+			}
+		}
+
+		sort.SliceStable(pairs, func(i, j int) bool {
+			pi := getPriority(pairs[i].key.Value, nil, 1)
+			pj := getPriority(pairs[j].key.Value, nil, 1)
+			if pi != pj {
+				return pi < pj
+			}
+			return pairs[i].key.Value < pairs[j].key.Value
+		})
+
+		newContent := make([]*yaml.Node, 0, len(sortMapping.Content))
+		for _, p := range pairs {
+			newContent = append(newContent, p.key, p.val)
+		}
+		sortMapping.Content = newContent
+	}
+
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
