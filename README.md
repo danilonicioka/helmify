@@ -281,3 +281,28 @@ Check list before submitting PR:
    cat test_data/k8s-operator-kustomize.output | go run ./cmd/helmify examples/operator
    ```
 4. In case of long commit history (more than 3) squash local commits into one
+
+---
+
+## ⚠️ Known Issues: Deployed Version Mismatch (Diagnostic Report)
+
+### Symptom
+When generating charts via the remote Helmify API service, you may observe duplicate template files (e.g., `cm-adm-estrutura.yaml` and `cm-admestrutura.yaml`, or `secret-adm-estrutura.yaml` and `secret-admestrutura.yaml`) and name resolution mismatches inside the `Deployment` env/envFrom references.
+
+### Cause
+The remote Helmify API instance running on OpenShift (`https://helmify.apps.ocp-dev.i.tj.pa.gov.br`) is currently running an **outdated version** built from the `gitlab/main` branch (last commit: June 12, `38ff265`).
+
+The local/upstream `main` branch contains **24 commits of bug fixes and feature additions** since then, including:
+1. **Commit `9bc1752`**: `fix: prevent premature stripping of common suffixes...`
+2. **Commit `ad1e253`**: `refactor: standardize configmap and secret naming resolution...`
+3. **Commit `5df8dcd`**: `refactor: normalize component names, improve route mapping logic...`
+
+Because these fixes are not yet deployed on the remote server, the server uses the old heuristic for component resolution, leading to inconsistent naming between the core workload and the configmaps/secrets.
+
+### Solution
+Push the updated local `main` branch commits to the GitLab remote repository to trigger the CI/CD pipeline and redeploy the latest API service to OpenShift:
+```bash
+git push gitlab main:main
+```
+Once the pipeline completes, generating the chart again via the API will produce clean, aligned, and optimized templates with no duplicates or invalid references.
+
