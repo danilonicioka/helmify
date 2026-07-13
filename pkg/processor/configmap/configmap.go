@@ -156,6 +156,7 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 
 		templates = append(templates, &configMapTemplate{
 			compName:      comp,
+			chartName:     appMeta.ChartName(),
 			nameCamelCase: compCamel,
 			meta:          meta,
 			values:        values,
@@ -171,6 +172,7 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 
 type configMapTemplate struct {
 	compName      string
+	chartName     string
 	nameCamelCase string
 	meta          string
 	values        helmify.Values
@@ -183,6 +185,9 @@ type configMapTemplate struct {
 func (c *configMapTemplate) Filename() string {
 	if c.isGlobal {
 		return "cm-global.yaml"
+	}
+	if c.compName == c.chartName {
+		return "cm.yaml"
 	}
 	return fmt.Sprintf("cm-%s.yaml", c.compName)
 }

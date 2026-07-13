@@ -263,7 +263,7 @@ var kustomizeHashRegex = regexp.MustCompile(`[-.][a-z0-9]{10}$`)
 
 // StripKustomizeHash removes a 10-character Kustomize hash suffix.
 func StripKustomizeHash(name string) string {
-	if strings.HasSuffix(name, "-postgresql") || strings.HasSuffix(name, "-prometheus") {
+	if strings.HasSuffix(name, "-postgresql") || strings.HasSuffix(name, "-prometheus") || strings.HasSuffix(name, "judiciaria") {
 		return name
 	}
 	return kustomizeHashRegex.ReplaceAllString(name, "")
@@ -356,6 +356,7 @@ func TemplatedConfigMapName(appMeta helmify.AppMetadata, cmName string) string {
 
 // NormalizeComponentName maps variations of component names to their canonical kebab-case representation.
 func NormalizeComponentName(comp string) string {
+	comp = strcase.ToKebab(comp)
 	comp = strings.ToLower(comp)
 	comp = strings.TrimLeft(comp, "-./_ ")
 	comp = strings.TrimRight(comp, "-./_ ")

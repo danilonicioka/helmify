@@ -50,7 +50,7 @@ func (a *Service) Config() config.Config {
 var kustomizeHashRegex = regexp.MustCompile(`[-.][a-z0-9]{10}$`)
 
 func StripKustomizeHash(name string) string {
-	if strings.HasSuffix(name, "-postgresql") || strings.HasSuffix(name, "-prometheus") {
+	if strings.HasSuffix(name, "-postgresql") || strings.HasSuffix(name, "-prometheus") || strings.HasSuffix(name, "judiciaria") {
 		return name
 	}
 	return kustomizeHashRegex.ReplaceAllString(name, "")

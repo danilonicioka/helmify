@@ -551,7 +551,13 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 		if strings.Contains(strings.ToLower(cmClean), "global") {
 			continue // Already handled by global-config
 		}
-		comp := processor.NormalizeComponentName(cmClean)
+		comps := processor.FindReferencingComponents(appMeta, cm, false)
+		comp := ""
+		if len(comps) > 0 {
+			comp = comps[0]
+		} else {
+			comp = processor.NormalizeComponentName(cmClean)
+		}
 		if comp == "" || comp == "chart" {
 			comp = processor.NormalizeComponentName(objName)
 		}
@@ -574,7 +580,13 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 		if strings.Contains(strings.ToLower(secClean), "global") {
 			continue // Handled by global checksum
 		}
-		comp := processor.NormalizeComponentName(secClean)
+		comps := processor.FindReferencingComponents(appMeta, sec, true)
+		comp := ""
+		if len(comps) > 0 {
+			comp = comps[0]
+		} else {
+			comp = processor.NormalizeComponentName(secClean)
+		}
 		if comp == "" || comp == "chart" || comp == "secrets" {
 			comp = processor.NormalizeComponentName(objName)
 		}
