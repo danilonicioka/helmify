@@ -477,7 +477,10 @@
   -H "X-Crd: false" \
   -H "Content-Type: text/yaml" \
   --data-binary @deployment.yaml \
-  --output portal-certidao.tar.gz</code></pre>
+  --output portal-certidao.tar.gz
+
+# Extract the generated Helm chart
+tar -xvzf portal-certidao.tar.gz</code></pre>
                 </div>
 
                 <div class="section-title">Example Command (Kustomize Output Pipe)</div>
@@ -492,7 +495,10 @@
   -H "X-Dev-Repo-Url: https://github.com/my-org/my-app" \
   -H "Content-Type: text/yaml" \
   --data-binary @- \
-  --output portal-certidao.tar.gz</code></pre>
+  --output portal-certidao.tar.gz
+
+# Extract the generated Helm chart
+tar -xvzf portal-certidao.tar.gz</code></pre>
                 </div>
             </div>
 
@@ -562,7 +568,10 @@
       }
     }
   }' \
-  --output my-service.tar.gz</code></pre>
+  --output my-service.tar.gz
+
+# Extract the generated Helm chart
+tar -xvzf my-service.tar.gz</code></pre>
                 </div>
             </div>
         </section>

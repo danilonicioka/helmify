@@ -260,6 +260,22 @@ func processContainers(objName string, values helmify.Values, containerType stri
 			}
 		}
 
+		command, exists, err := unstructured.NestedStringSlice(containers[i].(map[string]interface{}), "command")
+		if err != nil {
+			return nil, nil, err
+		}
+		if exists && len(command) > 0 {
+			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf(`{{- toYaml .Values.%s.command | nindent %d }}`, valuePathStr, nindent), "command")
+			if err != nil {
+				return nil, nil, err
+			}
+
+			err = unstructured.SetNestedStringSlice(values, command, append(valuePath, "command")...)
+			if err != nil {
+				return nil, nil, fmt.Errorf("%w: unable to set deployment value field", err)
+			}
+		}
+
 		// Inject 3-Tier Probes templates using placeholders
 		for _, pName := range []string{"startupProbe", "livenessProbe", "readinessProbe"} {
 			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf("[HELMIFY_WITH:%s.%s:%d]", valuePathStr, pName, nindent+2), pName)
@@ -685,9 +701,9 @@ ${1}{{- end }}`)
 	rPVC := regexp.MustCompile(`(?m)^(\s{6})-\s*name:\s*'\[HELMIFY_PVC_VOL:([^:]+):([^\]]+)\]'\n(\s{8})persistentVolumeClaim:\n(\s{10})claimName:\s*([^\n]+)`)
 	s = rPVC.ReplaceAllString(s, `${1}{{- if and (index .Values "${2}") (index .Values "${2}" "persistence") (index .Values "${2}" "persistence" "enabled") }}
 ${1}- name: ${3}
-689: ${4}persistentVolumeClaim:
-690: ${5}claimName: ${6}
-691: ${1}{{- end }}`)
+${4}persistentVolumeClaim:
+${5}claimName: ${6}
+${1}{{- end }}`)
 
 	// 9. Handle PVC volume mounts conditional placement
 	rMount := regexp.MustCompile(`(?m)^(\s{8})-\s*mountPath:\s*([^\n]+)\n((\s{10}[a-zA-Z]+:\s*[^\n]+\n)*)\s{10}name:\s*'\[HELMIFY_PVC_MOUNT:([^:]+):([^\]]+)\]'((\n\s{10}[a-zA-Z]+:\s*[^\n]+)*)`)
