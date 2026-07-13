@@ -208,6 +208,22 @@ Helmify is designed to generate production-ready charts that follow TJPA standar
 - **Standardized Labels**: Consistent application of `component` and `part-of` labels across all resources.
 - **Dynamic Route Association**: Automatically associates OpenShift Routes with their target `Service` components by checking the target `spec.to.name`. If a Route targets a Service belonging to the same component, it maps to `.Values.<component>.route`. If it routes to a Service in a different component (additional routes), it is isolated under `.Values.<component>.routes.<routeName>` to prevent configuration overrides.
 
+## Component Naming & Reference Resolution Engine
+
+To prevent naming inconsistencies and duplicate templates (such as `cm-foo.yaml` and `cm-foobar.yaml`), Helmify implements a naming and reference matching algorithm:
+
+1. **Component Name Extraction (`GetComponent`)**:
+   - Component names are parsed from resource names (e.g. stripping suffixes like `-deploy`, `-svc`, `-cm`, `-secret`) and normalized to lowercase kebab-case.
+   - A suffix matching list (e.g., `-judiciaria`) is checked to prevent stripping names prematurely. If name-matching rules differ between local and remote codebases, it causes different resolved component names (e.g. `adm-estrutura` vs `adm-estrutura-judiciaria`).
+
+2. **Reference Resolution (`FindReferencingComponents`)**:
+   - When a ConfigMap or Secret is parsed, Helmify scans all active workload resources (Deployments, StatefulSets, etc.) to see which component references them via `envFrom`, `valueFrom` (ConfigMapKeyRef/SecretKeyRef), or volumes.
+   - If a ConfigMap/Secret is referenced by a workload, its values in `values.yaml` are grouped under that workload's camel-cased component name (e.g. `.Values.admEstruturaJudiciaria`).
+
+3. **Template References Alignment**:
+   - Workload templates (like `deploy-backend.yaml`) use `TemplatedConfigMapName` and `TemplatedSecretName` to dynamically update inline references in container definitions (e.g., changing a raw ConfigMap name like `adm-estrutura-judiciaria-configmap` to `{{ include "fullname" . }}-adm-estrutura-judiciaria-cm`).
+   - If there is a version mismatch between the deployed Helmify API and your local branch, the template names and values keys can diverge (e.g., writing the ConfigMap with name `adm-estrutura` but referencing `adm-estrutura-judiciaria` in the Deployment). **Always ensure the remote server is running the same commit as your local branch to keep naming consistent.**
+
 ## Status
 Supported k8s resources:
 - Deployment, DaemonSet, StatefulSet
@@ -305,4 +321,13 @@ Push the updated local `main` branch commits to the GitLab remote repository to 
 git push gitlab main:main
 ```
 Once the pipeline completes, generating the chart again via the API will produce clean, aligned, and optimized templates with no duplicates or invalid references.
+
+### 🐛 10-Character Suffix Collision Bug (`judiciaria`)
+A secondary root cause of component name divergence is the Kustomize hash stripping logic:
+- Kustomize configuration hash suffix detection uses the regex `[-.][a-z0-9]{10}$`.
+- The word `"judiciaria"` contains exactly **10 lowercase characters**.
+- Consequently, resource names ending in `-judiciaria` (e.g. `adm-estrutura-judiciaria` Deployment, Service, and Route) have their suffix stripped by `StripKustomizeHash` to `"adm-estrutura"`.
+- ConfigMaps and Secrets whose names end with other suffixes (like `-configmap` or `-secrets`) are NOT stripped, leading to inconsistent component resolution (e.g., workload resolving to component `adm-estrutura` but ConfigMap resolving to component `adm-estrutura-judiciaria` / values path `admEstruturaJudiciariaConfigmap`).
+- **Fix**: Whitelist `judiciaria` suffix in `StripKustomizeHash` within both [metadata.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/metadata/metadata.go#L53) and [meta.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/meta.go#L266) to prevent stripping.
+
 
