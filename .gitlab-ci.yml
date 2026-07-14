@@ -1,6 +1,6 @@
 default:
   tags:
-    - ocp-dev-global
+    - rke
 
 variables:
   BUILDER_IMAGE: "registry.access.redhat.com/ubi8/go-toolset:1.21"
@@ -82,8 +82,6 @@ push-to-quay:
   stage: containerize
   extends: .branch_rules
   image: registry.access.redhat.com/ubi8/podman:latest
-  tags:
-    - rancher
   needs:
     - job: setup-vars
       artifacts: true
