@@ -88,7 +88,7 @@ push-to-quay:
     - job: build-api
       artifacts: true
   variables:
-    STORAGE_DRIVER: vfs
+    STORAGE_DRIVER: overlay
     BUILDAH_ISOLATION: chroot
   script:
     - podman login $QUAY_URL -u $QUAY_USER -p $QUAY_PASS --tls-verify=false
