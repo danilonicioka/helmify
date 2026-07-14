@@ -313,7 +313,15 @@ func TemplatedSecretName(appMeta helmify.AppMetadata, secretName string) string 
 	}
 
 	if secObj != nil {
-		comp := GetComponent(secObj)
+		referencingComps := FindReferencingComponents(appMeta, secObj.GetName(), true)
+		comp := ""
+		if len(referencingComps) == 1 {
+			comp = referencingComps[0]
+		} else if len(referencingComps) > 1 {
+			return fmt.Sprintf(`{{ include "%s.fullname" . }}-global`, appMeta.ChartName())
+		} else {
+			comp = GetComponent(secObj)
+		}
 		if comp == "" || comp == "chart" || comp == "secrets" {
 			return fmt.Sprintf(`{{ include "%s.fullname" . }}-secrets`, appMeta.ChartName())
 		}
@@ -342,7 +350,15 @@ func TemplatedConfigMapName(appMeta helmify.AppMetadata, cmName string) string {
 	}
 
 	if cmObj != nil {
-		comp := GetComponent(cmObj)
+		referencingComps := FindReferencingComponents(appMeta, cmObj.GetName(), false)
+		comp := ""
+		if len(referencingComps) == 1 {
+			comp = referencingComps[0]
+		} else if len(referencingComps) > 1 {
+			return fmt.Sprintf(`{{ include "%s.fullname" . }}-global`, appMeta.ChartName())
+		} else {
+			comp = GetComponent(cmObj)
+		}
 		if comp == "" || comp == "chart" {
 			return fmt.Sprintf(`{{ include "%s.fullname" . }}-cm`, appMeta.ChartName())
 		}

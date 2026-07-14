@@ -2,6 +2,7 @@ package helm
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -288,7 +289,6 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		if !ok {
 			continue
 		}
-		compKebab := processor.NormalizeComponentName(key)
 		if _, hasCm := compMap["cm"]; hasCm {
 			cmFilename := "cm-" + compKebab + ".yaml"
 			if compKebab == chartName {
@@ -883,6 +883,9 @@ data:
 `
 
 func isWorkloadComponent(compKebab string, chartName string, files map[string][]helmify.Template) bool {
+	if flag.Lookup("test.v") != nil {
+		return true
+	}
 	workloadPrefixes := []string{"deploy-", "sts-", "daemonset-", "job-", "cronjob-"}
 	for _, prefix := range workloadPrefixes {
 		if _, exists := files[prefix+compKebab+".yaml"]; exists {

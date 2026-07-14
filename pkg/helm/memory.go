@@ -172,7 +172,6 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		if !ok {
 			continue
 		}
-		compKebab := processor.NormalizeComponentName(key)
 		if _, hasCm := compMap["cm"]; hasCm {
 			cmFilename := "cm-" + compKebab + ".yaml"
 			if compKebab == chartName {
