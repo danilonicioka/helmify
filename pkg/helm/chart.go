@@ -221,6 +221,10 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 			if key == "global" || key == "nodeSelector" || key == "affinity" {
 				continue
 			}
+			compKebab := processor.NormalizeComponentName(key)
+			if !isWorkloadComponent(compKebab, chartName, files) {
+				continue
+			}
 			compMap, ok := val.(map[string]interface{})
 			if !ok {
 				continue
@@ -237,7 +241,10 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 				compCount := 0
 				for k := range values {
 					if k != "global" && k != "nodeSelector" && k != "affinity" {
-						compCount++
+						kKebab := processor.NormalizeComponentName(k)
+						if isWorkloadComponent(kKebab, chartName, files) {
+							compCount++
+						}
 					}
 				}
 				if compCount > 1 {
@@ -271,6 +278,10 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	// Generate component-specific ConfigMaps and Secrets for components that have variables but no templates generated yet
 	for key, val := range values {
 		if key == "global" || key == "nodeSelector" || key == "affinity" {
+			continue
+		}
+		compKebab := processor.NormalizeComponentName(key)
+		if !isWorkloadComponent(compKebab, chartName, files) {
 			continue
 		}
 		compMap, ok := val.(map[string]interface{})
@@ -341,7 +352,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		}
 	}
 
-	res, err := generateValuesYAML(chartName, values, certManagerAsSubchart, certManagerInstallCRD)
+	res, err := generateValuesYAML(chartName, values, certManagerAsSubchart, certManagerInstallCRD, files)
 	if err != nil {
 		return err
 	}
@@ -400,7 +411,7 @@ func overwriteTemplateFile(filename, chartDir string, crd bool, templates []helm
 	return nil
 }
 
-func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSubchart bool, certManagerInstallCRD bool) ([]byte, error) {
+func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSubchart bool, certManagerInstallCRD bool, files map[string][]helmify.Template) ([]byte, error) {
 	if certManagerAsSubchart {
 		_, _ = values.Add(certManagerInstallCRD, "certmanager", "installCRDs")
 		_, _ = values.Add(true, "certmanager", "enabled")
@@ -411,6 +422,10 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 	var compKey string
 	for key, val := range values {
 		if key == "global" || key == "nodeSelector" || key == "affinity" || key == "fullnameOverride" || key == "kubernetesClusterDomain" || key == "nameOverride" || key == "dnsResolver" {
+			continue
+		}
+		compKebab := processor.NormalizeComponentName(key)
+		if !isWorkloadComponent(compKebab, chartName, files) {
 			continue
 		}
 		isMap := false
@@ -466,6 +481,10 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 
 			for key, val := range values {
 				if key == "global" || key == "nodeSelector" || key == "affinity" || key == "fullnameOverride" || key == "kubernetesClusterDomain" || key == "nameOverride" || key == "dnsResolver" {
+					continue
+				}
+				compKebab := processor.NormalizeComponentName(key)
+				if !isWorkloadComponent(compKebab, chartName, files) {
 					continue
 				}
 				isMap := false
@@ -863,3 +882,20 @@ data:
 {{- end }}
 `
 
+func isWorkloadComponent(compKebab string, chartName string, files map[string][]helmify.Template) bool {
+	workloadPrefixes := []string{"deploy-", "sts-", "daemonset-", "job-", "cronjob-"}
+	for _, prefix := range workloadPrefixes {
+		if _, exists := files[prefix+compKebab+".yaml"]; exists {
+			return true
+		}
+	}
+	if compKebab == chartName {
+		defaultNames := []string{"deploy.yaml", "sts.yaml", "daemonset.yaml", "job.yaml", "cronjob.yaml"}
+		for _, name := range defaultNames {
+			if _, exists := files[name]; exists {
+				return true
+			}
+		}
+	}
+	return false
+}

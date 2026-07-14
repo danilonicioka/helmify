@@ -105,6 +105,10 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 			if key == "global" || key == "nodeSelector" || key == "affinity" {
 				continue
 			}
+			compKebab := processor.NormalizeComponentName(key)
+			if !isWorkloadComponent(compKebab, chartName, files) {
+				continue
+			}
 			compMap, ok := val.(map[string]interface{})
 			if !ok {
 				continue
@@ -121,7 +125,10 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 				compCount := 0
 				for k := range values {
 					if k != "global" && k != "nodeSelector" && k != "affinity" {
-						compCount++
+						kKebab := processor.NormalizeComponentName(k)
+						if isWorkloadComponent(kKebab, chartName, files) {
+							compCount++
+						}
 					}
 				}
 				if compCount > 1 {
@@ -155,6 +162,10 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	// Generate component-specific ConfigMaps and Secrets for components that have variables but no templates generated yet
 	for key, val := range values {
 		if key == "global" || key == "nodeSelector" || key == "affinity" {
+			continue
+		}
+		compKebab := processor.NormalizeComponentName(key)
+		if !isWorkloadComponent(compKebab, chartName, files) {
 			continue
 		}
 		compMap, ok := val.(map[string]interface{})
@@ -217,7 +228,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	}
 
 	// Write values.yaml to memory
-	res, err := generateValuesYAML(chartName, values, certManagerAsSubchart, certManagerInstallCRD)
+	res, err := generateValuesYAML(chartName, values, certManagerAsSubchart, certManagerInstallCRD, files)
 	if err != nil {
 		return err
 	}

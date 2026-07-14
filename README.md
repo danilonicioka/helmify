@@ -222,7 +222,29 @@ To prevent naming inconsistencies and duplicate templates (such as `cm-foo.yaml`
 
 3. **Template References Alignment**:
    - Workload templates (like `deploy-backend.yaml`) use `TemplatedConfigMapName` and `TemplatedSecretName` to dynamically update inline references in container definitions (e.g., changing a raw ConfigMap name like `adm-estrutura-judiciaria-configmap` to `{{ include "fullname" . }}-adm-estrutura-judiciaria-cm`).
-   - If there is a version mismatch between the deployed Helmify API and your local branch, the template names and values keys can diverge (e.g., writing the ConfigMap with name `adm-estrutura` but referencing `adm-estrutura-judiciaria` in the Deployment). **Always ensure the remote server is running the same commit as your local branch to keep naming consistent.**
+    - If there is a version mismatch between the deployed Helmify API and your local branch, the template names and values keys can diverge (e.g., writing the ConfigMap with name `adm-estrutura` but referencing `adm-estrutura-judiciaria` in the Deployment). **Always ensure the remote server is running the same commit as your local branch to keep naming consistent.**
+
+## Manifest Validation Checklist (Before Helmifying)
+
+Before sending your manifests to the Helmify API or CLI, run the following verification steps to ensure correct template generation and naming alignment:
+
+1. **Shared ConfigMaps / Secrets Verification**:
+   - Check if any ConfigMap or Secret is referenced by more than one workload (e.g., used by both frontend and backend).
+   - If referenced by multiple workloads, Helmify will treat it as a **global resource** (`cm-global.yaml`/`secret-global.yaml`), grouping its values under `.Values.global.cm` or `.Values.global.secret`.
+   - Ensure that this shared config behavior matches your project architecture design.
+
+2. **Suffix Collision Check**:
+   - Check resource names for suffixes that are exactly 10 lowercase alphanumeric characters long (e.g. `*-judiciaria`).
+   - Suffixes matching the `[-.][a-z0-9]{10}$` pattern will be stripped automatically by Helmify as if they were Kustomize generated hashes.
+   - If a suffix is stripped from some resources but not others, it will lead to component naming mismatches. Ensure any 10-character custom suffixes are whitelisted in `StripKustomizeHash` or rename the resources.
+
+3. **Route Target Verification**:
+   - Check that all `Route` objects have `spec.to.name` targeting valid `Service` names present in the input.
+   - Routes targeting a service belonging to the same component will map to `.Values.<component>.route`.
+   - Routes targeting a service belonging to a different component will map as additional routes under `.Values.<component>.routes.<routeName>`.
+
+4. **Kustomize Build Compilation**:
+   - Always run `kustomize build <dir>` locally and check for syntax errors before piping the output to `helmify`.
 
 ## Status
 Supported k8s resources:
