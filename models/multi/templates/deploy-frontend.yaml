@@ -11,7 +11,20 @@ metadata:
       {{- $first := true -}}
       {{- range $item := .Values.frontend.connectsTo -}}
         {{- if not $first }},{{- end -}}
-        {"apiVersion":"apps/v1","kind":"Deployment","name":"{{ include "chart-model-multi.fullname" $ }}-{{ $item }}"}
+        {{- $kind := "Deployment" -}}
+        {{- $apiVersion := "apps/v1" -}}
+        {{- $nameSuffix := "" -}}
+        {{- if typeIs "string" $item -}}
+          {{- $nameSuffix = $item -}}
+          {{- if eq $item "db" -}}
+            {{- $kind = "StatefulSet" -}}
+          {{- end -}}
+        {{- else -}}
+          {{- $kind = default "Deployment" $item.kind -}}
+          {{- $apiVersion = default "apps/v1" $item.apiVersion -}}
+          {{- $nameSuffix = $item.name -}}
+        {{- end -}}
+        {"apiVersion":"{{ $apiVersion }}","kind":"{{ $kind }}","name":"{{ include "chart-model-multi.fullname" $ }}-{{ $nameSuffix }}"}
         {{- $first = false -}}
       {{- end -}}
     ]'
