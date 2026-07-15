@@ -84,12 +84,22 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		delete(l, "app.kubernetes.io/managed-by")
 		delete(l, "helm.sh/chart")
 
+		var componentLabelTpl string
+		if comp, ok := l["app.kubernetes.io/component"]; ok && comp != "" {
+			normalizedComp := NormalizeComponentName(comp)
+			componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}-%s\n", appMeta.ChartName(), normalizedComp)
+			delete(l, "app.kubernetes.io/component")
+		}
+
 		// Since we delete labels above, it is possible that at this point there are no more labels.
 		if len(l) > 0 {
 			labels, err = yamlformat.Marshal(l, 4)
 			if err != nil {
 				return "", err
 			}
+		}
+		if componentLabelTpl != "" {
+			labels = componentLabelTpl + labels
 		}
 	}
 	if len(obj.GetAnnotations()) != 0 {

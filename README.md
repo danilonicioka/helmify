@@ -360,5 +360,19 @@ When components end with numeric suffixes (like `pje-service-1g` or `pje-service
 - This mismatch caused Helm rendering syntax errors since Helm variables cannot start with a number.
 - **Fix**: Whitelist the kebab-cased keys `"1-g"`, `"2-g"`, `"pje-service-1-g"`, and `"pje-service-2-g"` inside `NormalizeComponentName` switch cases within [meta.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/meta.go#L403-L406) to ensure they resolve consistently to `pje-service-1g` and `pje-service-2g`.
 
+### 🔄 Global Values.yaml Ordering Bug
+- **Symptom**: The `global:` block in `values.yaml` rendered at the very top of the file, prior to section `I. CHART-WIDE OPTIONS` (`kubernetesClusterDomain` etc.).
+- **Cause**: The key priority assignment logic in `getPriority` (inside `chart.go`) assigned a weight of `-5` to the `global` key, causing it to sort before `kubernetesClusterDomain` (priority `-4`).
+- **Fix**: Adjusted priorities in `chart.go` to assign `global` a weight of `-1`, placing it after `fullnameOverride` (`-3`) and aligning it with the multi-deployment model layout.
+
+### 🏷️ Fullname-Prefixed Component Labels (`app.kubernetes.io/component`)
+- **Symptom**: Generated templates copied static `app.kubernetes.io/component` values from raw manifests, whereas the TJPA Helm models require component labels to be dynamically prefixed with the chart fullname.
+- **Fix**: Updated `ProcessObjMeta` ([meta.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/meta.go)) and the Route processor ([route.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/route/route.go)) to template the label using the chart fullname helper:
+  ```yaml
+  app.kubernetes.io/component: {{ include "<chartName>.fullname" . }}-<componentName>
+  ```
+- *Note*: Selectors and pod template specs remain static to ensure immutable selector matches are preserved at deploy-time.
+
+
 
 

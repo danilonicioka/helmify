@@ -168,7 +168,7 @@ metadata:
   name: {{ include "%[2]s.fullname" . }}-%[3]s
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: %[3]s
+    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
   {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -201,7 +201,7 @@ metadata:
   name: {{ include "%[2]s.fullname" . }}-%[3]s-int
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: %[3]s
+    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
   {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -234,7 +234,7 @@ metadata:
   name: {{ include "%[2]s.fullname" . }}-%[3]s-ext
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: %[3]s
+    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
   {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
