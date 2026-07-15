@@ -352,4 +352,13 @@ A secondary root cause of component name divergence is the Kustomize hash stripp
 - ConfigMaps and Secrets whose names end with other suffixes (like `-configmap` or `-secrets`) are NOT stripped, leading to inconsistent component resolution (e.g., workload resolving to component `adm-estrutura` but ConfigMap resolving to component `adm-estrutura-judiciaria` / values path `admEstruturaJudiciariaConfigmap`).
 - **Fix**: Whitelist `judiciaria` suffix in `StripKustomizeHash` within both [metadata.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/metadata/metadata.go#L53) and [meta.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/meta.go#L266) to prevent stripping.
 
+### 🔢 Numeric Component Suffix Mapping Bug (`1G` / `2G`)
+When components end with numeric suffixes (like `pje-service-1g` or `pje-service-2g`):
+- `strcase.ToKebab` transforms `"1g"` / `"2g"` to `"1-g"` / `"2-g"` and `"pje-service-1g"` to `"pje-service-1-g"`.
+- Because `"1-g"`, `"2-g"`, `"pje-service-1-g"`, and `"pje-service-2-g"` were missing from the switch cases inside `NormalizeComponentName`, they were returned as-is.
+- This bypassed normalization and was camel-cased by `ToLowerCamel` into `.Values.1G` and `.Values.2G` for Services/Routes (due to delimiter parsing rules), while Deployments mapped to `.Values.pjeService1G` and `.Values.pjeService2G`.
+- This mismatch caused Helm rendering syntax errors since Helm variables cannot start with a number.
+- **Fix**: Whitelist the kebab-cased keys `"1-g"`, `"2-g"`, `"pje-service-1-g"`, and `"pje-service-2-g"` inside `NormalizeComponentName` switch cases within [meta.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/meta.go#L403-L406) to ensure they resolve consistently to `pje-service-1g` and `pje-service-2g`.
+
+
 
