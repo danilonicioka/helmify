@@ -741,15 +741,15 @@ func isEmptyMap(v interface{}) bool {
 func getPriority(key string, value interface{}, depth int) int {
 	if depth == 1 {
 		switch key {
-		case "global":
-			return -5
 		case "kubernetesClusterDomain":
-			return -4
+			return -5
 		case "nameOverride":
-			return -3
+			return -4
 		case "fullnameOverride":
-			return -2
+			return -3
 		case "dnsResolver":
+			return -2
+		case "global":
 			return -1
 		case "imagePullSecrets":
 			return 1000
@@ -764,16 +764,16 @@ func getPriority(key string, value interface{}, depth int) int {
 		}
 	}
 
-	if key == "global" {
+	if key == "kubernetesClusterDomain" {
 		return -4
 	}
-	if key == "kubernetesClusterDomain" {
+	if key == "fullnameOverride" {
 		return -3
 	}
-	if key == "fullnameOverride" {
+	if key == "dnsResolver" {
 		return -2
 	}
-	if key == "dnsResolver" {
+	if key == "global" {
 		return -1
 	}
 
