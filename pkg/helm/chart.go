@@ -56,7 +56,7 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     {{- if %[5]s }}
-    app.kubernetes.io/component: %[3]s
+    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
     {{- end }}
   {{- with .Values.%[1]s.route.annotations }}
   annotations:
@@ -91,7 +91,7 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     {{- if %[5]s }}
-    app.kubernetes.io/component: %[3]s
+    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
     {{- end }}
   {{- with .Values.%[1]s.route.annotations }}
   annotations:
@@ -126,7 +126,7 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     {{- if %[5]s }}
-    app.kubernetes.io/component: %[3]s
+    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
     {{- end }}
   {{- with .Values.%[1]s.route.annotations }}
   annotations:

@@ -5,6 +5,17 @@ metadata:
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
     app.kubernetes.io/component: backend
+  {{- if .Values.backend.connectsTo }}
+  annotations:
+    app.openshift.io/connects-to: '[
+      {{- $first := true -}}
+      {{- range $item := .Values.backend.connectsTo -}}
+        {{- if not $first }},{{- end -}}
+        {"apiVersion":"apps/v1","kind":"Deployment","name":"{{ include "chart-model-multi.fullname" $ }}-{{ $item }}"}
+        {{- $first = false -}}
+      {{- end -}}
+    ]'
+  {{- end }}
 spec:
   {{- if not (kindIs "nil" .Values.backend.replicas) }}
   replicas: {{ .Values.backend.replicas }}
@@ -37,6 +48,21 @@ spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if and .Values.db .Values.db.enabled }}
+      initContainers:
+        - name: wait-for-db
+          image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+          command:
+            - "/bin/bash"
+            - "-c"
+            - |
+              echo "Waiting for database service {{ include "chart-model-multi.fullname" . }}-db to be ready..."
+              until curl -s -S --connect-timeout 2 {{ include "chart-model-multi.fullname" . }}-db:5432 2>&1 | grep -q 'Empty reply\|5432'; do
+                echo "Database is not yet reachable. Sleeping..."
+                sleep 2
+              done
+              echo "Database is up!"
       {{- end }}
       containers:
         - name: backend

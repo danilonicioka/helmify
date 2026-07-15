@@ -87,9 +87,6 @@ push-to-quay:
       artifacts: true
     - job: build-api
       artifacts: true
-  variables:
-    STORAGE_DRIVER: overlay
-    BUILDAH_ISOLATION: chroot
   script:
     - podman login $QUAY_URL -u $QUAY_USER -p $QUAY_PASS --tls-verify=false
     - podman build --tls-verify=false -f Containerfile -t "$IMAGE" .

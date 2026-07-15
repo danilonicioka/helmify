@@ -81,12 +81,13 @@ type WizardParams struct {
 
 // DeploymentParams represents configuration for a component deployment.
 type DeploymentParams struct {
-	Replicas *int              `json:"replicas"`
-	Image    ImageParams       `json:"image"`
-	Service  ServiceParams     `json:"service"`
-	Cm       map[string]string `json:"cm"`
-	Secret   map[string]string `json:"secret"`
-	Route    RouteParams       `json:"route"`
+	Replicas   *int              `json:"replicas"`
+	Image      ImageParams       `json:"image"`
+	Service    ServiceParams     `json:"service"`
+	Cm         map[string]string `json:"cm"`
+	Secret     map[string]string `json:"secret"`
+	Route      RouteParams       `json:"route"`
+	ConnectsTo []string          `json:"connectsTo"`
 }
 
 // ImageParams configures the container image.
@@ -232,6 +233,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		if depConfig.Route.Path != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "route", "path"}, depConfig.Route.Path)
+		}
+		if len(depConfig.ConnectsTo) > 0 {
+			_ = setYamlPath(&rootNode, []string{appKey, "connectsTo"}, depConfig.ConnectsTo)
 		}
 		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)
 		_ = setYamlPath(&rootNode, []string{appKey, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
@@ -386,6 +390,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 			if depConfig.Route.Path != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
+			}
+			if len(depConfig.ConnectsTo) > 0 {
+				_ = setYamlPath(&rootNode, []string{compName, "connectsTo"}, depConfig.ConnectsTo)
 			}
 			defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, compName, depConfig.Route.Path, true)
 			_ = setYamlPath(&rootNode, []string{compName, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
