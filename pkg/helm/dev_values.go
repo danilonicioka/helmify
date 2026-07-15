@@ -37,7 +37,23 @@ func generateDevValues(rootNode *yaml.Node) ([]byte, error) {
 		valNode := origMap.Content[i+1]
 
 		if keyNode.Value == "global" {
-			devMap.Content = append(devMap.Content, cloneYamlNode(keyNode), cloneYamlNode(valNode))
+			if valNode.Kind == yaml.MappingNode {
+				globalFiltered := yaml.Node{
+					Kind: yaml.MappingNode,
+				}
+				hasGlobalCm := false
+				for j := 0; j < len(valNode.Content); j += 2 {
+					subKey := valNode.Content[j]
+					subVal := valNode.Content[j+1]
+					if subKey.Value == "cm" {
+						globalFiltered.Content = append(globalFiltered.Content, cloneYamlNode(subKey), cloneYamlNode(subVal))
+						hasGlobalCm = true
+					}
+				}
+				if hasGlobalCm {
+					devMap.Content = append(devMap.Content, cloneYamlNode(keyNode), &globalFiltered)
+				}
+			}
 			continue
 		}
 
@@ -50,7 +66,7 @@ func generateDevValues(rootNode *yaml.Node) ([]byte, error) {
 			for j := 0; j < len(valNode.Content); j += 2 {
 				subKey := valNode.Content[j]
 				subVal := valNode.Content[j+1]
-				if subKey.Value == "cm" || subKey.Value == "secret" {
+				if subKey.Value == "cm" {
 					compMap.Content = append(compMap.Content, cloneYamlNode(subKey), cloneYamlNode(subVal))
 					hasContent = true
 				}

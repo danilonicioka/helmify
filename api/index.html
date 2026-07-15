@@ -972,6 +972,11 @@
                     </div>
                 </div>
 
+                <div class="form-group">
+                    <label for="compConnectsTo">Connects To (Workloads/components that this deployment connects to in OpenShift Topology View)</label>
+                    <input type="text" id="compConnectsTo" placeholder="e.g. db, redis (comma-separated)">
+                </div>
+
                 <!-- Routes Configurations -->
                 <div class="section-subtitle">Routes</div>
                 
@@ -1196,6 +1201,7 @@
                 },
                 cm: compData.cm || {},
                 secret: compData.secret || {},
+                connectsTo: compData.connectsTo || [],
                 route: {
                     path: (compData.route && compData.route.path) || '',
                     default: {
@@ -1231,6 +1237,7 @@
                     'JAVA_OPTS': '-XX:+UseG1GC -XX:+UseStringDeduplication'
                 },
                 secret: isFrontend ? {} : { 'DB_PASSWORD': 'vault-decrypted-secret-key-goes-here' },
+                connectsTo: isFrontend ? ['backend'] : [],
                 route: {
                     path: '',
                     default: { enabled: true, host: `chart-model-${name}.apps.ocp-hub.i.tj.pa.gov.br` },
@@ -1425,6 +1432,9 @@
             config.image.repository = document.getElementById('compRepo').value;
             config.image.tag = document.getElementById('compTag').value;
             config.route.path = document.getElementById('compRoutePath').value;
+            
+            const connectsToStr = document.getElementById('compConnectsTo').value.trim();
+            config.connectsTo = connectsToStr ? connectsToStr.split(',').map(s => s.trim()).filter(Boolean) : [];
 
             config.route.default.enabled = document.getElementById('routeDefaultEnabled').checked;
             config.route.default.host = '';
@@ -1465,6 +1475,7 @@
             document.getElementById('compRepo').value = config.image.repository;
             document.getElementById('compTag').value = config.image.tag || '';
             document.getElementById('compRoutePath').value = config.route.path || '';
+            document.getElementById('compConnectsTo').value = (config.connectsTo || []).join(', ');
 
             document.getElementById('routeDefaultEnabled').checked = config.route.default.enabled;
 

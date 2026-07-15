@@ -28,6 +28,9 @@ backend:
   # -- Number of replica pods.
   replicas: 0
 
+  # -- Connects workloads in OpenShift topology view (list of components)
+  connectsTo: []
+
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-backend
@@ -140,6 +143,9 @@ frontend:
   # 1. CORE WORKLOAD SETTINGS
   # ----------------------------------------------------------------------------
   replicas: 0
+
+  # -- Connects workloads in OpenShift topology view (list of components)
+  connectsTo: []
 
   image:
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-frontend

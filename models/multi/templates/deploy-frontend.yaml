@@ -5,6 +5,17 @@ metadata:
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
     app.kubernetes.io/component: frontend
+  {{- if .Values.frontend.connectsTo }}
+  annotations:
+    app.openshift.io/connects-to: '[
+      {{- $first := true -}}
+      {{- range $item := .Values.frontend.connectsTo -}}
+        {{- if not $first }},{{- end -}}
+        {"apiVersion":"apps/v1","kind":"Deployment","name":"{{ include "chart-model-multi.fullname" $ }}-{{ $item }}"}
+        {{- $first = false -}}
+      {{- end -}}
+    ]'
+  {{- end }}
 spec:
   {{- if not (kindIs "nil" .Values.frontend.replicas) }}
   replicas: {{ .Values.frontend.replicas }}
