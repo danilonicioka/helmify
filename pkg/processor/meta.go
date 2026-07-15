@@ -400,9 +400,9 @@ func NormalizeComponentName(comp string) string {
 		return "bff-emissor"
 	case "libra", "libra-service", "libraservice", "libra-service-2":
 		return "libra-service-2"
-	case "pje-service-1g", "pjeservice1g", "pje-service.1g", "pje-service1g", "pje1g", "pje-1g", "1g", "service-1g":
+	case "pje-service-1g", "pjeservice1g", "pje-service.1g", "pje-service1g", "pje1g", "pje-1g", "1g", "1-g", "pje-service-1-g", "service-1g":
 		return "pje-service-1g"
-	case "pje-service-2g", "pjeservice2g", "pje-service.2g", "pje-service2g", "pje2g", "pje-2g", "2g", "service-2g":
+	case "pje-service-2g", "pjeservice2g", "pje-service.2g", "pje-service2g", "pje2g", "pje-2g", "2g", "2-g", "pje-service-2-g", "service-2g":
 		return "pje-service-2g"
 	}
 	return comp
