@@ -55,9 +55,7 @@ metadata:
   name: {{ include "%[2]s.fullname" . }}%[4]s
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    {{- if %[5]s }}
-    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
-    {{- end }}
+    app.kubernetes.io/component: %[5]s
   {{- with .Values.%[1]s.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -75,7 +73,7 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "%[2]s.fullname" . }}%[4]s-svc
+    name: {{ include "%[2]s.fullname" . }}%[4]s
     weight: 100
   port:
     targetPort: {{ if and .Values.%[1]s.service .Values.%[1]s.service.ports }}{{ (index .Values.%[1]s.service.ports 0).name | default "http" }}{{ else }}http{{ end }}
@@ -90,9 +88,7 @@ metadata:
   name: {{ include "%[2]s.fullname" . }}%[4]s-int
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    {{- if %[5]s }}
-    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
-    {{- end }}
+    app.kubernetes.io/component: %[5]s
   {{- with .Values.%[1]s.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -110,7 +106,7 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "%[2]s.fullname" . }}%[4]s-svc
+    name: {{ include "%[2]s.fullname" . }}%[4]s
     weight: 100
   port:
     targetPort: {{ if and .Values.%[1]s.service .Values.%[1]s.service.ports }}{{ (index .Values.%[1]s.service.ports 0).name | default "http" }}{{ else }}http{{ end }}
@@ -125,9 +121,7 @@ metadata:
   name: {{ include "%[2]s.fullname" . }}%[4]s-ext
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    {{- if %[5]s }}
-    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
-    {{- end }}
+    app.kubernetes.io/component: %[5]s
   {{- with .Values.%[1]s.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -145,7 +139,7 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "%[2]s.fullname" . }}%[4]s-svc
+    name: {{ include "%[2]s.fullname" . }}%[4]s
     weight: 100
   port:
     targetPort: {{ if and .Values.%[1]s.service .Values.%[1]s.service.ports }}{{ (index .Values.%[1]s.service.ports 0).name | default "http" }}{{ else }}http{{ end }}
@@ -319,10 +313,10 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		// Generate component-specific Routes if GenerateAllTemplates is enabled
 		if o.GenerateAllTemplates {
 			nameSuffix := "-" + compKebab
-			isComponent := "true"
+			componentLabelVal := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", chartName, compKebab)
 			if compKebab == chartName {
 				nameSuffix = ""
-				isComponent = "false"
+				componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}", chartName)
 			}
 
 			routes := []struct {
@@ -342,7 +336,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 
 			for _, r := range routes {
 				if _, exists := files[r.filename]; !exists {
-					routeContent := fmt.Sprintf(r.template, key, chartName, compKebab, nameSuffix, isComponent)
+					routeContent := fmt.Sprintf(r.template, key, chartName, compKebab, nameSuffix, componentLabelVal)
 					err = os.WriteFile(filepath.Join(cDir, "templates", r.filename), []byte(routeContent), 0600)
 					if err != nil {
 						return fmt.Errorf("%w: unable to write %s", err, r.filename)

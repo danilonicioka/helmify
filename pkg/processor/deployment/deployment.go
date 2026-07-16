@@ -161,11 +161,21 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	}
 
 	// Strategy
-	err = unstructured.SetNestedField(values, map[string]interface{}{}, nameCamel, "strategy")
-	if err != nil {
-		return true, nil, err
+	existingStrategy, found, _ := unstructured.NestedMap(values, nameCamel, "strategy")
+	if !found || len(existingStrategy) == 0 {
+		defaultStrategy := map[string]interface{}{
+			"type": "RollingUpdate",
+			"rollingUpdate": map[string]interface{}{
+				"maxUnavailable": int64(0),
+				"maxSurge":       "25%",
+			},
+		}
+		err = unstructured.SetNestedField(values, defaultStrategy, nameCamel, "strategy")
+		if err != nil {
+			return true, nil, err
+		}
 	}
-	strategy = fmt.Sprintf("{{- with .Values.%s.strategy }}\n  strategy:\n    {{- toYaml . | nindent 4 }}\n  {{- end }}", nameCamel)
+	strategy = fmt.Sprintf("{{- with .Values.%s.strategy }}\n  strategy:\n    {{- toYaml . | nindent 4 }}\n{{- end }}", nameCamel)
 
 	spec = replaceSingleQuotes(spec)
 	spec = pod.ReplacePlaceholders(spec, appMeta.ChartName())
