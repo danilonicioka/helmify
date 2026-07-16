@@ -205,7 +205,8 @@ Helmify is designed to generate production-ready charts that follow TJPA standar
 - **Fail-Fast Health Probes**: Automated 3-tier health probes (Startup, Liveness, Readiness) with default TCP fallback for exposed ports.
 - **Global Configuration**: Centralized environment settings via `cm-global.yaml` and automatic `envFrom` injection.
 - **Deterministic Rollouts**: Automatic SHA256 checksum annotations on PodSpecs to trigger restarts when configurations change.
-- **Standardized Labels**: Consistent application of `component` and `part-of` labels across all resources.
+- **Deployment Strategy**: If a strategy is defined in the source manifest, it is preserved in the generated values. Otherwise, it defaults to a standardized `RollingUpdate` strategy (`maxUnavailable: 0`, `maxSurge: 25%`) to guarantee zero-downtime rolling updates.
+- **Standardized Labels**: Consistent application of `component` and `part-of` labels across all resources. The `app.kubernetes.io/component` label dynamically checks the deployment type: if it is a single-deployment chart (component name matches chart name), it renders simply as `{{ include "<chartName>.fullname" . }}` to avoid duplicate suffixes like `token-tjpa-token-tjpa`. Otherwise, it templates as `{{ include "<chartName>.fullname" . }}-<componentName>`.
 - **Dynamic Route Association**: Automatically associates OpenShift Routes with their target `Service` components by checking the target `spec.to.name`. If a Route targets a Service belonging to the same component, it maps to `.Values.<component>.route`. If it routes to a Service in a different component (additional routes), it is isolated under `.Values.<component>.routes.<routeName>` to prevent configuration overrides.
 
 ## Component Naming & Reference Resolution Engine
@@ -371,8 +372,39 @@ When components end with numeric suffixes (like `pje-service-1g` or `pje-service
   ```yaml
   app.kubernetes.io/component: {{ include "<chartName>.fullname" . }}-<componentName>
   ```
-- *Note*: Selectors and pod template specs remain static to ensure immutable selector matches are preserved at deploy-time.
+    - **Problem**: For charts that represent a *single* deployment, the component name equals the chart name. The previous templating added a duplicate suffix (e.g. `{{ include "token-tjpa.fullname" . }}-token-tjpa-secrets` → `token-tjpa-token-tjpa-secrets`).
+    - **Cause**: The label templating always appended `-{{ .Values.<component> }}` without checking if the component name already matches the chart name.
+    - **Solution**: Helmify now checks `if normalizedComp == appMeta.ChartName()` (or equivalent in routes) and, for single‑deployment charts, renders the component label simply as `{{ include "<chartName>.fullname" . }}`. For multi‑deployment charts the suffix is kept, ensuring distinct component labels.
+    - **Caution**: When a chart defines **multiple** components (e.g., `frontend`, `backend`), the component name will differ from the chart name, so the suffix **must** remain. The logic safely preserves the suffix only when the names match.
+    - **Implementation**: Updated `ProcessObjMeta` in `meta.go`, route templating in `route.go`, and the chart generation logic in `chart.go`. Also adjusted example Helm chart templates (`deploy.yaml`, `cm.yaml`, `secret.yaml`) to use generic `-cm` and `-secrets` names that Helmify resolves correctly.
 
 
-
-
+### 🕸️ Dynamic OpenShift Topology Mapping (`app.openshift.io/connects-to`)
+- **Problem**: Hardcoding the `app.openshift.io/connects-to` annotation in Service or Route templates limits flexibility and prevents workloads from dynamically declaring links to multiple deployments (e.g., API needing to connect to database/service workloads).
+- **Implementation**: Handle this dynamically in the `Deployment` templates by referencing a `.Values.<component>.connectsTo` array in `values.yaml` and mapping it to the `app.openshift.io/connects-to` JSON list annotation:
+  ```yaml
+    {{- if .Values.<component>.connectsTo }}
+    annotations:
+      app.openshift.io/connects-to: '[
+        {{- $first := true -}}
+        {{- range $item := .Values.<component>.connectsTo -}}
+          {{- if not $first }},{{- end -}}
+          {{- $kind := "Deployment" -}}
+          {{- $apiVersion := "apps/v1" -}}
+          {{- $nameSuffix := "" -}}
+          {{- if typeIs "string" $item -}}
+            {{- $nameSuffix = $item -}}
+          {{- else -}}
+            {{- $kind = default "Deployment" $item.kind -}}
+            {{- $apiVersion = default "apps/v1" $item.apiVersion -}}
+            {{- $nameSuffix = $item.name -}}
+          {{- end -}}
+          {"apiVersion":"{{ $apiVersion }}","kind":"{{ $kind }}","name":"{{ include "<chartName>.fullname" $ }}-{{ $nameSuffix }}"}
+          {{- $first = false -}}
+        {{- end -}}
+      ]'
+    {{- end }}
+  ```
+### 🗺️ Route Service Target Naming Bug (-svc suffix)
+- **Symptom**: When dynamically generating standard route templates (`route-default.yaml`, `route-int.yaml`, `route-ext.yaml`) using the `GenerateAllTemplates` option, the route manifests are generated referencing target services with a `-svc` suffix (e.g. `{{ include "fullname" . }}-svc`), causing routing errors in OpenShift since the actual generated service templates do not have the `-svc` suffix.
+- **Fix**: Removed the hardcoded `-svc` suffix from `compRouteDefaultTemplate`, `compRouteInternalTemplate`, and `compRouteExternalTemplate` inside [chart.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/helm/chart.go) to match the service templates.

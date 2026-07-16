@@ -159,16 +159,30 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	}
 
 	// Construct route templates matching models/multi/templates/route-*.yaml style but combined using ---
+	routeMetadataName := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", appMeta.ChartName(), name)
+	routeMetadataNameInt := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s-int", appMeta.ChartName(), name)
+	routeMetadataNameExt := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s-ext", appMeta.ChartName(), name)
+	componentLabelVal := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", appMeta.ChartName(), targetComponent)
+
+	if targetComponent == appMeta.ChartName() {
+		componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}", appMeta.ChartName())
+		if name == targetComponent {
+			routeMetadataName = fmt.Sprintf("{{ include \"%s.fullname\" . }}", appMeta.ChartName())
+			routeMetadataNameInt = fmt.Sprintf("{{ include \"%s.fullname\" . }}-int", appMeta.ChartName())
+			routeMetadataNameExt = fmt.Sprintf("{{ include \"%s.fullname\" . }}-ext", appMeta.ChartName())
+		}
+	}
+
 	data := fmt.Sprintf(`{{- if .Values.%[1]s -}}
 
 {{- if .Values.%[1]s.default.enabled }}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "%[2]s.fullname" . }}-%[3]s
+  name: %[3]s
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
+    app.kubernetes.io/component: %[6]s
   {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -198,10 +212,10 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "%[2]s.fullname" . }}-%[3]s-int
+  name: %[7]s
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
+    app.kubernetes.io/component: %[6]s
   {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -231,10 +245,10 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "%[2]s.fullname" . }}-%[3]s-ext
+  name: %[8]s
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: {{ include "%[2]s.fullname" . }}-%[3]s
+    app.kubernetes.io/component: %[6]s
   {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -259,7 +273,7 @@ spec:
   wildcardPolicy: None
 {{- end }}
 
-{{- end }}`, valuesPath, appMeta.ChartName(), name, templatedToService, targetPortValue)
+{{- end }}`, valuesPath, appMeta.ChartName(), routeMetadataName, templatedToService, targetPortValue, componentLabelVal, routeMetadataNameInt, routeMetadataNameExt)
 
 	return true, &routeResult{
 		name:   name,

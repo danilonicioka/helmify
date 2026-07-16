@@ -6,7 +6,9 @@ import (
 	"github.com/arttor/helmify/pkg/metadata"
 
 	"github.com/arttor/helmify/internal"
+	"github.com/arttor/helmify/pkg/processor"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 const (
@@ -123,12 +125,63 @@ spec:
 func Test_deployment_Process(t *testing.T) {
 	var testInstance deployment
 
-	t.Run("processed", func(t *testing.T) {
+	t.Run("processed_with_source_strategy", func(t *testing.T) {
 		obj := internal.GenerateObj(strDepl)
-		processed, _, err := testInstance.Process(&metadata.Service{}, obj)
+		processed, templ, err := testInstance.Process(&metadata.Service{}, obj)
 		assert.NoError(t, err)
 		assert.Equal(t, true, processed)
+		
+		vals := templ.Values()
+		compName := processor.GetComponent(obj)
+		t.Logf("COMP NAME: %q, VALS MAP: %#v", compName, vals)
+		strategy, found, err := unstructured.NestedMap(map[string]interface{}(vals), compName, "strategy")
+		assert.NoError(t, err)
+		assert.True(t, found)
+		assert.Equal(t, "Recreate", strategy["type"])
 	})
+
+	t.Run("processed_without_source_strategy_uses_default", func(t *testing.T) {
+		// strDepl without strategy
+		strDeplNoStrat := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: controller-manager
+  name: my-operator-controller-manager
+  namespace: my-operator-system
+spec:
+  revisionHistoryLimit: 5
+  replicas: 1
+  selector:
+    matchLabels:
+      control-plane: controller-manager
+  template:
+    metadata:
+      labels:
+        control-plane: controller-manager
+    spec:
+      containers:
+      - name: manager
+        image: controller:latest`
+		
+		obj := internal.GenerateObj(strDeplNoStrat)
+		processed, templ, err := testInstance.Process(&metadata.Service{}, obj)
+		assert.NoError(t, err)
+		assert.Equal(t, true, processed)
+		
+		vals := templ.Values()
+		compName := processor.GetComponent(obj)
+		strategy, found, err := unstructured.NestedMap(map[string]interface{}(vals), compName, "strategy")
+		assert.NoError(t, err)
+		assert.True(t, found)
+		assert.Equal(t, "RollingUpdate", strategy["type"])
+		
+		ruMap, ok := strategy["rollingUpdate"].(map[string]interface{})
+		assert.True(t, ok)
+		assert.Equal(t, int64(0), ruMap["maxUnavailable"])
+		assert.Equal(t, "25%", ruMap["maxSurge"])
+	})
+
 	t.Run("skipped", func(t *testing.T) {
 		obj := internal.TestNs
 		processed, _, err := testInstance.Process(&metadata.Service{}, obj)

@@ -45,7 +45,7 @@ func generateDevValues(rootNode *yaml.Node) ([]byte, error) {
 				for j := 0; j < len(valNode.Content); j += 2 {
 					subKey := valNode.Content[j]
 					subVal := valNode.Content[j+1]
-					if subKey.Value == "cm" {
+					if subKey.Value == "cm" || subKey.Value == "secret" || subVal.Kind == yaml.ScalarNode {
 						globalFiltered.Content = append(globalFiltered.Content, cloneYamlNode(subKey), cloneYamlNode(subVal))
 						hasGlobalCm = true
 					}
@@ -66,7 +66,7 @@ func generateDevValues(rootNode *yaml.Node) ([]byte, error) {
 			for j := 0; j < len(valNode.Content); j += 2 {
 				subKey := valNode.Content[j]
 				subVal := valNode.Content[j+1]
-				if subKey.Value == "cm" {
+				if subKey.Value == "cm" || subKey.Value == "secret" {
 					compMap.Content = append(compMap.Content, cloneYamlNode(subKey), cloneYamlNode(subVal))
 					hasContent = true
 				}

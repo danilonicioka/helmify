@@ -1,6 +1,7 @@
 package processor
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"regexp"
@@ -26,6 +27,28 @@ metadata:
 
 const annotationsTemplate = `  annotations:
     {{- toYaml .Values.%[1]s.%[2]s.annotations | nindent 4 }}`
+
+const connectsToTemplate = `  {{- if .Values.%[1]s.connectsTo }}
+  annotations:
+    app.openshift.io/connects-to: '[
+      {{- $first := true -}}
+      {{- range $item := .Values.%[1]s.connectsTo -}}
+        {{- if not $first }},{{- end -}}
+        {{- $kind := "Deployment" -}}
+        {{- $apiVersion := "apps/v1" -}}
+        {{- $nameSuffix := "" -}}
+        {{- if typeIs "string" $item -}}
+          {{- $nameSuffix = $item -}}
+        {{- else -}}
+          {{- $kind = default "Deployment" $item.kind -}}
+          {{- $apiVersion = default "apps/v1" $item.apiVersion -}}
+          {{- $nameSuffix = $item.name -}}
+        {{- end -}}
+        {"apiVersion":"{{ $apiVersion }}","kind":"{{ $kind }}","name":"{{ include "%[2]s.fullname" $ }}-{{ $nameSuffix }}"}
+        {{- $first = false -}}
+      {{- end -}}
+    ]'
+  {{- end }}`
 
 type MetaOpt interface {
 	apply(*options)
@@ -87,7 +110,11 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		var componentLabelTpl string
 		if comp, ok := l["app.kubernetes.io/component"]; ok && comp != "" {
 			normalizedComp := NormalizeComponentName(comp)
-			componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}-%s\n", appMeta.ChartName(), normalizedComp)
+			if normalizedComp == appMeta.ChartName() {
+				componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}\n", appMeta.ChartName())
+			} else {
+				componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}-%s\n", appMeta.ChartName(), normalizedComp)
+			}
 			delete(l, "app.kubernetes.io/component")
 		}
 
@@ -103,9 +130,13 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		}
 	}
 	if len(obj.GetAnnotations()) != 0 {
-		annotations, err = yamlformat.Marshal(map[string]interface{}{"annotations": obj.GetAnnotations()}, 2)
-		if err != nil {
-			return "", err
+		ann := obj.GetAnnotations()
+		delete(ann, "app.openshift.io/connects-to")
+		if len(ann) != 0 {
+			annotations, err = yamlformat.Marshal(map[string]interface{}{"annotations": ann}, 2)
+			if err != nil {
+				return "", err
+			}
 		}
 	}
 
@@ -122,20 +153,44 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		suffix = strings.ToLower(kind)
 	}
 
+	compName := strcase.ToLowerCamel(GetComponent(obj))
+	var connectsToAnn string
+	if kind == "Deployment" || kind == "StatefulSet" || kind == "DaemonSet" {
+		connectsTo := GetConnectsTo(appMeta, GetComponent(obj))
+		if len(connectsTo) > 0 {
+			if options.values != nil {
+				_ = unstructured.SetNestedSlice(options.values, connectsTo, compName, "connectsTo")
+			}
+			connectsToAnn = fmt.Sprintf(connectsToTemplate, compName, appMeta.ChartName())
+		}
+	}
+
 	var metaStr string
 	if options.values != nil && options.annotations {
 		name := strcase.ToLowerCamel(appMeta.TrimName(obj.GetName()))
 		kind := strcase.ToLowerCamel(kind)
 		valuesAnnotations := make(map[string]interface{})
 		for k, v := range obj.GetAnnotations() {
-			valuesAnnotations[k] = v
+			if k != "app.openshift.io/connects-to" {
+				valuesAnnotations[k] = v
+			}
 		}
-		err = unstructured.SetNestedField(options.values, valuesAnnotations, name, kind, "annotations")
-		if err != nil {
-			return "", err
+		if len(valuesAnnotations) > 0 {
+			err = unstructured.SetNestedField(options.values, valuesAnnotations, name, kind, "annotations")
+			if err != nil {
+				return "", err
+			}
+			annotations = fmt.Sprintf(annotationsTemplate, name, kind)
 		}
+	}
 
-		annotations = fmt.Sprintf(annotationsTemplate, name, kind)
+	if connectsToAnn != "" {
+		if annotations != "" {
+			trimmedConnectsTo := strings.Replace(connectsToAnn, "  annotations:", "", 1)
+			annotations = annotations + "\n" + trimmedConnectsTo
+		} else {
+			annotations = connectsToAnn
+		}
 	}
 
 	nameTpl := `{{ include "%[4]s.fullname" . }}-%[3]s`
@@ -148,6 +203,76 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 	metaStr = strings.Trim(metaStr, " \n")
 	metaStr = strings.ReplaceAll(metaStr, "\n\n", "\n")
 	return metaStr, nil
+}
+
+type connectsToTarget struct {
+	ApiVersion string `json:"apiVersion"`
+	Kind       string `json:"kind"`
+	Name       string `json:"name"`
+}
+
+func ParseConnectsTo(annotationVal string) []interface{} {
+	var result []interface{}
+	// Try parsing as JSON array
+	var targets []connectsToTarget
+	if err := json.Unmarshal([]byte(annotationVal), &targets); err == nil {
+		for _, t := range targets {
+			result = append(result, map[string]interface{}{
+				"apiVersion": t.ApiVersion,
+				"kind":       t.Kind,
+				"name":       t.Name,
+			})
+		}
+		return result
+	}
+	// Fallback to comma-separated names
+	parts := strings.Split(annotationVal, ",")
+	for _, p := range parts {
+		trimmed := strings.TrimSpace(p)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
+func GetConnectsTo(appMeta helmify.AppMetadata, comp string) []interface{} {
+	var results []interface{}
+	seen := make(map[string]struct{})
+	for _, obj := range appMeta.Objects() {
+		if GetComponent(obj) != comp {
+			continue
+		}
+		ann := obj.GetAnnotations()
+		if val, ok := ann["app.openshift.io/connects-to"]; ok && val != "" {
+			targets := ParseConnectsTo(val)
+			for _, t := range targets {
+				var key string
+				var targetObj interface{}
+				if str, ok := t.(string); ok {
+					trimmed := appMeta.TrimName(str)
+					key = "string:" + trimmed
+					targetObj = trimmed
+				} else if m, ok := t.(map[string]interface{}); ok {
+					name, _, _ := unstructured.NestedString(m, "name")
+					trimmed := appMeta.TrimName(name)
+					kind, _, _ := unstructured.NestedString(m, "kind")
+					apiVersion, _, _ := unstructured.NestedString(m, "apiVersion")
+					key = fmt.Sprintf("%s:%s:%s", apiVersion, kind, trimmed)
+					targetObj = map[string]interface{}{
+						"apiVersion": apiVersion,
+						"kind":       kind,
+						"name":       trimmed,
+					}
+				}
+				if _, exists := seen[key]; !exists {
+					seen[key] = struct{}{}
+					results = append(results, targetObj)
+				}
+			}
+		}
+	}
+	return results
 }
 
 // GetAppName tries to pull the native application name from standard K8s labels.
@@ -332,7 +457,7 @@ func TemplatedSecretName(appMeta helmify.AppMetadata, secretName string) string 
 		} else {
 			comp = GetComponent(secObj)
 		}
-		if comp == "" || comp == "chart" || comp == "secrets" {
+		if comp == "" || comp == "chart" || comp == "secrets" || comp == appMeta.ChartName() {
 			return fmt.Sprintf(`{{ include "%s.fullname" . }}-secrets`, appMeta.ChartName())
 		}
 		return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s-secrets`, appMeta.ChartName(), comp)
@@ -369,7 +494,7 @@ func TemplatedConfigMapName(appMeta helmify.AppMetadata, cmName string) string {
 		} else {
 			comp = GetComponent(cmObj)
 		}
-		if comp == "" || comp == "chart" {
+		if comp == "" || comp == "chart" || comp == appMeta.ChartName() {
 			return fmt.Sprintf(`{{ include "%s.fullname" . }}-cm`, appMeta.ChartName())
 		}
 		return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s-cm`, appMeta.ChartName(), comp)
