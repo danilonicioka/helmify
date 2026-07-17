@@ -664,7 +664,9 @@ func toNode(v interface{}, depth int, path string) *yaml.Node {
 		for _, k := range keys {
 			p := getPriority(k, val[k], depth)
 			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: k}
-			if depth == 1 && prevPriority != 0 && p != prevPriority {
+			if k == "runtime" {
+				keyNode.HeadComment = "OpenShift runtime logo for Topology View (e.g. nodejs, openjdk-11-el7)"
+			} else if depth == 1 && prevPriority != 0 && p != prevPriority {
 				keyNode.HeadComment = "helmify-newline"
 			}
 			
@@ -773,14 +775,15 @@ func getPriority(key string, value interface{}, depth int) int {
 
 	tjpaPriority := map[string]int{
 		"labels":                        1,
-		"image":                         2,
-		"repository":                    3,
-		"tag":                           4,
-		"pullPolicy":                    5,
-		"imagePullPolicy":               5,
-		"replicas":                      6,
-		"revisionHistoryLimit":          7,
-		"strategy":                      8,
+		"runtime":                       2,
+		"image":                         3,
+		"repository":                    4,
+		"tag":                           5,
+		"pullPolicy":                    6,
+		"imagePullPolicy":               6,
+		"replicas":                      7,
+		"revisionHistoryLimit":          8,
+		"strategy":                      9,
 		"startupProbe":                  9,
 		"livenessProbe":                 10,
 		"readinessProbe":                11,

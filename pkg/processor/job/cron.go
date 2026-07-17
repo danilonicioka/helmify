@@ -38,7 +38,8 @@ func (p cron) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 	if obj.GroupVersionKind() != cronGVC {
 		return false, nil, nil
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("cronjob"))
+	values := helmify.Values{}
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("cronjob"), processor.WithValues(values))
 	if err != nil {
 		return true, nil, err
 	}
@@ -58,8 +59,6 @@ func (p cron) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 	if !exists {
 		return true, nil, fmt.Errorf("no job spec presented")
 	}
-
-	values := helmify.Values{}
 
 	// process job spec params:
 	if spec.Schedule != "" {

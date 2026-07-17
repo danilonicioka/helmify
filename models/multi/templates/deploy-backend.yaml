@@ -3,31 +3,22 @@ kind: Deployment
 metadata:
   name: {{ include "chart-model-multi.fullname" . }}-backend
   labels:
-    {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: backend
-  {{- if .Values.backend.connectsTo }}
+    app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-backend
+    {{- include "chart-model-multi.backend.labels" . | nindent 4 }}
+    {{- with .Values.backend.labels }}
+    {{- range $key, $value := . }}
+    {{- if $value }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+  {{- with .Values.backend.annotations }}
   annotations:
-    app.openshift.io/connects-to: '[
-      {{- $first := true -}}
-      {{- range $item := .Values.backend.connectsTo -}}
-        {{- if not $first }},{{- end -}}
-        {{- $kind := "Deployment" -}}
-        {{- $apiVersion := "apps/v1" -}}
-        {{- $nameSuffix := "" -}}
-        {{- if typeIs "string" $item -}}
-          {{- $nameSuffix = $item -}}
-          {{- if eq $item "db" -}}
-            {{- $kind = "StatefulSet" -}}
-          {{- end -}}
-        {{- else -}}
-          {{- $kind = default "Deployment" $item.kind -}}
-          {{- $apiVersion = default "apps/v1" $item.apiVersion -}}
-          {{- $nameSuffix = $item.name -}}
-        {{- end -}}
-        {"apiVersion":"{{ $apiVersion }}","kind":"{{ $kind }}","name":"{{ include "chart-model-multi.fullname" $ }}-{{ $nameSuffix }}"}
-        {{- $first = false -}}
-      {{- end -}}
-    ]'
+    {{- range $key, $value := . }}
+    {{- if $value }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
   {{- end }}
 spec:
   {{- if not (kindIs "nil" .Values.backend.replicas) }}

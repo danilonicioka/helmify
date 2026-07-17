@@ -64,13 +64,9 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	if err != nil {
 		return true, nil, fmt.Errorf("%w: unable to cast to deployment", err)
 	}
-	suffix := processor.GetDynamicSuffix(appMeta, obj, "deploy")
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
-	if err != nil {
-		return true, nil, err
-	}
-
 	values := helmify.Values{}
+	suffix := processor.GetDynamicSuffix(appMeta, obj, "deploy")
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix), processor.WithValues(values))
 
 	name := processor.ObjectValueName(appMeta, obj)
 	compName := strcase.ToLowerCamel(processor.GetComponent(obj))

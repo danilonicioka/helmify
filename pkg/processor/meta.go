@@ -75,6 +75,20 @@ func WithAnnotations(values helmify.Values) MetaOpt {
 	}
 }
 
+type valuesOption struct {
+	values helmify.Values
+}
+
+func (v valuesOption) apply(opts *options) {
+	opts.values = v.values
+}
+
+func WithValues(values helmify.Values) MetaOpt {
+	return valuesOption{
+		values: values,
+	}
+}
+
 type suffixOption struct {
 	suffix string
 }
@@ -110,10 +124,10 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		var componentLabelTpl string
 		if comp, ok := l["app.kubernetes.io/component"]; ok && comp != "" {
 			normalizedComp := NormalizeComponentName(comp)
-			if normalizedComp == appMeta.ChartName() {
-				componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}\n", appMeta.ChartName())
-			} else {
+			if IsMultiDeployment(appMeta) {
 				componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}-%s\n", appMeta.ChartName(), normalizedComp)
+			} else {
+				componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}\n", appMeta.ChartName())
 			}
 			delete(l, "app.kubernetes.io/component")
 		}
@@ -129,6 +143,28 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 			labels = componentLabelTpl + labels
 		}
 	}
+	// Ensure extraLabels map with placeholder keys exists in values for the component
+	if options.values != nil {
+		compName := strcase.ToLowerCamel(GetComponent(obj))
+		extraMap, _, _ := unstructured.NestedMap(options.values, compName, "extraLabels")
+		if extraMap == nil {
+			placeholder := map[string]interface{}{
+				"runtime": "",
+				"runtimeNamespace": "",
+			}
+			_ = unstructured.SetNestedMap(options.values, placeholder, compName, "extraLabels")
+		}
+		// Ensure extraAnnotations map with placeholder keys exists in values for the component
+		extraAnnMap, _, _ := unstructured.NestedMap(options.values, compName, "extraAnnotations")
+		if extraAnnMap == nil {
+			placeholderAnn := map[string]interface{}{
+				"app.openshift.io/connects-to": "",
+				"console.alpha.openshift.io/overview-app-route": "",
+			}
+			_ = unstructured.SetNestedMap(options.values, placeholderAnn, compName, "extraAnnotations")
+		}
+	}
+
 	if len(obj.GetAnnotations()) != 0 {
 		ann := obj.GetAnnotations()
 		delete(ann, "app.openshift.io/connects-to")
@@ -163,6 +199,7 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 			}
 			connectsToAnn = fmt.Sprintf(connectsToTemplate, compName, appMeta.ChartName())
 		}
+		
 	}
 
 	var metaStr string
@@ -273,6 +310,18 @@ func GetConnectsTo(appMeta helmify.AppMetadata, comp string) []interface{} {
 		}
 	}
 	return results
+}
+
+func IsMultiDeployment(appMeta helmify.AppMetadata) bool {
+	seenWorkloads := make(map[string]struct{})
+	for _, obj := range appMeta.Objects() {
+		kind := obj.GetKind()
+		if kind == "Deployment" || kind == "StatefulSet" || kind == "DaemonSet" {
+			comp := GetComponent(obj)
+			seenWorkloads[comp] = struct{}{}
+		}
+	}
+	return len(seenWorkloads) > 1
 }
 
 // GetAppName tries to pull the native application name from standard K8s labels.

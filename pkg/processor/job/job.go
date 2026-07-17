@@ -39,7 +39,8 @@ func (p job) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	if obj.GroupVersionKind() != jobGVC {
 		return false, nil, nil
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("job"))
+	values := helmify.Values{}
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("job"), processor.WithValues(values))
 	if err != nil {
 		return true, nil, err
 	}
@@ -60,7 +61,6 @@ func (p job) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		return true, nil, fmt.Errorf("no job spec presented")
 	}
 
-	values := helmify.Values{}
 
 	// process job spec params:
 	if spec.BackoffLimit != nil {

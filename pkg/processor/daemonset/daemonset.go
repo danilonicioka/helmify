@@ -58,12 +58,11 @@ func (d daemonset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	if err != nil {
 		return true, nil, fmt.Errorf("%w: unable to cast to daemonset", err)
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("daemonset"))
+	values := helmify.Values{}
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("daemonset"), processor.WithValues(values))
 	if err != nil {
 		return true, nil, err
 	}
-
-	values := helmify.Values{}
 
 	name := processor.ObjectValueName(appMeta, obj)
 

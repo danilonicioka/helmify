@@ -45,8 +45,9 @@ func (d statefulset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unst
 	if err != nil {
 		return true, nil, fmt.Errorf("%w: unable to cast to StatefulSet", err)
 	}
+	values := helmify.Values{}
 	suffix := processor.GetDynamicSuffix(appMeta, obj, "statefulset")
-	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
+	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix), processor.WithValues(values))
 	if err != nil {
 		return true, nil, err
 	}
@@ -62,8 +63,6 @@ func (d statefulset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unst
 		return true, nil, err
 	}
 	delete((ssSpecMap["template"].(map[string]interface{}))["metadata"].(map[string]interface{}), "creationTimestamp")
-
-	values := helmify.Values{}
 
 	if ssSpec.ServiceName != "" {
 		servName := appMeta.TemplatedName(ssSpec.ServiceName)

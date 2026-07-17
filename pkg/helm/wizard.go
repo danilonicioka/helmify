@@ -88,6 +88,10 @@ type DeploymentParams struct {
 	Secret     map[string]string `json:"secret"`
 	Route      RouteParams       `json:"route"`
 	ConnectsTo []string          `json:"connectsTo"`
+	Runtime          string `json:"runtime"`
+	RuntimeNamespace string `json:"runtimeNamespace"`
+	RuntimeVersion   string `json:"runtimeVersion"`
+	OverviewAppRoute string `json:"overviewAppRoute"`
 }
 
 // ImageParams configures the container image.
@@ -236,6 +240,18 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		if len(depConfig.ConnectsTo) > 0 {
 			_ = setYamlPath(&rootNode, []string{appKey, "connectsTo"}, depConfig.ConnectsTo)
+		}
+		// Set extraLabels for runtime, runtime-namespace, and runtime-version (always present)
+		extra := map[string]interface{}{
+			"app.openshift.io/runtime":           depConfig.Runtime,
+			"app.openshift.io/runtime-namespace": depConfig.RuntimeNamespace,
+			"app.openshift.io/runtime-version":   depConfig.RuntimeVersion,
+		}
+		// Ensure the extraLabels map is set for the component, even if values are empty strings
+		_ = setYamlPath(&rootNode, []string{appKey, "extraLabels"}, extra)
+		// Add primary route annotation if supplied
+		if depConfig.OverviewAppRoute != "" {
+			_ = setYamlPath(&rootNode, []string{appKey, "annotations", "console.alpha.openshift.io/overview-app-route"}, depConfig.OverviewAppRoute)
 		}
 		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)
 		_ = setYamlPath(&rootNode, []string{appKey, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
@@ -392,7 +408,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
 			}
 			if len(depConfig.ConnectsTo) > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "connectsTo"}, depConfig.ConnectsTo)
+		
 			}
 			defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, compName, depConfig.Route.Path, true)
 			_ = setYamlPath(&rootNode, []string{compName, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
@@ -400,6 +416,20 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				defaultHost = depConfig.Route.Default.Host
 			}
 			_ = setYamlPath(&rootNode, []string{compName, "route", "default", "host"}, defaultHost)
+
+		    // Set extraLabels for runtime, runtime-namespace, and runtime-version (always present)
+    extra := map[string]interface{}{
+        "app.openshift.io/runtime": depConfig.Runtime,
+        "app.openshift.io/runtime-namespace": depConfig.RuntimeNamespace,
+        "app.openshift.io/runtime-version": depConfig.RuntimeVersion,
+    }
+    // Ensure the extraLabels map is set for the component, even if values are empty strings
+    _ = setYamlPath(&rootNode, []string{compName, "extraLabels"}, extra)
+    // Add primary route annotation if supplied
+    if depConfig.OverviewAppRoute != "" {
+        _ = setYamlPath(&rootNode, []string{compName, "annotations", "console.alpha.openshift.io/overview-app-route"}, depConfig.OverviewAppRoute)
+    }
+
 
 			_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
 			if depConfig.Route.Internal.Host != "" {
