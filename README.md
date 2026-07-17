@@ -1,5 +1,6 @@
 # Helmify
 [![CI](https://github.com/arttor/helmify/actions/workflows/ci.yml/badge.svg)](https://github.com/arttor/helmify/actions/workflows/ci.yml)
+[Documentation](docs/index.md)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/arttor/helmify)
 ![GitHub](https://img.shields.io/github/license/arttor/helmify)
 ![GitHub release (latest by date)](https://img.shields.io/github/v/release/arttor/helmify)
@@ -408,3 +409,4 @@ When components end with numeric suffixes (like `pje-service-1g` or `pje-service
 ### 🗺️ Route Service Target Naming Bug (-svc suffix)
 - **Symptom**: When dynamically generating standard route templates (`route-default.yaml`, `route-int.yaml`, `route-ext.yaml`) using the `GenerateAllTemplates` option, the route manifests are generated referencing target services with a `-svc` suffix (e.g. `{{ include "fullname" . }}-svc`), causing routing errors in OpenShift since the actual generated service templates do not have the `-svc` suffix.
 - **Fix**: Removed the hardcoded `-svc` suffix from `compRouteDefaultTemplate`, `compRouteInternalTemplate`, and `compRouteExternalTemplate` inside [chart.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/helm/chart.go) to match the service templates.
+- **Feature**: Helmify now ensures `extraAnnotations` and `extraLabels` placeholder maps exist in `values.yaml` for each component, enabling users to configure OpenShift topology annotations (`app.openshift.io/connects-to` and `console.alpha.openshift.io/overview-app-route`) without re‑generating the chart.
