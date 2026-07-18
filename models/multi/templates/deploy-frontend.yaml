@@ -3,10 +3,17 @@ kind: Deployment
 metadata:
   name: {{ include "chart-model-multi.fullname" . }}-frontend
   labels:
-    {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: frontend
-  {{- if .Values.frontend.connectsTo }}
+    {{- include "chart-model-multi.frontend.labels" . | nindent 4 }}
+  {{- if or .Values.frontend.annotations .Values.frontend.connectsTo }}
   annotations:
+    {{- with .Values.frontend.annotations }}
+    {{- range $key, $value := . }}
+    {{- if $value }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- if .Values.frontend.connectsTo }}
     app.openshift.io/connects-to: '[
       {{- $first := true -}}
       {{- range $item := .Values.frontend.connectsTo -}}
@@ -28,6 +35,7 @@ metadata:
         {{- $first = false -}}
       {{- end -}}
     ]'
+    {{- end }}
   {{- end }}
 spec:
   {{- if not (kindIs "nil" .Values.frontend.replicas) }}
@@ -40,7 +48,7 @@ spec:
   selector:
     matchLabels:
       {{- include "chart-model-multi.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: frontend
+      app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-frontend
   template:
     metadata:
       annotations:
@@ -56,7 +64,10 @@ spec:
         {{- end }}
       labels:
         {{- include "chart-model-multi.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: frontend
+        app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-frontend
+        {{- if .Values.frontend.runtime }}
+        app.openshift.io/runtime: {{ .Values.frontend.runtime | quote }}
+        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

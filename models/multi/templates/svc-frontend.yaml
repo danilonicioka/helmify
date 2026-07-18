@@ -3,8 +3,7 @@ kind: Service
 metadata:
   name: {{ include "chart-model-multi.fullname" . }}-frontend
   labels:
-    {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: frontend
+    {{- include "chart-model-multi.frontend.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.frontend.service.type }}
   ports:
@@ -14,4 +13,4 @@ spec:
       name: http
   selector:
     {{- include "chart-model-multi.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: frontend
+    app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-frontend

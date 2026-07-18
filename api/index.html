@@ -972,9 +972,15 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="compConnectsTo">Connects To (Workloads/components that this deployment connects to in OpenShift Topology View)</label>
-                    <input type="text" id="compConnectsTo" placeholder="e.g. db, redis (comma-separated)">
+                <div class="form-group row">
+                    <div>
+                        <label for="compConnectsTo">Connects To (Workloads/components that this deployment connects to in OpenShift Topology View)</label>
+                        <input type="text" id="compConnectsTo" placeholder="e.g. db, redis (comma-separated)">
+                    </div>
+                    <div>
+                        <label for="compRuntime">Technology Runtime (OpenShift Topology Icon)</label>
+                        <input type="text" id="compRuntime" placeholder="e.g. spring-boot, nodejs, python">
+                    </div>
                 </div>
 
                 <!-- Routes Configurations -->
@@ -1202,6 +1208,7 @@
                 cm: compData.cm || {},
                 secret: compData.secret || {},
                 connectsTo: compData.connectsTo || [],
+                runtime: compData.runtime || '',
                 route: {
                     path: (compData.route && compData.route.path) || '',
                     default: {
@@ -1238,6 +1245,7 @@
                 },
                 secret: isFrontend ? {} : { 'DB_PASSWORD': 'vault-decrypted-secret-key-goes-here' },
                 connectsTo: isFrontend ? ['backend'] : [],
+                runtime: isFrontend ? 'nodejs' : 'spring-boot',
                 route: {
                     path: '',
                     default: { enabled: true, host: `chart-model-${name}.apps.ocp-hub.i.tj.pa.gov.br` },
@@ -1435,6 +1443,7 @@
             
             const connectsToStr = document.getElementById('compConnectsTo').value.trim();
             config.connectsTo = connectsToStr ? connectsToStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+            config.runtime = document.getElementById('compRuntime').value.trim();
 
             config.route.default.enabled = document.getElementById('routeDefaultEnabled').checked;
             config.route.default.host = '';
@@ -1476,6 +1485,7 @@
             document.getElementById('compTag').value = config.image.tag || '';
             document.getElementById('compRoutePath').value = config.route.path || '';
             document.getElementById('compConnectsTo').value = (config.connectsTo || []).join(', ');
+            document.getElementById('compRuntime').value = config.runtime || '';
 
             document.getElementById('routeDefaultEnabled').checked = config.route.default.enabled;
 

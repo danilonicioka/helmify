@@ -4,8 +4,7 @@ kind: ConfigMap
 metadata:
   name: {{ include "chart-model-multi.fullname" . }}-backend-cm
   labels:
-    {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: backend
+    {{- include "chart-model-multi.backend.labels" . | nindent 4 }}
 data:
   {{- range $key, $val := .Values.backend.cm }}
   {{ $key }}: {{ $val | quote }}

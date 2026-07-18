@@ -241,6 +241,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if len(depConfig.ConnectsTo) > 0 {
 			_ = setYamlPath(&rootNode, []string{appKey, "connectsTo"}, depConfig.ConnectsTo)
 		}
+		if depConfig.Runtime != "" {
+			_ = setYamlPath(&rootNode, []string{appKey, "runtime"}, depConfig.Runtime)
+		}
 		// Set extraLabels for runtime, runtime-namespace, and runtime-version (always present)
 		extra := map[string]interface{}{
 			"app.openshift.io/runtime":           depConfig.Runtime,
@@ -408,7 +411,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
 			}
 			if len(depConfig.ConnectsTo) > 0 {
-		
+				_ = setYamlPath(&rootNode, []string{compName, "connectsTo"}, depConfig.ConnectsTo)
+			}
+			if depConfig.Runtime != "" {
+				_ = setYamlPath(&rootNode, []string{compName, "runtime"}, depConfig.Runtime)
 			}
 			defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, compName, depConfig.Route.Path, true)
 			_ = setYamlPath(&rootNode, []string{compName, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
