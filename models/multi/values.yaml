@@ -28,6 +28,14 @@ backend:
   # -- Number of replica pods.
   replicas: 0
 
+  # -- Custom labels to add to the deployment
+  labels: {}
+  #   app.openshift.io/runtime: spring-boot
+
+  # -- Custom annotations to add to the deployment
+  annotations: {}
+  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
   # -- Connects workloads in OpenShift topology view (list of components)
   connectsTo: []
 
@@ -143,6 +151,14 @@ frontend:
   # 1. CORE WORKLOAD SETTINGS
   # ----------------------------------------------------------------------------
   replicas: 0
+
+  # -- Custom labels to add to the deployment
+  labels: {}
+  #   app.openshift.io/runtime: nodejs
+
+  # -- Custom annotations to add to the deployment
+  annotations: {}
+  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"backend"}]'
 
   # -- Connects workloads in OpenShift topology view (list of components)
   connectsTo: []

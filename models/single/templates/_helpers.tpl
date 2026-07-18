@@ -40,6 +40,10 @@ helm.sh/chart: {{ include "chart-model-single.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- $app := index .Values .Chart.Name | default dict -}}
+{{- with $app.labels }}
+{{ toYaml . }}
+{{- end }}
 {{- end }}
 
 {{/*

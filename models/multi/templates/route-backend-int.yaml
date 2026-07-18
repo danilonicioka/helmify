@@ -4,8 +4,7 @@ kind: Route
 metadata:
   name: {{ include "chart-model-multi.fullname" . }}-backend-int
   labels:
-    {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: backend
+    {{- include "chart-model-multi.backend.labels" . | nindent 4 }}
   {{- with .Values.backend.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

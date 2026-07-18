@@ -33,6 +33,10 @@ This document collects essential concepts, best‑practice recommendations, and 
 - **Integration tip** – Keep a `kustomization.yaml` alongside the generated Helm chart for easy diffing between raw manifests and templated output.
 
 ## OpenShift Specifics
+- **OpenShift Specifics** – Helmify templates support native OpenShift topology visualization:
+  - **Runtime Icons**: Set `labels` to customize the technology runtime icon (e.g., `app.openshift.io/runtime: spring-boot`, `nodejs`, `python`, `django`).
+  - **Visual Connections**: Set `connectsTo` to configure arrow connections to other deployments/services/statefulsets (e.g., `connectsTo: ["db"]`).
+  - Commented examples for these parameters are provided inside `values.yaml` under each workload component block.
 - **Routes** – Helmify automatically maps OpenShift `Route` objects to the correct component values. Verify that `spec.to.name` points to an existing `Service`.
 - **SCC & Non‑Root** – OpenShift restricts containers from running as root unless the `anyuid` SCC is explicitly granted. Prefer non‑root images from Red Hat registry (`registry.access.redhat.com`).
 - **Image Registry** – Use the corporate registry `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br`. If you need an image from Docker Hub, mirror it into the private registry and reference the mirrored tag.

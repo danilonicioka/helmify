@@ -19,6 +19,10 @@ This document explains **how to add or modify Helm template files** in the `mode
   app.kubernetes.io/component: {{ include "{{ .Chart.Name }}.fullname" . }}-{{ .Values.component }}
   app.kubernetes.io/part-of: {{ .Release.Namespace }}
   ```
+- **Component-Specific Helpers**: For multi-deployment charts, prefer helper-based labels for components. E.g., `chart-model-multi.backend.labels` and `chart-model-multi.frontend.labels` are defined in `_helpers.tpl` to consolidate:
+  - Base Helm labels (`chart-model-multi.labels`)
+  - The component identifier label (`app.kubernetes.io/component`)
+  - Any user-provided extra labels (e.g. `Values.backend.labels` or `Values.frontend.labels`)
 - For OpenShift `Route` objects, use the **dynamic route association** pattern described in the *Helm, Kustomize & OpenShift Guide*.
 - Keep **extraLabels** and **extraAnnotations** placeholders in each template so users can extend them via `values.yaml`.
 

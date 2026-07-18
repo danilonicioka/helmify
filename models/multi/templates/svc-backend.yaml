@@ -3,8 +3,7 @@ kind: Service
 metadata:
   name: {{ include "chart-model-multi.fullname" . }}-backend
   labels:
-    {{- include "chart-model-multi.labels" . | nindent 4 }}
-    app.kubernetes.io/component: backend
+    {{- include "chart-model-multi.backend.labels" . | nindent 4 }}
 spec:
   type: {{ .Values.backend.service.type }}
   ports:
@@ -14,4 +13,4 @@ spec:
       name: http
   selector:
     {{- include "chart-model-multi.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: backend
+    app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-backend

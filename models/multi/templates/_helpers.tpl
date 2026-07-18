@@ -64,3 +64,26 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
+{{/*
+Backend common labels
+*/}}
+{{- define "chart-model-multi.backend.labels" -}}
+{{ include "chart-model-multi.labels" . }}
+app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-backend
+{{- with .Values.backend.labels }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Frontend common labels
+*/}}
+{{- define "chart-model-multi.frontend.labels" -}}
+{{ include "chart-model-multi.labels" . }}
+app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-frontend
+{{- with .Values.frontend.labels }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+
+
