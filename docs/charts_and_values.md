@@ -124,6 +124,25 @@ serviceBackend:
 ```
 > **Warning**: Helm or Kubernetes parsers may expand anchors and discard them upon saving, removing them from rewritten manifests.
 
+## Route Manifests
+
+Helmify generates **individual route manifests** for each route type (default, internal, external) as separate files:
+
+- `templates/route-default.yaml`
+- `templates/route-int.yaml`
+- `templates/route-ext.yaml`
+
+These files contain a **single `Route` resource** each, making it easy to manage, review, or apply them individually (e.g., via `kubectl apply -f route-default.yaml`).
+
+In this chart, **only the individual route manifests** (`templates/route-default.yaml`, `templates/route-int.yaml`, `templates/route-ext.yaml`) are generated. There is no combined route file, simplifying the chart structure and making each route explicit.
+
+
+### Why both?
+- **Granular files** give developers clear, isolated resources for each route, simplifying debugging and version control.
+- **Combined file** provides a convenient one‑stop‑shop for users who prefer a single `helm template` output, especially when generating CI/CD artifacts.
+
+Both approaches are fully supported by Helm; you can choose the one that fits your workflow. The documentation now reflects this dual‑manifest strategy.
+
 ## values‑ca.yaml (Developer‑friendly Values)
 
 `values‑ca.yaml` is an **automatically generated** file that contains only the configuration elements relevant for developers when working locally:
