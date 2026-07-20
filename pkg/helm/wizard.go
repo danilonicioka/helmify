@@ -23,16 +23,6 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 	tw := tar.NewWriter(gw)
 	defer tw.Close()
 
-	// Ensure the chart/templates directory entry exists first to avoid "File exists" errors.
-	dirHeader := &tar.Header{
-		Name:     "chart/templates/",
-		Mode:     0755,
-		Typeflag: tar.TypeDir,
-	}
-	if err := tw.WriteHeader(dirHeader); err != nil {
-		return fmt.Errorf("writing chart/templates dir: %w", err)
-	}
-
 	// Collect and sort file names for deterministic output
 	var names []string
 	for n := range files {
