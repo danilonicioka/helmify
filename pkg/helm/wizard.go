@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strings"
+	"sort"
 
 	"github.com/arttor/helmify"
 	"github.com/arttor/helmify/pkg/processor"
@@ -22,23 +23,72 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 	tw := tar.NewWriter(gw)
 	defer tw.Close()
 
-	for name, content := range files {
-		var path string
+	// Ensure the chart/templates directory entry exists first to avoid "File exists" errors.
+	dirHeader := &tar.Header{
+		Name:     "chart/templates/",
+		Mode:     0755,
+		Typeflag: tar.TypeDir,
+	}
+	if err := tw.WriteHeader(dirHeader); err != nil {
+		return fmt.Errorf("writing chart/templates dir: %w", err)
+	}
+
+	// Collect and sort file names for deterministic output
+	var names []string
+	for n := range files {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+
+	// Track directories that have been written to avoid duplicates
+	writtenDirs := make(map[string]bool)
+
+var ensureDir func(string) error
+ensureDir = func(dir string) error {
+    if dir == "" || writtenDirs[dir] {
+        return nil
+    }
+    // Recursively ensure parent directories
+    parent := filepath.Dir(dir)
+    if parent != "." && parent != dir {
+        if err := ensureDir(parent); err != nil {
+            return err
+        }
+    }
+    header := &tar.Header{Name: dir + "/", Mode: 0755, Typeflag: tar.TypeDir}
+    if err := tw.WriteHeader(header); err != nil {
+        return fmt.Errorf("writing dir %s: %w", dir, err)
+    }
+    writtenDirs[dir] = true
+    return nil
+}
+
+	for _, name := range names {
+		content := files[name]
+		var pathStr string
 		if name == ".gitlab-ci.yml" || name == "README.md" {
-			path = name
+			pathStr = name
 		} else {
-			path = filepath.Join("chart", name)
+			pathStr = filepath.Join("chart", name)
 		}
+
+		// Ensure directory for this file exists
+		if dir := filepath.Dir(pathStr); dir != "." && dir != "" {
+			if err := ensureDir(dir); err != nil {
+				return err
+			}
+		}
+
 		header := &tar.Header{
-			Name: path,
+			Name: pathStr,
 			Mode: 0644,
 			Size: int64(len(content)),
 		}
 		if err := tw.WriteHeader(header); err != nil {
-			return err
+			return fmt.Errorf("writing %s: %w", pathStr, err)
 		}
 		if _, err := tw.Write(content); err != nil {
-			return err
+			return fmt.Errorf("writing %s body: %w", pathStr, err)
 		}
 	}
 	return nil
