@@ -576,7 +576,13 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 		return nil, err
 	}
 
-	return buf.Bytes(), nil
+	resStr := buf.String()
+	resStr = strings.ReplaceAll(resStr, oldChartName, chartName)
+	resStr = strings.ReplaceAll(resStr, "chart-model-single", chartName)
+	resStr = strings.ReplaceAll(resStr, "chart-model-multi", chartName)
+	resStr = strings.ReplaceAll(resStr, "chart-model", chartName)
+
+	return []byte(resStr), nil
 }
 
 func mergeYamlNode(dest *yaml.Node, src interface{}, path []string) error {
