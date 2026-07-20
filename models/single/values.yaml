@@ -12,6 +12,12 @@ kubernetesClusterDomain: cluster.local
 nameOverride: ""
 fullnameOverride: ""
 
+# -- Global configuration shared across all deployments in the chart.
+global:
+  cm:
+    TZ: "America/Belem"
+  secret: {}
+
 # ==============================================================================
 # II. APPLICATION DEPLOYMENT CONFIGURATION (chart-model-single)
 # ==============================================================================
