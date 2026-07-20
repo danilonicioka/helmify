@@ -1,9 +1,7 @@
 package helm
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -247,29 +245,5 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 
 // ToTarGz bundles the captured files into a tar.gz stream.
 func (m *MemoryOutput) ToTarGz(chartName string, w io.Writer) error {
-	gw := gzip.NewWriter(w)
-	defer gw.Close()
-	tw := tar.NewWriter(gw)
-	defer tw.Close()
-
-	for name, content := range m.Files {
-		var path string
-		if name == ".gitlab-ci.yml" || name == "README.md" {
-			path = name
-		} else {
-			path = filepath.Join("chart", name)
-		}
-		header := &tar.Header{
-			Name: path,
-			Mode: 0644,
-			Size: int64(len(content)),
-		}
-		if err := tw.WriteHeader(header); err != nil {
-			return err
-		}
-		if _, err := tw.Write(content); err != nil {
-			return err
-		}
-	}
-	return nil
+	return WriteTarGz(m.Files, chartName, w)
 }
