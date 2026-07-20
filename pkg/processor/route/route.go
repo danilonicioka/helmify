@@ -162,14 +162,16 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	routeMetadataName := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", appMeta.ChartName(), name)
 	routeMetadataNameInt := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s-int", appMeta.ChartName(), name)
 	routeMetadataNameExt := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s-ext", appMeta.ChartName(), name)
+
 	// Component label generation: for multi-deployment projects include component suffix, otherwise just chart fullname.
 	var componentLabelVal string
 	normalizedComp := processor.NormalizeComponentName(targetComponent)
-	if processor.IsMultiDeployment(appMeta) {
+	if processor.IsMultiDeployment(appMeta) && normalizedComp != "" {
 		componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", appMeta.ChartName(), normalizedComp)
 	} else {
 		componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}", appMeta.ChartName())
 	}
+
 	// Preserve original logic for metadata names.
 	if targetComponent == appMeta.ChartName() {
 		if name == targetComponent {
@@ -188,7 +190,7 @@ metadata:
   name: %[3]s
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: %[6]s
+
   {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -221,7 +223,7 @@ metadata:
   name: %[7]s
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: %[6]s
+
   {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -254,7 +256,7 @@ metadata:
   name: %[8]s
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: %[6]s
+
   {{- with .Values.%[1]s.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
