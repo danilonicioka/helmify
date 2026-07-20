@@ -33,27 +33,30 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 	// Track directories that have been written to avoid duplicates
 	writtenDirs := make(map[string]bool)
 
-var ensureDir func(string) error
-ensureDir = func(dir string) error {
-    if dir == "" || writtenDirs[dir] {
-        return nil
-    }
-    // Recursively ensure parent directories
-    parent := filepath.Dir(dir)
-    if parent != "." && parent != dir {
-        if err := ensureDir(parent); err != nil {
-            return err
-        }
-    }
-    header := &tar.Header{Name: dir + "/", Mode: 0755, Typeflag: tar.TypeDir}
-    if err := tw.WriteHeader(header); err != nil {
-        return fmt.Errorf("writing dir %s: %w", dir, err)
-    }
-    writtenDirs[dir] = true
-    return nil
-}
+	var ensureDir func(string) error
+	ensureDir = func(dir string) error {
+		if dir == "" || writtenDirs[dir] {
+			return nil
+		}
+		// Recursively ensure parent directories
+		parent := filepath.Dir(dir)
+		if parent != "." && parent != dir {
+			if err := ensureDir(parent); err != nil {
+				return err
+			}
+		}
+		header := &tar.Header{Name: dir + "/", Mode: 0755, Typeflag: tar.TypeDir}
+		if err := tw.WriteHeader(header); err != nil {
+			return fmt.Errorf("writing dir %s: %w", dir, err)
+		}
+		writtenDirs[dir] = true
+		return nil
+	}
 
 	for _, name := range names {
+		if name == "templates" {
+			continue
+		}
 		content := files[name]
 		var pathStr string
 		if name == ".gitlab-ci.yml" || name == "README.md" {
