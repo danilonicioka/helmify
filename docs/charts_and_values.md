@@ -123,3 +123,31 @@ serviceBackend:
   <<: *defaults
 ```
 > **Warning**: Helm or Kubernetes parsers may expand anchors and discard them upon saving, removing them from rewritten manifests.
+
+## values‑ca.yaml (Developer‑friendly Values)
+
+`values‑ca.yaml` is an **automatically generated** file that contains only the configuration elements relevant for developers when working locally:
+
+- The **full `global` block** (including any scalar entries such as `TZ` and the `cm`/`secret` sub‑maps) is preserved, so developers can see and override cluster‑wide settings.
+- For each component deployment, only the **`cm` (ConfigMap) and `secret`** sections are kept. All infrastructure‑only fields like `replicas`, `image`, `repository`, `tag`, `port`, etc., are omitted because they are managed by CI/CD pipelines and should not be edited directly by developers.
+- The resulting file is intended to be **checked‑in** or **mounted** into a local development container to simplify configuration management without exposing internal deployment details.
+
+### Example
+```yaml
+global:
+  TZ: America/Sao_Paulo
+  cm:
+    LOG_LEVEL: debug
+  secret:
+    DATABASE_PASSWORD: "s3cr3t"
+
+my‑app:
+  cm:
+    VAR_A: VAL_A
+  secret:
+    SECRET_B: VAL_B
+```
+
+In the example above, the `global` block retains the `TZ` scalar and the `cm`/`secret` maps, while the component `my‑app` only includes its `cm` and `secret` entries. Fields such as `replicas`, `repository`, `tag`, and `port` are intentionally omitted.
+
+Developers can modify this file to adjust runtime configuration, and the Helm chart generation process will merge it with the full `values.yaml` during deployment.
