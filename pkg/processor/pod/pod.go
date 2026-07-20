@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/arttor/helmify/pkg/cluster"
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/arttor/helmify/pkg/processor"
 	securityContext "github.com/arttor/helmify/pkg/processor/security-context"
@@ -367,10 +366,6 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 	// We clear envFrom as it will be handled by the standardized block injected in processContainers
 	c.EnvFrom = nil
 
-	c.Env = append(c.Env, corev1.EnvVar{
-		Name:  cluster.DomainEnv,
-		Value: fmt.Sprintf("{{ quote .Values.%s }}", cluster.DomainKey),
-	})
 	// Zero-Default initialization handled below
 
 	// Initialize as empty object {} per Zero-Default standard
