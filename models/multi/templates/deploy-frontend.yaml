@@ -4,15 +4,9 @@ metadata:
   name: {{ include "chart-model-multi.fullname" . }}-frontend
   labels:
     {{- include "chart-model-multi.frontend.labels" . | nindent 4 }}
-  {{- if or .Values.frontend.annotations .Values.frontend.connectsTo }}
+  {{- $annotations := include "chart-model-multi.frontend.annotations" . }}
+  {{- if or .Values.frontend.connectsTo $annotations }}
   annotations:
-    {{- with .Values.frontend.annotations }}
-    {{- range $key, $value := . }}
-    {{- if $value }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
-    {{- end }}
-    {{- end }}
     {{- if .Values.frontend.connectsTo }}
     app.openshift.io/connects-to: '[
       {{- $first := true -}}
@@ -36,6 +30,9 @@ metadata:
       {{- end -}}
     ]'
     {{- end }}
+    {{- if $annotations }}
+    {{- $annotations | nindent 4 }}
+    {{- end }}
   {{- end }}
 spec:
   {{- if not (kindIs "nil" .Values.frontend.replicas) }}
@@ -47,8 +44,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "chart-model-multi.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-frontend
+      {{- include "chart-model-multi.frontend.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -63,11 +59,7 @@ spec:
         checksum/secret: '{{ include (print $.Template.BasePath "/secret-frontend.yaml") . | sha256sum }}'
         {{- end }}
       labels:
-        {{- include "chart-model-multi.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-frontend
-        {{- if .Values.frontend.runtime }}
-        app.openshift.io/runtime: {{ .Values.frontend.runtime | quote }}
-        {{- end }}
+        {{- include "chart-model-multi.frontend.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

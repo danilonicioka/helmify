@@ -68,3 +68,14 @@ Create the name of the service account to use
 {{- end }}
 {{- end }}
 
+{{/*
+Annotations helper for single model
+*/}}
+{{- define "chart-model-single.annotations" -}}
+{{- $app := index .Values .Chart.Name | default dict -}}
+{{- with $app.annotations }}
+{{- toYaml . }}
+{{- end }}
+{{- end }}
+
+

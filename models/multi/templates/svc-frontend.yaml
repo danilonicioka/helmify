@@ -12,5 +12,4 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "chart-model-multi.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-frontend
+    {{- include "chart-model-multi.frontend.selectorLabels" . | nindent 4 }}
