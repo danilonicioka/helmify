@@ -694,6 +694,10 @@ func toNode(v interface{}, depth int, path string) *yaml.Node {
 						keyNode.FootComment = "livenessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 20\n  failureThreshold: 3"
 					case "readinessProbe":
 						keyNode.FootComment = "readinessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  successThreshold: 2\n  failureThreshold: 3"
+					case "labels":
+						keyNode.FootComment = "  # app.openshift.io/runtime: openjdk"
+					case "annotations":
+						keyNode.FootComment = "  # app.openshift.io/connects-to: '[{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"name\":\"db\"}]'"
 					}
 				}
 			}

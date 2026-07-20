@@ -65,7 +65,7 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Backend common labels
+Backend-specific labels
 */}}
 {{- define "chart-model-multi.backend.labels" -}}
 {{ include "chart-model-multi.labels" . }}
@@ -76,7 +76,16 @@ app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-backen
 {{- end }}
 
 {{/*
-Frontend common labels
+Backend-specific annotations
+*/}}
+{{- define "chart-model-multi.backend.annotations" -}}
+{{- with .Values.backend.annotations }}
+{{- toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Frontend-specific labels
 */}}
 {{- define "chart-model-multi.frontend.labels" -}}
 {{ include "chart-model-multi.labels" . }}
@@ -85,5 +94,31 @@ app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-fronte
 {{ toYaml . }}
 {{- end }}
 {{- end }}
+
+{{/*
+Frontend-specific annotations
+*/}}
+{{- define "chart-model-multi.frontend.annotations" -}}
+{{- with .Values.frontend.annotations }}
+{{- toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Backend-specific selector labels
+*/}}
+{{- define "chart-model-multi.backend.selectorLabels" -}}
+{{ include "chart-model-multi.selectorLabels" . }}
+app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-backend
+{{- end }}
+
+{{/*
+Frontend-specific selector labels
+*/}}
+{{- define "chart-model-multi.frontend.selectorLabels" -}}
+{{ include "chart-model-multi.selectorLabels" . }}
+app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-frontend
+{{- end }}
+
 
 

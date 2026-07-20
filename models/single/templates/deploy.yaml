@@ -5,38 +5,10 @@ metadata:
   name: {{ include "chart-model-single.fullname" . }}
   labels:
     {{- include "chart-model-single.labels" . | nindent 4 }}
-  {{- if or $app.annotations $app.connectsTo }}
+  {{- $annotations := include "chart-model-single.annotations" . }}
+  {{- if $annotations }}
   annotations:
-    {{- with $app.annotations }}
-    {{- range $key, $value := . }}
-    {{- if $value }}
-    {{ $key }}: {{ $value | quote }}
-    {{- end }}
-    {{- end }}
-    {{- end }}
-    {{- if $app.connectsTo }}
-    app.openshift.io/connects-to: '[
-      {{- $first := true -}}
-      {{- range $item := $app.connectsTo -}}
-        {{- if not $first }},{{- end -}}
-        {{- $kind := "Deployment" -}}
-        {{- $apiVersion := "apps/v1" -}}
-        {{- $nameSuffix := "" -}}
-        {{- if typeIs "string" $item -}}
-          {{- $nameSuffix = $item -}}
-          {{- if eq $item "db" -}}
-            {{- $kind = "StatefulSet" -}}
-          {{- end -}}
-        {{- else -}}
-          {{- $kind = default "Deployment" $item.kind -}}
-          {{- $apiVersion = default "apps/v1" $item.apiVersion -}}
-          {{- $nameSuffix = $item.name -}}
-        {{- end -}}
-        {"apiVersion":"{{ $apiVersion }}","kind":"{{ $kind }}","name":"{{ include "chart-model-single.fullname" $ }}-{{ $nameSuffix }}"}
-        {{- $first = false -}}
-      {{- end -}}
-    ]'
-    {{- end }}
+    {{- $annotations | nindent 4 }}
   {{- end }}
 spec:
   {{- if not (kindIs "nil" $app.replicas) }}
@@ -64,9 +36,6 @@ spec:
         {{- end }}
       labels:
         {{- include "chart-model-single.selectorLabels" . | nindent 8 }}
-        {{- if $app.runtime }}
-        app.openshift.io/runtime: {{ $app.runtime | quote }}
-        {{- end }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

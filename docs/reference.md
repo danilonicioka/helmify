@@ -1,31 +1,54 @@
-# Reference Tables
+# Reference Guide and Conventions
 
-## Image Registries Used by Helmify
+This guide contains general naming conventions, YAML formatting rules, security references, and version compatibility tables for Helm and Helmify.
+
+---
+
+## 1. Naming & Versioning Conventions
+
+### Chart Names
+Chart names must follow DNS-1123 label conventions:
+- Only lowercase letters, numbers, and dashes (`-`) are allowed.
+- Must start and end with a lowercase letter or number.
+- Cannot exceed 63 characters.
+
+*Examples of invalid names*: `MyChart` (uppercase), `my_chart` (underscore), `my.chart` (dot), `mychart-` (trailing dash).
+
+### Version Numbers
+- **SemVer 2** must be used to represent chart and application version numbers.
+- When SemVer versions are stored in Kubernetes labels, the `+` character must be replaced with `_`, as labels do not allow the `+` character.
+
+---
+
+## 2. Formatting & Design Conventions
+
+- **YAML Indentation**: Always use two spaces (and never tabs) for indentation.
+- **Namespace Property**: Avoid defining the `namespace` property in the `metadata` section of your chart templates. The namespace should be dynamically specified during deployment using the `--namespace` command-line flag or the release target.
+
+---
+
+## 3. Reference Tables
+
+### Image Registries
 | Registry | Type | Usage |
 |----------|------|-------|
-| `registry.access.redhat.com` | Red Hat official registry | Base images for container builds (e.g., `ubi8`)
-| `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br` | Private Quay registry | Mirror for any external images required by the project |
+| `registry.access.redhat.com` | Red Hat Official Registry | Base images for container builds (e.g. `ubi-minimal`) |
+| `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br` | Private Quay Registry | Mirror for any external Docker Hub images to bypass rate limiting |
 
-## Security Context Constraints (SCC) for Helmify
-| SCC Name | Reason | Recommended Settings |
-|----------|--------|----------------------|
-| `restricted` | Default for non‑root pods | `runAsUser: 1000`, `runAsGroup: 1000`, `allowPrivilegeEscalation: false`, `capabilities: {drop: ["ALL"]}` |
-| `anyuid` (optional) | When a container must run as root (rare) | Only grant to specific service accounts; avoid unless absolutely required |
+### Security Context Constraints (SCC)
+| SCC Name | Scope | Recommended Settings |
+|----------|-------|----------------------|
+| `restricted` | Default non-root workloads | `runAsNonRoot: true`, `allowPrivilegeEscalation: false`, `capabilities: {drop: ["ALL"]}` |
+| `anyuid` | Privilege escalation (Avoid) | Avoid unless required for specialized workloads. Needs cluster admin permission. |
 
-## Helm Version Compatibility
-| Helm Version | Supported by Helmify |
-|--------------|----------------------|
-| `>= v3.6.0` | Minimum required (as indicated in README) |
-| `v3.8.x` | Fully tested (CI runs against this version) |
-| `v3.9.x` | Verified – no breaking changes |
+### Helm Version Compatibility
+- Minimum required Helm version: `>= v3.6.0`
+- Fully verified and tested: `v3.8.x` and `v3.9.x`
 
-## Chart Structure Conventions (Helmify Specific)
-| Directory/File | Description |
-|----------------|-------------|
-| `Chart.yaml` | Chart metadata – name, version, appVersion, keywords |
-| `values.yaml` | User‑configurable defaults; global values under `global:` and component‑specific values under their own keys |
-| `templates/` | Generated templates derived from files in `models/`; never edit directly – modify source in `models/` instead |
-| `templates/_helpers.tpl` | Helper functions used across templates (e.g., fullname, labels) |
-| `charts/` | Optional sub‑charts – keep minimal to avoid complexity |
-
-These tables capture the core project‑specific conventions and configurations that developers should reference when extending Helmify or creating new Helm charts.
+### Chart Directory Conventions (Helmify Specific)
+| Path | Purpose |
+|------|---------|
+| `Chart.yaml` | Chart metadata |
+| `values.yaml` | User-configurable values defaults |
+| `templates/` | Output templates (derived from raw input files or base models) |
+| `templates/_helpers.tpl` | Shared naming/label helpers |
