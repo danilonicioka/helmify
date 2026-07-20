@@ -153,12 +153,6 @@ func Test_pod_Process(t *testing.T) {
 			"containers": []interface{}{
 				map[string]interface{}{
 					"args": "{{- toYaml .Values.nginx.args | nindent 8 }}",
-					"env": []interface{}{
-						map[string]interface{}{
-							"name":  "KUBERNETES_CLUSTER_DOMAIN",
-							"value": "{{ quote .Values.kubernetesClusterDomain }}",
-						},
-					},
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
@@ -209,12 +203,6 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"env": []interface{}{
-						map[string]interface{}{
-							"name":  "KUBERNETES_CLUSTER_DOMAIN",
-							"value": "{{ quote .Values.kubernetesClusterDomain }}",
-						},
-					},
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
@@ -261,12 +249,6 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"env": []interface{}{
-						map[string]interface{}{
-							"name":  "KUBERNETES_CLUSTER_DOMAIN",
-							"value": "{{ quote .Values.kubernetesClusterDomain }}",
-						},
-					},
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
@@ -313,12 +295,6 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"env": []interface{}{
-						map[string]interface{}{
-							"name":  "KUBERNETES_CLUSTER_DOMAIN",
-							"value": "{{ quote .Values.kubernetesClusterDomain }}",
-						},
-					},
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":  "nginx", "ports": []interface{}{
@@ -363,12 +339,6 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"env": []interface{}{
-						map[string]interface{}{
-							"name":  "KUBERNETES_CLUSTER_DOMAIN",
-							"value": "{{ quote .Values.kubernetesClusterDomain }}",
-						},
-					},
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image":          "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":           "nginx",
