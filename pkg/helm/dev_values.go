@@ -37,23 +37,7 @@ func generateDevValues(rootNode *yaml.Node) ([]byte, error) {
 		valNode := origMap.Content[i+1]
 
 		if keyNode.Value == "global" {
-			if valNode.Kind == yaml.MappingNode {
-				globalFiltered := yaml.Node{
-					Kind: yaml.MappingNode,
-				}
-				hasGlobalCm := false
-				for j := 0; j < len(valNode.Content); j += 2 {
-					subKey := valNode.Content[j]
-					subVal := valNode.Content[j+1]
-					if subKey.Value == "cm" || subKey.Value == "secret" || subVal.Kind == yaml.ScalarNode {
-						globalFiltered.Content = append(globalFiltered.Content, cloneYamlNode(subKey), cloneYamlNode(subVal))
-						hasGlobalCm = true
-					}
-				}
-				if hasGlobalCm {
-					devMap.Content = append(devMap.Content, cloneYamlNode(keyNode), &globalFiltered)
-				}
-			}
+			devMap.Content = append(devMap.Content, cloneYamlNode(keyNode), cloneYamlNode(valNode))
 			continue
 		}
 
