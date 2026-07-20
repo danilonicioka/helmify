@@ -143,27 +143,7 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 			labels = componentLabelTpl + labels
 		}
 	}
-	// Ensure extraLabels map with placeholder keys exists in values for the component
-	if options.values != nil {
-		compName := strcase.ToLowerCamel(GetComponent(obj))
-		extraMap, _, _ := unstructured.NestedMap(options.values, compName, "extraLabels")
-		if extraMap == nil {
-			placeholder := map[string]interface{}{
-				"runtime": "",
-				"runtimeNamespace": "",
-			}
-			_ = unstructured.SetNestedMap(options.values, placeholder, compName, "extraLabels")
-		}
-		// Ensure extraAnnotations map with placeholder keys exists in values for the component
-		extraAnnMap, _, _ := unstructured.NestedMap(options.values, compName, "extraAnnotations")
-		if extraAnnMap == nil {
-			placeholderAnn := map[string]interface{}{
-				"app.openshift.io/connects-to": "",
-				"console.alpha.openshift.io/overview-app-route": "",
-			}
-			_ = unstructured.SetNestedMap(options.values, placeholderAnn, compName, "extraAnnotations")
-		}
-	}
+
 
 	if len(obj.GetAnnotations()) != 0 {
 		ann := obj.GetAnnotations()
