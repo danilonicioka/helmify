@@ -162,10 +162,16 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	routeMetadataName := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", appMeta.ChartName(), name)
 	routeMetadataNameInt := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s-int", appMeta.ChartName(), name)
 	routeMetadataNameExt := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s-ext", appMeta.ChartName(), name)
-	componentLabelVal := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", appMeta.ChartName(), targetComponent)
-
-	if targetComponent == appMeta.ChartName() {
+	// Component label generation: for multi-deployment projects include component suffix, otherwise just chart fullname.
+	var componentLabelVal string
+	normalizedComp := processor.NormalizeComponentName(targetComponent)
+	if processor.IsMultiDeployment(appMeta) {
+		componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", appMeta.ChartName(), normalizedComp)
+	} else {
 		componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}", appMeta.ChartName())
+	}
+	// Preserve original logic for metadata names.
+	if targetComponent == appMeta.ChartName() {
 		if name == targetComponent {
 			routeMetadataName = fmt.Sprintf("{{ include \"%s.fullname\" . }}", appMeta.ChartName())
 			routeMetadataNameInt = fmt.Sprintf("{{ include \"%s.fullname\" . }}-int", appMeta.ChartName())
@@ -289,8 +295,6 @@ type routeResult struct {
 }
 
 func (r *routeResult) Filename() string {
-	// Combined route file generation disabled per user request.
-	// Returning empty string prevents Helmify from creating a single combined route manifest.
 	return ""
 }
 
