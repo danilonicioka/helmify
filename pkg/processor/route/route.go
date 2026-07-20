@@ -289,7 +289,9 @@ type routeResult struct {
 }
 
 func (r *routeResult) Filename() string {
-	return fmt.Sprintf("%s-route.yaml", r.name)
+	// Combined route file generation disabled per user request.
+	// Returning empty string prevents Helmify from creating a single combined route manifest.
+	return ""
 }
 
 func (r *routeResult) Values() helmify.Values {
@@ -297,6 +299,9 @@ func (r *routeResult) Values() helmify.Values {
 }
 
 func (r *routeResult) Write(writer io.Writer) error {
+	if r.Filename() == "" {
+		return nil // Skip writing combined route file as per user request
+	}
 	_, err := writer.Write([]byte(r.data))
 	return err
 }
