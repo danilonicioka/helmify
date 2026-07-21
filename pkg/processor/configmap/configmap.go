@@ -85,7 +85,7 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 
 	nameLower := strings.ToLower(obj.GetName())
 	isGlobal := false
-	if strings.HasSuffix(nameLower, "global") || strings.HasSuffix(nameLower, "global-cm") || strings.HasSuffix(nameLower, "cm-global") || len(referencingComps) > 1 {
+	if len(referencingComps) > 1 || (processor.IsMultiDeployment(appMeta) && (strings.HasSuffix(nameLower, "global") || strings.HasSuffix(nameLower, "global-cm") || strings.HasSuffix(nameLower, "cm-global"))) {
 		isGlobal = true
 	}
 

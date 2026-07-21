@@ -70,7 +70,7 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 
 	nameLower := strings.ToLower(obj.GetName())
 	isGlobal := false
-	if strings.HasSuffix(nameLower, "global") || strings.HasSuffix(nameLower, "global-secrets") || strings.HasSuffix(nameLower, "secrets-global") || strings.HasSuffix(nameLower, "secret-global") || len(referencingComps) > 1 {
+	if len(referencingComps) > 1 || (processor.IsMultiDeployment(appMeta) && strings.HasSuffix(nameLower, "global")) {
 		isGlobal = true
 	}
 

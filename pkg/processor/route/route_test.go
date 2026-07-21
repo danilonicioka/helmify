@@ -43,17 +43,21 @@ func Test_route_Process(t *testing.T) {
 		values := template.Values()
 		assert.NotEmpty(t, values)
 
-		// Check if file content is writeable and has expected combined output
-		var buf bytes.Buffer
-		err = template.Write(&buf)
-		assert.NoError(t, err)
-		
-		content := buf.String()
-		assert.Contains(t, content, "apiVersion: route.openshift.io/v1")
-		assert.Contains(t, content, "kind: Route")
-		assert.Contains(t, content, "default.host")
-		assert.Contains(t, content, "internal.host")
-		assert.Contains(t, content, "external.host")
+		var data string
+		if rr, ok := template.(interface{ Data() string }); ok {
+			data = rr.Data()
+		} else {
+			var buf bytes.Buffer
+			err = template.Write(&buf)
+			assert.NoError(t, err)
+			data = buf.String()
+		}
+
+		assert.Contains(t, data, "apiVersion: route.openshift.io/v1")
+		assert.Contains(t, data, "kind: Route")
+		assert.Contains(t, data, "default.host")
+		assert.Contains(t, data, "internal.host")
+		assert.Contains(t, data, "external.host")
 	})
 
 	t.Run("skipped-ext", func(t *testing.T) {
@@ -97,12 +101,16 @@ spec:
 		assert.NoError(t, err)
 		assert.True(t, processed)
 
-		var buf bytes.Buffer
-		err = template.Write(&buf)
-		assert.NoError(t, err)
-
-		content := buf.String()
+		var data string
+		if rr, ok := template.(interface{ Data() string }); ok {
+			data = rr.Data()
+		} else {
+			var buf bytes.Buffer
+			err = template.Write(&buf)
+			assert.NoError(t, err)
+			data = buf.String()
+		}
 		// The target Service name in route template should be aligned.
-		assert.Contains(t, content, `name: {{ include "my-app.fullname" . }}-api-service`)
+		assert.Contains(t, data, `name: {{ include "my-app.fullname" . }}-api-service`)
 	})
 }

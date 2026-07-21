@@ -39,7 +39,7 @@ func Decode(stop <-chan struct{}, reader io.Reader) <-chan *unstructured.Unstruc
 			}
 			if err != nil {
 				logrus.WithError(err).Error("unable to decode yaml from input")
-				continue
+				return
 			}
 			obj, _, err := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme).Decode(rawObj.Raw, nil, nil)
 			if err != nil {

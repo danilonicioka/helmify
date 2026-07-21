@@ -48,7 +48,6 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	}
 	m.Files[".helmignore"] = []byte(helmIgnore)
 	m.Files[filepath.Join("templates", "_helpers.tpl")] = helpersYAML(chartName)
-	m.Files[filepath.Join("templates", "cm-global.yaml")] = globalConfigMapYAML(chartName)
 
 	// Group templates into files
 	files := map[string][]helmify.Template{}
@@ -56,21 +55,44 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		"kubernetesClusterDomain": "cluster.local",
 		"nameOverride":            "",
 		"fullnameOverride":        chartName,
-		"global": map[string]interface{}{
-			"cm": map[string]interface{}{
-				"TZ": "America/Belem",
-			},
-			"secret": map[string]interface{}{},
-		},
 	}
 
 	for i, template := range templates {
-		file := files[filenames[i]]
-		file = append(file, template)
-		files[filenames[i]] = file
+		if filenames[i] != "" {
+			file := files[filenames[i]]
+			file = append(file, template)
+			files[filenames[i]] = file
+		}
 		if err := values.Merge(template.Values()); err != nil {
 			return err
 		}
+	}
+
+	// Calculate if chart has multiple workload components
+	componentKeys := []string{}
+	for key := range values {
+		if key == "global" || key == "nodeSelector" || key == "affinity" {
+			continue
+		}
+		compKebab := processor.NormalizeComponentName(key)
+		if isWorkloadComponent(compKebab, chartName, files) {
+			componentKeys = append(componentKeys, key)
+		}
+	}
+	isMulti := len(componentKeys) > 1
+
+	if isMulti {
+		m.Files[filepath.Join("templates", "cm-global.yaml")] = globalConfigMapYAML(chartName)
+		if _, ok := values["global"]; !ok {
+			values["global"] = map[string]interface{}{
+				"cm": map[string]interface{}{
+					"TZ": "America/Belem",
+				},
+				"secret": map[string]interface{}{},
+			}
+		}
+	} else {
+		delete(values, "global")
 	}
 
 	// Write templates to memory
