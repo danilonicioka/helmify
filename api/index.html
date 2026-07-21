@@ -1122,7 +1122,7 @@
                 const defaults = await response.json();
 
                 // Extract global configuration
-                globalConfig = defaults.global || { 'TZ': 'America/Belem' };
+                globalConfig = (defaults.global && defaults.global.cm) || { 'TZ': 'America/Belem' };
 
                 // Extract components
                 components = {};
