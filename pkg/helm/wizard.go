@@ -318,7 +318,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		_ = setYamlPath(&rootNode, []string{appKey, "route", "external", "host"}, externalHost)
 
 		if len(params.GlobalConfig) > 0 {
-			_ = setYamlPath(&rootNode, []string{"global"}, params.GlobalConfig)
+			_ = setYamlPath(&rootNode, []string{"global", "cm"}, params.GlobalConfig)
 		}
 
 		// Re-marshal preserving comments
@@ -492,7 +492,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 
 		if len(params.GlobalConfig) > 0 {
-			_ = setYamlPath(&rootNode, []string{"global"}, params.GlobalConfig)
+			_ = setYamlPath(&rootNode, []string{"global", "cm"}, params.GlobalConfig)
 		}
 
 		// Re-marshal values.yaml preserving comments
