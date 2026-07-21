@@ -302,6 +302,10 @@ func (r *routeResult) Filename() string {
 	return ""
 }
 
+func (r *routeResult) Data() string {
+	return r.data
+}
+
 func (r *routeResult) Values() helmify.Values {
 	return r.values
 }

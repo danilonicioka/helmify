@@ -190,14 +190,12 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		},
 	}
 	for i, template := range templates {
-		file := files[filenames[i]]
-		file = append(file, template)
-		files[filenames[i]] = file
-		tplVals := template.Values()
-		if g, ok := tplVals["global"]; ok {
-			logrus.Errorf("DEBUG: template %T yields global: %+v", template, g)
+		if filenames[i] != "" {
+			file := files[filenames[i]]
+			file = append(file, template)
+			files[filenames[i]] = file
 		}
-		err = values.Merge(tplVals)
+		err = values.Merge(template.Values())
 		if err != nil {
 			return err
 		}
@@ -208,6 +206,23 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		if err != nil {
 			return err
 		}
+	}
+
+	// Calculate if chart has multiple workload components
+	componentKeys := []string{}
+	for key := range values {
+		if key == "global" || key == "nodeSelector" || key == "affinity" {
+			continue
+		}
+		compKebab := processor.NormalizeComponentName(key)
+		if isWorkloadComponent(compKebab, chartName, files) {
+			componentKeys = append(componentKeys, key)
+		}
+	}
+	isMulti := len(componentKeys) > 1
+
+	if !isMulti {
+		delete(values, "global")
 	}
 
 	// Initialize default keys and structures for GenerateAllTemplates
@@ -232,19 +247,6 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 				compMap["secret"] = map[string]interface{}{}
 			}
 			if _, hasRoute := compMap["route"]; !hasRoute {
-				isMulti := false
-				compCount := 0
-				for k := range values {
-					if k != "global" && k != "nodeSelector" && k != "affinity" {
-						kKebab := processor.NormalizeComponentName(k)
-						if isWorkloadComponent(kKebab, chartName, files) {
-							compCount++
-						}
-					}
-				}
-				if compCount > 1 {
-					isMulti = true
-				}
 				defaultHost, internalHost, externalHost := computeRouteHosts(chartName, key, "/", isMulti)
 				compMap["route"] = map[string]interface{}{
 					"annotations": map[string]interface{}{},
@@ -354,9 +356,11 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath.Join(cDir, "templates", "cm-global.yaml"), globalConfigMapYAML(chartName), 0600)
-	if err != nil {
-		return fmt.Errorf("%w: unable to write cm-global.yaml", err)
+	if isMulti {
+		err = os.WriteFile(filepath.Join(cDir, "templates", "cm-global.yaml"), globalConfigMapYAML(chartName), 0600)
+		if err != nil {
+			return fmt.Errorf("%w: unable to write cm-global.yaml", err)
+		}
 	}
 	return nil
 }

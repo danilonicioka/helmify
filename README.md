@@ -47,8 +47,22 @@ graph TD
     C --> E[pkg/processor Resource Translation]
     D --> E
     E --> F[pkg/helm/chart.go or memory.go Output]
-    F --> G[Packaged Helm Chart Tarball]
+	F --> G[Packaged Helm Chart Tarball]
 ```
+
+### 3. Recent Updates & TJPA Customizations
+This fork incorporates specific behaviors designed to meet organizational requirements:
+
+- **Dynamic Global Configurations (`cm-global.yaml`):**
+  Helmify now actively determines if the source manifests contain a **Single-Component** or **Multi-Component** application structure. 
+  - For **Single-Component** setups, the `global` environment block and `cm-global.yaml` template are deliberately omitted from the output. Variables are placed directly into the component's `cm` section, reducing chart boilerplate and simplifying the resulting `values.yaml`.
+  - For **Multi-Component** setups, `global` elements are fully generated and inherited appropriately.
+- **Labels and Annotations Strategy:**
+  - Resource Selectors: `app.kubernetes.io/component` has been stripped from standard `matchLabels` to prevent upgrade-related immutable field conflicts in Deployments.
+  - Resource Metadata: Primary objects (Deployments, Services, ConfigMaps, Secrets, Routes) still receive the `app.kubernetes.io/component: {{ include "chart.fullname" . }}-<componentName>` label in their `.metadata.labels` to accurately classify them in OpenShift monitoring panels.
+  - Suffix Simplifications: Single-component resources (like `cm` and `secret`) no longer duplicate the component name in their file suffixes (e.g., using `secret.yaml` instead of `secret-<name>.yaml`).
+- **UI Code Preview Reliability:**
+  The `yaml` streaming decoder inside the web API has been hardened to aggressively abort on syntax errors. This resolves a known bug where pasting malformed YAML or half-typed templates into the UI wizard would trigger an unrecoverable infinite loop, locking up the CPU and freezing the `/v1/preview` API.
 
 ---
 
