@@ -138,6 +138,9 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 		}
 
 		suffix := comp + "-secrets"
+		if comp == appMeta.ChartName() {
+			suffix = "secrets"
+		}
 		meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
 		if err != nil {
 			return true, nil, err

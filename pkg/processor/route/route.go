@@ -189,6 +189,7 @@ kind: Route
 metadata:
   name: %[3]s
   labels:
+    app.kubernetes.io/component: %[6]s
     {{- include "%[2]s.labels" . | nindent 4 }}
 
   {{- with .Values.%[1]s.annotations }}
@@ -222,6 +223,7 @@ kind: Route
 metadata:
   name: %[7]s
   labels:
+    app.kubernetes.io/component: %[6]s
     {{- include "%[2]s.labels" . | nindent 4 }}
 
   {{- with .Values.%[1]s.annotations }}
@@ -255,6 +257,7 @@ kind: Route
 metadata:
   name: %[8]s
   labels:
+    app.kubernetes.io/component: %[6]s
     {{- include "%[2]s.labels" . | nindent 4 }}
 
   {{- with .Values.%[1]s.annotations }}
@@ -280,7 +283,6 @@ spec:
     targetPort: %[5]s
   wildcardPolicy: None
 {{- end }}
-
 {{- end }}`, valuesPath, appMeta.ChartName(), routeMetadataName, templatedToService, targetPortValue, componentLabelVal, routeMetadataNameInt, routeMetadataNameExt)
 
 	return true, &routeResult{
