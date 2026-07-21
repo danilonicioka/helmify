@@ -121,15 +121,25 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		delete(l, "app.kubernetes.io/managed-by")
 		delete(l, "helm.sh/chart")
 
+		// Remove legacy app label
+		delete(l, "app")
+
 		var componentLabelTpl string
-		if comp, ok := l["app.kubernetes.io/component"]; ok && comp != "" {
-			normalizedComp := NormalizeComponentName(comp)
-			if IsMultiDeployment(appMeta) {
+		comp := l["app.kubernetes.io/component"]
+		delete(l, "app.kubernetes.io/component")
+
+		if comp == "" {
+			comp = GetComponent(obj)
+		}
+
+		normalizedComp := NormalizeComponentName(comp)
+
+		if IsMultiDeployment(appMeta) {
+			if normalizedComp != "" {
 				componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}-%s\n", appMeta.ChartName(), normalizedComp)
-			} else {
-				componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}\n", appMeta.ChartName())
 			}
-			delete(l, "app.kubernetes.io/component")
+		} else {
+			componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}\n", appMeta.ChartName())
 		}
 
 		// Since we delete labels above, it is possible that at this point there are no more labels.
@@ -412,6 +422,14 @@ func GetDynamicSuffix(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 		s := strings.TrimPrefix(name, chartName)
 		s = strings.TrimPrefix(s, "-")
 		s = strings.TrimPrefix(s, ".")
+		
+		// Strip any duplicate chart name prefixes (common with kustomize namePrefix)
+		for strings.HasPrefix(s, chartName) {
+			s = strings.TrimPrefix(s, chartName)
+			s = strings.TrimPrefix(s, "-")
+			s = strings.TrimPrefix(s, ".")
+		}
+
 		if s != "" {
 			return s
 		}

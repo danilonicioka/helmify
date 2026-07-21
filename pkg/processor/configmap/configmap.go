@@ -149,6 +149,9 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 		}
 
 		suffix := comp + "-cm"
+		if comp == appMeta.ChartName() {
+			suffix = "cm"
+		}
 		meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
 		if err != nil {
 			return true, nil, err

@@ -85,6 +85,7 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	for k, v := range service.Spec.Selector {
 		if k == "app.kubernetes.io/name" || k == "app.kubernetes.io/instance" ||
 			k == "app.kubernetes.io/version" || k == "app.kubernetes.io/managed-by" ||
+			k == "app.kubernetes.io/component" || k == "app" ||
 			k == "helm.sh/chart" || k == "deployment" {
 			continue
 		}

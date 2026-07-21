@@ -194,10 +194,10 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		// Generate component-specific Routes if GenerateAllTemplates is enabled
 		if m.GenerateAllTemplates {
 			nameSuffix := "-" + compKebab
-			isComponent := "true"
+			componentLabelVal := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", chartName, compKebab)
 			if compKebab == chartName {
 				nameSuffix = ""
-				isComponent = "false"
+				componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}", chartName)
 			}
 
 			routes := []struct {
@@ -217,7 +217,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 
 			for _, r := range routes {
 				if _, exists := files[r.filename]; !exists {
-					routeContent := fmt.Sprintf(r.template, key, chartName, compKebab, nameSuffix, isComponent)
+					routeContent := fmt.Sprintf(r.template, key, chartName, compKebab, nameSuffix, componentLabelVal)
 					m.Files[filepath.Join("templates", r.filename)] = []byte(routeContent)
 				}
 			}
