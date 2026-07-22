@@ -925,12 +925,14 @@
             </div>
 
             <!-- Global Env Vars -->
-            <div class="section-subtitle">
-                <span>Global ConfigMap Env Variables</span>
-                <button type="button" class="btn-add-item" onclick="addGlobalConfig()">+ Add Global Var</button>
-            </div>
-            <div id="global-config-list">
-                <!-- Dynamically populated -->
+            <div id="global-config-section">
+                <div class="section-subtitle">
+                    <span>Global ConfigMap Env Variables</span>
+                    <button type="button" class="btn-add-item" onclick="addGlobalConfig()">+ Add Global Var</button>
+                </div>
+                <div id="global-config-list">
+                    <!-- Dynamically populated -->
+                </div>
             </div>
 
             <!-- Deployments Config -->
@@ -973,7 +975,7 @@
                 </div>
 
                 <div class="form-group row">
-                    <div>
+                    <div id="connects-to-field">
                         <label for="compConnectsTo">Connects To (Workloads/components that this deployment connects to in OpenShift Topology View)</label>
                         <input type="text" id="compConnectsTo" placeholder="e.g. db, redis (comma-separated)">
                     </div>
@@ -1169,7 +1171,18 @@
             renderGlobalConfigList();
             renderTabs();
             renderActiveComponent();
+            updateUIForChartType();
             updatePreview();
+        }
+
+        function updateUIForChartType() {
+            if (chartType === 'single') {
+                document.getElementById('global-config-section').style.display = 'none';
+                document.getElementById('connects-to-field').style.display = 'none';
+            } else {
+                document.getElementById('global-config-section').style.display = 'block';
+                document.getElementById('connects-to-field').style.display = 'block';
+            }
         }
 
         function fallbackInit() {
@@ -1262,6 +1275,7 @@
             document.getElementById('btn-type-single').classList.add('active');
             document.getElementById('btn-type-multi').classList.remove('active');
             isFirstLoad = true;
+            updateUIForChartType();
             init();
         });
 
@@ -1271,6 +1285,7 @@
             document.getElementById('btn-type-multi').classList.add('active');
             document.getElementById('btn-type-single').classList.remove('active');
             isFirstLoad = true;
+            updateUIForChartType();
             init();
         });
 

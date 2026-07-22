@@ -177,7 +177,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	spec = pod.ReplacePlaceholders(spec, appMeta.ChartName())
 
 	resultName := name
-	if name == appMeta.ChartName() {
+	if name == appMeta.ChartName() || !processor.IsMultiDeployment(appMeta) {
 		resultName = ""
 	}
 

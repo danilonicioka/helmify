@@ -144,7 +144,7 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	}
 
 	resultName := shortName
-	if shortName == appMeta.ChartName() {
+	if shortName == appMeta.ChartName() || !processor.IsMultiDeployment(appMeta) {
 		resultName = ""
 	}
 
