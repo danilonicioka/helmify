@@ -194,7 +194,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		}
 		if _, hasCm := compMap["cm"]; hasCm {
 			cmFilename := "cm-" + compKebab + ".yaml"
-			if compKebab == chartName {
+			if compKebab == chartName || !isMulti {
 				cmFilename = "cm.yaml"
 			}
 			if _, exists := files[cmFilename]; !exists {
@@ -204,7 +204,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		}
 		if _, hasSecret := compMap["secret"]; hasSecret {
 			secretFilename := "secret-" + compKebab + ".yaml"
-			if compKebab == chartName {
+			if compKebab == chartName || !isMulti {
 				secretFilename = "secret.yaml"
 			}
 			if _, exists := files[secretFilename]; !exists {
@@ -217,7 +217,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 		if m.GenerateAllTemplates {
 			nameSuffix := "-" + compKebab
 			componentLabelVal := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", chartName, compKebab)
-			if compKebab == chartName {
+			if compKebab == chartName || !isMulti {
 				nameSuffix = ""
 				componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}", chartName)
 			}
@@ -231,7 +231,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 				{filename: "route" + nameSuffix + "-ext.yaml", template: compRouteExternalTemplate},
 			}
 
-			if compKebab == chartName {
+			if compKebab == chartName || !isMulti {
 				routes[0].filename = "route-default.yaml"
 				routes[1].filename = "route-int.yaml"
 				routes[2].filename = "route-ext.yaml"

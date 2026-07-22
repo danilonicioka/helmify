@@ -834,13 +834,16 @@ spec:
                     renderFileTree();
                     
                     const previousActiveFile = activeFile;
+                    let initialLoad = false;
                     if (isFirstLoad) {
                         activeFile = 'source.yaml';
                         isFirstLoad = false;
+                        initialLoad = true;
                     } else if (activeFile !== 'source.yaml' && !generatedFiles[activeFile]) {
                         activeFile = 'source.yaml';
                     }
-                    if (activeFile !== 'source.yaml' || previousActiveFile !== activeFile) {
+                    
+                    if (initialLoad || activeFile !== 'source.yaml' || previousActiveFile !== activeFile) {
                         renderActiveFileContent();
                     }
                 } else {

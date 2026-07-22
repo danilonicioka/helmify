@@ -149,6 +149,7 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 		templates = append(templates, &secretTemplate{
 			compName:      comp,
 			chartName:     appMeta.ChartName(),
+			isMulti:       processor.IsMultiDeployment(appMeta),
 			nameCamelCase: nameCamelCase,
 			secretType:    secretType,
 			meta:          meta,
@@ -163,6 +164,7 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 type secretTemplate struct {
 	compName      string
 	chartName     string
+	isMulti       bool
 	nameCamelCase string
 	secretType    string
 	meta          string
@@ -174,7 +176,7 @@ func (s *secretTemplate) Filename() string {
 	if s.isGlobal {
 		return "secret-global.yaml"
 	}
-	if s.compName == s.chartName {
+	if s.compName == s.chartName || !s.isMulti {
 		return "secret.yaml"
 	}
 	return fmt.Sprintf("secret-%s.yaml", s.compName)

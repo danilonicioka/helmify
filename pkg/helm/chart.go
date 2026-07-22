@@ -287,7 +287,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		}
 		if _, hasCm := compMap["cm"]; hasCm {
 			cmFilename := "cm-" + compKebab + ".yaml"
-			if compKebab == chartName {
+			if compKebab == chartName || !isMulti {
 				cmFilename = "cm.yaml"
 			}
 			if _, exists := files[cmFilename]; !exists {
@@ -300,7 +300,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		}
 		if _, hasSecret := compMap["secret"]; hasSecret {
 			secretFilename := "secret-" + compKebab + ".yaml"
-			if compKebab == chartName {
+			if compKebab == chartName || !isMulti {
 				secretFilename = "secret.yaml"
 			}
 			if _, exists := files[secretFilename]; !exists {
@@ -316,7 +316,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		if o.GenerateAllTemplates {
 			nameSuffix := "-" + compKebab
 			componentLabelVal := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", chartName, compKebab)
-			if compKebab == chartName {
+			if compKebab == chartName || !isMulti {
 				nameSuffix = ""
 				componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}", chartName)
 			}
@@ -330,7 +330,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 				{filename: "route" + nameSuffix + "-ext.yaml", template: compRouteExternalTemplate},
 			}
 
-			if compKebab == chartName {
+			if compKebab == chartName || !isMulti {
 				routes[0].filename = "route-default.yaml"
 				routes[1].filename = "route-int.yaml"
 				routes[2].filename = "route-ext.yaml"
