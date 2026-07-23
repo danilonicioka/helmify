@@ -120,9 +120,13 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 			pMap["protocol"] = string(p.Protocol)
 		}
 		if p.TargetPort.Type == intstr.Int {
-			pMap["targetPort"] = int64(p.TargetPort.IntVal)
+			if p.TargetPort.IntVal != 0 {
+				pMap["targetPort"] = int64(p.TargetPort.IntVal)
+			}
 		} else {
-			pMap["targetPort"] = p.TargetPort.StrVal
+			if p.TargetPort.StrVal != "" {
+				pMap["targetPort"] = p.TargetPort.StrVal
+			}
 		}
 		ports[i] = pMap
 	}

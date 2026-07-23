@@ -424,3 +424,8 @@ When components end with numeric suffixes (like `pje-service-1g` or `pje-service
 - **Symptom**: When dynamically generating standard route templates (`route-default.yaml`, `route-int.yaml`, `route-ext.yaml`) using the `GenerateAllTemplates` option, the route manifests are generated referencing target services with a `-svc` suffix (e.g. `{{ include "fullname" . }}-svc`), causing routing errors in OpenShift since the actual generated service templates do not have the `-svc` suffix.
 - **Fix**: Removed the hardcoded `-svc` suffix from `compRouteDefaultTemplate`, `compRouteInternalTemplate`, and `compRouteExternalTemplate` inside [chart.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/helm/chart.go) to match the service templates.
 - **Feature**: Helmify now ensures `extraAnnotations` and `extraLabels` placeholder maps exist in `values.yaml` for each component, enabling users to configure OpenShift topology annotations (`app.openshift.io/connects-to` and `console.alpha.openshift.io/overview-app-route`) without re‑generating the chart.
+
+### 🎯 Service TargetPort Zero Bug
+- **Symptom**: Generated services inside `values.yaml` explicitly declare `targetPort: 0` if the source manifest omitted the `targetPort` field (relying on the Kubernetes default where `targetPort` equals `port`).
+- **Cause**: Helmify's unmarshaler interpreted an omitted integer field as `0`, explicitly mapping it to the `values.yaml` structure. Port `0` is an invalid Kubernetes port.
+- **Fix**: Updated `pkg/processor/service/service.go` to gracefully omit `targetPort` from the generated template if it parses as `0` or empty, allowing standard Helm/Kubernetes defaults to prevail.

@@ -7,9 +7,6 @@ metadata:
 spec:
   type: {{ .Values.backend.service.type }}
   ports:
-    - port: {{ .Values.backend.service.port }}
-      targetPort: {{ .Values.backend.service.targetPort }}
-      protocol: TCP
-      name: http
+    {{- .Values.backend.service.ports | toYaml | nindent 4 }}
   selector:
     {{- include "chart-model-multi.backend.selectorLabels" . | nindent 4 }}
