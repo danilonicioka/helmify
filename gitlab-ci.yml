@@ -1,7 +1,7 @@
 default:
   image: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/runner-tools:latest
   tags:
-    - ocp-dev-global
+    - rke
 
 workflow:
   rules:
