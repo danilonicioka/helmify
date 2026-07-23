@@ -221,9 +221,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	}
 	isMulti := len(componentKeys) > 1
 
-	if !isMulti {
-		delete(values, "global")
-	}
+
 
 	// Initialize default keys and structures for GenerateAllTemplates
 	if o.GenerateAllTemplates {
@@ -356,11 +354,13 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	if err != nil {
 		return err
 	}
-	if isMulti {
-		err = os.WriteFile(filepath.Join(cDir, "templates", "cm-global.yaml"), globalConfigMapYAML(chartName), 0600)
-		if err != nil {
-			return fmt.Errorf("%w: unable to write cm-global.yaml", err)
-		}
+	err = os.WriteFile(filepath.Join(cDir, "templates", "cm-global.yaml"), globalConfigMapYAML(chartName), 0600)
+	if err != nil {
+		return fmt.Errorf("%w: unable to write cm-global.yaml", err)
+	}
+	err = os.WriteFile(filepath.Join(cDir, "templates", "secret-global.yaml"), globalSecretYAML(chartName), 0600)
+	if err != nil {
+		return fmt.Errorf("%w: unable to write secret-global.yaml", err)
 	}
 	return nil
 }
