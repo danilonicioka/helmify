@@ -650,11 +650,11 @@ func ReplacePlaceholders(s string, chartName string) string {
 		return fmt.Sprintf(`%[1]senvFrom:
 %[1]s{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
 %[1]s- configMapRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}-global
+%[1]s    name: {{ include "%[2]s.fullname" . }}-global-cm
 %[1]s{{- end }}
 %[1]s{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
 %[1]s- secretRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}-global
+%[1]s    name: {{ include "%[2]s.fullname" . }}-global-secret
 %[1]s{{- end }}
 %[1]s{{- if (index .Values "%[3]s").cm }}
 %[1]s- configMapRef:
@@ -679,11 +679,11 @@ func ReplacePlaceholders(s string, chartName string) string {
 		return fmt.Sprintf(`%[1]senvFrom:
 %[1]s{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
 %[1]s- configMapRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}-global
+%[1]s    name: {{ include "%[2]s.fullname" . }}-global-cm
 %[1]s{{- end }}
 %[1]s{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
 %[1]s- secretRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}-global
+%[1]s    name: {{ include "%[2]s.fullname" . }}-global-secret
 %[1]s{{- end }}
 %[1]s{{- if (index .Values "%[3]s").cm }}
 %[1]s- configMapRef:

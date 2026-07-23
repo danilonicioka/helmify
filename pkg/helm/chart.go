@@ -221,9 +221,25 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	}
 	isMulti := len(componentKeys) > 1
 
-
-
-	// Initialize default keys and structures for GenerateAllTemplates
+	if isMulti {
+		helpersFile := filepath.Join(cDir, "templates", "_helpers.tpl")
+		content, err := os.ReadFile(helpersFile)
+		if err == nil {
+			var toAppend string
+			for _, compKey := range componentKeys {
+				if !strings.Contains(string(content), fmt.Sprintf("define \"%s.%s.labels\"", chartName, compKey)) {
+					toAppend += fmt.Sprintf("\n{{/*\n%[2]s-specific labels\n*/}}\n{{- define \"%[1]s.%[2]s.labels\" -}}\n{{ include \"%[1]s.labels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- with .Values.%[2]s.labels }}\n{{ toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific annotations\n*/}}\n{{- define \"%[1]s.%[2]s.annotations\" -}}\n{{- with .Values.%[2]s.annotations }}\n{{- toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific selector labels\n*/}}\n{{- define \"%[1]s.%[2]s.selectorLabels\" -}}\n{{ include \"%[1]s.selectorLabels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- end }}\n", chartName, compKey)
+				}
+			}
+			if toAppend != "" {
+				f, err := os.OpenFile(helpersFile, os.O_APPEND|os.O_WRONLY, 0600)
+				if err == nil {
+					f.WriteString(toAppend)
+					f.Close()
+				}
+			}
+		}
+	}	// Initialize default keys and structures for GenerateAllTemplates
 	if o.GenerateAllTemplates {
 		for key, val := range values {
 			if key == "global" || key == "nodeSelector" || key == "affinity" {

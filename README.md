@@ -54,13 +54,14 @@ graph TD
 This fork incorporates specific behaviors designed to meet organizational requirements:
 
 - **Universal Global Configurations (`cm-global.yaml` & `secret-global.yaml`):**
-  Helmify now universally preserves and generates the `global` values block and associated `cm-global.yaml` and `secret-global.yaml` templates for both **Single-Component** and **Multi-Component** charts. This ensures robust `envFrom` references and predictable `sha256sum` injections without template resolution errors in deployment manifests.
+  Helmify now universally preserves and generates the `global` values block and associated `cm-global.yaml` and `secret-global.yaml` templates for both **Single-Component** and **Multi-Component** charts. To avoid ambiguity between resource types, the generated resources explicitly use `{{ include "chart.fullname" . }}-global-cm` and `{{ include "chart.fullname" . }}-global-secret` as their names. This ensures robust `envFrom` references and predictable `sha256sum` injections without template resolution errors in deployment manifests.
 - **Environment Variable Deduplication (`envFrom`):**
   Helmify extracts ConfigMap and Secret environment variables into `values.yaml`. The deployment spec's explicit `env` variables are dynamically stripped when they become redundant via `envFrom`. This now correctly uses normalized component comparisons to reliably drop all duplicate variable mappings.
   - Suffix Simplifications: Single-component resources (like `cm` and `secret`) no longer duplicate the component name in their file suffixes or `envFrom` references (e.g., using `{{ include "fullname" . }}-cm` instead of `<fullname>-<component>-cm`).
 - **Labels and Annotations Strategy:**
   - Resource Selectors: `app.kubernetes.io/component` has been stripped from standard `matchLabels` to prevent upgrade-related immutable field conflicts in Deployments.
   - Resource Metadata: Primary objects (Deployments, Services, ConfigMaps, Secrets, Routes) still receive the `app.kubernetes.io/component: {{ include "chart.fullname" . }}-<componentName>` label in their `.metadata.labels` to accurately classify them in OpenShift monitoring panels.
+  - Dynamic Annotations: Custom pod annotations parsed from original Kubernetes manifests are now seamlessly offloaded to `.Values.<component>.annotations` via a `_helpers.tpl` mapping (e.g. `{{- include "<chartName>.annotations" . | nindent 8 }}`). This allows configuring custom values while cleanly coexisting with dynamic configmap/secret reload checksums.
 - **UI Code Preview Reliability:**
   The `yaml` streaming decoder inside the web API has been hardened to aggressively abort on syntax errors. This resolves a known bug where pasting malformed YAML or half-typed templates into the UI wizard would trigger an unrecoverable infinite loop, locking up the CPU and freezing the `/v1/preview` API.
 
