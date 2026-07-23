@@ -109,6 +109,10 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	if comp == "api" || comp == "app" {
 		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), comp)
 	}
+	annotationsHelper := appMeta.ChartName() + ".annotations"
+	if processor.IsMultiDeployment(appMeta) {
+		annotationsHelper = fmt.Sprintf("%s.%s.annotations", appMeta.ChartName(), comp)
+	}
 	selector := fmt.Sprintf(selectorTempl, matchLabels, labelHelper, matchExpr)
 	selector = strings.Trim(selector, " \n")
 	selector = string(yamlformat.Indent([]byte(selector), 4))
@@ -126,18 +130,46 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	}
 
 	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
-	podAnnotations := ""
+
+	cleanedPodAnnotations := map[string]string{}
+	for k, v := range depl.Spec.Template.ObjectMeta.Annotations {
+		cleanedPodAnnotations[k] = v
+	}
+	if len(cleanedPodAnnotations) > 0 {
+		_ = unstructured.SetNestedField(values, map[string]interface{}{}, nameCamel, "annotations")
+		for k, v := range cleanedPodAnnotations {
+			_, _ = values.Add(v, nameCamel, "annotations", k)
+		}
+	}
+	depl.Spec.Template.ObjectMeta.Annotations = map[string]string{}
+
 	annotations := depl.Spec.Template.ObjectMeta.Annotations
 	annotations = pod.AddReloadingAnnotations(appMeta, nameCamel, annotations, &depl.Spec.Template.Spec)
 	depl.Spec.Template.ObjectMeta.Annotations = annotations
 
+	var annStr string
 	if len(depl.Spec.Template.ObjectMeta.Annotations) != 0 {
-		podAnnotations, err = yamlformat.Marshal(map[string]interface{}{"annotations": depl.Spec.Template.ObjectMeta.Annotations}, 6)
+		annStr, err = yamlformat.Marshal(map[string]interface{}{"annotations": depl.Spec.Template.ObjectMeta.Annotations}, 6)
 		if err != nil {
 			return true, nil, err
 		}
-		podAnnotations = pod.ReplacePlaceholders(podAnnotations, appMeta.ChartName())
-		podAnnotations = "\n" + podAnnotations
+		annStr = pod.ReplacePlaceholders(annStr, appMeta.ChartName())
+		annStr = strings.TrimPrefix(annStr, "      annotations:\n")
+	}
+
+	podAnnotations := ""
+	if annStr != "" {
+		podAnnotations = fmt.Sprintf(`
+      annotations:
+        {{- include "%s" . | nindent 8 }}
+%s`, annotationsHelper, annStr)
+	} else {
+		podAnnotations = fmt.Sprintf(`
+      {{- $annotations := include "%s" . }}
+      {{- if $annotations }}
+      annotations:
+        {{- $annotations | nindent 8 }}
+      {{- end }}`, annotationsHelper)
 	}
 	specMap, podValues, err := pod.ProcessSpec(nameCamel, appMeta, depl.Spec.Template.Spec, 0)
 	if err != nil {

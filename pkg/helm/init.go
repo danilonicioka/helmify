@@ -77,6 +77,20 @@ helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- $app := index .Values .Chart.Name | default dict -}}
+{{- with $app.labels }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Annotations helper
+*/}}
+{{- define "<CHARTNAME>.annotations" -}}
+{{- $app := index .Values .Chart.Name | default dict -}}
+{{- with $app.annotations }}
+{{- toYaml . }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -138,7 +152,7 @@ const globalConfigMapTempl = `{{- if and .Values.global .Values.global.cm (not (
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "<CHARTNAME>.fullname" . }}-global
+  name: {{ include "<CHARTNAME>.fullname" . }}-global-cm
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 data:
@@ -152,7 +166,7 @@ const globalSecretTempl = `{{- if and .Values.global .Values.global.secret (not 
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ include "<CHARTNAME>.fullname" . }}-global
+  name: {{ include "<CHARTNAME>.fullname" . }}-global-secret
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 type: Opaque
