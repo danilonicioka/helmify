@@ -461,7 +461,7 @@ func processEnv(name string, containerName string, appMeta helmify.AppMetadata, 
 			redundant := false
 			if e.ValueFrom.ConfigMapKeyRef != nil {
 				cmName := processor.ResolveValueName(appMeta, e.ValueFrom.ConfigMapKeyRef.Name)
-				if cmName == name {
+				if processor.NormalizeComponentName(cmName) == processor.NormalizeComponentName(name) || processor.NormalizeComponentName(cmName) == processor.NormalizeComponentName(appMeta.ChartName()) {
 					redundant = true
 				} else {
 					e.ValueFrom.ConfigMapKeyRef.Name = processor.TemplatedConfigMapName(appMeta, e.ValueFrom.ConfigMapKeyRef.Name)
@@ -469,7 +469,7 @@ func processEnv(name string, containerName string, appMeta helmify.AppMetadata, 
 			}
 			if e.ValueFrom.SecretKeyRef != nil {
 				secName := processor.ResolveValueName(appMeta, e.ValueFrom.SecretKeyRef.Name)
-				if secName == name {
+				if processor.NormalizeComponentName(secName) == processor.NormalizeComponentName(name) || processor.NormalizeComponentName(secName) == processor.NormalizeComponentName(appMeta.ChartName()) {
 					redundant = true
 				} else {
 					e.ValueFrom.SecretKeyRef.Name = processor.TemplatedSecretName(appMeta, e.ValueFrom.SecretKeyRef.Name)
@@ -639,43 +639,61 @@ func ReplacePlaceholders(s string, chartName string) string {
 	s = r2.ReplaceAllString(s, "{{- with .Values.${3} }}\n${1}${2}:\n${1}  {{- toYaml . | nindent ${4} }}\n${1}{{- end }}")
 	// 3. Handle HELMIFY_ENV_FROM: envFrom: '[HELMIFY_ENV_FROM:name:kebabName:indent]'
 	r3_3 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([^:]+):([0-9]+)\]'`)
-	s = r3_3.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
-${1}{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
-${1}- configMapRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-global
-${1}{{- end }}
-${1}{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
-${1}- secretRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-global
-${1}{{- end }}
-${1}{{- if (index .Values "${2}").cm }}
-${1}- configMapRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-${3}-cm
-${1}{{- end }}
-${1}{{- if (index .Values "${2}").secret }}
-${1}- secretRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-${3}-secrets
-${1}{{- end }}`, chartName))
+	s = r3_3.ReplaceAllStringFunc(s, func(match string) string {
+		matches := r3_3.FindStringSubmatch(match)
+		indent, objName, kebabName := matches[1], matches[2], matches[3]
+		suffix := "-" + kebabName
+		if processor.NormalizeComponentName(chartName) == processor.NormalizeComponentName(kebabName) || processor.NormalizeComponentName(chartName) == processor.NormalizeComponentName(objName) {
+			suffix = ""
+		}
+		
+		return fmt.Sprintf(`%[1]senvFrom:
+%[1]s{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+%[1]s- configMapRef:
+%[1]s    name: {{ include "%[2]s.fullname" . }}-global
+%[1]s{{- end }}
+%[1]s{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+%[1]s- secretRef:
+%[1]s    name: {{ include "%[2]s.fullname" . }}-global
+%[1]s{{- end }}
+%[1]s{{- if (index .Values "%[3]s").cm }}
+%[1]s- configMapRef:
+%[1]s    name: {{ include "%[2]s.fullname" . }}%[4]s-cm
+%[1]s{{- end }}
+%[1]s{{- if (index .Values "%[3]s").secret }}
+%[1]s- secretRef:
+%[1]s    name: {{ include "%[2]s.fullname" . }}%[4]s-secrets
+%[1]s{{- end }}`, indent, chartName, objName, suffix)
+	})
 
 	// Handle legacy 2-parameter placeholder for tests or non-component deployments
 	r3_2 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([0-9]+)\]'`)
-	s = r3_2.ReplaceAllString(s, fmt.Sprintf(`${1}envFrom:
-${1}{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
-${1}- configMapRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-global
-${1}{{- end }}
-${1}{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
-${1}- secretRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-global
-${1}{{- end }}
-${1}{{- if (index .Values "${2}").cm }}
-${1}- configMapRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-${2}-cm
-${1}{{- end }}
-${1}{{- if (index .Values "${2}").secret }}
-${1}- secretRef:
-${1}    name: {{ include "%[1]s.fullname" . }}-${2}-secrets
-${1}{{- end }}`, chartName))
+	s = r3_2.ReplaceAllStringFunc(s, func(match string) string {
+		matches := r3_2.FindStringSubmatch(match)
+		indent, objName := matches[1], matches[2]
+		suffix := "-" + objName
+		if processor.NormalizeComponentName(chartName) == processor.NormalizeComponentName(objName) {
+			suffix = ""
+		}
+		
+		return fmt.Sprintf(`%[1]senvFrom:
+%[1]s{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+%[1]s- configMapRef:
+%[1]s    name: {{ include "%[2]s.fullname" . }}-global
+%[1]s{{- end }}
+%[1]s{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+%[1]s- secretRef:
+%[1]s    name: {{ include "%[2]s.fullname" . }}-global
+%[1]s{{- end }}
+%[1]s{{- if (index .Values "%[3]s").cm }}
+%[1]s- configMapRef:
+%[1]s    name: {{ include "%[2]s.fullname" . }}%[4]s-cm
+%[1]s{{- end }}
+%[1]s{{- if (index .Values "%[3]s").secret }}
+%[1]s- secretRef:
+%[1]s    name: {{ include "%[2]s.fullname" . }}%[4]s-secrets
+%[1]s{{- end }}`, indent, chartName, objName, suffix)
+	})
 
 	// 4. Handle global checksum placeholders
 	rGlobal := regexp.MustCompile(`(?m)^(\s*)checksum/global-config:\s*'\[HELMIFY_CHECKSUM_GLOBAL:global-config\]'`)

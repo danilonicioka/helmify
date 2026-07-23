@@ -147,6 +147,21 @@ data:
 {{- end }}
 {{- end }}
 `
+
+const globalSecretTempl = `{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHARTNAME>.fullname" . }}-global
+  labels:
+    {{- include "<CHARTNAME>.labels" . | nindent 4 }}
+type: Opaque
+data:
+{{- range $key, $val := .Values.global.secret }}
+  {{ $key }}: {{ $val | b64enc | quote }}
+{{- end }}
+{{- end }}
+`
 const defaultChartfile = `apiVersion: v2
 name: %s
 description: A standardized, production-grade model Helm chart for Tribunal de Justica do Para (TJPA) applications.
@@ -219,11 +234,16 @@ func createCommonFiles(chartDir, chartName string, crd bool, certManagerAsSubcha
 	createFile([]byte(helmIgnore), cDir, ".helmignore")
 	createFile(helpersYAML(chartName), cDir, "templates", "_helpers.tpl")
 	createFile(globalConfigMapYAML(chartName), cDir, "templates", "cm-global.yaml")
+	createFile(globalSecretYAML(chartName), cDir, "templates", "secret-global.yaml")
 	return err
 }
 
 func globalConfigMapYAML(chartName string) []byte {
 	return []byte(strings.ReplaceAll(globalConfigMapTempl, "<CHARTNAME>", chartName))
+}
+
+func globalSecretYAML(chartName string) []byte {
+	return []byte(strings.ReplaceAll(globalSecretTempl, "<CHARTNAME>", chartName))
 }
 
 func chartYAML(appName string, certManagerAsSubchart bool, certManagerVersion string) []byte {

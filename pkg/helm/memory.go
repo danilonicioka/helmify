@@ -81,18 +81,15 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	}
 	isMulti := len(componentKeys) > 1
 
-	if isMulti {
-		m.Files[filepath.Join("templates", "cm-global.yaml")] = globalConfigMapYAML(chartName)
-		if _, ok := values["global"]; !ok {
-			values["global"] = map[string]interface{}{
-				"cm": map[string]interface{}{
-					"TZ": "America/Belem",
-				},
-				"secret": map[string]interface{}{},
-			}
+	m.Files[filepath.Join("templates", "cm-global.yaml")] = globalConfigMapYAML(chartName)
+	m.Files[filepath.Join("templates", "secret-global.yaml")] = globalSecretYAML(chartName)
+	if _, ok := values["global"]; !ok {
+		values["global"] = map[string]interface{}{
+			"cm": map[string]interface{}{
+				"TZ": "America/Belem",
+			},
+			"secret": map[string]interface{}{},
 		}
-	} else {
-		delete(values, "global")
 	}
 
 	// Write templates to memory
