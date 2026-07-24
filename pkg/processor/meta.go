@@ -1,7 +1,6 @@
 package processor
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"regexp"
@@ -25,8 +24,7 @@ metadata:
     {{- include "%[4]s.labels" . | nindent 4 }}
 %[6]s`
 
-const annotationsTemplate = `  annotations:
-    {{- toYaml .Values.%[1]s.%[2]s.annotations | nindent 4 }}`
+
 
 
 
@@ -90,6 +88,8 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		opt.apply(options)
 	}
 
+	compName := strcase.ToLowerCamel(GetComponent(obj))
+
 	var err error
 	var labels, annotations, namespace string
 	if len(obj.GetLabels()) != 0 {
@@ -124,9 +124,21 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 
 		// Since we delete labels above, it is possible that at this point there are no more labels.
 		if len(l) > 0 {
-			labels, err = yamlformat.Marshal(l, 4)
-			if err != nil {
-				return "", err
+			if options.values != nil {
+				labelsMap := make(map[string]interface{})
+				for k, v := range l {
+					labelsMap[k] = v
+				}
+				err = unstructured.SetNestedField(options.values, labelsMap, compName, "labels")
+				if err != nil {
+					return "", err
+				}
+				labels = fmt.Sprintf("    {{- toYaml .Values.%s.labels | nindent 4 }}", compName)
+			} else {
+				labels, err = yamlformat.Marshal(l, 4)
+				if err != nil {
+					return "", err
+				}
 			}
 		}
 		if componentLabelTpl != "" {
@@ -138,9 +150,21 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 	if len(obj.GetAnnotations()) != 0 {
 		ann := obj.GetAnnotations()
 		if len(ann) != 0 {
-			annotations, err = yamlformat.Marshal(map[string]interface{}{"annotations": ann}, 2)
-			if err != nil {
-				return "", err
+			if options.values != nil {
+				valuesAnnotations := make(map[string]interface{})
+				for k, v := range ann {
+					valuesAnnotations[k] = v
+				}
+				err = unstructured.SetNestedField(options.values, valuesAnnotations, compName, "annotations")
+				if err != nil {
+					return "", err
+				}
+				annotations = fmt.Sprintf("  annotations:\n    {{- toYaml .Values.%s.annotations | nindent 4 }}", compName)
+			} else {
+				annotations, err = yamlformat.Marshal(map[string]interface{}{"annotations": ann}, 2)
+				if err != nil {
+					return "", err
+				}
 			}
 		}
 	}
@@ -158,24 +182,8 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		suffix = strings.ToLower(kind)
 	}
 
-	compName := strcase.ToLowerCamel(GetComponent(obj))
-
 	var metaStr string
-	if options.values != nil && options.annotations {
-		name := strcase.ToLowerCamel(appMeta.TrimName(obj.GetName()))
-		kind := strcase.ToLowerCamel(kind)
-		valuesAnnotations := make(map[string]interface{})
-		for k, v := range obj.GetAnnotations() {
-			valuesAnnotations[k] = v
-		}
-		if len(valuesAnnotations) > 0 {
-			err = unstructured.SetNestedField(options.values, valuesAnnotations, name, kind, "annotations")
-			if err != nil {
-				return "", err
-			}
-			annotations = fmt.Sprintf(annotationsTemplate, name, kind)
-		}
-	}
+
 
 
 
