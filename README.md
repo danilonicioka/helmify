@@ -397,29 +397,10 @@ When components end with numeric suffixes (like `pje-service-1g` or `pje-service
 
 ### 🕸️ Dynamic OpenShift Topology Mapping (`app.openshift.io/connects-to`)
 - **Problem**: Hardcoding the `app.openshift.io/connects-to` annotation in Service or Route templates limits flexibility and prevents workloads from dynamically declaring links to multiple deployments (e.g., API needing to connect to database/service workloads).
-- **Implementation**: Handle this dynamically in the `Deployment` templates by referencing a `.Values.<component>.connectsTo` array in `values.yaml` and mapping it to the `app.openshift.io/connects-to` JSON list annotation:
+- **Implementation**: The `app.openshift.io/connects-to` annotation is now treated as a regular standard annotation. It is no longer placed under a dedicated `.Values.<component>.connectsTo` field, but is now natively included within the `.Values.<component>.annotations` block alongside all other component annotations.
   ```yaml
-    {{- if .Values.<component>.connectsTo }}
     annotations:
-      app.openshift.io/connects-to: '[
-        {{- $first := true -}}
-        {{- range $item := .Values.<component>.connectsTo -}}
-          {{- if not $first }},{{- end -}}
-          {{- $kind := "Deployment" -}}
-          {{- $apiVersion := "apps/v1" -}}
-          {{- $nameSuffix := "" -}}
-          {{- if typeIs "string" $item -}}
-            {{- $nameSuffix = $item -}}
-          {{- else -}}
-            {{- $kind = default "Deployment" $item.kind -}}
-            {{- $apiVersion = default "apps/v1" $item.apiVersion -}}
-            {{- $nameSuffix = $item.name -}}
-          {{- end -}}
-          {"apiVersion":"{{ $apiVersion }}","kind":"{{ $kind }}","name":"{{ include "<chartName>.fullname" $ }}-{{ $nameSuffix }}"}
-          {{- $first = false -}}
-        {{- end -}}
-      ]'
-    {{- end }}
+      app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
   ```
 ### 🗺️ Route Service Target Naming Bug (-svc suffix)
 - **Symptom**: When dynamically generating standard route templates (`route-default.yaml`, `route-int.yaml`, `route-ext.yaml`) using the `GenerateAllTemplates` option, the route manifests are generated referencing target services with a `-svc` suffix (e.g. `{{ include "fullname" . }}-svc`), causing routing errors in OpenShift since the actual generated service templates do not have the `-svc` suffix.
