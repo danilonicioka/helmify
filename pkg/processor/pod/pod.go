@@ -638,61 +638,63 @@ func ReplacePlaceholders(s string, chartName string) string {
 	r2 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*\|-\s*\n\s*\[HELMIFY_WITH:([^:]+):([0-9]+)\]`)
 	s = r2.ReplaceAllString(s, "{{- with .Values.${3} }}\n${1}${2}:\n${1}  {{- toYaml . | nindent ${4} }}\n${1}{{- end }}")
 	// 3. Handle HELMIFY_ENV_FROM: envFrom: '[HELMIFY_ENV_FROM:name:kebabName:indent]'
-	r3_3 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([^:]+):([0-9]+)\]'`)
+	r3_3 := regexp.MustCompile(`(?m)^(\s*(?:-\s+)?)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([^:]+):([0-9]+)\]'`)
 	s = r3_3.ReplaceAllStringFunc(s, func(match string) string {
 		matches := r3_3.FindStringSubmatch(match)
-		indent, objName, kebabName := matches[1], matches[2], matches[3]
+		indentMatch, objName, kebabName := matches[1], matches[2], matches[3]
+		subIndent := strings.Replace(indentMatch, "-", " ", 1)
 		suffix := "-" + kebabName
 		if processor.NormalizeComponentName(chartName) == processor.NormalizeComponentName(kebabName) || processor.NormalizeComponentName(chartName) == processor.NormalizeComponentName(objName) {
 			suffix = ""
 		}
 		
 		return fmt.Sprintf(`%[1]senvFrom:
-%[1]s{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
-%[1]s- configMapRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}-global-cm
-%[1]s{{- end }}
-%[1]s{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
-%[1]s- secretRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}-global-secret
-%[1]s{{- end }}
-%[1]s{{- if (index .Values "%[3]s").cm }}
-%[1]s- configMapRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}%[4]s-cm
-%[1]s{{- end }}
-%[1]s{{- if (index .Values "%[3]s").secret }}
-%[1]s- secretRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}%[4]s-secrets
-%[1]s{{- end }}`, indent, chartName, objName, suffix)
+%[2]s{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+%[2]s- configMapRef:
+%[2]s    name: {{ include "%[3]s.fullname" . }}-global-cm
+%[2]s{{- end }}
+%[2]s{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+%[2]s- secretRef:
+%[2]s    name: {{ include "%[3]s.fullname" . }}-global-secret
+%[2]s{{- end }}
+%[2]s{{- if (index .Values "%[4]s").cm }}
+%[2]s- configMapRef:
+%[2]s    name: {{ include "%[3]s.fullname" . }}%[5]s-cm
+%[2]s{{- end }}
+%[2]s{{- if (index .Values "%[4]s").secret }}
+%[2]s- secretRef:
+%[2]s    name: {{ include "%[3]s.fullname" . }}%[5]s-secrets
+%[2]s{{- end }}`, indentMatch, subIndent, chartName, objName, suffix)
 	})
 
 	// Handle legacy 2-parameter placeholder for tests or non-component deployments
-	r3_2 := regexp.MustCompile(`(?m)^(\s*)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([0-9]+)\]'`)
+	r3_2 := regexp.MustCompile(`(?m)^(\s*(?:-\s+)?)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([0-9]+)\]'`)
 	s = r3_2.ReplaceAllStringFunc(s, func(match string) string {
 		matches := r3_2.FindStringSubmatch(match)
-		indent, objName := matches[1], matches[2]
+		indentMatch, objName := matches[1], matches[2]
+		subIndent := strings.Replace(indentMatch, "-", " ", 1)
 		suffix := "-" + objName
 		if processor.NormalizeComponentName(chartName) == processor.NormalizeComponentName(objName) {
 			suffix = ""
 		}
 		
 		return fmt.Sprintf(`%[1]senvFrom:
-%[1]s{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
-%[1]s- configMapRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}-global-cm
-%[1]s{{- end }}
-%[1]s{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
-%[1]s- secretRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}-global-secret
-%[1]s{{- end }}
-%[1]s{{- if (index .Values "%[3]s").cm }}
-%[1]s- configMapRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}%[4]s-cm
-%[1]s{{- end }}
-%[1]s{{- if (index .Values "%[3]s").secret }}
-%[1]s- secretRef:
-%[1]s    name: {{ include "%[2]s.fullname" . }}%[4]s-secrets
-%[1]s{{- end }}`, indent, chartName, objName, suffix)
+%[2]s{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+%[2]s- configMapRef:
+%[2]s    name: {{ include "%[3]s.fullname" . }}-global-cm
+%[2]s{{- end }}
+%[2]s{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+%[2]s- secretRef:
+%[2]s    name: {{ include "%[3]s.fullname" . }}-global-secret
+%[2]s{{- end }}
+%[2]s{{- if (index .Values "%[4]s").cm }}
+%[2]s- configMapRef:
+%[2]s    name: {{ include "%[3]s.fullname" . }}%[5]s-cm
+%[2]s{{- end }}
+%[2]s{{- if (index .Values "%[4]s").secret }}
+%[2]s- secretRef:
+%[2]s    name: {{ include "%[3]s.fullname" . }}%[5]s-secrets
+%[2]s{{- end }}`, indentMatch, subIndent, chartName, objName, suffix)
 	})
 
 	// 4. Handle global checksum placeholders
