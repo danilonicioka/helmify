@@ -109,34 +109,29 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	if comp == "api" || comp == "app" {
 		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), comp)
 	}
-	annotationsHelper := appMeta.ChartName() + ".annotations"
-	if processor.IsMultiDeployment(appMeta) {
-		annotationsHelper = fmt.Sprintf("%s.%s.annotations", appMeta.ChartName(), comp)
-	}
+
 	selector := fmt.Sprintf(selectorTempl, matchLabels, labelHelper, matchExpr)
 	selector = strings.Trim(selector, " \n")
 	selector = string(yamlformat.Indent([]byte(selector), 4))
 
-	cleanedPodLabels := cleanLabels(depl.Spec.Template.ObjectMeta.Labels)
-	var podLabels string
-	if len(cleanedPodLabels) > 0 {
-		m, err := yamlformat.Marshal(cleanedPodLabels, 8)
-		if err != nil {
-			return true, nil, err
-		}
-		podLabels = m + fmt.Sprintf("\n      {{- include \"%s\" . | nindent 8 }}", labelHelper)
-	} else {
-		podLabels = fmt.Sprintf("      {{- include \"%s\" . | nindent 8 }}", labelHelper)
-	}
-
 	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
+
+	cleanedPodLabels := cleanLabels(depl.Spec.Template.ObjectMeta.Labels)
+	if len(cleanedPodLabels) > 0 {
+		for k, v := range cleanedPodLabels {
+			_, _ = values.Add(v, nameCamel, "labels", k)
+		}
+	}
+	podLabels := fmt.Sprintf(`        {{- with .Values.%s.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- include "%s" . | nindent 8 }}`, nameCamel, labelHelper)
 
 	cleanedPodAnnotations := map[string]string{}
 	for k, v := range depl.Spec.Template.ObjectMeta.Annotations {
 		cleanedPodAnnotations[k] = v
 	}
 	if len(cleanedPodAnnotations) > 0 {
-		_ = unstructured.SetNestedField(values, map[string]interface{}{}, nameCamel, "annotations")
 		for k, v := range cleanedPodAnnotations {
 			_, _ = values.Add(v, nameCamel, "annotations", k)
 		}
@@ -161,15 +156,16 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	if annStr != "" {
 		podAnnotations = fmt.Sprintf(`
       annotations:
-        {{- include "%s" . | nindent 8 }}
-%s`, annotationsHelper, annStr)
+        {{- with .Values.%s.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+%s`, nameCamel, annStr)
 	} else {
 		podAnnotations = fmt.Sprintf(`
-      {{- $annotations := include "%s" . }}
-      {{- if $annotations }}
+      {{- with .Values.%s.annotations }}
       annotations:
-        {{- $annotations | nindent 8 }}
-      {{- end }}`, annotationsHelper)
+        {{- toYaml . | nindent 8 }}
+      {{- end }}`, nameCamel)
 	}
 	specMap, podValues, err := pod.ProcessSpec(nameCamel, appMeta, depl.Spec.Template.Spec, 0)
 	if err != nil {

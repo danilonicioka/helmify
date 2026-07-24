@@ -402,6 +402,10 @@ When components end with numeric suffixes (like `pje-service-1g` or `pje-service
     annotations:
       app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
   ```
+
+### 🏷️ Dynamic Labels and Annotations
+- **Problem**: Previously, custom labels (like `app.kubernetes.io/part-of` or `deploymentconfig`) and annotations from the source manifests were hardcoded directly into the templates, making them impossible to customize or override during Helm deployment.
+- **Implementation**: Helmify now extracts all custom labels and annotations from both the Deployment metadata and the Pod template metadata into `.Values.<component>.labels` and `.Values.<component>.annotations` respectively. The templates are injected with `{{- toYaml .Values.<component>.labels }}` and `{{- toYaml .Values.<component>.annotations }}`, ensuring clean templates and full configurability via `values.yaml`. Checksums and single-deployment component labels are the only exceptions.
 ### 🗺️ Route Service Target Naming Bug (-svc suffix)
 - **Symptom**: When dynamically generating standard route templates (`route-default.yaml`, `route-int.yaml`, `route-ext.yaml`) using the `GenerateAllTemplates` option, the route manifests are generated referencing target services with a `-svc` suffix (e.g. `{{ include "fullname" . }}-svc`), causing routing errors in OpenShift since the actual generated service templates do not have the `-svc` suffix.
 - **Fix**: Removed the hardcoded `-svc` suffix from `compRouteDefaultTemplate`, `compRouteInternalTemplate`, and `compRouteExternalTemplate` inside [chart.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/helm/chart.go) to match the service templates.
