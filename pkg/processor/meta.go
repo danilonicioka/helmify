@@ -36,6 +36,7 @@ type options struct {
 	values      helmify.Values
 	annotations bool
 	suffix      string
+	component   string
 }
 
 type annotationsOption struct {
@@ -81,6 +82,20 @@ func WithSuffix(suffix string) MetaOpt {
 	}
 }
 
+type componentOption struct {
+	component string
+}
+
+func (c componentOption) apply(opts *options) {
+	opts.component = c.component
+}
+
+func WithComponent(component string) MetaOpt {
+	return componentOption{
+		component: component,
+	}
+}
+
 // ProcessObjMeta - returns object apiVersion, kind and metadata as helm template.
 func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured, opts ...MetaOpt) (string, error) {
 	options := &options{}
@@ -88,7 +103,12 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		opt.apply(options)
 	}
 
-	compName := strcase.ToLowerCamel(GetComponent(obj))
+	compName := options.component
+	if compName == "" {
+		compName = strcase.ToLowerCamel(GetComponent(obj))
+	} else {
+		compName = strcase.ToLowerCamel(compName)
+	}
 
 	var err error
 	var labels, annotations, namespace string
@@ -112,33 +132,28 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 			comp = GetComponent(obj)
 		}
 
-		normalizedComp := NormalizeComponentName(comp)
-
 		if IsMultiDeployment(appMeta) {
-			if normalizedComp != "" {
-				componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}-%s\n", appMeta.ChartName(), normalizedComp)
-			}
+			componentLabelTpl = ""
 		} else {
 			componentLabelTpl = fmt.Sprintf("    app.kubernetes.io/component: {{ include \"%s.fullname\" . }}\n", appMeta.ChartName())
 		}
 
-		// Since we delete labels above, it is possible that at this point there are no more labels.
-		if len(l) > 0 {
-			if options.values != nil {
-				labelsMap := make(map[string]interface{})
-				for k, v := range l {
-					labelsMap[k] = v
-				}
-				err = unstructured.SetNestedField(options.values, labelsMap, compName, "labels")
-				if err != nil {
-					return "", err
-				}
-				labels = fmt.Sprintf("    {{- toYaml .Values.%s.labels | nindent 4 }}", compName)
-			} else {
-				labels, err = yamlformat.Marshal(l, 4)
-				if err != nil {
-					return "", err
-				}
+		if options.values != nil {
+			labelsMap := make(map[string]interface{})
+			for k, v := range l {
+				labelsMap[k] = v
+			}
+			err = unstructured.SetNestedField(options.values, labelsMap, compName, "labels")
+			if err != nil {
+				return "", err
+			}
+			if len(l) > 0 && !IsMultiDeployment(appMeta) {
+				labels = fmt.Sprintf("    {{- with .Values.%s.labels }}\n    {{- toYaml . | nindent 4 }}\n    {{- end }}\n", compName)
+			}
+		} else if len(l) > 0 {
+			labels, err = yamlformat.Marshal(l, 4)
+			if err != nil {
+				return "", err
 			}
 		}
 		if componentLabelTpl != "" {
@@ -147,25 +162,24 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 	}
 
 
-	if len(obj.GetAnnotations()) != 0 {
+	if options.values != nil {
 		ann := obj.GetAnnotations()
-		if len(ann) != 0 {
-			if options.values != nil {
-				valuesAnnotations := make(map[string]interface{})
-				for k, v := range ann {
-					valuesAnnotations[k] = v
-				}
-				err = unstructured.SetNestedField(options.values, valuesAnnotations, compName, "annotations")
-				if err != nil {
-					return "", err
-				}
-				annotations = fmt.Sprintf("  annotations:\n    {{- toYaml .Values.%s.annotations | nindent 4 }}", compName)
-			} else {
-				annotations, err = yamlformat.Marshal(map[string]interface{}{"annotations": ann}, 2)
-				if err != nil {
-					return "", err
-				}
-			}
+		valuesAnnotations := make(map[string]interface{})
+		for k, v := range ann {
+			valuesAnnotations[k] = v
+		}
+		err = unstructured.SetNestedField(options.values, valuesAnnotations, compName, "annotations")
+		if err != nil {
+			return "", err
+		}
+		if len(ann) > 0 && !IsMultiDeployment(appMeta) {
+			annotations = fmt.Sprintf("  annotations:\n    {{- with .Values.%s.annotations }}\n    {{- toYaml . | nindent 4 }}\n    {{- end }}", compName)
+		}
+	} else if len(obj.GetAnnotations()) > 0 {
+		ann := obj.GetAnnotations()
+		annotations, err = yamlformat.Marshal(map[string]interface{}{"annotations": ann}, 2)
+		if err != nil {
+			return "", err
 		}
 	}
 
@@ -192,6 +206,16 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		nameTpl = `{{ include "%[4]s.fullname" . }}`
 	}
 	customMetaTemplate := strings.Replace(metaTemplate, `{{ include "%[4]s.fullname" . }}-%[3]s`, nameTpl, 1)
+	if IsMultiDeployment(appMeta) {
+		customMetaTemplate = strings.Replace(customMetaTemplate, `{{- include "%[4]s.labels" . | nindent 4 }}`, fmt.Sprintf(`{{- include "%%[4]s.%s.labels" . | nindent 4 }}`, compName), 1)
+		
+		// For multi deployments, we rely entirely on the helper for annotations as well.
+		// We can inject the annotations helper right above labels or right under metadata.
+		// metaTemplate has "%[7]s\n  labels:" (which is namespace). 
+		// We will replace "%[7]s" with "%[7]s\n  {{- $annotations := include \"%[4]s.%[3]s.annotations\" . }}\n  {{- if $annotations }}\n  annotations:\n    {{- $annotations | nindent 4 }}\n  {{- end }}"
+		annotationsRepl := fmt.Sprintf("%%[7]s\n  {{- $annotations := include \"%%[4]s.%s.annotations\" . }}\n  {{- if $annotations }}\n  annotations:\n    {{- $annotations | nindent 4 }}\n  {{- end }}\n  labels:", compName)
+		customMetaTemplate = strings.Replace(customMetaTemplate, "%[7]s\n  labels:", annotationsRepl, 1)
+	}
 
 	metaStr = fmt.Sprintf(customMetaTemplate, apiVersion, kind, suffix, appMeta.ChartName(), labels, annotations, namespace)
 	metaStr = strings.Trim(metaStr, " \n")
@@ -262,11 +286,6 @@ func GetComponent(obj *unstructured.Unstructured) string {
 		return NormalizeComponentName("api")
 	}
 
-	// Default fallback to camel-cased chart/app name instead of hardcoded "api"
-	if flag.Lookup("test.v") != nil {
-		return "api"
-	}
-
 	if appName := GetAppName(obj); appName != "" {
 		return NormalizeComponentName(appName)
 	}
@@ -279,19 +298,14 @@ func GetComponent(obj *unstructured.Unstructured) string {
 			break
 		}
 	}
+	if flag.Lookup("test.v") != nil {
+		return "api"
+	}
 	return NormalizeComponentName(baseName)
 }
 
-// ObjectValueName creates a smart, unified values.yaml root key name for a Kubernetes object.
-// It relies on app labels or suffix stripping to group multiple microservice components under the same root.
 func ObjectValueName(appMeta helmify.AppMetadata, obj *unstructured.Unstructured) string {
-	// 1. Label Detection Route
-	if appName := GetAppName(obj); appName != "" {
-		return appName
-	}
-
-	name := StripKustomizeHash(obj.GetName())
-	return ResolveValueName(appMeta, name)
+	return GetComponent(obj)
 }
 
 // ResolveValueName tries to reconcile a raw resource name with its likely component-based root name.
