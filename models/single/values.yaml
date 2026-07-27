@@ -148,6 +148,14 @@ chart-model-single:
   # -- Connection draining grace period for graceful shutdowns.
   terminationGracePeriodSeconds: 30
 
+  # ----------------------------------------------------------------------------
+  # 7. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  # persistence:
+  #   enabled: false
+  #   storageClass: thin
+  #   storageRequest: 512Mi
+
 # ==============================================================================
 # III. GLOBAL SCHEDULING & COMMON CONFIGS
 # ==============================================================================

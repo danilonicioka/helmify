@@ -586,6 +586,8 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 		sortMapping.Content = newContent
 	}
 
+	injectFootComments(&rootNode)
+
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
@@ -753,6 +755,45 @@ func toNode(v interface{}, depth int, path string) *yaml.Node {
 			return node.Content[0]
 		}
 		return &node
+	}
+}
+
+func injectFootComments(node *yaml.Node) {
+	if node == nil {
+		return
+	}
+	if node.Kind == yaml.MappingNode {
+		for i := 0; i < len(node.Content); i += 2 {
+			keyNode := node.Content[i]
+			valNode := node.Content[i+1]
+			
+			if valNode.Kind == yaml.MappingNode && len(valNode.Content) == 0 {
+				k := keyNode.Value
+				if keyNode.FootComment == "" {
+					switch k {
+					case "strategy":
+						keyNode.FootComment = "strategy:\n  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
+					case "resources":
+						keyNode.FootComment = "resources:\n  limits:\n    cpu: 500m\n    memory: 512Mi\n  requests:\n    cpu: 100m\n    memory: 256Mi"
+					case "startupProbe":
+						keyNode.FootComment = "startupProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 5\n  failureThreshold: 30"
+					case "livenessProbe":
+						keyNode.FootComment = "livenessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 20\n  failureThreshold: 3"
+					case "readinessProbe":
+						keyNode.FootComment = "readinessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  successThreshold: 2\n  failureThreshold: 3"
+					case "labels":
+						keyNode.FootComment = "  # app.openshift.io/runtime: openjdk"
+					case "annotations":
+						keyNode.FootComment = "  # app.openshift.io/connects-to: '[{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"name\":\"db\"}]'"
+					}
+				}
+			}
+			injectFootComments(valNode)
+		}
+	} else if node.Kind == yaml.DocumentNode || node.Kind == yaml.SequenceNode {
+		for _, child := range node.Content {
+			injectFootComments(child)
+		}
 	}
 }
 

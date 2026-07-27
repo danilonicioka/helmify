@@ -141,6 +141,14 @@ backend:
   
   terminationGracePeriodSeconds: 30
 
+  # ----------------------------------------------------------------------------
+  # 7. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  # persistence:
+  #   enabled: false
+  #   storageClass: thin
+  #   storageRequest: 512Mi
+
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -201,13 +209,42 @@ frontend:
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
   resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 256Mi
 
   # ----------------------------------------------------------------------------
-  # 5. TIERED "FAIL-FAST" HEALTH PROBES
+  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
   startupProbe: {}
+  # startupProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 5
+  #   failureThreshold: 30
+  #   successThreshold: 1
+
   livenessProbe: {}
+  # livenessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
   readinessProbe: {}
+  # readinessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
 
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
