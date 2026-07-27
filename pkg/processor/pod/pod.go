@@ -461,9 +461,20 @@ func processEnv(name string, containerName string, appMeta helmify.AppMetadata, 
 			redundant := false
 			if e.ValueFrom.ConfigMapKeyRef != nil {
 				cmName := processor.ResolveValueName(appMeta, e.ValueFrom.ConfigMapKeyRef.Name)
+				redundant = false
 				if processor.NormalizeComponentName(cmName) == processor.NormalizeComponentName(name) || processor.NormalizeComponentName(cmName) == processor.NormalizeComponentName(appMeta.ChartName()) {
 					redundant = true
 				} else {
+					// Check if FindReferencingComponents resolves it to this component
+					comps := processor.FindReferencingComponents(appMeta, e.ValueFrom.ConfigMapKeyRef.Name, false)
+					for _, comp := range comps {
+						if processor.NormalizeComponentName(comp) == processor.NormalizeComponentName(name) {
+							redundant = true
+							break
+						}
+					}
+				}
+				if !redundant {
 					e.ValueFrom.ConfigMapKeyRef.Name = processor.TemplatedConfigMapName(appMeta, e.ValueFrom.ConfigMapKeyRef.Name)
 				}
 			}
@@ -472,6 +483,16 @@ func processEnv(name string, containerName string, appMeta helmify.AppMetadata, 
 				if processor.NormalizeComponentName(secName) == processor.NormalizeComponentName(name) || processor.NormalizeComponentName(secName) == processor.NormalizeComponentName(appMeta.ChartName()) {
 					redundant = true
 				} else {
+					// Check if FindReferencingComponents resolves it to this component
+					comps := processor.FindReferencingComponents(appMeta, e.ValueFrom.SecretKeyRef.Name, true)
+					for _, comp := range comps {
+						if processor.NormalizeComponentName(comp) == processor.NormalizeComponentName(name) {
+							redundant = true
+							break
+						}
+					}
+				}
+				if !redundant {
 					e.ValueFrom.SecretKeyRef.Name = processor.TemplatedSecretName(appMeta, e.ValueFrom.SecretKeyRef.Name)
 				}
 			}

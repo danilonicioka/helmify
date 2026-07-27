@@ -102,38 +102,6 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-API labels
-*/}}
-{{- define "<CHARTNAME>.api.labels" -}}
-{{ include "<CHARTNAME>.labels" . }}
-app.kubernetes.io/component: {{ include "<CHARTNAME>.fullname" . }}-api
-{{- end }}
-
-{{/*
-API selector labels
-*/}}
-{{- define "<CHARTNAME>.api.selectorLabels" -}}
-{{ include "<CHARTNAME>.selectorLabels" . }}
-app.kubernetes.io/component: {{ include "<CHARTNAME>.fullname" . }}-api
-{{- end }}
-
-{{/*
-APP labels
-*/}}
-{{- define "<CHARTNAME>.app.labels" -}}
-{{ include "<CHARTNAME>.labels" . }}
-app.kubernetes.io/component: {{ include "<CHARTNAME>.fullname" . }}-app
-{{- end }}
-
-{{/*
-APP selector labels
-*/}}
-{{- define "<CHARTNAME>.app.selectorLabels" -}}
-{{ include "<CHARTNAME>.selectorLabels" . }}
-app.kubernetes.io/component: {{ include "<CHARTNAME>.fullname" . }}-app
-{{- end }}
-
-{{/*
 Create the name of the service account to use
 */}}
 {{- define "<CHARTNAME>.serviceAccountName" -}}

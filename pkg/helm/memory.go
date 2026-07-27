@@ -71,15 +71,28 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	// Calculate if chart has multiple workload components
 	componentKeys := []string{}
 	for key := range values {
-		if key == "global" || key == "nodeSelector" || key == "affinity" {
+		if key == "global" || key == "nodeSelector" || key == "affinity" || key == "fullnameOverride" || key == "nameOverride" || key == "kubernetesClusterDomain" || key == "dnsResolver" {
 			continue
 		}
-		compKebab := processor.NormalizeComponentName(key)
-		if isWorkloadComponent(compKebab, chartName, files) {
-			componentKeys = append(componentKeys, key)
-		}
+		componentKeys = append(componentKeys, key)
 	}
 	isMulti := len(componentKeys) > 1
+
+	if isMulti {
+		helpersFile := filepath.Join("templates", "_helpers.tpl")
+		content := m.Files[helpersFile]
+		if content != nil {
+			var toAppend string
+			for _, compKey := range componentKeys {
+				if !strings.Contains(string(content), fmt.Sprintf("define \"%s.%s.labels\"", chartName, compKey)) {
+					toAppend += fmt.Sprintf("\n{{/*\n%[2]s-specific labels\n*/}}\n{{- define \"%[1]s.%[2]s.labels\" -}}\n{{ include \"%[1]s.labels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- with .Values.%[2]s.labels }}\n{{ toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific annotations\n*/}}\n{{- define \"%[1]s.%[2]s.annotations\" -}}\n{{- with .Values.%[2]s.annotations }}\n{{- toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific selector labels\n*/}}\n{{- define \"%[1]s.%[2]s.selectorLabels\" -}}\n{{ include \"%[1]s.selectorLabels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- end }}\n", chartName, compKey)
+				}
+			}
+			if toAppend != "" {
+				m.Files[helpersFile] = append(content, []byte(toAppend)...)
+			}
+		}
+	}
 
 	m.Files[filepath.Join("templates", "cm-global.yaml")] = globalConfigMapYAML(chartName)
 	m.Files[filepath.Join("templates", "secret-global.yaml")] = globalSecretYAML(chartName)

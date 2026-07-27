@@ -211,13 +211,10 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	// Calculate if chart has multiple workload components
 	componentKeys := []string{}
 	for key := range values {
-		if key == "global" || key == "nodeSelector" || key == "affinity" {
+		if key == "global" || key == "nodeSelector" || key == "affinity" || key == "fullnameOverride" || key == "nameOverride" || key == "kubernetesClusterDomain" || key == "dnsResolver" {
 			continue
 		}
-		compKebab := processor.NormalizeComponentName(key)
-		if isWorkloadComponent(compKebab, chartName, files) {
-			componentKeys = append(componentKeys, key)
-		}
+		componentKeys = append(componentKeys, key)
 	}
 	isMulti := len(componentKeys) > 1
 
@@ -913,14 +910,15 @@ func isWorkloadComponent(compKebab string, chartName string, files map[string][]
 	if flag.Lookup("test.v") != nil {
 		return true
 	}
-	workloadPrefixes := []string{"deploy-", "sts-", "daemonset-", "job-", "cronjob-"}
-	for _, prefix := range workloadPrefixes {
+	// Check for any standard component file prefix to catch components that might only have a Service or ConfigMap.
+	componentPrefixes := []string{"deploy-", "sts-", "daemonset-", "job-", "cronjob-", "svc-", "route-", "ingress-", "cm-", "secret-", "pvc-"}
+	for _, prefix := range componentPrefixes {
 		if _, exists := files[prefix+compKebab+".yaml"]; exists {
 			return true
 		}
 	}
 	if compKebab == chartName {
-		defaultNames := []string{"deploy.yaml", "sts.yaml", "daemonset.yaml", "job.yaml", "cronjob.yaml"}
+		defaultNames := []string{"deploy.yaml", "sts.yaml", "daemonset.yaml", "job.yaml", "cronjob.yaml", "svc.yaml", "route.yaml", "ingress.yaml", "cm.yaml", "secret.yaml"}
 		for _, name := range defaultNames {
 			if _, exists := files[name]; exists {
 				return true
