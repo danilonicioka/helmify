@@ -46,6 +46,58 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	nameCamelCase := strcase.ToLowerCamel(name)
 	values := helmify.Values{}
 
+	// NEW LOGIC: Scan workloads to see if they mount this PVC
+	targetComponent := ""
+	for _, o := range appMeta.Objects() {
+		kind := strings.ToLower(o.GetKind())
+		if kind == "deployment" || kind == "statefulset" || kind == "daemonset" || kind == "job" {
+			volumes, found, _ := unstructured.NestedSlice(o.Object, "spec", "template", "spec", "volumes")
+			if found {
+				for _, vRaw := range volumes {
+					if v, ok := vRaw.(map[string]interface{}); ok {
+						if pvc, hasPvc := v["persistentVolumeClaim"].(map[string]interface{}); hasPvc {
+							if claimName, _ := pvc["claimName"].(string); claimName == obj.GetName() {
+								targetComponent = processor.GetComponent(o)
+								break
+							}
+						}
+					}
+				}
+			}
+		} else if kind == "pod" {
+			volumes, found, _ := unstructured.NestedSlice(o.Object, "spec", "volumes")
+			if found {
+				for _, vRaw := range volumes {
+					if v, ok := vRaw.(map[string]interface{}); ok {
+						if pvc, hasPvc := v["persistentVolumeClaim"].(map[string]interface{}); hasPvc {
+							if claimName, _ := pvc["claimName"].(string); claimName == obj.GetName() {
+								targetComponent = processor.GetComponent(o)
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+		if targetComponent != "" {
+			break
+		}
+	}
+
+	targetRoot := "pvc"
+	targetKey := nameCamelCase
+	if targetComponent != "" {
+		targetRoot = strcase.ToLowerCamel(targetComponent)
+		if targetRoot == "" {
+			targetRoot = strcase.ToLowerCamel(processor.ObjectValueName(appMeta, obj))
+		}
+		targetKey = "persistence"
+		err = unstructured.SetNestedField(values, true, targetRoot, "persistence", "enabled")
+		if err != nil {
+			return true, nil, err
+		}
+	}
+
 	claim := corev1.PersistentVolumeClaim{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &claim)
 	if err != nil {
@@ -54,7 +106,7 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 
 	// template storage class name
 	if claim.Spec.StorageClassName != nil {
-		templatedSC, err := values.Add(*claim.Spec.StorageClassName, "pvc", nameCamelCase, "storageClass")
+		templatedSC, err := values.Add(*claim.Spec.StorageClassName, targetRoot, targetKey, "storageClass")
 		if err != nil {
 			return true, nil, err
 		}
@@ -69,7 +121,7 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 
 	storageReq, ok, _ := unstructured.NestedString(specMap, "resources", "requests", "storage")
 	if ok {
-		templatedStorageReq, err := values.Add(storageReq, "pvc", nameCamelCase, "storageRequest")
+		templatedStorageReq, err := values.Add(storageReq, targetRoot, targetKey, "storageRequest")
 		if err != nil {
 			return true, nil, err
 		}
@@ -81,7 +133,7 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 
 	storageLim, ok, _ := unstructured.NestedString(specMap, "resources", "limits", "storage")
 	if ok {
-		templatedStorageLim, err := values.Add(storageLim, "pvc", nameCamelCase, "storageLimit")
+		templatedStorageLim, err := values.Add(storageLim, targetRoot, targetKey, "storageLimit")
 		if err != nil {
 			return true, nil, err
 		}
@@ -103,7 +155,9 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 			Meta string
 			Spec string
 		}{Meta: meta, Spec: spec},
-		values: values,
+		values:          values,
+		targetComponent: targetRoot,
+		isStandalone:    targetComponent == "",
 	}, nil
 }
 
@@ -113,7 +167,9 @@ type result struct {
 		Meta string
 		Spec string
 	}
-	values helmify.Values
+	values          helmify.Values
+	targetComponent string
+	isStandalone    bool
 }
 
 func (r *result) Filename() string {
@@ -125,5 +181,24 @@ func (r *result) Values() helmify.Values {
 }
 
 func (r *result) Write(writer io.Writer) error {
-	return pvcTempl.Execute(writer, r.data)
+	var err error
+	if !r.isStandalone {
+		_, err = fmt.Fprintf(writer, "{{- if .Values.%s.persistence.enabled -}}\n", r.targetComponent)
+		if err != nil {
+			return err
+		}
+	}
+	
+	err = pvcTempl.Execute(writer, r.data)
+	if err != nil {
+		return err
+	}
+	
+	if !r.isStandalone {
+		_, err = fmt.Fprint(writer, "{{- end -}}\n")
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

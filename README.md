@@ -224,6 +224,7 @@ Helmify is designed to generate production-ready charts that follow TJPA standar
 - **Deployment Strategy**: If a strategy is defined in the source manifest, it is preserved in the generated values. Otherwise, it defaults to a standardized `RollingUpdate` strategy (`maxUnavailable: 0`, `maxSurge: 25%`) to guarantee zero-downtime rolling updates.
 - **Standardized Labels**: Consistent application of `component` and `part-of` labels across all resources. The `app.kubernetes.io/component` label dynamically checks the deployment type: if it is a single-deployment chart (component name matches chart name), it renders simply as `{{ include "<chartName>.fullname" . }}` to avoid duplicate suffixes like `token-tjpa-token-tjpa`. Otherwise, it templates as `{{ include "<chartName>.fullname" . }}-<componentName>`.
 - **Dynamic Route Association**: Automatically associates OpenShift Routes with their target `Service` components by checking the target `spec.to.name`. If a Route targets a Service belonging to the same component, it maps to `.Values.<component>.route`. If it routes to a Service in a different component (additional routes), it is isolated under `.Values.<component>.routes.<routeName>` to prevent configuration overrides.
+- **Component Persistence**: PVCs that are mounted by a workload are now dynamically abstracted into `<component>.persistence` blocks positioned at the bottom of the component configuration, rather than top-level `.Values.pvc.<name>` configurations, ensuring cohesive configurations.
 
 ## Component Naming & Reference Resolution Engine
 
