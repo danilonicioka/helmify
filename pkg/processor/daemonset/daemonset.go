@@ -38,7 +38,7 @@ spec:
 {{ .Spec }}`)
 
 const selectorTempl = `%[1]s
-{{- include "%[2]s.selectorLabels" . | nindent 6 }}
+{{- include "%[2]s" . | nindent 6 }}
 %[3]s`
 
 // New creates processor for k8s Daemonset resource.
@@ -77,7 +77,13 @@ func (d daemonset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 			return true, nil, err
 		}
 	}
-	selector := fmt.Sprintf(selectorTempl, matchLabels, appMeta.ChartName(), matchExpr)
+	comp := processor.GetComponent(obj)
+	labelHelper := appMeta.ChartName() + ".selectorLabels"
+	if comp != "" && (comp != appMeta.ChartName() || processor.IsMultiDeployment(appMeta)) {
+		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), comp)
+	}
+
+	selector := fmt.Sprintf(selectorTempl, matchLabels, labelHelper, matchExpr)
 	selector = strings.Trim(selector, " \n")
 	selector = string(yamlformat.Indent([]byte(selector), 4))
 
@@ -85,7 +91,7 @@ func (d daemonset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	if err != nil {
 		return true, nil, err
 	}
-	podLabels += fmt.Sprintf("\n      {{- include \"%s.selectorLabels\" . | nindent 8 }}", appMeta.ChartName())
+	podLabels += fmt.Sprintf("\n      {{- include \"%s\" . | nindent 8 }}", labelHelper)
 
 	nameCamel := strcase.ToLowerCamel(name)
 	podAnnotations := ""

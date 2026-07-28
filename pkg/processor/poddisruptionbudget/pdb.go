@@ -23,7 +23,7 @@ spec:
   minAvailable: {{ .Values.%[1]s.minAvailable }}
   maxUnavailable: {{ .Values.%[1]s.maxUnavailable }}
   selector:%[2]s
-    {{- include "%[3]s.selectorLabels" . | nindent 6 }}`
+    {{- include "%[3]s" . | nindent 6 }}`
 )
 
 var pdbGVC = schema.GroupVersionKind{
@@ -81,7 +81,12 @@ func (r pdb) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		}
 	}
 
-	res := meta + fmt.Sprintf(pdbTempSpec, nameCamel, selector, appMeta.ChartName())
+	labelHelper := appMeta.ChartName() + ".selectorLabels"
+	if nameCamel != "" && (nameCamel != appMeta.ChartName() || processor.IsMultiDeployment(appMeta)) {
+		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), nameCamel)
+	}
+
+	res := meta + fmt.Sprintf(pdbTempSpec, nameCamel, selector, labelHelper)
 	return true, &result{
 		name:   name,
 		data:   res,
