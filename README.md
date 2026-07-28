@@ -62,6 +62,9 @@ This fork incorporates specific behaviors designed to meet organizational requir
   - Resource Selectors: `app.kubernetes.io/component` has been stripped from standard `matchLabels` to prevent upgrade-related immutable field conflicts in Deployments.
   - Resource Metadata: Primary objects (Deployments, Services, ConfigMaps, Secrets, Routes) still receive the `app.kubernetes.io/component: {{ include "chart.fullname" . }}-<componentName>` label in their `.metadata.labels` to accurately classify them in OpenShift monitoring panels.
   - Dynamic Annotations: Custom pod annotations parsed from original Kubernetes manifests are now seamlessly offloaded to `.Values.<component>.annotations` via a `_helpers.tpl` mapping (e.g. `{{- include "<chartName>.annotations" . | nindent 8 }}`). This allows configuring custom values while cleanly coexisting with dynamic configmap/secret reload checksums.
+- **Persistent Volume Claims (PVC) Consolidation:**
+  - Dynamic Metadata Resolution: `helmify` now scans Deployments/StatefulSets to map PVCs to their respective components *before* generating the PVC template. This guarantees the PVC correctly inherits the exact `claimName` the workload expects and seamlessly applies the specific component-level label templates (e.g., `{{ include "<chartName>.<comp>.labels" . }}`).
+  - Filename Standardization: PVC templates are now accurately saved as `pvc-<component>.yaml` (instead of using raw object names like `postgresql-pvc.yaml`), aligning with standard component file conventions.
 - **UI Code Preview Reliability:**
   The `yaml` streaming decoder inside the web API has been hardened to aggressively abort on syntax errors. This resolves a known bug where pasting malformed YAML or half-typed templates into the UI wizard would trigger an unrecoverable infinite loop, locking up the CPU and freezing the `/v1/preview` API.
 
