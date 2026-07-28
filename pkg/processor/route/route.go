@@ -186,7 +186,6 @@ kind: Route
 metadata:
   name: %[3]s
   labels:
-    
     {{- include "%[6]s" . | nindent 4 }}
 
   {{- with .Values.%[1]s.annotations }}
@@ -220,7 +219,6 @@ kind: Route
 metadata:
   name: %[7]s
   labels:
-    
     {{- include "%[6]s" . | nindent 4 }}
 
   {{- with .Values.%[1]s.annotations }}
@@ -254,7 +252,6 @@ kind: Route
 metadata:
   name: %[8]s
   labels:
-    
     {{- include "%[6]s" . | nindent 4 }}
 
   {{- with .Values.%[1]s.annotations }}
