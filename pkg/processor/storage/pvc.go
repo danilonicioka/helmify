@@ -37,10 +37,7 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	if obj.GroupVersionKind() != pvcGVC {
 		return false, nil, nil
 	}
-	meta, err := processor.ProcessObjMeta(appMeta, obj)
-	if err != nil {
-		return true, nil, err
-	}
+
 
 	name := processor.ObjectValueName(appMeta, obj)
 	nameCamelCase := strcase.ToLowerCamel(name)
@@ -96,6 +93,17 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		if err != nil {
 			return true, nil, err
 		}
+	}
+
+	suffix := processor.GetDynamicSuffix(appMeta, obj, "persistentvolumeclaim")
+	var meta string
+	if targetComponent != "" {
+		meta, err = processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix), processor.WithComponent(targetComponent))
+	} else {
+		meta, err = processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
+	}
+	if err != nil {
+		return true, nil, err
 	}
 
 	claim := corev1.PersistentVolumeClaim{}
@@ -173,7 +181,10 @@ type result struct {
 }
 
 func (r *result) Filename() string {
-	return fmt.Sprintf("%s-pvc.yaml", r.name)
+	if r.targetComponent != "" {
+		return fmt.Sprintf("pvc-%s.yaml", r.targetComponent)
+	}
+	return fmt.Sprintf("pvc-%s.yaml", r.name)
 }
 
 func (r *result) Values() helmify.Values {
