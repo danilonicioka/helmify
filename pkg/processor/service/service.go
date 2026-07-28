@@ -86,7 +86,7 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		if k == "app.kubernetes.io/name" || k == "app.kubernetes.io/instance" ||
 			k == "app.kubernetes.io/version" || k == "app.kubernetes.io/managed-by" ||
 			k == "app.kubernetes.io/component" || k == "app" ||
-			k == "helm.sh/chart" || k == "deployment" {
+			k == "helm.sh/chart" || k == "deployment" || k == "deploymentconfig" || k == "deploymentConfig" {
 			continue
 		}
 		cleanSelector[k] = v
