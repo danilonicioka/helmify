@@ -243,7 +243,7 @@ func cleanLabels(l map[string]string) map[string]string {
 		if k == "app.kubernetes.io/name" || k == "app.kubernetes.io/instance" ||
 			k == "app.kubernetes.io/version" || k == "app.kubernetes.io/managed-by" ||
 			k == "app.kubernetes.io/component" || k == "app" ||
-			k == "helm.sh/chart" || k == "deployment" {
+			k == "helm.sh/chart" || k == "deployment" || k == "deploymentconfig" || k == "deploymentConfig" {
 			continue
 		}
 		res[k] = v

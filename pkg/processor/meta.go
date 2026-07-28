@@ -121,8 +121,10 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		delete(l, "app.kubernetes.io/managed-by")
 		delete(l, "helm.sh/chart")
 
-		// Remove legacy app label
+		// Remove legacy app and OpenShift labels
 		delete(l, "app")
+		delete(l, "deploymentconfig")
+		delete(l, "deploymentConfig")
 
 		var componentLabelTpl string
 		comp := l["app.kubernetes.io/component"]
