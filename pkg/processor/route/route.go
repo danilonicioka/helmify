@@ -163,13 +163,10 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	routeMetadataNameInt := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s-int", appMeta.ChartName(), name)
 	routeMetadataNameExt := fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s-ext", appMeta.ChartName(), name)
 
-	// Component label generation: for multi-deployment projects include component suffix, otherwise just chart fullname.
-	var componentLabelVal string
+	labelHelper := appMeta.ChartName() + ".labels"
 	normalizedComp := processor.NormalizeComponentName(targetComponent)
-	if processor.IsMultiDeployment(appMeta) && normalizedComp != "" {
-		componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}-%s", appMeta.ChartName(), normalizedComp)
-	} else {
-		componentLabelVal = fmt.Sprintf("{{ include \"%s.fullname\" . }}", appMeta.ChartName())
+	if normalizedComp != "" && (normalizedComp != appMeta.ChartName() || processor.IsMultiDeployment(appMeta)) {
+		labelHelper = fmt.Sprintf("%s.%s.labels", appMeta.ChartName(), normalizedComp)
 	}
 
 	// Preserve original logic for metadata names.
@@ -189,8 +186,8 @@ kind: Route
 metadata:
   name: %[3]s
   labels:
-    app.kubernetes.io/component: %[6]s
-    {{- include "%[2]s.labels" . | nindent 4 }}
+    
+    {{- include "%[6]s" . | nindent 4 }}
 
   {{- with .Values.%[1]s.annotations }}
   annotations:
@@ -223,8 +220,8 @@ kind: Route
 metadata:
   name: %[7]s
   labels:
-    app.kubernetes.io/component: %[6]s
-    {{- include "%[2]s.labels" . | nindent 4 }}
+    
+    {{- include "%[6]s" . | nindent 4 }}
 
   {{- with .Values.%[1]s.annotations }}
   annotations:
@@ -257,8 +254,8 @@ kind: Route
 metadata:
   name: %[8]s
   labels:
-    app.kubernetes.io/component: %[6]s
-    {{- include "%[2]s.labels" . | nindent 4 }}
+    
+    {{- include "%[6]s" . | nindent 4 }}
 
   {{- with .Values.%[1]s.annotations }}
   annotations:
@@ -283,7 +280,7 @@ spec:
     targetPort: %[5]s
   wildcardPolicy: None
 {{- end }}
-{{- end }}`, valuesPath, appMeta.ChartName(), routeMetadataName, templatedToService, targetPortValue, componentLabelVal, routeMetadataNameInt, routeMetadataNameExt)
+{{- end }}`, valuesPath, appMeta.ChartName(), routeMetadataName, templatedToService, targetPortValue, labelHelper, routeMetadataNameInt, routeMetadataNameExt)
 
 	return true, &routeResult{
 		name:   name,

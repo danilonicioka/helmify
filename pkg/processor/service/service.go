@@ -135,7 +135,7 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 
 	comp := processor.GetComponent(obj)
 	labelHelper := appMeta.ChartName() + ".selectorLabels"
-	if comp == "api" || comp == "app" {
+	if comp != "" && (comp != appMeta.ChartName() || processor.IsMultiDeployment(appMeta)) {
 		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), comp)
 	}
 	ipFamilySpec := parseIPFamily(values, service, shortNameCamel)

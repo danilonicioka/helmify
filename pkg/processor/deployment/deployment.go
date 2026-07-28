@@ -106,7 +106,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	}
 	comp := processor.GetComponent(obj)
 	labelHelper := appMeta.ChartName() + ".selectorLabels"
-	if comp == "api" || comp == "app" {
+	if comp != "" && (comp != appMeta.ChartName() || processor.IsMultiDeployment(appMeta)) {
 		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), comp)
 	}
 

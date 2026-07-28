@@ -396,7 +396,10 @@ When components end with numeric suffixes (like `pje-service-1g` or `pje-service
     - **Cause**: The label templating always appended `-{{ .Values.<component> }}` without checking if the component name already matches the chart name.
     - **Solution**: Helmify now checks `if normalizedComp == appMeta.ChartName()` (or equivalent in routes) and, for single‑deployment charts, renders the component label simply as `{{ include "<chartName>.fullname" . }}`. For multi‑deployment charts the suffix is kept, ensuring distinct component labels.
     - **Caution**: When a chart defines **multiple** components (e.g., `frontend`, `backend`), the component name will differ from the chart name, so the suffix **must** remain. The logic safely preserves the suffix only when the names match.
-    - **Implementation**: Updated `ProcessObjMeta` in `meta.go`, route templating in `route.go`, and the chart generation logic in `chart.go`. Also adjusted example Helm chart templates (`deploy.yaml`, `cm.yaml`, `secret.yaml`) to use generic `-cm` and `-secrets` names that Helmify resolves correctly.
+    - **Component-Specific Selector Helper Bug**: Previously, Helmify correctly generated component-specific `selectorLabels` helpers (e.g., `.db.selectorLabels`, `.mq.selectorLabels`) inside `_helpers.tpl` for multi-component charts. However, several resource generators ignored these helpers:
+      - `service.go` and `deployment.go` hardcoded a check `if comp == "api" || comp == "app"`, causing all other components to erroneously fall back to the generic `chart.selectorLabels` (which omits the component label). For Services, this caused them to mistakenly load-balance across all pods in the entire release!
+      - `daemonset.go` and `pdb.go` completely lacked a component check, unconditionally hardcoding `appMeta.ChartName()` instead of attempting to resolve the component helper.
+    - **Fix**: The hardcoded logic in `service.go`, `deployment.go`, `daemonset.go`, and `pdb.go` has been replaced with a dynamic check `if comp != "" && processor.IsMultiDeployment(appMeta)`. Helmify now correctly utilizes the component-specific `selectorLabels` helper for **every** component's selector in a multi-component chart.
 
 
 ### 🕸️ Dynamic OpenShift Topology Mapping (`app.openshift.io/connects-to`)
