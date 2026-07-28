@@ -510,7 +510,11 @@ func processEnv(name string, containerName string, appMeta helmify.AppMetadata, 
 			return c, err
 		}
 	}
-	c.Env = newEnv
+	if len(newEnv) > 0 {
+		c.Env = newEnv
+	} else {
+		c.Env = nil
+	}
 	return c, nil
 }
 
@@ -684,7 +688,7 @@ func ReplacePlaceholders(s string, chartName string) string {
 %[2]s{{- end }}
 %[2]s{{- if (index .Values "%[4]s").secret }}
 %[2]s- secretRef:
-%[2]s    name: {{ include "%[3]s.fullname" . }}%[5]s-secrets
+%[2]s    name: {{ include "%[3]s.fullname" . }}%[5]s-secret
 %[2]s{{- end }}`, indentMatch, subIndent, chartName, objName, suffix)
 	})
 
@@ -714,7 +718,7 @@ func ReplacePlaceholders(s string, chartName string) string {
 %[2]s{{- end }}
 %[2]s{{- if (index .Values "%[4]s").secret }}
 %[2]s- secretRef:
-%[2]s    name: {{ include "%[3]s.fullname" . }}%[5]s-secrets
+%[2]s    name: {{ include "%[3]s.fullname" . }}%[5]s-secret
 %[2]s{{- end }}`, indentMatch, subIndent, chartName, objName, suffix)
 	})
 
