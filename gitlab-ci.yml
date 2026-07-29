@@ -49,6 +49,11 @@ variables:
       - "develop"
       - "homolog"
 
+  # 5. Dynamic Values File Path
+  DEV_VALUES_PATH:
+    description: "Location and format of the values file in the repository (use ${ENV_} as the env placeholder)"
+    value: "values-${ENV_}.yaml"
+
 # ==========================================
 # PATH A: Trigger the devops/cicd pipeline
 # ==========================================
@@ -89,6 +94,7 @@ deploy_new_env:
     ENABLE_CA_SOURCE: $ENABLE_CA_SOURCE
     DEV_APP_REPO_URL: $DEV_APP_REPO_URL
     DEV_APP_REPO_REVISION: $DEV_APP_REPO_REVISION
+    DEV_VALUES_PATH: $DEV_VALUES_PATH
 
 # ==========================================
 # PATH B: Promote the tags locally and Sync
@@ -106,36 +112,48 @@ update_tag_job:
     - |
       echo "Promoting all image tags from DEV to $ENV_..."
 
+      # Resolve the paths dynamically using DEV_VALUES_PATH variable.
+      # If DEV_VALUES_PATH is "helm/values-${ENV_}.yaml"
+      # SOURCE_FILE becomes "helm/values-dev.yaml"
+      SOURCE_FILE=$(echo "$DEV_VALUES_PATH" | sed "s/\${ENV_}/dev/g")
+      TARGET_FILE=$(echo "$DEV_VALUES_PATH" | sed "s/\${ENV_}/$ENV_/g")
+
+      echo "Source DEV file: $SOURCE_FILE"
+      echo "Target ENV file: $TARGET_FILE"
+
       # 1. Git Authentication & Checkout
       git remote set-url origin "http://oauth2:${GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
       git config --global user.name "GitLab CI Promotion Bot"
       git config --global user.email "ci-bot@tj.pa.gov.br"
       git checkout -B $CI_COMMIT_BRANCH
 
-      # 2. Extract all paths that have a "tag" key (e.g., "image.tag", "api.image.tag")
-      # This creates a list of paths like: 
-      # image
-      # services.api.image
-      TAG_PATHS=$(yq eval '.. | select(has("tag")) | path | join(".")' values-dev.yaml)
-
-      if [ -z "$TAG_PATHS" ]; then
-        echo "No 'tag' keys found in values-dev.yaml. Skipping."
+      # 2. Check if files exist
+      if [ ! -f "$SOURCE_FILE" ]; then
+        echo "Source file $SOURCE_FILE not found! Skipping."
         exit 0
       fi
 
-      # 3. Iterate through every path found and update the target file
+      if [ ! -f "$TARGET_FILE" ]; then
+        echo "Target file $TARGET_FILE not found! Creating or skipping based on your logic."
+      fi
+
+      # 3. Extract paths that have a "tag" key
+      TAG_PATHS=$(yq eval '.. | select(has("tag")) | path | join(".")' "$SOURCE_FILE")
+
+      if [ -z "$TAG_PATHS" ]; then
+        echo "No 'tag' keys found in $SOURCE_FILE. Skipping."
+        exit 0
+      fi
+
+      # 4. Iterate and update
       for PATH_NAME in $TAG_PATHS; do
-        # Get the tag value from the DEV file for this specific path
-        NEW_TAG=$(yq eval ".${PATH_NAME}.tag" values-dev.yaml)
-        
-        echo "Updating .${PATH_NAME}.tag to ${NEW_TAG} in values-${ENV_}.yaml"
-        
-        # Apply the update to the target environment file
-        yq eval -i ".${PATH_NAME}.tag = \"${NEW_TAG}\"" "values-${ENV_}.yaml"
+        NEW_TAG=$(yq eval ".${PATH_NAME}.tag" "$SOURCE_FILE")
+        echo "Updating .${PATH_NAME}.tag to ${NEW_TAG} in $TARGET_FILE"
+        yq eval -i ".${PATH_NAME}.tag = \"${NEW_TAG}\"" "$TARGET_FILE"
       done
 
-      # 4. Commit and Push
-      git add "values-${ENV_}.yaml"
+      # 5. Commit and Push
+      git add "$TARGET_FILE"
       
       # Check if there are actually changes to avoid 'empty commit' errors
       if git diff --cached --quiet; then
@@ -145,7 +163,7 @@ update_tag_job:
         git push origin $CI_COMMIT_BRANCH
         echo "✅ Successfully promoted tags to Git!"
 
-        # 5. Trigger ArgoCD Sync
+        # 6. Trigger ArgoCD Sync
         ARGOCD_APP_NAME="${CI_PROJECT_NAME}-${ENV_}"
         ARGOCD_SERVER="https://openshift-gitops-server-openshift-gitops.apps.ocp-hub.i.tj.pa.gov.br"
         
