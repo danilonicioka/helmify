@@ -7,6 +7,13 @@ metadata:
 spec:
   type: {{ .Values.backend.service.type }}
   ports:
-    {{- .Values.backend.service.ports | toYaml | nindent 4 }}
+    {{- range $key, $val := .Values.backend.service.ports }}
+  - name: {{ $key }}
+    port: {{ $val.port }}
+    targetPort: {{ $val.targetPort }}
+    {{- if $val.protocol }}
+    protocol: {{ $val.protocol }}
+    {{- end }}
+  {{- end }}
   selector:
     {{- include "chart-model-multi.backend.selectorLabels" . | nindent 4 }}

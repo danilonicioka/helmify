@@ -8,6 +8,13 @@ metadata:
 spec:
   type: {{ $app.service.type }}
   ports:
-    {{- $app.service.ports | toYaml | nindent 4 }}
+    {{- range $key, $val := $app.service.ports }}
+  - name: {{ $key }}
+    port: {{ $val.port }}
+    targetPort: {{ $val.targetPort }}
+    {{- if $val.protocol }}
+    protocol: {{ $val.protocol }}
+    {{- end }}
+    {{- end }}
   selector:
     {{- include "chart-model-single.selectorLabels" . | nindent 4 }}

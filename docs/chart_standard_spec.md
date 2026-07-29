@@ -67,7 +67,7 @@ To ensure consistency, the `values.yaml` must follow a strict section ordering, 
      - `route.default.enabled: true` with dev cluster domain host.
      - `route.internal.enabled: false` with internal intranet domain host.
      - `route.external.enabled: false` with internet zone domain host.
-   - **Service Port**: `service.type: ClusterIP`, `service.port: 8080`, `service.targetPort: 8080`.
+   - **Service Port**: `service.type: ClusterIP`, with a deeply-mergeable `ports` dictionary (e.g. `service.ports.http.port: 80`, `service.ports.http.targetPort: 8080`).
    - **Resources**: `resources: {}` (empty map by default, commented example for CPU/Memory constraints).
    - **Probes**: `startupProbe: {}`, `livenessProbe: {}`, `readinessProbe: {}` (empty by default).
    - **Lifecycle & HA**: `strategy` (RollingUpdate details), `terminationGracePeriodSeconds: 30`.
