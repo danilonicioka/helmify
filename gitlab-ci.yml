@@ -15,7 +15,7 @@ stages:
 variables:
   # 1. Target Environment
   ENV_: 
-    description: "Target Environment (If promoting, DEV will be copied to this env):"
+    description: "Environment where the project will be deployed"
     value: "prd"
     options:
       - "hml"
@@ -43,8 +43,8 @@ variables:
 
   # 4. Dynamic Values File Path
   DEV_VALUES_PATH:
-    description: "Location and format of the values file in the repository (use ${ENV_} as the env placeholder)"
-    value: "values-${ENV_}.yaml"
+    description: "Location and format of the values file in the repository (change env to match the desired environment)"
+    value: "values-env.yaml"
 
 get_chart_version:
   stage: prepare
