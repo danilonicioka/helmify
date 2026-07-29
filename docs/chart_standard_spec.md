@@ -175,11 +175,33 @@ All ConfigMaps (`cm`) and Secrets (`secret`) defined in values are projected as 
 ```yaml
 envFrom:
   - configMapRef:
-      name: {{ include "chart.fullname" . }}-global
+      name: {{ include "chart.fullname" . }}-global-cm
+  - secretRef:
+      name: {{ include "chart.fullname" . }}-global-secret
   - configMapRef:
       name: {{ include "chart.fullname" . }}-cm
 ```
 
+### File Volumes (`files`)
+For configuration files that must be mounted directly as files inside the container (e.g., `nginx.conf`, `settings.json`), use the `files` block. 
+
+> [!IMPORTANT]
+> The `files` block **MUST be a Dictionary (Map)**, not a List/Array.
+> Helm deeply merges Maps, but it completely overwrites Lists. By using a Map, users can define a file's `mountPath` in a base chart, and only override the `content` in a downstream `values-<env>.yaml` file safely.
+
+```yaml
+files:
+  nginx-conf:
+    mountPath: /etc/nginx/nginx.conf
+    subPath: nginx.conf
+    content: |
+      worker_processes auto;
+```
+
+**How it works:**
+1. A dedicated `cm-<component>-files.yaml` template dynamically iterates over this map and generates a ConfigMap.
+2. The `deploy-<component>.yaml` template dynamically detects this map. If it is populated, it automatically generates the required `volumeMounts` and `volumes` using the map keys (which are sanitized to be valid volume names by replacing dots with hyphens).
+3. **No manual template edits are required** when adding new configuration files. Just define them in the `values.yaml` map!
 ### Probes & Resources
 - Probes are initialized conditionally if values are defined, preferring `tcpSocket` with `initialDelaySeconds: 0` for instant readiness discovery.
 - Resources must stay under an operational overlay and default to empty.

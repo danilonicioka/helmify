@@ -5,31 +5,7 @@ metadata:
   labels:
     {{- include "chart-model-multi.frontend.labels" . | nindent 4 }}
   {{- $annotations := include "chart-model-multi.frontend.annotations" . }}
-  {{- if or .Values.frontend.connectsTo $annotations }}
   annotations:
-    {{- if .Values.frontend.connectsTo }}
-    app.openshift.io/connects-to: '[
-      {{- $first := true -}}
-      {{- range $item := .Values.frontend.connectsTo -}}
-        {{- if not $first }},{{- end -}}
-        {{- $kind := "Deployment" -}}
-        {{- $apiVersion := "apps/v1" -}}
-        {{- $nameSuffix := "" -}}
-        {{- if typeIs "string" $item -}}
-          {{- $nameSuffix = $item -}}
-          {{- if eq $item "db" -}}
-            {{- $kind = "StatefulSet" -}}
-          {{- end -}}
-        {{- else -}}
-          {{- $kind = default "Deployment" $item.kind -}}
-          {{- $apiVersion = default "apps/v1" $item.apiVersion -}}
-          {{- $nameSuffix = $item.name -}}
-        {{- end -}}
-        {"apiVersion":"{{ $apiVersion }}","kind":"{{ $kind }}","name":"{{ include "chart-model-multi.fullname" $ }}-{{ $nameSuffix }}"}
-        {{- $first = false -}}
-      {{- end -}}
-    ]'
-    {{- end }}
     {{- if $annotations }}
     {{- $annotations | nindent 4 }}
     {{- end }}
@@ -79,7 +55,9 @@ spec:
           envFrom:
             {{- if and .Values.global (not (empty .Values.global)) }}
             - configMapRef:
-                name: {{ include "chart-model-multi.fullname" . }}-global
+                name: {{ include "chart-model-multi.fullname" . }}-global-cm
+            - secretRef:
+                name: {{ include "chart-model-multi.fullname" . }}-global-secret
             {{- end }}
             {{- if and .Values.frontend.cm (not (empty .Values.frontend.cm)) }}
             - configMapRef:
@@ -117,6 +95,16 @@ spec:
       {{- end }}
 
       {{- with .Values.nodeSelector }}
+        {- if and .Values.frontend.files (not (empty .Values.frontend.files)) }
+        volumeMounts:
+          {- range .Values.frontend.files }}
+          - name: {{ $key }}
+            mountPath: {{ $val.mountPath }}
+            {- if .subPath }
+            subPath: {{ $val.subPath }}
+            {- end }
+          {- end }
+        {- end }
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -132,3 +120,16 @@ spec:
       topologySpreadConstraints:
         {{- toYaml .Values.frontend.topologySpreadConstraints | nindent 8 }}
       {{- end }}
+
+      {- if and .Values.frontend.files (not (empty .Values.frontend.files)) }
+      volumes:
+        {- range .Values.frontend.files }}
+        - name: {{ $key }}
+          configMap:
+            name: {{ include "chart-model-multi.fullname" $ }}-frontend-files
+            defaultMode: 420
+            items:
+              - key: {{ .subPath | default .name }}
+                path: {{ .subPath | default .name }}
+        {- end }
+      {- end }
