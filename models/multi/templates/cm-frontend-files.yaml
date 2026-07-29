@@ -1,0 +1,13 @@
+{{- if and .Values.frontend .Values.frontend.files }}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart-model-multi.fullname" . }}-frontend-files
+  labels:
+    {{- include "chart-model-multi.frontend.labels" . | nindent 4 }}
+data:
+  {{- range $key, $val := .Values.frontend.files }}
+  {{ $val.subPath | default $key }}: |
+    {{- $val.content | nindent 4 }}
+  {{- end }}
+{{- end }}
