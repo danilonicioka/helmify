@@ -84,10 +84,10 @@ backend:
   service:
     type: ClusterIP
     ports:
-      - port: 8080
+      http:
+        port: 8080
         targetPort: 8080
         protocol: TCP
-        name: http
 
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
@@ -200,10 +200,10 @@ frontend:
   service:
     type: ClusterIP
     ports:
-      - port: 80
+      http:
+        port: 80
         targetPort: 8080
         protocol: TCP
-        name: http
 
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
