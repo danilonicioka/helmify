@@ -13,15 +13,7 @@ stages:
   - deploy
 
 variables:
-  # 1. The Action Selector
-  PIPELINE_ACTION:
-    description: "Deploy/update env or update tag"
-    value: "deploy_update_env"
-    options:
-      - "update_tag"   # Promotes the tags currently in DEV to the chosen ENV
-      - "deploy_update_env"       # Triggers devops/cicd pipeline for a fresh setup
-
-  # 2. Target Environment
+  # 1. Target Environment
   ENV_: 
     description: "Target Environment (If promoting, DEV will be copied to this env):"
     value: "prd"
@@ -30,7 +22,7 @@ variables:
       - "prd"
       - "dev"
 
-  # 3. Enable Custom Application (CA) source
+  # 2. Enable Custom Application (CA) source
   ENABLE_CA_SOURCE:
     description: "Enable values from gitlab-ca as source"
     value: "false"
@@ -38,7 +30,7 @@ variables:
       - "false"
       - "true"
 
-  # 4. Dev Application Repository Revision
+  # 3. Dev Application Repository Revision
   DEV_APP_REPO_REVISION:
     description: "Branch, tag or commit SHA for the developer CA source repository:"
     value: "main"
@@ -49,18 +41,13 @@ variables:
       - "develop"
       - "homolog"
 
-  # 5. Dynamic Values File Path
+  # 4. Dynamic Values File Path
   DEV_VALUES_PATH:
     description: "Location and format of the values file in the repository (use ${ENV_} as the env placeholder)"
     value: "values-${ENV_}.yaml"
 
-# ==========================================
-# PATH A: Trigger the devops/cicd pipeline
-# ==========================================
 get_chart_version:
   stage: prepare
-  rules:
-    - if: '$PIPELINE_ACTION == "deploy_update_env"'
   script:
     - export CHART_VERSION="$(grep -E '^[[:space:]]*version:[[:space:]]*' chart/Chart.yaml | head -n1 | sed -E 's/^[[:space:]]*version:[[:space:]]*//')"
     - echo "Detected chart version $CHART_VERSION"
@@ -80,8 +67,6 @@ get_chart_version:
 deploy_new_env:
   stage: deploy
   needs: ["get_chart_version"]
-  rules:
-    - if: '$PIPELINE_ACTION == "deploy_update_env"'
   trigger:
     project: "devops/cicd"
     branch: main
@@ -96,84 +81,3 @@ deploy_new_env:
     DEV_APP_REPO_REVISION: $DEV_APP_REPO_REVISION
     DEV_VALUES_PATH: $DEV_VALUES_PATH
 
-# ==========================================
-# PATH B: Promote the tags locally and Sync
-# ==========================================
-update_tag_job:
-  stage: deploy
-  image:
-    name: alpine/kubectl:latest
-    entrypoint: [""]
-  rules:
-    - if: '$PIPELINE_ACTION == "update_tag"'
-  before_script:
-    - apk add --no-cache curl git jq yq
-  script:
-    - |
-      echo "Promoting all image tags from DEV to $ENV_..."
-
-      # Resolve the paths dynamically using DEV_VALUES_PATH variable.
-      # If DEV_VALUES_PATH is "helm/values-${ENV_}.yaml"
-      # SOURCE_FILE becomes "helm/values-dev.yaml"
-      SOURCE_FILE=$(echo "$DEV_VALUES_PATH" | sed "s/\${ENV_}/dev/g")
-      TARGET_FILE=$(echo "$DEV_VALUES_PATH" | sed "s/\${ENV_}/$ENV_/g")
-
-      echo "Source DEV file: $SOURCE_FILE"
-      echo "Target ENV file: $TARGET_FILE"
-
-      # 1. Git Authentication & Checkout
-      git remote set-url origin "http://oauth2:${GITLAB_TOKEN}@${CI_SERVER_HOST}/${CI_PROJECT_PATH}.git"
-      git config --global user.name "GitLab CI Promotion Bot"
-      git config --global user.email "ci-bot@tj.pa.gov.br"
-      git checkout -B $CI_COMMIT_BRANCH
-
-      # 2. Check if files exist
-      if [ ! -f "$SOURCE_FILE" ]; then
-        echo "Source file $SOURCE_FILE not found! Skipping."
-        exit 0
-      fi
-
-      if [ ! -f "$TARGET_FILE" ]; then
-        echo "Target file $TARGET_FILE not found! Creating or skipping based on your logic."
-      fi
-
-      # 3. Extract paths that have a "tag" key
-      TAG_PATHS=$(yq eval '.. | select(has("tag")) | path | join(".")' "$SOURCE_FILE")
-
-      if [ -z "$TAG_PATHS" ]; then
-        echo "No 'tag' keys found in $SOURCE_FILE. Skipping."
-        exit 0
-      fi
-
-      # 4. Iterate and update
-      for PATH_NAME in $TAG_PATHS; do
-        NEW_TAG=$(yq eval ".${PATH_NAME}.tag" "$SOURCE_FILE")
-        echo "Updating .${PATH_NAME}.tag to ${NEW_TAG} in $TARGET_FILE"
-        yq eval -i ".${PATH_NAME}.tag = \"${NEW_TAG}\"" "$TARGET_FILE"
-      done
-
-      # 5. Commit and Push
-      git add "$TARGET_FILE"
-      
-      # Check if there are actually changes to avoid 'empty commit' errors
-      if git diff --cached --quiet; then
-        echo "No changes detected. The $ENV_ environment is already up to date."
-      else
-        git commit -m "chore(release): promote all image tags to ${ENV_}"
-        git push origin $CI_COMMIT_BRANCH
-        echo "✅ Successfully promoted tags to Git!"
-
-        # 6. Trigger ArgoCD Sync
-        ARGOCD_APP_NAME="${CI_PROJECT_NAME}-${ENV_}"
-        ARGOCD_SERVER="https://openshift-gitops-server-openshift-gitops.apps.ocp-hub.i.tj.pa.gov.br"
-        
-        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -k -X POST "${ARGOCD_SERVER}/api/v1/applications/${ARGOCD_APP_NAME}/sync" \
-          -H "Authorization: Bearer $ARGOCD_TOKEN" \
-          -H "Content-Type: application/json")
-
-        if [ "$HTTP_STATUS" -eq 200 ]; then
-          echo "✅ Successfully triggered ArgoCD sync!"
-        else
-          echo "⚠️ ArgoCD sync trigger returned status: $HTTP_STATUS"
-        fi
-      fi
