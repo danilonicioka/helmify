@@ -20,29 +20,38 @@ import (
 )
 
 const (
-	svcTempSpec = `
+	svcTempSpec = `{{- $comp := index .Values "%[1]s" | default dict -}}
 spec:
-  type: {{ .Values.%[1]s.service.type }}
+  type: {{ $comp.service.type }}
   selector:%[2]s
     {{- include "%[3]s" . | nindent 4 }}%[4]s
   ports:
-  {{- .Values.%[1]s.service.ports | toYaml | nindent 2 }}`
+    {{- range $key, $val := $comp.service.ports }}
+  - name: {{ $key }}
+    port: {{ $val.port }}
+    targetPort: {{ $val.targetPort }}
+    {{- if $val.protocol }}
+    protocol: {{ $val.protocol }}
+    {{- end }}
+    {{- end }}`
 )
 
 const (
 	lbSourceRangesTempSpec = `
   loadBalancerSourceRanges:
-  {{- .Values.%[1]s.service.loadBalancerSourceRanges | toYaml | nindent 2 }}`
+  {{- $comp := index .Values "%[1]s" | default dict -}}
+  {{- $comp.service.loadBalancerSourceRanges | toYaml | nindent 2 }}`
 )
 
 const (
 	ipFamilyTempSpec = `
-  {{- if .Values.%[1]s.service.ipFamilyPolicy }}
-  ipFamilyPolicy: {{ .Values.%[1]s.service.ipFamilyPolicy }}
+  {{- $comp := index .Values "%[1]s" | default dict -}}
+  {{- if $comp.service.ipFamilyPolicy }}
+  ipFamilyPolicy: {{ $comp.service.ipFamilyPolicy }}
   {{- end }}
-  {{- if .Values.%[1]s.service.ipFamilies }}
+  {{- if $comp.service.ipFamilies }}
   ipFamilies:
-  {{- .Values.%[1]s.service.ipFamilies | toYaml | nindent 2 }}
+  {{- $comp.service.ipFamilies | toYaml | nindent 2 }}
   {{- end }}`
 )
 
@@ -105,13 +114,10 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		svcType = corev1.ServiceTypeClusterIP
 	}
 	_ = unstructured.SetNestedField(values, string(svcType), shortNameCamel, "service", "type")
-	ports := make([]interface{}, len(service.Spec.Ports))
-	for i, p := range service.Spec.Ports {
+	ports := make(map[string]interface{})
+	for _, p := range service.Spec.Ports {
 		pMap := map[string]interface{}{
 			"port": int64(p.Port),
-		}
-		if p.Name != "" {
-			pMap["name"] = p.Name
 		}
 		if p.NodePort != 0 {
 			pMap["nodePort"] = int64(p.NodePort)
@@ -128,10 +134,14 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 				pMap["targetPort"] = p.TargetPort.StrVal
 			}
 		}
-		ports[i] = pMap
+		name := p.Name
+		if name == "" {
+			name = "http"
+		}
+		ports[name] = pMap
 	}
 
-	_ = unstructured.SetNestedSlice(values, ports, shortNameCamel, "service", "ports")
+	_ = unstructured.SetNestedMap(values, ports, shortNameCamel, "service", "ports")
 
 	comp := processor.GetComponent(obj)
 	labelHelper := appMeta.ChartName() + ".selectorLabels"

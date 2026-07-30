@@ -1,3 +1,4 @@
+{{- $comp := index .Values "backend" | default dict -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -5,9 +6,9 @@ metadata:
   labels:
     {{- include "chart-model-multi.backend.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.backend.service.type }}
+  type: {{ $comp.service.type }}
   ports:
-    {{- range $key, $val := .Values.backend.service.ports }}
+    {{- range $key, $val := $comp.service.ports }}
   - name: {{ $key }}
     port: {{ $val.port }}
     targetPort: {{ $val.targetPort }}

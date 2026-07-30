@@ -1,3 +1,4 @@
+{{- $comp := index .Values "backend" | default dict -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -10,12 +11,12 @@ metadata:
     {{- $annotations | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not (kindIs "nil" .Values.backend.replicas) }}
-  replicas: {{ .Values.backend.replicas }}
+  {{- if not (kindIs "nil" $comp.replicas) }}
+  replicas: {{ $comp.replicas }}
   {{- end }}
-  {{- if .Values.backend.strategy }}
+  {{- if $comp.strategy }}
   strategy:
-    {{- toYaml .Values.backend.strategy | nindent 4 }}
+    {{- toYaml $comp.strategy | nindent 4 }}
   {{- end }}
   selector:
     matchLabels:
@@ -30,10 +31,10 @@ spec:
         {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
         checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.backend.cm (not (empty .Values.backend.cm)) }}
+        {{- if and $comp.cm (not (empty $comp.cm)) }}
         checksum/cm-config: '{{ include (print $.Template.BasePath "/cm-backend.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.backend.secret (not (empty .Values.backend.secret)) }}
+        {{- if and $comp.secret (not (empty $comp.secret)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret-backend.yaml") . | sha256sum }}'
         {{- end }}
       labels:
@@ -60,15 +61,15 @@ spec:
       {{- end }}
       containers:
         - name: backend
-          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $comp.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.backend.service.targetPort }}
+              containerPort: {{ $comp.service.targetPort }}
               protocol: TCP
           
           # Clean Configuration Management: Full Decoupling via envFrom
-          {{- if or (and .Values.global (not (empty .Values.global))) (and .Values.backend.cm (not (empty .Values.backend.cm))) (and .Values.backend.secret (not (empty .Values.backend.secret))) }}
+          {{- if or (and .Values.global (not (empty .Values.global))) (and $comp.cm (not (empty $comp.cm))) (and $comp.secret (not (empty $comp.secret))) }}
           envFrom:
             {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
             - configMapRef:
@@ -78,45 +79,45 @@ spec:
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" . }}-global-secret
             {{- end }}
-            {{- if and .Values.backend.cm (not (empty .Values.backend.cm)) }}
+            {{- if and $comp.cm (not (empty $comp.cm)) }}
             - configMapRef:
                 name: {{ include "chart-model-multi.fullname" . }}-backend-cm
             {{- end }}
-            {{- if and .Values.backend.secret (not (empty .Values.backend.secret)) }}
+            {{- if and $comp.secret (not (empty $comp.secret)) }}
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" . }}-backend-secret
             {{- end }}
           {{- end }}
 
           # Tiered "Fail-Fast" Health Probes
-          {{- if and .Values.backend.startupProbe .Values.backend.startupProbe.tcpSocket }}
+          {{- if and $comp.startupProbe $comp.startupProbe.tcpSocket }}
           startupProbe:
-            {{- toYaml .Values.backend.startupProbe | nindent 12 }}
+            {{- toYaml $comp.startupProbe | nindent 12 }}
           {{- end }}
-          {{- if and .Values.backend.livenessProbe .Values.backend.livenessProbe.tcpSocket }}
+          {{- if and $comp.livenessProbe $comp.livenessProbe.tcpSocket }}
           livenessProbe:
-            {{- toYaml .Values.backend.livenessProbe | nindent 12 }}
+            {{- toYaml $comp.livenessProbe | nindent 12 }}
           {{- end }}
-          {{- if and .Values.backend.readinessProbe .Values.backend.readinessProbe.tcpSocket }}
+          {{- if and $comp.readinessProbe $comp.readinessProbe.tcpSocket }}
           readinessProbe:
-            {{- toYaml .Values.backend.readinessProbe | nindent 12 }}
+            {{- toYaml $comp.readinessProbe | nindent 12 }}
           {{- end }}
 
           # Resources (Operational Overlay-Only)
-          {{- if and .Values.backend.resources .Values.backend.resources.limits }}
+          {{- if and $comp.resources $comp.resources.limits }}
           resources:
-            {{- toYaml .Values.backend.resources | nindent 12 }}
+            {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
       
       # Graceful connection draining lifecycle settings
-      {{- if .Values.backend.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ .Values.backend.terminationGracePeriodSeconds }}
+      {{- if $comp.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
       {{- end }}
 
       {{- with .Values.nodeSelector }}
-        {- if and .Values.backend.files (not (empty .Values.backend.files)) }
+        {- if and $comp.files (not (empty $comp.files)) }
         volumeMounts:
-          {- range .Values.backend.files }}
+          {- range $comp.files }}
           - name: {{ $key }}
             mountPath: {{ $val.mountPath }}
             {- if .subPath }
@@ -135,14 +136,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.backend.topologySpreadConstraints }}
+      {{- if $comp.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml .Values.backend.topologySpreadConstraints | nindent 8 }}
+        {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {- if and .Values.backend.files (not (empty .Values.backend.files)) }
+      {- if and $comp.files (not (empty $comp.files)) }
       volumes:
-        {- range .Values.backend.files }}
+        {- range $comp.files }}
         - name: {{ $key }}
           configMap:
             name: {{ include "chart-model-multi.fullname" $ }}-backend-files

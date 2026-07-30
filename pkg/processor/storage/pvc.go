@@ -42,6 +42,7 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	name := processor.ObjectValueName(appMeta, obj)
 	nameCamelCase := strcase.ToLowerCamel(name)
 	values := helmify.Values{}
+	var err error
 
 	// NEW LOGIC: Scan workloads to see if they mount this PVC
 	targetComponent := ""
@@ -89,7 +90,7 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 			targetRoot = strcase.ToLowerCamel(processor.ObjectValueName(appMeta, obj))
 		}
 		targetKey = "persistence"
-		err = unstructured.SetNestedField(values, true, targetRoot, "persistence", "enabled")
+		err := unstructured.SetNestedField(values, true, targetRoot, "persistence", "enabled")
 		if err != nil {
 			return true, nil, err
 		}

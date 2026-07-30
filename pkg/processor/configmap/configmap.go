@@ -32,7 +32,8 @@ data:
 {{- end }}
 {{- end }}
 {{- else -}}
-{{ "{" }}{{ "{" }}- if and .Values.{{ .Name }} .Values.{{ .Name }}.cm {{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- $comp := index .Values "{{ .Name }}" | default dict -{{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- if and $comp $comp.cm {{ "}" }}{{ "}" }}
 {{ .Meta }}
 {{- if .Immutable }}
 {{ .Immutable }}
@@ -41,7 +42,7 @@ data:
 {{ .BinaryData }}
 {{- end }}
 data:
-{{ "{" }}{{ "{" }}- range $key, $val := .Values.{{ .Name }}.cm {{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- range $key, $val := $comp.cm {{ "}" }}{{ "}" }}
   {{ "{{ $key }}" }}: {{ "{{ $val | quote }}" }}
 {{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
 {{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}

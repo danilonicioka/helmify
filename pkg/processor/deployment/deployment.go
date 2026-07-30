@@ -27,7 +27,8 @@ var deploymentGVC = schema.GroupVersionKind{
 }
 
 var deploymentTempl, _ = template.New("deployment").Parse(
-	`{{- .Meta }}
+	`{{- $comp := index .Values "{{ .Name }}" | default dict -}}
+{{- .Meta }}
 spec:
 {{- .Replicas }}
 {{- .RevisionHistoryLimit }}
@@ -122,10 +123,10 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 			_, _ = values.Add(v, nameCamel, "labels", k)
 		}
 	}
-	podLabels := fmt.Sprintf(`        {{- with .Values.%s.labels }}
+	podLabels := fmt.Sprintf(`        {{- with $comp.labels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-        {{- include "%s" . | nindent 8 }}`, nameCamel, labelHelper)
+        {{- include "%s" . | nindent 8 }}`, labelHelper)
 
 	cleanedPodAnnotations := map[string]string{}
 	for k, v := range depl.Spec.Template.ObjectMeta.Annotations {
@@ -156,16 +157,16 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	if annStr != "" {
 		podAnnotations = fmt.Sprintf(`
       annotations:
-        {{- with .Values.%s.annotations }}
+        {{- with $comp.annotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-%s`, nameCamel, annStr)
+%s`, annStr)
 	} else {
 		podAnnotations = fmt.Sprintf(`
-      {{- with .Values.%s.annotations }}
+      {{- with $comp.annotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
-      {{- end }}`, nameCamel)
+      {{- end }}`)
 	}
 	specMap, podValues, err := pod.ProcessSpec(nameCamel, appMeta, depl.Spec.Template.Spec, 0)
 	if err != nil {
@@ -199,7 +200,10 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 			return true, nil, err
 		}
 	}
-	strategy = fmt.Sprintf("{{- with .Values.%s.strategy }}\n  strategy:\n    {{- toYaml . | nindent 4 }}\n{{- end }}", nameCamel)
+	strategy = `{{- with $comp.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+{{- end }}`
 
 	spec = replaceSingleQuotes(spec)
 	spec = pod.ReplacePlaceholders(spec, appMeta.ChartName())
@@ -213,6 +217,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 		name:   resultName,
 		values: values,
 		data: struct {
+			Name                 string
 			Meta                 string
 			Replicas             string
 			RevisionHistoryLimit string
@@ -222,6 +227,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 			PodAnnotations       string
 			Spec                 string
 		}{
+			Name:                 nameCamel,
 			Meta:                 meta,
 			Replicas:             replicas,
 			RevisionHistoryLimit: revisionHistoryLimit,
@@ -287,31 +293,28 @@ func processReplicas(name string, deployment *appsv1.Deployment, values *helmify
 	if deployment.Spec.Replicas == nil {
 		return "", nil
 	}
-	nameCamel := strcase.ToLowerCamel(name)
 	_, err := values.Add(int64(*deployment.Spec.Replicas), name, "replicas")
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("{{- if not (kindIs \"nil\" .Values.%s.replicas) }}\n  replicas: {{ .Values.%s.replicas }}\n{{- end }}", nameCamel, nameCamel), nil
+	return "{{- if not (kindIs \"nil\" $comp.replicas) }}\n  replicas: {{ $comp.replicas }}\n{{- end }}", nil
 }
 
 func processRevisionHistoryLimit(name string, deployment *appsv1.Deployment, values *helmify.Values) (string, error) {
 	if deployment.Spec.RevisionHistoryLimit == nil {
 		return "", nil
 	}
-	nameCamel := strcase.ToLowerCamel(name)
 	_, err := values.Add(int64(*deployment.Spec.RevisionHistoryLimit), name, "revisionHistoryLimit")
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("{{- if not (kindIs \"nil\" .Values.%s.revisionHistoryLimit) }}\n  revisionHistoryLimit: {{ .Values.%s.revisionHistoryLimit }}\n{{- end }}", nameCamel, nameCamel), nil
+	return "{{- if not (kindIs \"nil\" $comp.revisionHistoryLimit) }}\n  revisionHistoryLimit: {{ $comp.revisionHistoryLimit }}\n{{- end }}", nil
 }
 
 func processStrategy(name string, deployment *appsv1.Deployment, values *helmify.Values) (string, error) {
 	if deployment.Spec.Strategy.Type == "" {
 		return "", nil
 	}
-	nameCamel := strcase.ToLowerCamel(name)
 	strategyMap := map[string]interface{}{
 		"type": string(deployment.Spec.Strategy.Type),
 	}
@@ -335,19 +338,23 @@ func processStrategy(name string, deployment *appsv1.Deployment, values *helmify
 		}
 		strategyMap["rollingUpdate"] = ruMap
 	}
-	_ = unstructured.SetNestedField(*values, strategyMap, nameCamel, "strategy")
+	_ = unstructured.SetNestedField(*values, strategyMap, name, "strategy")
 	if len(strategyMap) > 0 {
 		stratYaml, err := yamlformat.Marshal(map[string]interface{}{"strategy": strategyMap}, 0)
 		if err == nil {
-			helmify.OriginalValuesRegistry.Store("strategy."+nameCamel, strings.TrimSpace(stratYaml))
+			helmify.OriginalValuesRegistry.Store("strategy."+strcase.ToLowerCamel(name), strings.TrimSpace(stratYaml))
 		}
 	}
-	return fmt.Sprintf("{{- with .Values.%s.strategy }}\n  strategy:\n    {{- toYaml . | nindent 4 }}\n{{- end }}", nameCamel), nil
+	return `{{- with $comp.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+{{- end }}`, nil
 }
 
 type result struct {
 	name string
 	data struct {
+		Name                 string
 		Meta                 string
 		Replicas             string
 		RevisionHistoryLimit string
