@@ -93,7 +93,7 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 			},
 		}
 
-		suffix := "global"
+		suffix := "global-secret"
 		meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix))
 		if err != nil {
 			return true, nil, err

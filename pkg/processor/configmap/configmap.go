@@ -102,7 +102,7 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 			},
 		}
 
-		meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("global"))
+		meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix("global-cm"))
 		if err != nil {
 			return true, nil, err
 		}
