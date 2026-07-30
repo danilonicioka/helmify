@@ -24,8 +24,11 @@ spec:
     metadata:
       annotations:
         # Deterministic Rollouts: SHA256 checksum annotations to trigger automatic restarts
-        {{- if and .Values.global (not (empty .Values.global)) }}
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
         checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and .Values.backend.cm (not (empty .Values.backend.cm)) }}
         checksum/cm-config: '{{ include (print $.Template.BasePath "/cm-backend.yaml") . | sha256sum }}'
@@ -67,9 +70,11 @@ spec:
           # Clean Configuration Management: Full Decoupling via envFrom
           {{- if or (and .Values.global (not (empty .Values.global))) (and .Values.backend.cm (not (empty .Values.backend.cm))) (and .Values.backend.secret (not (empty .Values.backend.secret))) }}
           envFrom:
-            {{- if and .Values.global (not (empty .Values.global)) }}
+            {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
             - configMapRef:
                 name: {{ include "chart-model-multi.fullname" . }}-global-cm
+            {{- end }}
+            {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" . }}-global-secret
             {{- end }}

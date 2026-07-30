@@ -2,11 +2,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-global-cm
+  name: {{ include "chart-model-multi.fullname" . }}-global-cm-cm
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
 data:
-  {{- range $key, $val := .Values.global }}
+  {{- range $key, $val := .Values.global.cm }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
 {{- end }}

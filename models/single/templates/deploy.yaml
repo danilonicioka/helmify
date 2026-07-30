@@ -25,8 +25,11 @@ spec:
     metadata:
       annotations:
         # 6. Deterministic Rollouts: SHA256 checksum annotations to trigger automatic restarts
-        {{- if .Values.global }}
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
         checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and $app.cm (not (empty $app.cm)) }}
         checksum/cm-config: '{{ include (print $.Template.BasePath "/cm.yaml") . | sha256sum }}'
@@ -52,9 +55,13 @@ spec:
           
           # 4. Clean Configuration Management: Full Decoupling via envFrom
           envFrom:
-            {{- if .Values.global }}
+            {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
             - configMapRef:
-                name: {{ include "chart-model-single.fullname" . }}-global
+                name: {{ include "chart-model-single.fullname" . }}-global-cm
+            {{- end }}
+            {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+            - secretRef:
+                name: {{ include "chart-model-single.fullname" . }}-global-secret
             {{- end }}
             {{- if and $app.cm (not (empty $app.cm)) }}
             - configMapRef:
