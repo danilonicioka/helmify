@@ -420,9 +420,9 @@ func TemplatedSecretName(appMeta helmify.AppMetadata, secretName string) string 
 			comp = GetComponent(secObj)
 		}
 		if comp == "" || comp == "chart" || comp == "secrets" || comp == appMeta.ChartName() {
-			return fmt.Sprintf(`{{ include "%s.fullname" . }}-secrets`, appMeta.ChartName())
+			return fmt.Sprintf(`{{ include "%s.fullname" . }}-secret`, appMeta.ChartName())
 		}
-		return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s-secrets`, appMeta.ChartName(), comp)
+		return fmt.Sprintf(`{{ include "%s.fullname" . }}-%s-secret`, appMeta.ChartName(), comp)
 	}
 
 	return appMeta.TemplatedString(secretName)
