@@ -395,7 +395,7 @@ func TemplatedServiceName(appMeta helmify.AppMetadata, serviceName string) strin
 func TemplatedSecretName(appMeta helmify.AppMetadata, secretName string) string {
 	secretNameClean := strings.ToLower(StripKustomizeHash(secretName))
 	if strings.Contains(secretNameClean, "global") {
-		return fmt.Sprintf(`{{ include "%s.fullname" . }}-global`, appMeta.ChartName())
+		return fmt.Sprintf(`{{ include "%s.fullname" . }}-global-secret`, appMeta.ChartName())
 	}
 
 	var secObj *unstructured.Unstructured
@@ -432,7 +432,7 @@ func TemplatedSecretName(appMeta helmify.AppMetadata, secretName string) string 
 func TemplatedConfigMapName(appMeta helmify.AppMetadata, cmName string) string {
 	cmNameClean := strings.ToLower(StripKustomizeHash(cmName))
 	if strings.Contains(cmNameClean, "global") {
-		return fmt.Sprintf(`{{ include "%s.fullname" . }}-global`, appMeta.ChartName())
+		return fmt.Sprintf(`{{ include "%s.fullname" . }}-global-cm`, appMeta.ChartName())
 	}
 
 	var cmObj *unstructured.Unstructured
