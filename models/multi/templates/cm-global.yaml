@@ -1,4 +1,5 @@
-{{- if and .Values.global (not (empty .Values.global)) -}}
+{{- $comp := index .Values "global" | default dict -}}
+{{- if and $comp (not (empty $comp)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,7 +7,7 @@ metadata:
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
 data:
-  {{- range $key, $val := .Values.global.cm }}
+  {{- range $key, $val := $comp.cm }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
 {{- end }}

@@ -1,4 +1,5 @@
-{{- if and .Values.backend .Values.backend.cm (not (empty .Values.backend.cm)) -}}
+{{- $comp := index .Values "backend" | default dict -}}
+{{- if and $comp $comp.cm (not (empty $comp.cm)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,7 +7,7 @@ metadata:
   labels:
     {{- include "chart-model-multi.backend.labels" . | nindent 4 }}
 data:
-  {{- range $key, $val := .Values.backend.cm }}
+  {{- range $key, $val := $comp.cm }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
 {{- end }}

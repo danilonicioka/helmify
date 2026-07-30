@@ -1,3 +1,4 @@
+{{- $comp := index .Values "frontend" | default dict -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -11,12 +12,12 @@ metadata:
     {{- end }}
   {{- end }}
 spec:
-  {{- if not (kindIs "nil" .Values.frontend.replicas) }}
-  replicas: {{ .Values.frontend.replicas }}
+  {{- if not (kindIs "nil" $comp.replicas) }}
+  replicas: {{ $comp.replicas }}
   {{- end }}
-  {{- if .Values.frontend.strategy }}
+  {{- if $comp.strategy }}
   strategy:
-    {{- toYaml .Values.frontend.strategy | nindent 4 }}
+    {{- toYaml $comp.strategy | nindent 4 }}
   {{- end }}
   selector:
     matchLabels:
@@ -31,10 +32,10 @@ spec:
         {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
         checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.frontend.cm (not (empty .Values.frontend.cm)) }}
+        {{- if and $comp.cm (not (empty $comp.cm)) }}
         checksum/cm-config: '{{ include (print $.Template.BasePath "/cm-frontend.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.frontend.secret (not (empty .Values.frontend.secret)) }}
+        {{- if and $comp.secret (not (empty $comp.secret)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret-frontend.yaml") . | sha256sum }}'
         {{- end }}
       labels:
@@ -46,15 +47,15 @@ spec:
       {{- end }}
       containers:
         - name: frontend
-          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $comp.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: {{ .Values.frontend.service.targetPort }}
+              containerPort: {{ $comp.service.targetPort }}
               protocol: TCP
           
           # Clean Configuration Management: Full Decoupling via envFrom
-          {{- if or (and .Values.global (not (empty .Values.global))) (and .Values.frontend.cm (not (empty .Values.frontend.cm))) (and .Values.frontend.secret (not (empty .Values.frontend.secret))) }}
+          {{- if or (and .Values.global (not (empty .Values.global))) (and $comp.cm (not (empty $comp.cm))) (and $comp.secret (not (empty $comp.secret))) }}
           envFrom:
             {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
             - configMapRef:
@@ -64,45 +65,45 @@ spec:
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" . }}-global-secret
             {{- end }}
-            {{- if and .Values.frontend.cm (not (empty .Values.frontend.cm)) }}
+            {{- if and $comp.cm (not (empty $comp.cm)) }}
             - configMapRef:
                 name: {{ include "chart-model-multi.fullname" . }}-frontend-cm
             {{- end }}
-            {{- if and .Values.frontend.secret (not (empty .Values.frontend.secret)) }}
+            {{- if and $comp.secret (not (empty $comp.secret)) }}
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" . }}-frontend-secret
             {{- end }}
           {{- end }}
 
           # Tiered "Fail-Fast" Health Probes
-          {{- if and .Values.frontend.startupProbe .Values.frontend.startupProbe.tcpSocket }}
+          {{- if and $comp.startupProbe $comp.startupProbe.tcpSocket }}
           startupProbe:
-            {{- toYaml .Values.frontend.startupProbe | nindent 12 }}
+            {{- toYaml $comp.startupProbe | nindent 12 }}
           {{- end }}
-          {{- if and .Values.frontend.livenessProbe .Values.frontend.livenessProbe.tcpSocket }}
+          {{- if and $comp.livenessProbe $comp.livenessProbe.tcpSocket }}
           livenessProbe:
-            {{- toYaml .Values.frontend.livenessProbe | nindent 12 }}
+            {{- toYaml $comp.livenessProbe | nindent 12 }}
           {{- end }}
-          {{- if and .Values.frontend.readinessProbe .Values.frontend.readinessProbe.tcpSocket }}
+          {{- if and $comp.readinessProbe $comp.readinessProbe.tcpSocket }}
           readinessProbe:
-            {{- toYaml .Values.frontend.readinessProbe | nindent 12 }}
+            {{- toYaml $comp.readinessProbe | nindent 12 }}
           {{- end }}
 
           # Resources (Operational Overlay-Only)
-          {{- if and .Values.frontend.resources .Values.frontend.resources.limits }}
+          {{- if and $comp.resources $comp.resources.limits }}
           resources:
-            {{- toYaml .Values.frontend.resources | nindent 12 }}
+            {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
       
       # Graceful connection draining lifecycle settings
-      {{- if .Values.frontend.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ .Values.frontend.terminationGracePeriodSeconds }}
+      {{- if $comp.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
       {{- end }}
 
       {{- with .Values.nodeSelector }}
-        {- if and .Values.frontend.files (not (empty .Values.frontend.files)) }
+        {- if and $comp.files (not (empty $comp.files)) }
         volumeMounts:
-          {- range .Values.frontend.files }}
+          {- range $comp.files }}
           - name: {{ $key }}
             mountPath: {{ $val.mountPath }}
             {- if .subPath }
@@ -121,14 +122,14 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.frontend.topologySpreadConstraints }}
+      {{- if $comp.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml .Values.frontend.topologySpreadConstraints | nindent 8 }}
+        {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {- if and .Values.frontend.files (not (empty .Values.frontend.files)) }
+      {- if and $comp.files (not (empty $comp.files)) }
       volumes:
-        {- range .Values.frontend.files }}
+        {- range $comp.files }}
         - name: {{ $key }}
           configMap:
             name: {{ include "chart-model-multi.fullname" $ }}-frontend-files

@@ -30,13 +30,14 @@ data:
 {{- end }}
 {{- end }}
 {{- else -}}
-{{ "{" }}{{ "{" }}- if and .Values.{{ .Name }} .Values.{{ .Name }}.secret {{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- $comp := index .Values "{{ .Name }}" | default dict -{{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- if and $comp $comp.secret (not (empty $comp.secret)) -{{ "}" }}{{ "}" }}
 {{ .Meta }}
 {{- if .Type }}
 {{ .Type }}
 {{- end }}
 data:
-{{ "{" }}{{ "{" }}- range $key, $value := .Values.{{ .Name }}.secret {{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- range $key, $value := $comp.secret {{ "}" }}{{ "}" }}
   {{ "{{ $key }}" }}: {{ "{{ $value | b64enc | quote }}" }}
 {{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
 {{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
