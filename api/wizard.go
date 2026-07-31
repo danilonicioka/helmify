@@ -97,4 +97,3 @@ func handlePreviewWizard(w http.ResponseWriter, r *http.Request) {
 		logrus.WithError(err).Error("Failed to encode preview to JSON")
 	}
 }
-

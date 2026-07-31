@@ -17,7 +17,6 @@ import (
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/arttor/helmify/pkg/processor"
 	yamlformat "github.com/arttor/helmify/pkg/yaml"
-	"github.com/iancoleman/strcase"
 )
 
 const crdTeml = `apiVersion: apiextensions.k8s.io/v1

@@ -105,4 +105,3 @@ func cleanKeys(m map[string]interface{}, containerKey string) {
 		}
 	}
 }
-

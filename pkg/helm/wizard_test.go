@@ -260,5 +260,3 @@ func TestWriteTarGzStructure(t *testing.T) {
 	assert.True(t, paths["chart/templates/d.yaml"])
 	assert.False(t, paths["mychart/Chart.yaml"])
 }
-
-

@@ -1,11 +1,12 @@
 package file
 
 import (
-	"github.com/sirupsen/logrus"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/sirupsen/logrus"
 )
 
 func Walk(paths []string, recursively bool, walkFunc func(filename string, r io.Reader)) {

@@ -130,7 +130,7 @@ func Test_deployment_Process(t *testing.T) {
 		processed, templ, err := testInstance.Process(&metadata.Service{}, obj)
 		assert.NoError(t, err)
 		assert.Equal(t, true, processed)
-		
+
 		vals := templ.Values()
 		compName := processor.GetComponent(obj)
 		t.Logf("COMP NAME: %q, VALS MAP: %#v", compName, vals)
@@ -163,19 +163,19 @@ spec:
       containers:
       - name: manager
         image: controller:latest`
-		
+
 		obj := internal.GenerateObj(strDeplNoStrat)
 		processed, templ, err := testInstance.Process(&metadata.Service{}, obj)
 		assert.NoError(t, err)
 		assert.Equal(t, true, processed)
-		
+
 		vals := templ.Values()
 		compName := processor.GetComponent(obj)
 		strategy, found, err := unstructured.NestedMap(map[string]interface{}(vals), compName, "strategy")
 		assert.NoError(t, err)
 		assert.True(t, found)
 		assert.Equal(t, "RollingUpdate", strategy["type"])
-		
+
 		ruMap, ok := strategy["rollingUpdate"].(map[string]interface{})
 		assert.True(t, ok)
 		assert.Equal(t, int64(0), ruMap["maxUnavailable"])

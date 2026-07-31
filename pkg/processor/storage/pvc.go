@@ -2,17 +2,17 @@ package storage
 
 import (
 	"fmt"
+	"io"
+	"strings"
+	"text/template"
+
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/arttor/helmify/pkg/processor"
 	yamlformat "github.com/arttor/helmify/pkg/yaml"
-	"github.com/iancoleman/strcase"
-	"io"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"strings"
-	"text/template"
 )
 
 var pvcTempl, _ = template.New("pvc").Parse(
@@ -37,7 +37,6 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	if obj.GroupVersionKind() != pvcGVC {
 		return false, nil, nil
 	}
-
 
 	name := processor.ObjectValueName(appMeta, obj)
 	nameCamelCase := name
@@ -200,12 +199,12 @@ func (r *result) Write(writer io.Writer) error {
 			return err
 		}
 	}
-	
+
 	err = pvcTempl.Execute(writer, r.data)
 	if err != nil {
 		return err
 	}
-	
+
 	if !r.isStandalone {
 		_, err = fmt.Fprint(writer, "{{- end -}}\n")
 		if err != nil {

@@ -8,8 +8,8 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
-	"strings"
 	"sort"
+	"strings"
 
 	"github.com/arttor/helmify"
 	"github.com/arttor/helmify/pkg/processor"
@@ -111,8 +111,6 @@ func GetModelDefaults(chartType string) (map[string]interface{}, error) {
 	return m, nil
 }
 
-
-
 // WizardParams defines the JSON request payload for the Chart Generator Wizard.
 type WizardParams struct {
 	ChartName    string                      `json:"chartName"`
@@ -124,17 +122,17 @@ type WizardParams struct {
 
 // DeploymentParams represents configuration for a component deployment.
 type DeploymentParams struct {
-	Replicas   *int              `json:"replicas"`
-	Image      ImageParams       `json:"image"`
-	Service    ServiceParams     `json:"service"`
-	Cm         map[string]string `json:"cm"`
-	Secret     map[string]string `json:"secret"`
-	Route      RouteParams       `json:"route"`
-	ConnectsTo []string          `json:"connectsTo"`
-	Runtime          string `json:"runtime"`
-	RuntimeNamespace string `json:"runtimeNamespace"`
-	RuntimeVersion   string `json:"runtimeVersion"`
-	OverviewAppRoute string `json:"overviewAppRoute"`
+	Replicas         *int              `json:"replicas"`
+	Image            ImageParams       `json:"image"`
+	Service          ServiceParams     `json:"service"`
+	Cm               map[string]string `json:"cm"`
+	Secret           map[string]string `json:"secret"`
+	Route            RouteParams       `json:"route"`
+	ConnectsTo       []string          `json:"connectsTo"`
+	Runtime          string            `json:"runtime"`
+	RuntimeNamespace string            `json:"runtimeNamespace"`
+	RuntimeVersion   string            `json:"runtimeVersion"`
+	OverviewAppRoute string            `json:"overviewAppRoute"`
 }
 
 // ImageParams configures the container image.
@@ -150,10 +148,10 @@ type ServiceParams struct {
 
 // RouteParams configures routing options and paths.
 type RouteParams struct {
-	Path     string            `json:"path"`
-	Default  SubRouteParams    `json:"default"`
-	Internal SubRouteParams    `json:"internal"`
-	External SubRouteParams    `json:"external"`
+	Path     string         `json:"path"`
+	Default  SubRouteParams `json:"default"`
+	Internal SubRouteParams `json:"internal"`
+	External SubRouteParams `json:"external"`
 }
 
 // SubRouteParams configures route state and hostname.
@@ -476,7 +474,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.OverviewAppRoute != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "annotations", "console.alpha.openshift.io/overview-app-route"}, depConfig.OverviewAppRoute)
 			}
-
 
 			_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
 			if depConfig.Route.Internal.Host != "" {

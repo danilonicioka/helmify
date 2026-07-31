@@ -1,8 +1,9 @@
 package processor
 
 import (
-	"github.com/arttor/helmify/pkg/config"
 	"testing"
+
+	"github.com/arttor/helmify/pkg/config"
 
 	"github.com/arttor/helmify/internal"
 	"github.com/arttor/helmify/pkg/metadata"
