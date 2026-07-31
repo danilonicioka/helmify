@@ -233,7 +233,13 @@ Helmify is designed to generate production-ready charts that follow TJPA standar
 
 ## Component Naming & Reference Resolution Engine
 
-To prevent naming inconsistencies and duplicate templates (such as `cm-foo.yaml` and `cm-foobar.yaml`), Helmify implements a naming and reference matching algorithm:
+To prevent naming inconsistencies and duplicate templates (such as `cm-foo.yaml` and `cm-foobar.yaml`), Helmify implements a naming and reference matching algorithm. 
+
+**Important Convention (Exact Component Naming / Kebab-case)**: 
+Helmify deliberately preserves the **exact component name** (typically kebab-case, like `adm-cep`) as the root key in `values.yaml`. It does **not** force camelCase conversions. This specific architectural choice allows generic templates like `_helpers.tpl` to dynamically use `{{ index .Values .Chart.Name }}`, making them 100% portable and reusable across your entire organization. Because Go templates do not support dot notation for keys with hyphens (e.g., `.Values.adm-cep.service`), all generated template resources safely rely on `(index .Values "<componentName>")` syntax instead.
+
+> **Why not just name the Chart with camelCase (e.g., `admCep`) to avoid indexing?**
+> While naming a chart `admCep` perfectly aligns Go template variables to allow clean dot notation (`.Values.admCep`), it introduces a fatal flaw at deployment time. Kubernetes resource names (Deployments, Services, Routes) strictly enforce **DNS-1123** naming rules, which forbid uppercase characters. Because Helm uses `.Chart.Name` to dynamically construct resource names, deploying a camelCased chart name will cause Kubernetes to reject the deployment (`Invalid value: a DNS-1123 subdomain must consist of lower case alphanumeric characters`). Thus, chart names must remain kebab-case, and using the `index` syntax in templates is the most robust, compliant architecture.
 
 1. **Component Name Extraction (`GetComponent`)**:
    - Component names are parsed from resource names (e.g. stripping suffixes like `-deploy`, `-svc`, `-cm`, `-secret`) and normalized to lowercase kebab-case.
@@ -241,7 +247,7 @@ To prevent naming inconsistencies and duplicate templates (such as `cm-foo.yaml`
 
 2. **Reference Resolution (`FindReferencingComponents`)**:
    - When a ConfigMap or Secret is parsed, Helmify scans all active workload resources (Deployments, StatefulSets, etc.) to see which component references them via `envFrom`, `valueFrom` (ConfigMapKeyRef/SecretKeyRef), or volumes.
-   - If a ConfigMap/Secret is referenced by a workload, its values in `values.yaml` are grouped under that workload's camel-cased component name (e.g. `.Values.admEstruturaJudiciaria`).
+   - If a ConfigMap/Secret is referenced by a workload, its values in `values.yaml` are grouped under that workload's exact component name (e.g. `.Values.adm-estrutura-judiciaria`).
 
 3. **Template References Alignment**:
    - Workload templates (like `deploy-backend.yaml`) use `TemplatedConfigMapName` and `TemplatedSecretName` to dynamically update inline references in container definitions (e.g., changing a raw ConfigMap name like `adm-estrutura-judiciaria-configmap` to `{{ include "fullname" . }}-adm-estrutura-judiciaria-cm`).

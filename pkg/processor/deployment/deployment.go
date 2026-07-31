@@ -71,7 +71,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	meta, err := processor.ProcessObjMeta(appMeta, obj, processor.WithSuffix(suffix), processor.WithValues(values))
 
 	name := processor.ObjectValueName(appMeta, obj)
-	compName := strcase.ToLowerCamel(processor.GetComponent(obj))
+	compName := processor.GetComponent(obj)
 	replicas, err := processReplicas(compName, &depl, &values)
 	if err != nil {
 		return true, nil, err
@@ -116,7 +116,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 	selector = strings.Trim(selector, " \n")
 	selector = string(yamlformat.Indent([]byte(selector), 4))
 
-	nameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
+	nameCamel := processor.GetComponent(obj)
 
 	cleanedPodLabels := cleanLabels(depl.Spec.Template.ObjectMeta.Labels)
 	if len(cleanedPodLabels) > 0 {
@@ -345,7 +345,7 @@ func processStrategy(name string, deployment *appsv1.Deployment, values *helmify
 	if len(strategyMap) > 0 {
 		stratYaml, err := yamlformat.Marshal(map[string]interface{}{"strategy": strategyMap}, 0)
 		if err == nil {
-			helmify.OriginalValuesRegistry.Store("strategy."+strcase.ToLowerCamel(name), strings.TrimSpace(stratYaml))
+			helmify.OriginalValuesRegistry.Store("strategy."+name, strings.TrimSpace(stratYaml))
 		}
 	}
 	return `{{ with $comp.strategy }}

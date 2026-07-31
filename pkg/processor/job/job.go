@@ -45,7 +45,7 @@ func (p job) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		return true, nil, err
 	}
 	name := processor.ObjectValueName(appMeta, obj)
-	nameCamelCase := strcase.ToLowerCamel(name)
+	nameCamelCase := name
 
 	jobObj := batchv1.Job{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &jobObj)

@@ -44,7 +44,7 @@ func (p cron) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 		return true, nil, err
 	}
 	name := processor.ObjectValueName(appMeta, obj)
-	nameCamelCase := strcase.ToLowerCamel(name)
+	nameCamelCase := name
 
 	jobObj := batchv1.CronJob{}
 	err = runtime.DefaultUnstructuredConverter.FromUnstructured(obj.Object, &jobObj)

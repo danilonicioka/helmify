@@ -53,7 +53,7 @@ func (d statefulset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unst
 	}
 
 	name := processor.ObjectValueName(appMeta, obj)
-	nameCamel := strcase.ToLowerCamel(name)
+	nameCamel := name
 
 	annotations := ss.Spec.Template.ObjectMeta.Annotations
 	ss.Spec.Template.ObjectMeta.Annotations = pod.AddReloadingAnnotations(appMeta, nameCamel, annotations, &ss.Spec.Template.Spec)

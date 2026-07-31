@@ -100,7 +100,7 @@ func (c cert) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 		tmpl = certTempl
 	}
 	valueName := processor.ObjectValueName(appMeta, obj)
-	nameCamel := strcase.ToLowerCamel(valueName)
+	nameCamel := valueName
 	values := helmify.Values{}
 	if appMeta.Config().AddWebhookOption {
 		// Add webhook.enabled value to values.yaml

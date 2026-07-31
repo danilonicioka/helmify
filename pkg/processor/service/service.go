@@ -81,7 +81,7 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 
 	name := processor.ObjectValueName(appMeta, obj)
 	shortName := strings.TrimPrefix(name, "controller-manager-")
-	shortNameCamel := strcase.ToLowerCamel(processor.GetComponent(obj))
+	shortNameCamel := processor.GetComponent(obj)
 
 	suffix := processor.GetDynamicSuffix(appMeta, obj, "svc")
 
