@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "test-app.fullname" . }}-daemonset
+  {{- $annotations := include "test-app.api.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "test-app.api.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      name: fluentd-elasticsearch
+    {{- include "test-app.api.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        name: fluentd-elasticsearch
+      {{- include "test-app.api.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- if and (index .Values "api") (index .Values "api" "cm") }}
+        checksum/cm-config: {{ include (print $.Template.BasePath "/cm-api-emissor.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        checksum/global-secret: {{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and (index .Values "api") (index .Values "api" "secret") }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret-api-emissor.yaml") . | sha256sum }}
+        {{- end }}
+    spec:
+      containers:
+      - envFrom:
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-global-cm
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-global-secret
+        {{- end }}
+        {{- if (index .Values "api").cm }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-api-emissor-cm
+        {{- end }}
+        {{- if (index .Values "api").secret }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-api-emissor-secret
+        {{- end }}
+        image: '{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion
+          }}'
+{{- with .Values.api.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        name: fluentd-elasticsearch
+{{- with .Values.api.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.api.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.api.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /var/log
+          name: varlog
+        - mountPath: /var/lib/docker/containers
+          name: varlibdockercontainers
+          readOnly: true
+      nodeSelector: '{{- toYaml .Values.api.nodeSelector | nindent 8 }}'
+      serviceAccountName: '{{ include "test-app.serviceAccountName" . }}'
+      {{- if not (kindIs "nil" .Values.api.terminationGracePeriodSeconds) }}
+      terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds }}
+      {{- end }}
+      tolerations: '{{- toYaml .Values.api.tolerations | nindent 8 }}'
+      topologySpreadConstraints: '{{- toYaml .Values.api.topologySpreadConstraints | nindent
+        8 }}'
+      volumes:
+      - hostPath:
+          path: /var/log
+        name: varlog
+      - hostPath:
+          path: /var/lib/docker/containers
+        name: varlibdockercontainers

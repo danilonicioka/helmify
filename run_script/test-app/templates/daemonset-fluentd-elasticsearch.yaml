@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ include "test-app.fullname" . }}-daemonset
+  {{- $annotations := include "test-app.fluentdElasticsearch.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "test-app.fluentdElasticsearch.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      name: fluentd-elasticsearch
+    {{- include "test-app.fluentd-elasticsearch.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        name: fluentd-elasticsearch
+      {{- include "test-app.fluentd-elasticsearch.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- if and (index .Values "fluentdElasticsearch") (index .Values "fluentdElasticsearch" "cm") }}
+        checksum/cm-config: {{ include (print $.Template.BasePath "/cm-fluentd-elasticsearch.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        checksum/global-secret: {{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and (index .Values "fluentdElasticsearch") (index .Values "fluentdElasticsearch" "secret") }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret-fluentd-elasticsearch.yaml") . | sha256sum }}
+        {{- end }}
+    spec:
+      containers:
+      - envFrom:
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-global-cm
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-global-secret
+        {{- end }}
+        {{- if (index .Values "fluentdElasticsearch").cm }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-fluentd-elasticsearch-cm
+        {{- end }}
+        {{- if (index .Values "fluentdElasticsearch").secret }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-fluentd-elasticsearch-secret
+        {{- end }}
+        image: '{{ .Values.fluentdElasticsearch.image.repository }}:{{ .Values.fluentdElasticsearch.image.tag
+          | default .Chart.AppVersion }}'
+{{- with .Values.fluentdElasticsearch.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        name: fluentd-elasticsearch
+{{- with .Values.fluentdElasticsearch.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.fluentdElasticsearch.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.fluentdElasticsearch.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /var/log
+          name: varlog
+        - mountPath: /var/lib/docker/containers
+          name: varlibdockercontainers
+          readOnly: true
+      nodeSelector: '{{- toYaml .Values.fluentdElasticsearch.nodeSelector | nindent 8 }}'
+      serviceAccountName: '{{ include "test-app.serviceAccountName" . }}'
+      {{- if not (kindIs "nil" .Values.fluentdElasticsearch.terminationGracePeriodSeconds) }}
+      terminationGracePeriodSeconds: {{ .Values.fluentdElasticsearch.terminationGracePeriodSeconds }}
+      {{- end }}
+      tolerations: '{{- toYaml .Values.fluentdElasticsearch.tolerations | nindent 8 }}'
+      topologySpreadConstraints: '{{- toYaml .Values.fluentdElasticsearch.topologySpreadConstraints
+        | nindent 8 }}'
+      volumes:
+      - hostPath:
+          path: /var/log
+        name: varlog
+      - hostPath:
+          path: /var/lib/docker/containers
+        name: varlibdockercontainers

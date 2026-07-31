@@ -1,0 +1,12 @@
+{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "test-app.fullname" . }}-global-cm
+  labels:
+    {{- include "test-app.labels" . | nindent 4 }}
+data:
+{{- range $key, $val := .Values.global.cm }}
+  {{ $key }}: {{ $val | quote }}
+{{- end }}
+{{- end }}

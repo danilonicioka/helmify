@@ -27,21 +27,22 @@ var deploymentGVC = schema.GroupVersionKind{
 }
 
 var deploymentTempl, _ = template.New("deployment").Parse(
-	`{{- $comp := index .Values "{{ .Name }}" | default dict -}}
-{{- .Meta }}
+	`{{ .CompDef }}
+{{ .Meta }}
 spec:
-{{- .Replicas }}
-{{- .RevisionHistoryLimit }}
-{{- .Strategy }}
-  selector:
+{{ if .Replicas }}{{ .Replicas }}
+{{ end }}{{ if .RevisionHistoryLimit }}{{ .RevisionHistoryLimit }}
+{{ end }}{{ if .Strategy }}{{ .Strategy }}
+{{ end }}  selector:
 {{ .Selector }}
   template:
     metadata:
       labels:
 {{ .PodLabels }}
-{{- .PodAnnotations }}
-    spec:
+{{ if .PodAnnotations }}{{ .PodAnnotations }}
+{{ end }}    spec:
 {{ .Spec }}`)
+
 
 const selectorTempl = `%[1]s
 {{- include "%[2]s" . | nindent 6 }}
@@ -217,6 +218,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 		name:   resultName,
 		values: values,
 		data: struct {
+			CompDef              string
 			Name                 string
 			Meta                 string
 			Replicas             string
@@ -227,6 +229,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 			PodAnnotations       string
 			Spec                 string
 		}{
+			CompDef:              fmt.Sprintf(`{{- $comp := index .Values "%s" | default dict -}}`, nameCamel),
 			Name:                 nameCamel,
 			Meta:                 meta,
 			Replicas:             replicas,
@@ -297,7 +300,7 @@ func processReplicas(name string, deployment *appsv1.Deployment, values *helmify
 	if err != nil {
 		return "", err
 	}
-	return "{{- if not (kindIs \"nil\" $comp.replicas) }}\n  replicas: {{ $comp.replicas }}\n{{- end }}", nil
+	return "{{ if not (kindIs \"nil\" $comp.replicas) }}\n  replicas: {{ $comp.replicas }}\n{{- end }}", nil
 }
 
 func processRevisionHistoryLimit(name string, deployment *appsv1.Deployment, values *helmify.Values) (string, error) {
@@ -308,7 +311,7 @@ func processRevisionHistoryLimit(name string, deployment *appsv1.Deployment, val
 	if err != nil {
 		return "", err
 	}
-	return "{{- if not (kindIs \"nil\" $comp.revisionHistoryLimit) }}\n  revisionHistoryLimit: {{ $comp.revisionHistoryLimit }}\n{{- end }}", nil
+	return "{{ if not (kindIs \"nil\" $comp.revisionHistoryLimit) }}\n  revisionHistoryLimit: {{ $comp.revisionHistoryLimit }}\n{{- end }}", nil
 }
 
 func processStrategy(name string, deployment *appsv1.Deployment, values *helmify.Values) (string, error) {
@@ -345,7 +348,7 @@ func processStrategy(name string, deployment *appsv1.Deployment, values *helmify
 			helmify.OriginalValuesRegistry.Store("strategy."+strcase.ToLowerCamel(name), strings.TrimSpace(stratYaml))
 		}
 	}
-	return `{{- with $comp.strategy }}
+	return `{{ with $comp.strategy }}
   strategy:
     {{- toYaml . | nindent 4 }}
 {{- end }}`, nil
@@ -354,6 +357,7 @@ func processStrategy(name string, deployment *appsv1.Deployment, values *helmify
 type result struct {
 	name string
 	data struct {
+		CompDef              string
 		Name                 string
 		Meta                 string
 		Replicas             string

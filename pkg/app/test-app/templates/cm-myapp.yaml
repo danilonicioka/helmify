@@ -1,0 +1,38 @@
+{{- $comp := index .Values "myapp" | default dict -}}
+{{- if and $comp $comp.cm }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "test-app.fullname" . }}-myapp-cm
+  {{- $annotations := include "test-app.myapp.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "test-app.myapp.labels" . | nindent 4 }}
+immutable: true
+data:
+{{- range $key, $val := $comp.cm }}
+  {{ $key }}: {{ $val | quote }}
+{{- end }}
+{{- end }}
+---
+{{- $comp := index .Values "myapp" | default dict -}}
+{{- if and $comp $comp.cm }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "test-app.fullname" . }}-myapp-cm
+  {{- $annotations := include "test-app.myapp.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "test-app.myapp.labels" . | nindent 4 }}
+data:
+{{- range $key, $val := $comp.cm }}
+  {{ $key }}: {{ $val | quote }}
+{{- end }}
+{{- end }}

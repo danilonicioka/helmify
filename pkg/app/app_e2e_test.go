@@ -57,7 +57,7 @@ func TestApp(t *testing.T) {
 	assert.NoError(t, err)
 
 	t.Cleanup(func() {
-		err = os.RemoveAll(appChartName)
+		// err = os.RemoveAll(appChartName)
 		assert.NoError(t, err)
 	})
 

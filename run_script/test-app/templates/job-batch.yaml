@@ -1,0 +1,59 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "test-app.fullname" . }}-job
+  {{- $annotations := include "test-app.batch.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "test-app.batch.labels" . | nindent 4 }}
+spec:
+  backoffLimit: '{{ .Values.batch.backoffLimit }}'
+  template:
+    spec:
+      containers:
+      - command: '{{- toYaml .Values.batch.command | nindent 8 }}'
+        envFrom:
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-global-cm
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-global-secret
+        {{- end }}
+        {{- if (index .Values "batch").cm }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-batch-cm
+        {{- end }}
+        {{- if (index .Values "batch").secret }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-batch-secret
+        {{- end }}
+        image: '{{ .Values.batch.image.repository }}:{{ .Values.batch.image.tag |
+          default .Chart.AppVersion }}'
+{{- with .Values.batch.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        name: pi
+{{- with .Values.batch.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.batch.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.batch.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      nodeSelector: '{{- toYaml .Values.batch.nodeSelector | nindent 8 }}'
+      restartPolicy: Never
+      serviceAccountName: '{{ include "test-app.serviceAccountName" . }}'
+      tolerations: '{{- toYaml .Values.batch.tolerations | nindent 8 }}'
+      topologySpreadConstraints: '{{- toYaml .Values.batch.topologySpreadConstraints
+        | nindent 8 }}'
