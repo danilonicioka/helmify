@@ -44,7 +44,7 @@ variables:
   # 4. Dynamic Values File Path
   DEV_VALUES_PATH:
     description: "Location and format of the values file in the repository (change env to match the desired environment)"
-    value: "deploy/values-dev.yaml"
+    value: "variaveis/values-dev.yaml"
 
 get_chart_version:
   stage: prepare
