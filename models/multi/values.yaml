@@ -84,11 +84,7 @@ backend:
   # -- Internal Kubernetes Service Configuration.
   service:
     type: ClusterIP
-    ports:
-      http:
-        port: 8080
-        targetPort: 8080
-        protocol: TCP
+    ports: {}
 
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
@@ -200,11 +196,7 @@ frontend:
 
   service:
     type: ClusterIP
-    ports:
-      http:
-        port: 80
-        targetPort: 8080
-        protocol: TCP
+    ports: {}
 
   # ----------------------------------------------------------------------------
   # 4. RESOURCES

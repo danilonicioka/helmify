@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 
 	"github.com/arttor/helmify/pkg/processor"
@@ -20,7 +21,7 @@ import (
 )
 
 const (
-	svcTempSpec = `{{- $comp := index .Values "%[1]s" | default dict -}}
+	svcTempSpec = `{{- $comp := index .Values "%[1]s" | default dict }}
 spec:
   type: {{ $comp.service.type }}
   selector:%[2]s
@@ -137,6 +138,9 @@ func (r svc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 		name := p.Name
 		if name == "" {
 			name = "http"
+		}
+		if _, err := strconv.Atoi(name); err == nil {
+			name = "port-" + name
 		}
 		ports[name] = pMap
 	}

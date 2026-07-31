@@ -76,7 +76,7 @@ spec:
     name: {{ include "%[2]s.fullname" . }}%[4]s
     weight: 100
   port:
-    targetPort: {{ if and (index .Values "%[1]s").service (index .Values "%[1]s").service.ports }}{{ (index (index .Values "%[1]s").service.ports 0).name | default "http" }}{{ else }}http{{ end }}
+    targetPort: {{ if and (index .Values "%[1]s").service (index .Values "%[1]s").service.ports }}{{ if hasKey (index .Values "%[1]s").service.ports "http" }}http{{ else }}{{ keys (index .Values "%[1]s").service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
   wildcardPolicy: None
 {{- end }}
 `
@@ -109,7 +109,7 @@ spec:
     name: {{ include "%[2]s.fullname" . }}%[4]s
     weight: 100
   port:
-    targetPort: {{ if and (index .Values "%[1]s").service (index .Values "%[1]s").service.ports }}{{ (index (index .Values "%[1]s").service.ports 0).name | default "http" }}{{ else }}http{{ end }}
+    targetPort: {{ if and (index .Values "%[1]s").service (index .Values "%[1]s").service.ports }}{{ if hasKey (index .Values "%[1]s").service.ports "http" }}http{{ else }}{{ keys (index .Values "%[1]s").service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
   wildcardPolicy: None
 {{- end }}
 `
@@ -142,7 +142,7 @@ spec:
     name: {{ include "%[2]s.fullname" . }}%[4]s
     weight: 100
   port:
-    targetPort: {{ if and (index .Values "%[1]s").service (index .Values "%[1]s").service.ports }}{{ (index (index .Values "%[1]s").service.ports 0).name | default "http" }}{{ else }}http{{ end }}
+    targetPort: {{ if and (index .Values "%[1]s").service (index .Values "%[1]s").service.ports }}{{ if hasKey (index .Values "%[1]s").service.ports "http" }}http{{ else }}{{ keys (index .Values "%[1]s").service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
   wildcardPolicy: None
 {{- end }}
 `

@@ -251,6 +251,12 @@ Helmify deliberately preserves the **exact component name** (typically kebab-cas
 
 3. **Template References Alignment**:
    - Workload templates (like `deploy-backend.yaml`) use `TemplatedConfigMapName` and `TemplatedSecretName` to dynamically update inline references in container definitions (e.g., changing a raw ConfigMap name like `adm-estrutura-judiciaria-configmap` to `{{ include "fullname" . }}-adm-estrutura-judiciaria-cm`).
+
+4. **Numeric Port Safeguard**:
+   - When extracting Service ports into the `values.yaml` map, Helmify automatically prefixes purely numeric port names with `port-` (e.g., `"8080"` becomes `port-8080:`). This prevents the Go YAML library from dropping quotes and forcing Helm to parse the key as an `int`, which causes template compilation panics.
+
+5. **Dynamic Port Extraction (Anti-Duplication)**:
+   - To prevent Helmify from artificially injecting duplicate ports during the model merge phase (e.g. merging a model's `http:` port with a manifest's `"8080"` port), the standardized models (`models/single` and `models/multi`) explicitly leave the `service.ports` map empty (`{}`). Helmify will dynamically populate this map using strictly what is defined in the input manifests.
     - If there is a version mismatch between the deployed Helmify API and your local branch, the template names and values keys can diverge (e.g., writing the ConfigMap with name `adm-estrutura` but referencing `adm-estrutura-judiciaria` in the Deployment). **Always ensure the remote server is running the same commit as your local branch to keep naming consistent.**
 
 ## Manifest Validation Checklist (Before Helmifying)
