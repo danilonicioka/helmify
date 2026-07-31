@@ -1,0 +1,692 @@
+# Standardized TJPA Helm Chart values.yaml (Multi-Deployment Model)
+# Designed in compliance with OpenShift Security Context Constraints (SCC)
+# and the 6 Core Architectural Rules.
+
+# ==============================================================================
+# I. CHART-WIDE OPTIONS
+# ==============================================================================
+# -- Domain of the Kubernetes cluster.
+kubernetesClusterDomain: cluster.local
+# -- Overrides the default name/fullname.
+nameOverride: ""
+fullnameOverride: test-app
+# -- Global configuration shared across all deployments in the chart.
+global:
+  cm:
+    TZ: America/Belem
+  secret: {}
+# ==============================================================================
+# II. BACKEND COMPONENT CONFIGURATION
+# ==============================================================================
+api:
+  # ----------------------------------------------------------------------------
+  # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
+  # ----------------------------------------------------------------------------
+  # -- Number of replica pods.
+  replicas: 0
+  # -- Custom labels to add to the backend deployment/pods
+  labels:
+    k8s-app: fluentd-logging
+  # app.openshift.io/runtime: openjdk
+  # -- Custom annotations to add to the backend deployment 
+  annotations: {}
+  #   # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+  image:
+    # -- Quay Registry is used to avoid Docker Hub rate limiting.
+    repository: quay.io/fluentd_elasticsearch/fluentd
+    # -- Defaults to Chart.appVersion if not specified.
+    tag: v2.5.2
+    pullPolicy: IfNotPresent
+  # ----------------------------------------------------------------------------
+  # 2. APPLICATION CONFIGURATION (Variables & Credentials)
+  # ----------------------------------------------------------------------------
+  # ConfigMaps unique to this service container.
+  cm: {}
+  # Sensitive variables unique to this service container (Secrets).
+  secret: {}
+  # ----------------------------------------------------------------------------
+  # 3. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  route:
+    # -- Shared annotations for routes.
+    annotations: {}
+    #   # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+    # -- Shared TLS edge termination configuration.
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+    # -- Shared path for routes.
+    path: "/api"
+    # -- Internal Route with self-signed certificate (to default OCP apps).
+    default:
+      enabled: true
+      host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
+    # -- Internal Route with valid certificate (to intranet TJPA).
+    internal:
+      enabled: false
+      host: test-app-backend-i.tjpa.jus.br
+    # -- External Route with valid certificate (to internet TJPA).
+    external:
+      enabled: false
+      host: test-app-backend.tjpa.jus.br
+  # -- Internal Kubernetes Service Configuration.
+  service:
+    type: ClusterIP
+    ports:
+      http:
+        port: 8080
+        targetPort: 8080
+        protocol: TCP
+  # ----------------------------------------------------------------------------
+  # 4. RESOURCES (Operational Overlay-Only)
+  # ----------------------------------------------------------------------------
+  resources: {}
+  # limits:
+  #   cpu: 500m
+  #   memory: 512Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 256Mi
+
+  # ----------------------------------------------------------------------------
+  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
+  # ----------------------------------------------------------------------------
+  startupProbe: {}
+  # startupProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 5
+  #   failureThreshold: 30
+  #   successThreshold: 1
+
+  livenessProbe: {}
+  # livenessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
+  readinessProbe: {}
+  # readinessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
+  # ----------------------------------------------------------------------------
+  # 6. LIFECYCLE & HA STRATEGY
+  # ----------------------------------------------------------------------------
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  terminationGracePeriodSeconds: 30
+  # ----------------------------------------------------------------------------
+  # 7. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  # persistence:
+  #   enabled: false
+  #   storageClass: thin
+  #   storageRequest: 512Mi
+
+  command:
+    - perl
+    - -Mbignum=bpi
+    - -wle
+    - print bpi(2000)
+    - /bin/sh
+    - -c
+    - date; echo Hello from the Kubernetes cluster
+  tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/master
+      operator: Exists
+  nodeSelector: {}
+  schedule: '* * * * *'
+  backoffLimit: 4
+  imagePullPolicy: IfNotPresent
+  topologySpreadConstraints: []
+# ==============================================================================
+# III. FRONTEND COMPONENT CONFIGURATION
+# ==============================================================================
+appEmissor:
+  # ----------------------------------------------------------------------------
+  # 1. CORE WORKLOAD SETTINGS
+  # ----------------------------------------------------------------------------
+  replicas: 2
+  # -- Custom labels to add to the frontend deployment/pods
+  labels: {}
+  #   # app.openshift.io/runtime: openjdk
+
+  # app.openshift.io/runtime: nodejs
+  # -- Custom annotations to add to the frontend deployment 
+  annotations: {}
+  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+  image:
+    repository: registry.k8s.io/nginx-slim
+    tag: "0.8"
+    pullPolicy: IfNotPresent
+  # ----------------------------------------------------------------------------
+  # 2. APPLICATION CONFIGURATION
+  # ----------------------------------------------------------------------------
+  cm: {}
+  # No default secrets for web frontend component
+  secret: {}
+  # ----------------------------------------------------------------------------
+  # 3. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  route:
+    annotations: {}
+    #   # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+    path: "/"
+    default:
+      enabled: true
+      host: test-app-frontend.apps.ocp-dev.i.tj.pa.gov.br
+    internal:
+      enabled: false
+      host: test-app-frontend-i.tjpa.jus.br
+    external:
+      enabled: false
+      host: test-app-frontend.tjpa.jus.br
+  service:
+    type: ClusterIP
+    ports:
+      http:
+        port: 80
+        targetPort: 8080
+        protocol: TCP
+  # ----------------------------------------------------------------------------
+  # 4. RESOURCES
+  # ----------------------------------------------------------------------------
+  resources: {}
+  # limits:
+  #   cpu: 500m
+  #   memory: 512Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 256Mi
+
+  # ----------------------------------------------------------------------------
+  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
+  # ----------------------------------------------------------------------------
+  startupProbe: {}
+  # startupProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 5
+  #   failureThreshold: 30
+  #   successThreshold: 1
+
+  livenessProbe: {}
+  # livenessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
+  readinessProbe: {}
+  # readinessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
+  # ----------------------------------------------------------------------------
+  # 6. LIFECYCLE & HA STRATEGY
+  # ----------------------------------------------------------------------------
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  terminationGracePeriodSeconds: 30
+  volumeClaims:
+    www:
+      requests:
+        storage: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
+# ==============================================================================
+# III. FRONTEND COMPONENT CONFIGURATION
+# ==============================================================================
+myapp:
+  # ----------------------------------------------------------------------------
+  # 1. CORE WORKLOAD SETTINGS
+  # ----------------------------------------------------------------------------
+  replicas: 3
+  # -- Custom labels to add to the frontend deployment/pods
+  labels: {}
+  #   # app.openshift.io/runtime: openjdk
+
+  # app.openshift.io/runtime: nodejs
+  # -- Custom annotations to add to the frontend deployment 
+  annotations: {}
+  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+  image:
+    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/test-app-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  # ----------------------------------------------------------------------------
+  # 2. APPLICATION CONFIGURATION
+  # ----------------------------------------------------------------------------
+  cm:
+    my.prop3: "true"
+    dummyconfigmapkey: dummyconfigmapvalue
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
+    myval.yaml: |
+      apiVersion: clickhouse.altinity.com/v1
+      kind: ClickHouseInstallationTemplate
+      metadata:
+        name: default-oneperhost-pod-template
+      spec:
+        templates:
+          podTemplates:
+            - name: default-oneperhost-pod-template
+              distribution: "OnePerHost"
+    my.prop1: "1"
+    my.prop2: val 1
+  # No default secrets for web frontend component
+  secret:
+    ca.crt: |-
+      superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
+      superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+      superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
+    VAR1: my_secret_var_1
+    VAR2: my_secret_var_2
+    str: |
+      some big not so secret string with
+      multiple lines
+  # ----------------------------------------------------------------------------
+  # 3. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  route:
+    annotations: {}
+    #   # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+    path: "/"
+    default:
+      enabled: true
+      host: test-app-frontend.apps.ocp-dev.i.tj.pa.gov.br
+    internal:
+      enabled: false
+      host: test-app-frontend-i.tjpa.jus.br
+    external:
+      enabled: false
+      host: test-app-frontend.tjpa.jus.br
+  service:
+    type: ClusterIP
+    ports:
+      http:
+        port: 80
+        targetPort: 8080
+        protocol: TCP
+      https:
+        targetPort: https
+        port: 8443
+    loadBalancerSourceRanges:
+      - 10.0.0.0/8
+    ipFamilyPolicy: SingleStack
+    ipFamilies:
+      - IPv4
+  # ----------------------------------------------------------------------------
+  # 4. RESOURCES
+  # ----------------------------------------------------------------------------
+  resources: {}
+  # limits:
+  #   cpu: 500m
+  #   memory: 512Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 256Mi
+
+  # ----------------------------------------------------------------------------
+  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
+  # ----------------------------------------------------------------------------
+  startupProbe: {}
+  # startupProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 5
+  #   failureThreshold: 30
+  #   successThreshold: 1
+
+  livenessProbe: {}
+  # livenessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
+  readinessProbe: {}
+  # readinessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
+  # ----------------------------------------------------------------------------
+  # 6. LIFECYCLE & HA STRATEGY
+  # ----------------------------------------------------------------------------
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  terminationGracePeriodSeconds: 10
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
+  nodeSelector:
+    region: east
+    type: user-node
+  topologySpreadConstraints: []
+  podSecurityContext:
+    runAsUser: 65532
+    runAsNonRoot: true
+    fsGroup: 20000
+  tolerations: []
+  proxySidecar:
+    livenessProbe: {}
+    # livenessProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 20
+    #   failureThreshold: 3
+
+    readinessProbe: {}
+    # readinessProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 10
+    #   successThreshold: 2
+    #   failureThreshold: 3
+
+    startupProbe: {}
+    # startupProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 5
+    #   failureThreshold: 30
+
+    args:
+      - --secure-listen-address=0.0.0.0:8443
+      - --v=10
+    image:
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.8.0
+    resources: {}
+    # resources:
+    #   limits:
+    #     cpu: 500m
+    #     memory: 512Mi
+    #   requests:
+    #     cpu: 100m
+    #     memory: 256Mi
+  initContainer:
+    livenessProbe: {}
+    # livenessProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 20
+    #   failureThreshold: 3
+
+    readinessProbe: {}
+    # readinessProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 10
+    #   successThreshold: 2
+    #   failureThreshold: 3
+
+    startupProbe: {}
+    # startupProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 5
+    #   failureThreshold: 30
+
+    image:
+      repository: bash
+      tag: latest
+    resources: {}
+    # resources:
+    #   limits:
+    #     cpu: 500m
+    #     memory: 512Mi
+    #   requests:
+    #     cpu: 100m
+    #     memory: 256Mi
+  app:
+    livenessProbe: {}
+    # livenessProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 20
+    #   failureThreshold: 3
+
+    readinessProbe: {}
+    # readinessProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 10
+    #   successThreshold: 2
+    #   failureThreshold: 3
+
+    startupProbe: {}
+    # startupProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 5
+    #   failureThreshold: 30
+
+    args:
+      - --health-probe-bind-address=:8081
+      - --metrics-bind-address=127.0.0.1:8080
+      - --leader-elect
+    command:
+      - /manager
+    containerSecurityContext: {}
+    image:
+      repository: controller
+      tag: latest
+    resources: {}
+    # resources:
+    #   limits:
+    #     cpu: 500m
+    #     memory: 512Mi
+    #   requests:
+    #     cpu: 100m
+    #     memory: 256Mi
+  revisionHistoryLimit: 5
+  persistence:
+    enabled: true
+    storageClass: manual
+    storageRequest: 3Gi
+    storageLimit: 5Gi
+# ==============================================================================
+# II. BACKEND COMPONENT CONFIGURATION
+# ==============================================================================
+nginx:
+  # ----------------------------------------------------------------------------
+  # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
+  # ----------------------------------------------------------------------------
+  # -- Number of replica pods.
+  replicas: 0
+  # -- Custom labels to add to the backend deployment/pods
+  labels: {}
+  #   # app.openshift.io/runtime: openjdk
+
+  # app.openshift.io/runtime: openjdk
+  # -- Custom annotations to add to the backend deployment 
+  annotations: {}
+  #   # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+  image:
+    # -- Quay Registry is used to avoid Docker Hub rate limiting.
+    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/test-app-backend
+    # -- Defaults to Chart.appVersion if not specified.
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  # ----------------------------------------------------------------------------
+  # 2. APPLICATION CONFIGURATION (Variables & Credentials)
+  # ----------------------------------------------------------------------------
+  # ConfigMaps unique to this service container.
+  cm: {}
+  # Sensitive variables unique to this service container (Secrets).
+  secret: {}
+  # ----------------------------------------------------------------------------
+  # 3. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  route:
+    # -- Shared annotations for routes.
+    annotations: {}
+    #   # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+    # -- Shared TLS edge termination configuration.
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+    # -- Shared path for routes.
+    path: "/api"
+    # -- Internal Route with self-signed certificate (to default OCP apps).
+    default:
+      enabled: true
+      host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
+    # -- Internal Route with valid certificate (to intranet TJPA).
+    internal:
+      enabled: false
+      host: test-app-backend-i.tjpa.jus.br
+    # -- External Route with valid certificate (to internet TJPA).
+    external:
+      enabled: false
+      host: test-app-backend.tjpa.jus.br
+  # -- Internal Kubernetes Service Configuration.
+  service:
+    type: ClusterIP
+    ports:
+      http:
+        port: 8080
+        targetPort: 8080
+        protocol: TCP
+      web:
+        port: 80
+  # ----------------------------------------------------------------------------
+  # 4. RESOURCES (Operational Overlay-Only)
+  # ----------------------------------------------------------------------------
+  resources: {}
+  # limits:
+  #   cpu: 500m
+  #   memory: 512Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 256Mi
+
+  # ----------------------------------------------------------------------------
+  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
+  # ----------------------------------------------------------------------------
+  startupProbe: {}
+  # startupProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 5
+  #   failureThreshold: 30
+  #   successThreshold: 1
+
+  livenessProbe: {}
+  # livenessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
+  readinessProbe: {}
+  # readinessProbe:
+  #   tcpSocket:
+  #     port: 8080
+  #   initialDelaySeconds: 0
+  #   periodSeconds: 10
+  #   failureThreshold: 3
+  #   successThreshold: 1
+
+  # ----------------------------------------------------------------------------
+  # 6. LIFECYCLE & HA STRATEGY
+  # ----------------------------------------------------------------------------
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
+  terminationGracePeriodSeconds: 30
+  # ----------------------------------------------------------------------------
+  # 7. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  # persistence:
+  #   enabled: false
+  #   storageClass: thin
+  #   storageRequest: 512Mi
+
+  minAvailable: 2
+# ==============================================================================
+# IV. GLOBAL SCHEDULING & COMMON CONFIGS
+# ==============================================================================
+imagePullSecrets: []
+nodeSelector: {}
+tolerations: []
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - test-app
+          topologyKey: kubernetes.io/hostname

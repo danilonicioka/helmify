@@ -1,0 +1,22 @@
+{{- if .Values.myapp.persistence.enabled -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "test-app.fullname" . }}-my-sample-pv-claim
+  {{- $annotations := include "test-app.myapp.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "test-app.myapp.labels" . | nindent 4 }}
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    limits:
+      storage: {{ .Values.myapp.persistence.storageLimit | quote }}
+    requests:
+      storage: {{ .Values.myapp.persistence.storageRequest | quote }}
+  storageClassName: {{ .Values.myapp.persistence.storageClass | quote }}{{- end -}}
+

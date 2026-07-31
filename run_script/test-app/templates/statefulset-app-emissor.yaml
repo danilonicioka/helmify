@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "test-app.fullname" . }}-web
+  {{- $annotations := include "test-app.appEmissor.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "test-app.appEmissor.labels" . | nindent 4 }}
+spec:
+  replicas: '{{ .Values.appEmissor.replicas }}'
+  selector:
+    matchLabels:
+      app: nginx
+  serviceName: '{{ include "test-app.fullname" . }}-nginx'
+  template:
+    metadata:
+      annotations:
+        {{- if and (index .Values "appEmissor") (index .Values "appEmissor" "cm") }}
+        checksum/cm-config: {{ include (print $.Template.BasePath "/cm-app-emissor.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        checksum/global-secret: {{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and (index .Values "appEmissor") (index .Values "appEmissor" "secret") }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret-app-emissor.yaml") . | sha256sum }}
+        {{- end }}
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - envFrom:
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-global-cm
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-global-secret
+        {{- end }}
+        {{- if (index .Values "appEmissor").cm }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-app-emissor-cm
+        {{- end }}
+        {{- if (index .Values "appEmissor").secret }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-app-emissor-secret
+        {{- end }}
+        image: '{{ .Values.appEmissor.image.repository }}:{{ .Values.appEmissor.image.tag
+          | default .Chart.AppVersion }}'
+{{- with .Values.appEmissor.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        name: nginx
+        ports:
+        - containerPort: 80
+          name: web
+{{- with .Values.appEmissor.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.appEmissor.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.appEmissor.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /usr/share/nginx/html
+          name: www
+      nodeSelector: '{{- toYaml .Values.appEmissor.nodeSelector | nindent 8 }}'
+      serviceAccountName: '{{ include "test-app.serviceAccountName" . }}'
+      tolerations: '{{- toYaml .Values.appEmissor.tolerations | nindent 8 }}'
+      topologySpreadConstraints: '{{- toYaml .Values.appEmissor.topologySpreadConstraints
+        | nindent 8 }}'
+  updateStrategy: {}
+  volumeClaimTemplates:
+  - metadata:
+      creationTimestamp: null
+      name: www
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources: '{{ .Values.appEmissor.volumeClaims.www | toYaml | nindent 8 }}'

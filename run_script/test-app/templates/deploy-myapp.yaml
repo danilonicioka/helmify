@@ -1,0 +1,218 @@
+{{- $comp := index .Values "myapp" | default dict -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "test-app.fullname" . }}-myapp
+  {{- $annotations := include "test-app.myapp.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "test-app.myapp.labels" . | nindent 4 }}
+spec:
+{{ if not (kindIs "nil" $comp.replicas) }}
+  replicas: {{ $comp.replicas }}
+{{- end }}
+{{ if not (kindIs "nil" $comp.revisionHistoryLimit) }}
+  revisionHistoryLimit: {{ $comp.revisionHistoryLimit }}
+{{- end }}
+{{- with $comp.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+{{- end }}
+  selector:
+    matchLabels:
+    {{- include "test-app.myapp.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- with $comp.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- include "test-app.myapp.selectorLabels" . | nindent 8 }}
+
+      annotations:
+        {{- with $comp.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- if and (index .Values "myapp") (index .Values "myapp" "cm") }}
+        checksum/cm-config: {{ include (print $.Template.BasePath "/cm-myapp.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        checksum/global-secret: {{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}
+        {{- end }}
+        {{- if and (index .Values "myapp") (index .Values "myapp" "secret") }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret-myapp.yaml") . | sha256sum }}
+        {{- end }}
+    spec:
+      containers:
+      - args: {{- toYaml .Values.myapp.app.args | nindent 8 }}
+        command: {{- toYaml .Values.myapp.app.command | nindent 8 }}
+        env:
+        - name: APP_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['app.kubernetes.io/name']
+        - name: INSTANCE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.labels['app.kubernetes.io/instance']
+        envFrom:
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-global-cm
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-global-secret
+        {{- end }}
+        {{- if (index .Values "myapp").cm }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-myapp-cm
+        {{- end }}
+        {{- if (index .Values "myapp").secret }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-myapp-secret
+        {{- end }}
+        image: {{ .Values.myapp.app.image.repository }}:{{ .Values.myapp.app.image.tag
+          | default .Chart.AppVersion }}
+{{- with .Values.myapp.app.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        name: app
+{{- with .Values.myapp.app.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.myapp.app.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.myapp.app.containerSecurityContext }}
+        securityContext:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.myapp.app.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        volumeMounts:
+        - mountPath: /my_config.properties
+          name: manager-config
+          subPath: my_config.properties
+        - mountPath: /my.ca
+          name: secret-volume
+        - mountPath: /etc/props
+          name: props
+        {{- if and (index .Values "myapp") (index .Values "myapp" "persistence") (index .Values "myapp" "persistence" "enabled") }}
+        - mountPath: /usr/share/nginx/html
+          name: sample-pv-storage
+        {{- end }}
+      - args: {{- toYaml .Values.myapp.proxySidecar.args | nindent 8 }}
+        envFrom:
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-global-cm
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-global-secret
+        {{- end }}
+        {{- if (index .Values "myapp").cm }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-myapp-cm
+        {{- end }}
+        {{- if (index .Values "myapp").secret }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-myapp-secret
+        {{- end }}
+        image: {{ .Values.myapp.proxySidecar.image.repository }}:{{ .Values.myapp.proxySidecar.image.tag
+          | default .Chart.AppVersion }}
+{{- with .Values.myapp.proxySidecar.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        name: proxy-sidecar
+        ports:
+        - containerPort: 8443
+          name: https
+{{- with .Values.myapp.proxySidecar.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.myapp.proxySidecar.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.myapp.proxySidecar.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      initContainers:
+      - command: {{- toYaml .Values.myapp.command | nindent 8 }}
+        envFrom:
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-global-cm
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-global-secret
+        {{- end }}
+        {{- if (index .Values "myapp").cm }}
+        - configMapRef:
+            name: {{ include "test-app.fullname" . }}-myapp-cm
+        {{- end }}
+        {{- if (index .Values "myapp").secret }}
+        - secretRef:
+            name: {{ include "test-app.fullname" . }}-myapp-secret
+        {{- end }}
+        image: {{ .Values.myapp.initContainer.image.repository }}:{{ .Values.myapp.initContainer.image.tag
+          | default .Chart.AppVersion }}
+{{- with .Values.myapp.livenessProbe }}
+        livenessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        name: init-container
+{{- with .Values.myapp.readinessProbe }}
+        readinessProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.myapp.resources }}
+        resources:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+{{- with .Values.myapp.startupProbe }}
+        startupProbe:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      nodeSelector: {{- toYaml .Values.myapp.nodeSelector | nindent 8 }}
+      securityContext: {{- toYaml .Values.myapp.podSecurityContext | nindent 8 }}
+      serviceAccountName: {{ include "test-app.serviceAccountName" . }}
+      {{- if not (kindIs "nil" .Values.myapp.terminationGracePeriodSeconds) }}
+      terminationGracePeriodSeconds: {{ .Values.myapp.terminationGracePeriodSeconds }}
+      {{- end }}
+      tolerations: {{- toYaml .Values.myapp.tolerations | nindent 8 }}
+      topologySpreadConstraints: {{- toYaml .Values.myapp.topologySpreadConstraints | nindent
+        8 }}
+      volumes:
+      - configMap:
+          name: {{ include "test-app.fullname" . }}-{{ include "test-app.fullname" . }}-my-config
+        name: manager-config
+      - configMap:
+          name: {{ include "test-app.fullname" . }}-{{ include "test-app.fullname" . }}-my-config-props
+        name: props
+      - name: secret-volume
+        secret:
+          secretName: {{ include "test-app.fullname" . }}-{{ include "test-app.fullname"
+            . }}-my-secret-ca
+      {{- if and (index .Values "myapp") (index .Values "myapp" "persistence") (index .Values "myapp" "persistence" "enabled") }}
+      - name: sample-pv-storage
+        persistentVolumeClaim:
+          claimName: {{ include "test-app.fullname" . }}-my-sample-pv-claim
+      {{- end }}

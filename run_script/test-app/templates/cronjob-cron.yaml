@@ -1,0 +1,62 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "test-app.fullname" . }}-cronjob
+  {{- $annotations := include "test-app.cron.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "test-app.cron.labels" . | nindent 4 }}
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - command: '{{- toYaml .Values.cron.command | nindent 12 }}'
+            envFrom:
+            {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+            - configMapRef:
+                name: {{ include "test-app.fullname" . }}-global-cm
+            {{- end }}
+            {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+            - secretRef:
+                name: {{ include "test-app.fullname" . }}-global-secret
+            {{- end }}
+            {{- if (index .Values "cron").cm }}
+            - configMapRef:
+                name: {{ include "test-app.fullname" . }}-cron-cm
+            {{- end }}
+            {{- if (index .Values "cron").secret }}
+            - secretRef:
+                name: {{ include "test-app.fullname" . }}-cron-secret
+            {{- end }}
+            image: '{{ .Values.cron.image.repository }}:{{ .Values.cron.image.tag
+              | default .Chart.AppVersion }}'
+            imagePullPolicy: '{{ .Values.cron.imagePullPolicy }}'
+{{- with .Values.cron.livenessProbe }}
+            livenessProbe:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+            name: hello
+{{- with .Values.cron.readinessProbe }}
+            readinessProbe:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+{{- with .Values.cron.resources }}
+            resources:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+{{- with .Values.cron.startupProbe }}
+            startupProbe:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
+          nodeSelector: '{{- toYaml .Values.cron.nodeSelector | nindent 12 }}'
+          restartPolicy: OnFailure
+          serviceAccountName: '{{ include "test-app.serviceAccountName" . }}'
+          tolerations: '{{- toYaml .Values.cron.tolerations | nindent 12 }}'
+          topologySpreadConstraints: '{{- toYaml .Values.cron.topologySpreadConstraints
+            | nindent 12 }}'
+  schedule: '{{ .Values.cron.schedule | quote }}'
