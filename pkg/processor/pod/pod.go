@@ -581,7 +581,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 		if comp == "" || comp == "chart" {
 			comp = processor.NormalizeComponentName(objName)
 		}
-		compCamel := strcase.ToLowerCamel(comp)
+		compCamel := comp
 		compKebab := processor.NormalizeComponentName(comp)
 
 		filename := "cm-" + compKebab + ".yaml"
@@ -610,7 +610,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 		if comp == "" || comp == "chart" || comp == "secrets" {
 			comp = processor.NormalizeComponentName(objName)
 		}
-		compCamel := strcase.ToLowerCamel(comp)
+		compCamel := comp
 		compKebab := processor.NormalizeComponentName(comp)
 
 		filename := "secret-" + compKebab + ".yaml"

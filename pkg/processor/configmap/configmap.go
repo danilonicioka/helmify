@@ -140,7 +140,7 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 
 	var templates []helmify.Template
 	for _, comp := range referencingComps {
-		compCamel := strcase.ToLowerCamel(comp)
+		compCamel := comp
 		values := helmify.Values{}
 		if exists {
 			for key, val := range field {

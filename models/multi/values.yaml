@@ -21,6 +21,7 @@ global:
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
+# Note: The component root keys (like 'backend', 'frontend', 'apiService') must be camelCased.
 backend:
   # ----------------------------------------------------------------------------
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)

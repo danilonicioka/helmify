@@ -21,7 +21,7 @@ global:
 # ==============================================================================
 # II. APPLICATION DEPLOYMENT CONFIGURATION (chart-model-single)
 # ==============================================================================
-# For a single deployment, the key is the name of the application (chart name).
+# For a single deployment, the key is the exact name of the application (chart name).
 chart-model-single:
 
   # ----------------------------------------------------------------------------

@@ -66,7 +66,7 @@ func (i issuer) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 		tmpl = issuerTempl
 	}
 	valueName := processor.ObjectValueName(appMeta, obj)
-	nameCamel := strcase.ToLowerCamel(valueName)
+	nameCamel := valueName
 	values := helmify.Values{}
 	if appMeta.Config().AddWebhookOption {
 		// Add webhook.enabled value to values.yaml

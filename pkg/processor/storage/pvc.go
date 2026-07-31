@@ -40,7 +40,7 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 
 
 	name := processor.ObjectValueName(appMeta, obj)
-	nameCamelCase := strcase.ToLowerCamel(name)
+	nameCamelCase := name
 	values := helmify.Values{}
 	var err error
 
@@ -85,9 +85,9 @@ func (p pvc) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	targetRoot := "pvc"
 	targetKey := nameCamelCase
 	if targetComponent != "" {
-		targetRoot = strcase.ToLowerCamel(targetComponent)
+		targetRoot = targetComponent
 		if targetRoot == "" {
-			targetRoot = strcase.ToLowerCamel(processor.ObjectValueName(appMeta, obj))
+			targetRoot = processor.ObjectValueName(appMeta, obj)
 		}
 		targetKey = "persistence"
 		err := unstructured.SetNestedField(values, true, targetRoot, "persistence", "enabled")

@@ -131,7 +131,7 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 
 	var templates []helmify.Template
 	for _, comp := range referencingComps {
-		nameCamelCase := strcase.ToLowerCamel(comp)
+		nameCamelCase := comp
 		values := helmify.Values{
 			nameCamelCase: map[string]interface{}{
 				"secret": secValues,

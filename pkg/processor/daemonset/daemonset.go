@@ -93,7 +93,7 @@ func (d daemonset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	}
 	podLabels += fmt.Sprintf("\n      {{- include \"%s\" . | nindent 8 }}", labelHelper)
 
-	nameCamel := strcase.ToLowerCamel(name)
+	nameCamel := name
 	podAnnotations := ""
 	annotations := dae.Spec.Template.ObjectMeta.Annotations
 	annotations = pod.AddReloadingAnnotations(appMeta, nameCamel, annotations, &dae.Spec.Template.Spec)

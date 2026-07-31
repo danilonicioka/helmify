@@ -70,9 +70,9 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 		targetComponent = processor.GetComponent(obj)
 	}
 
-	nameCamel := strcase.ToLowerCamel(targetComponent)
+	nameCamel := targetComponent
 	if nameCamel == "" {
-		nameCamel = strcase.ToLowerCamel(name)
+		nameCamel = name
 	}
 
 	values := helmify.Values{}
@@ -132,7 +132,7 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 			return true, nil, err
 		}
 	} else {
-		routeNameCamel := strcase.ToLowerCamel(name)
+		routeNameCamel := name
 		err := unstructured.SetNestedField(values, routeValues, nameCamel, "routes", routeNameCamel)
 		if err != nil {
 			return true, nil, err
@@ -182,7 +182,7 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 	} else {
 		compExtraction = fmt.Sprintf(`{{- $app := index .Values "%s" | default dict -}}
 {{- $routes := $app.routes | default dict -}}
-{{- $route := index $routes "%s" | default dict -}}`, nameCamel, strcase.ToLowerCamel(name))
+{{- $route := index $routes "%s" | default dict -}}`, nameCamel, name)
 	}
 
 	data := fmt.Sprintf(`%[1]s

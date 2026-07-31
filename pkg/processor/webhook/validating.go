@@ -68,7 +68,7 @@ func (w vwh) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	certName = strings.TrimPrefix(certName, appMeta.Namespace()+"/")
 	certName = appMeta.TrimName(certName)
 	valueName := processor.ObjectValueName(appMeta, obj)
-	nameCamel := strcase.ToLowerCamel(valueName)
+	nameCamel := valueName
 	tmpl := vwhTempl
 	values := helmify.Values{}
 	if appMeta.Config().AddWebhookOption {

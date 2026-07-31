@@ -47,7 +47,7 @@ func (sa serviceAccount) Process(appMeta helmify.AppMetadata, obj *unstructured.
 		return false, nil, nil
 	}
 	valueName := processor.ObjectValueName(appMeta, obj)
-	nameCamel := strcase.ToLowerCamel(valueName)
+	nameCamel := valueName
 	values := helmify.Values{}
 	_, _ = values.Add(true, nameCamel, "serviceAccount", "create")
 	_, _ = values.Add("", nameCamel, "serviceAccount", "name")
