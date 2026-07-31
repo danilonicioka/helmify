@@ -152,10 +152,10 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"args": "{{- toYaml .Values.nginx.args | nindent 8 }}",
+					"args":    "{{- toYaml .Values.nginx.args | nindent 8 }}",
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
-					"name":  "nginx", "ports": []interface{}{
+					"image":   "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
+					"name":    "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
@@ -182,10 +182,10 @@ func Test_pod_Process(t *testing.T) {
 					"--test",
 					"--arg",
 				},
-				"livenessProbe": map[string]interface{}{},
-				"readinessProbe": map[string]interface{}{},
-				"startupProbe": map[string]interface{}{},
-				"resources": map[string]interface{}{},
+				"livenessProbe":             map[string]interface{}{},
+				"readinessProbe":            map[string]interface{}{},
+				"startupProbe":              map[string]interface{}{},
+				"resources":                 map[string]interface{}{},
 				"nodeSelector":              map[string]interface{}{},
 				"tolerations":               []interface{}{},
 				"topologySpreadConstraints": []interface{}{},
@@ -204,8 +204,8 @@ func Test_pod_Process(t *testing.T) {
 			"containers": []interface{}{
 				map[string]interface{}{
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
-					"name":  "nginx", "ports": []interface{}{
+					"image":   "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
+					"name":    "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
@@ -228,10 +228,10 @@ func Test_pod_Process(t *testing.T) {
 					"repository": "nginx",
 					"tag":        "1.14.2",
 				},
-				"livenessProbe": map[string]interface{}{},
-				"readinessProbe": map[string]interface{}{},
-				"startupProbe": map[string]interface{}{},
-				"resources": map[string]interface{}{},
+				"livenessProbe":             map[string]interface{}{},
+				"readinessProbe":            map[string]interface{}{},
+				"startupProbe":              map[string]interface{}{},
+				"resources":                 map[string]interface{}{},
 				"nodeSelector":              map[string]interface{}{},
 				"tolerations":               []interface{}{},
 				"topologySpreadConstraints": []interface{}{},
@@ -250,8 +250,8 @@ func Test_pod_Process(t *testing.T) {
 			"containers": []interface{}{
 				map[string]interface{}{
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
-					"name":  "nginx", "ports": []interface{}{
+					"image":   "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
+					"name":    "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
@@ -274,10 +274,10 @@ func Test_pod_Process(t *testing.T) {
 					"repository": "nginx",
 					"tag":        "1.14.2@sha256:cb5c1bddd1b5665e1867a7fa1b5fa843a47ee433bbb75d4293888b71def53229",
 				},
-				"livenessProbe": map[string]interface{}{},
-				"readinessProbe": map[string]interface{}{},
-				"startupProbe": map[string]interface{}{},
-				"resources": map[string]interface{}{},
+				"livenessProbe":             map[string]interface{}{},
+				"readinessProbe":            map[string]interface{}{},
+				"startupProbe":              map[string]interface{}{},
+				"resources":                 map[string]interface{}{},
 				"nodeSelector":              map[string]interface{}{},
 				"tolerations":               []interface{}{},
 				"topologySpreadConstraints": []interface{}{},
@@ -296,8 +296,8 @@ func Test_pod_Process(t *testing.T) {
 			"containers": []interface{}{
 				map[string]interface{}{
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image": "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
-					"name":  "nginx", "ports": []interface{}{
+					"image":   "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
+					"name":    "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
@@ -320,10 +320,10 @@ func Test_pod_Process(t *testing.T) {
 					"repository": "localhost:6001/my_project",
 					"tag":        "latest",
 				},
-				"livenessProbe": map[string]interface{}{},
-				"readinessProbe": map[string]interface{}{},
-				"startupProbe": map[string]interface{}{},
-				"resources": map[string]interface{}{},
+				"livenessProbe":             map[string]interface{}{},
+				"readinessProbe":            map[string]interface{}{},
+				"startupProbe":              map[string]interface{}{},
+				"resources":                 map[string]interface{}{},
 				"nodeSelector":              map[string]interface{}{},
 				"tolerations":               []interface{}{},
 				"topologySpreadConstraints": []interface{}{},
@@ -339,7 +339,7 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
+					"envFrom":        "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image":          "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
 					"name":           "nginx",
 					"resources":      "[HELMIFY_WITH:nginx.resources:10]",

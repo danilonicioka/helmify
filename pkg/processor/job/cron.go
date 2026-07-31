@@ -9,7 +9,6 @@ import (
 	"github.com/arttor/helmify/pkg/processor"
 	"github.com/arttor/helmify/pkg/processor/pod"
 	yamlformat "github.com/arttor/helmify/pkg/yaml"
-	"github.com/iancoleman/strcase"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"

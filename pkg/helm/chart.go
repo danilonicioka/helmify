@@ -236,7 +236,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 				}
 			}
 		}
-	}	// Initialize default keys and structures for GenerateAllTemplates
+	} // Initialize default keys and structures for GenerateAllTemplates
 	if o.GenerateAllTemplates {
 		for key, val := range values {
 			if key == "global" || key == "nodeSelector" || key == "affinity" {
@@ -262,7 +262,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 				compMap["route"] = map[string]interface{}{
 					"annotations": map[string]interface{}{},
 					"tls": map[string]interface{}{
-						"termination": "edge",
+						"termination":                   "edge",
 						"insecureEdgeTerminationPolicy": "Redirect",
 					},
 					"path": "/",
@@ -694,7 +694,7 @@ func toNode(v interface{}, depth int, path string) *yaml.Node {
 			} else if depth == 1 && prevPriority != 0 && p != prevPriority {
 				keyNode.HeadComment = "helmify-newline"
 			}
-			
+
 			// Inject Ultra-Lean comments for empty objects
 			if isEmptyMap(val[k]) {
 				var customComment string
@@ -766,7 +766,7 @@ func injectFootComments(node *yaml.Node) {
 		for i := 0; i < len(node.Content); i += 2 {
 			keyNode := node.Content[i]
 			valNode := node.Content[i+1]
-			
+
 			if valNode.Kind == yaml.MappingNode && len(valNode.Content) == 0 {
 				k := keyNode.Value
 				if keyNode.FootComment == "" {

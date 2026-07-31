@@ -2,15 +2,16 @@ package service
 
 import (
 	"fmt"
+	"io"
+	"text/template"
+
 	"github.com/arttor/helmify/pkg/helmify"
 	"github.com/arttor/helmify/pkg/processor"
 	yamlformat "github.com/arttor/helmify/pkg/yaml"
-	"io"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"text/template"
 )
 
 var ingressTempl, _ = template.New("ingress").Parse(

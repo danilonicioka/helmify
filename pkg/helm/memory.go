@@ -168,7 +168,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 				compMap["route"] = map[string]interface{}{
 					"annotations": map[string]interface{}{},
 					"tls": map[string]interface{}{
-						"termination": "edge",
+						"termination":                   "edge",
 						"insecureEdgeTerminationPolicy": "Redirect",
 					},
 					"path": "/",

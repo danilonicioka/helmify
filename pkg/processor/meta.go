@@ -24,10 +24,6 @@ metadata:
     {{- include "%[4]s.labels" . | nindent 4 }}
 %[6]s`
 
-
-
-
-
 type MetaOpt interface {
 	apply(*options)
 }
@@ -163,7 +159,6 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		}
 	}
 
-
 	if options.values != nil {
 		ann := obj.GetAnnotations()
 		valuesAnnotations := make(map[string]interface{})
@@ -200,9 +195,6 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 
 	var metaStr string
 
-
-
-
 	nameTpl := `{{ include "%[4]s.fullname" . }}-%[3]s`
 	if suffix == "none" || suffix == "NONE" {
 		nameTpl = `{{ include "%[4]s.fullname" . }}`
@@ -210,10 +202,10 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 	customMetaTemplate := strings.Replace(metaTemplate, `{{ include "%[4]s.fullname" . }}-%[3]s`, nameTpl, 1)
 	if IsMultiDeployment(appMeta) {
 		customMetaTemplate = strings.Replace(customMetaTemplate, `{{- include "%[4]s.labels" . | nindent 4 }}`, fmt.Sprintf(`{{- include "%%[4]s.%s.labels" . | nindent 4 }}`, compName), 1)
-		
+
 		// For multi deployments, we rely entirely on the helper for annotations as well.
 		// We can inject the annotations helper right above labels or right under metadata.
-		// metaTemplate has "%[7]s\n  labels:" (which is namespace). 
+		// metaTemplate has "%[7]s\n  labels:" (which is namespace).
 		// We will replace "%[7]s" with "%[7]s\n  {{- $annotations := include \"%[4]s.%[3]s.annotations\" . }}\n  {{- if $annotations }}\n  annotations:\n    {{- $annotations | nindent 4 }}\n  {{- end }}"
 		annotationsRepl := fmt.Sprintf("%%[7]s\n  {{- $annotations := include \"%%[4]s.%s.annotations\" . }}\n  {{- if $annotations }}\n  annotations:\n    {{- $annotations | nindent 4 }}\n  {{- end }}\n  labels:", compName)
 		customMetaTemplate = strings.Replace(customMetaTemplate, "%[7]s\n  labels:", annotationsRepl, 1)
@@ -224,8 +216,6 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 	metaStr = strings.ReplaceAll(metaStr, "\n\n", "\n")
 	return metaStr, nil
 }
-
-
 
 func IsMultiDeployment(appMeta helmify.AppMetadata) bool {
 	seenWorkloads := make(map[string]struct{})
@@ -265,7 +255,7 @@ func GetComponent(obj *unstructured.Unstructured) string {
 	}
 
 	name := strings.ToLower(StripKustomizeHash(obj.GetName()))
-	
+
 	// Suffix extraction based on standard resource delimiters
 	delimiters := []string{"-deploy-", "-deployment-", "-svc-", "-service-", "-route-", "-cm-", "-configmap-", "-secret-", "-job-", "-cronjob-", "-pdb-"}
 	for _, delim := range delimiters {
@@ -291,7 +281,7 @@ func GetComponent(obj *unstructured.Unstructured) string {
 	if appName := GetAppName(obj); appName != "" {
 		return NormalizeComponentName(appName)
 	}
-	
+
 	baseName := name
 	suffixes := []string{"-deploy", "-deployment", "-svc", "-service", "-route", "-cm", "-configmap", "-secret", "-job", "-cronjob", "-pdb"}
 	for _, s := range suffixes {
@@ -337,7 +327,7 @@ func GetDynamicSuffix(appMeta helmify.AppMetadata, obj *unstructured.Unstructure
 		s := strings.TrimPrefix(name, chartName)
 		s = strings.TrimPrefix(s, "-")
 		s = strings.TrimPrefix(s, ".")
-		
+
 		// Strip any duplicate chart name prefixes (common with kustomize namePrefix)
 		for strings.HasPrefix(s, chartName) {
 			s = strings.TrimPrefix(s, chartName)
@@ -465,15 +455,13 @@ func TemplatedConfigMapName(appMeta helmify.AppMetadata, cmName string) string {
 	return appMeta.TemplatedString(cmName)
 }
 
-
-
 // NormalizeComponentName maps variations of component names to their canonical kebab-case representation.
 func NormalizeComponentName(comp string) string {
 	comp = strcase.ToKebab(comp)
 	comp = strings.ToLower(comp)
 	comp = strings.TrimLeft(comp, "-./_ ")
 	comp = strings.TrimRight(comp, "-./_ ")
-	
+
 	// Strip known application prefix
 	if idx := strings.Index(comp, "portal-certidao"); idx != -1 {
 		comp = comp[idx+len("portal-certidao"):]
@@ -487,7 +475,7 @@ func NormalizeComponentName(comp string) string {
 	comp = strings.ReplaceAll(comp, ".", "-")
 	comp = strings.TrimLeft(comp, "- ")
 	comp = strings.TrimRight(comp, "- ")
-	
+
 	switch comp {
 	case "api", "api-emissor", "apiemissor", "emissor", "api-secrets":
 		return "api-emissor"

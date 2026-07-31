@@ -251,7 +251,7 @@ spec:
 func TestUserManifestConversion(t *testing.T) {
 	reader := strings.NewReader(userManifestYaml)
 	conf := config.Config{ChartName: "jurisprudencia"}
-	
+
 	// We'll test decoding and running the engine to verify lint and naming passes.
 	trans := k8smanifest.New(conf, reader)
 	engine := NewEngine(conf, helm.NewOutput())
@@ -271,4 +271,3 @@ func TestUserManifestConversion(t *testing.T) {
 	assert.Contains(t, valuesStr, "  secret:")
 	assert.Contains(t, valuesStr, "    JURISPRUDENCIA_QDRANT_API_KEY: agDxQwYzpIV1w#Vnf")
 }
-

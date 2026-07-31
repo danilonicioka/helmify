@@ -455,7 +455,7 @@ func processEnv(name string, containerName string, appMeta helmify.AppMetadata, 
 				newEnv = append(newEnv, e)
 				continue
 			}
-			
+
 			// Check for redundant ConfigMap/Secret mappings
 			// If it points to the same component's ConfigMap/Secret, it's redundant because of envFrom
 			redundant := false
@@ -496,13 +496,13 @@ func processEnv(name string, containerName string, appMeta helmify.AppMetadata, 
 					e.ValueFrom.SecretKeyRef.Name = processor.TemplatedSecretName(appMeta, e.ValueFrom.SecretKeyRef.Name)
 				}
 			}
-			
+
 			if !redundant {
 				newEnv = append(newEnv, e)
 			}
 			continue
 		}
-		
+
 		// Move plain value to ConfigMap
 		// Use exact key name to preserve casing as requested by user
 		err := unstructured.SetNestedField(*values, e.Value, name, "cm", e.Name)
@@ -672,7 +672,7 @@ func ReplacePlaceholders(s string, chartName string) string {
 		if processor.NormalizeComponentName(chartName) == processor.NormalizeComponentName(kebabName) || processor.NormalizeComponentName(chartName) == processor.NormalizeComponentName(objName) {
 			suffix = ""
 		}
-		
+
 		return fmt.Sprintf(`%[1]senvFrom:
 %[2]s{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
 %[2]s- configMapRef:
@@ -702,7 +702,7 @@ func ReplacePlaceholders(s string, chartName string) string {
 		if processor.NormalizeComponentName(chartName) == processor.NormalizeComponentName(objName) {
 			suffix = ""
 		}
-		
+
 		return fmt.Sprintf(`%[1]senvFrom:
 %[2]s{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
 %[2]s- configMapRef:
