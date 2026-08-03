@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	compCmTemplate = `{{- if and .Values.%[1]s .Values.%[1]s.cm -}}
+	compCmTemplate = `{{- if and (index .Values "%[1]s") (index .Values "%[1]s").cm -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -28,12 +28,12 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
 data:
-{{- range $key, $val := .Values.%[1]s.cm }}
+{{- range $key, $val := (index .Values "%[1]s").cm }}
   {{ $key }}: {{ $val | quote }}
 {{- end }}
 {{- end }}
 `
-	compSecretTemplate = `{{- if and .Values.%[1]s .Values.%[1]s.secret -}}
+	compSecretTemplate = `{{- if and (index .Values "%[1]s") (index .Values "%[1]s").secret -}}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -42,13 +42,13 @@ metadata:
     {{- include "%[2]s.labels" . | nindent 4 }}
 type: Opaque
 data:
-{{- range $key, $val := .Values.%[1]s.secret }}
+{{- range $key, $val := (index .Values "%[1]s").secret }}
   {{ $key }}: {{ $val | b64enc | quote }}
 {{- end }}
 {{- end }}
 `
 
-	compRouteDefaultTemplate = `{{- if and .Values.%[1]s .Values.%[1]s.route .Values.%[1]s.route.default .Values.%[1]s.route.default.enabled -}}
+	compRouteDefaultTemplate = `{{- if and (index .Values "%[1]s") (index .Values "%[1]s").route (index .Values "%[1]s").route.default (index .Values "%[1]s").route.default.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -56,20 +56,20 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     app.kubernetes.io/component: %[5]s
-  {{- with .Values.%[1]s.route.annotations }}
+  {{- with (index .Values "%[1]s").route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.%[1]s.route.default.host }}
-  host: {{ .Values.%[1]s.route.default.host | quote }}
+  {{- if (index .Values "%[1]s").route.default.host }}
+  host: {{ (index .Values "%[1]s").route.default.host | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.path }}
-  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- if (index .Values "%[1]s").route.path }}
+  path: {{ (index .Values "%[1]s").route.path | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.tls }}
+  {{- if (index .Values "%[1]s").route.tls }}
   tls:
-    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+    {{- toYaml (index .Values "%[1]s").route.tls | nindent 4 }}
   {{- end }}
   to:
     kind: Service
@@ -81,7 +81,7 @@ spec:
 {{- end }}
 `
 
-	compRouteInternalTemplate = `{{- if and .Values.%[1]s .Values.%[1]s.route .Values.%[1]s.route.internal .Values.%[1]s.route.internal.enabled -}}
+	compRouteInternalTemplate = `{{- if and (index .Values "%[1]s") (index .Values "%[1]s").route (index .Values "%[1]s").route.internal (index .Values "%[1]s").route.internal.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -89,20 +89,20 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     app.kubernetes.io/component: %[5]s
-  {{- with .Values.%[1]s.route.annotations }}
+  {{- with (index .Values "%[1]s").route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.%[1]s.route.internal.host }}
-  host: {{ .Values.%[1]s.route.internal.host | quote }}
+  {{- if (index .Values "%[1]s").route.internal.host }}
+  host: {{ (index .Values "%[1]s").route.internal.host | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.path }}
-  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- if (index .Values "%[1]s").route.path }}
+  path: {{ (index .Values "%[1]s").route.path | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.tls }}
+  {{- if (index .Values "%[1]s").route.tls }}
   tls:
-    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+    {{- toYaml (index .Values "%[1]s").route.tls | nindent 4 }}
   {{- end }}
   to:
     kind: Service
@@ -114,7 +114,7 @@ spec:
 {{- end }}
 `
 
-	compRouteExternalTemplate = `{{- if and .Values.%[1]s .Values.%[1]s.route .Values.%[1]s.route.external .Values.%[1]s.route.external.enabled -}}
+	compRouteExternalTemplate = `{{- if and (index .Values "%[1]s") (index .Values "%[1]s").route (index .Values "%[1]s").route.external (index .Values "%[1]s").route.external.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
@@ -122,20 +122,20 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     app.kubernetes.io/component: %[5]s
-  {{- with .Values.%[1]s.route.annotations }}
+  {{- with (index .Values "%[1]s").route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if .Values.%[1]s.route.external.host }}
-  host: {{ .Values.%[1]s.route.external.host | quote }}
+  {{- if (index .Values "%[1]s").route.external.host }}
+  host: {{ (index .Values "%[1]s").route.external.host | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.path }}
-  path: {{ .Values.%[1]s.route.path | quote }}
+  {{- if (index .Values "%[1]s").route.path }}
+  path: {{ (index .Values "%[1]s").route.path | quote }}
   {{- end }}
-  {{- if .Values.%[1]s.route.tls }}
+  {{- if (index .Values "%[1]s").route.tls }}
   tls:
-    {{- toYaml .Values.%[1]s.route.tls | nindent 4 }}
+    {{- toYaml (index .Values "%[1]s").route.tls | nindent 4 }}
   {{- end }}
   to:
     kind: Service
@@ -225,7 +225,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 			var toAppend string
 			for _, compKey := range componentKeys {
 				if !strings.Contains(string(content), fmt.Sprintf("define \"%s.%s.labels\"", chartName, compKey)) {
-					toAppend += fmt.Sprintf("\n{{/*\n%[2]s-specific labels\n*/}}\n{{- define \"%[1]s.%[2]s.labels\" -}}\n{{ include \"%[1]s.labels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- with .Values.%[2]s.labels }}\n{{ toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific annotations\n*/}}\n{{- define \"%[1]s.%[2]s.annotations\" -}}\n{{- with .Values.%[2]s.annotations }}\n{{- toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific selector labels\n*/}}\n{{- define \"%[1]s.%[2]s.selectorLabels\" -}}\n{{ include \"%[1]s.selectorLabels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- end }}\n", chartName, compKey)
+					toAppend += fmt.Sprintf("\n{{/*\n%[2]s-specific labels\n*/}}\n{{- define \"%[1]s.%[2]s.labels\" -}}\n{{ include \"%[1]s.labels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- with (index .Values \"%[2]s\").labels }}\n{{ toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific annotations\n*/}}\n{{- define \"%[1]s.%[2]s.annotations\" -}}\n{{- with (index .Values \"%[2]s\").annotations }}\n{{- toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific selector labels\n*/}}\n{{- define \"%[1]s.%[2]s.selectorLabels\" -}}\n{{ include \"%[1]s.selectorLabels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- end }}\n", chartName, compKey)
 				}
 			}
 			if toAppend != "" {

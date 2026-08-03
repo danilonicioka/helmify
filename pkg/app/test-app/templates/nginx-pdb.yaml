@@ -10,8 +10,8 @@ metadata:
   labels:
     {{- include "test-app.nginx.labels" . | nindent 4 }}
 spec:
-  minAvailable: {{ .Values.nginx.minAvailable }}
-  maxUnavailable: {{ .Values.nginx.maxUnavailable }}
+  minAvailable: {{ (index .Values "nginx").minAvailable }}
+  maxUnavailable: {{ (index .Values "nginx").maxUnavailable }}
   selector:
     matchLabels:
       app: nginx

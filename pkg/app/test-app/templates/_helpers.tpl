@@ -189,3 +189,31 @@ myapp-specific selector labels
 {{ include "test-app.selectorLabels" . }}
 app.kubernetes.io/component: {{ include "test-app.fullname" . }}-myapp
 {{- end }}
+
+{{/*
+app-emissor-specific labels
+*/}}
+{{- define "test-app.app-emissor.labels" -}}
+{{ include "test-app.labels" . }}
+app.kubernetes.io/component: {{ include "test-app.fullname" . }}-app-emissor
+{{- with (index .Values "app-emissor").labels }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+app-emissor-specific annotations
+*/}}
+{{- define "test-app.app-emissor.annotations" -}}
+{{- with (index .Values "app-emissor").annotations }}
+{{- toYaml . }}
+{{- end }}
+{{- end }}
+
+{{/*
+app-emissor-specific selector labels
+*/}}
+{{- define "test-app.app-emissor.selectorLabels" -}}
+{{ include "test-app.selectorLabels" . }}
+app.kubernetes.io/component: {{ include "test-app.fullname" . }}-app-emissor
+{{- end }}

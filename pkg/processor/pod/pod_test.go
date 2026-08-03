@@ -152,9 +152,9 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"args":    "{{- toYaml .Values.nginx.args | nindent 8 }}",
+					"args":    "{{- toYaml (index .Values \"nginx\").args | nindent 8 }}",
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image":   "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
+					"image":   "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
 					"name":    "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
@@ -166,9 +166,9 @@ func Test_pod_Process(t *testing.T) {
 					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
-			"tolerations":               "{{- toYaml .Values.nginx.tolerations | nindent 8 }}",
-			"topologySpreadConstraints": "{{- toYaml .Values.nginx.topologySpreadConstraints | nindent 8 }}",
-			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
+			"tolerations":               "{{- toYaml (index .Values \"nginx\").tolerations | nindent 8 }}",
+			"topologySpreadConstraints": "{{- toYaml (index .Values \"nginx\").topologySpreadConstraints | nindent 8 }}",
+			"nodeSelector":              "{{- toYaml (index .Values \"nginx\").nodeSelector | nindent 8 }}",
 			"serviceAccountName":        `{{ include "chart.serviceAccountName" . }}`,
 		}, specMap)
 
@@ -204,7 +204,7 @@ func Test_pod_Process(t *testing.T) {
 			"containers": []interface{}{
 				map[string]interface{}{
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image":   "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
+					"image":   "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
 					"name":    "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
@@ -216,10 +216,10 @@ func Test_pod_Process(t *testing.T) {
 					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
-			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
+			"nodeSelector":              "{{- toYaml (index .Values \"nginx\").nodeSelector | nindent 8 }}",
 			"serviceAccountName":        `{{ include "chart.serviceAccountName" . }}`,
-			"tolerations":               "{{- toYaml .Values.nginx.tolerations | nindent 8 }}",
-			"topologySpreadConstraints": "{{- toYaml .Values.nginx.topologySpreadConstraints | nindent 8 }}",
+			"tolerations":               "{{- toYaml (index .Values \"nginx\").tolerations | nindent 8 }}",
+			"topologySpreadConstraints": "{{- toYaml (index .Values \"nginx\").topologySpreadConstraints | nindent 8 }}",
 		}, specMap)
 
 		assert.Equal(t, helmify.Values{
@@ -250,7 +250,7 @@ func Test_pod_Process(t *testing.T) {
 			"containers": []interface{}{
 				map[string]interface{}{
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image":   "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
+					"image":   "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
 					"name":    "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
@@ -262,10 +262,10 @@ func Test_pod_Process(t *testing.T) {
 					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
-			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
+			"nodeSelector":              "{{- toYaml (index .Values \"nginx\").nodeSelector | nindent 8 }}",
 			"serviceAccountName":        `{{ include "chart.serviceAccountName" . }}`,
-			"tolerations":               "{{- toYaml .Values.nginx.tolerations | nindent 8 }}",
-			"topologySpreadConstraints": "{{- toYaml .Values.nginx.topologySpreadConstraints | nindent 8 }}",
+			"tolerations":               "{{- toYaml (index .Values \"nginx\").tolerations | nindent 8 }}",
+			"topologySpreadConstraints": "{{- toYaml (index .Values \"nginx\").topologySpreadConstraints | nindent 8 }}",
 		}, specMap)
 
 		assert.Equal(t, helmify.Values{
@@ -296,7 +296,7 @@ func Test_pod_Process(t *testing.T) {
 			"containers": []interface{}{
 				map[string]interface{}{
 					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image":   "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
+					"image":   "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
 					"name":    "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
@@ -308,10 +308,10 @@ func Test_pod_Process(t *testing.T) {
 					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
-			"nodeSelector":              "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
+			"nodeSelector":              "{{- toYaml (index .Values \"nginx\").nodeSelector | nindent 8 }}",
 			"serviceAccountName":        `{{ include "chart.serviceAccountName" . }}`,
-			"tolerations":               "{{- toYaml .Values.nginx.tolerations | nindent 8 }}",
-			"topologySpreadConstraints": "{{- toYaml .Values.nginx.topologySpreadConstraints | nindent 8 }}",
+			"tolerations":               "{{- toYaml (index .Values \"nginx\").tolerations | nindent 8 }}",
+			"topologySpreadConstraints": "{{- toYaml (index .Values \"nginx\").topologySpreadConstraints | nindent 8 }}",
 		}, specMap)
 
 		assert.Equal(t, helmify.Values{
@@ -340,7 +340,7 @@ func Test_pod_Process(t *testing.T) {
 			"containers": []interface{}{
 				map[string]interface{}{
 					"envFrom":        "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image":          "{{ .Values.nginx.image.repository }}:{{ .Values.nginx.image.tag | default .Chart.AppVersion }}",
+					"image":          "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
 					"name":           "nginx",
 					"resources":      "[HELMIFY_WITH:nginx.resources:10]",
 					"livenessProbe":  "[HELMIFY_WITH:nginx.livenessProbe:10]",
@@ -348,11 +348,11 @@ func Test_pod_Process(t *testing.T) {
 					"startupProbe":   "[HELMIFY_WITH:nginx.startupProbe:10]",
 				},
 			},
-			"securityContext":               "{{- toYaml .Values.nginx.podSecurityContext | nindent 8 }}",
-			"nodeSelector":                  "{{- toYaml .Values.nginx.nodeSelector | nindent 8 }}",
+			"securityContext":               "{{- toYaml (index .Values \"nginx\").podSecurityContext | nindent 8 }}",
+			"nodeSelector":                  "{{- toYaml (index .Values \"nginx\").nodeSelector | nindent 8 }}",
 			"serviceAccountName":            `{{ include "chart.serviceAccountName" . }}`,
-			"tolerations":                   "{{- toYaml .Values.nginx.tolerations | nindent 8 }}",
-			"topologySpreadConstraints":     "{{- toYaml .Values.nginx.topologySpreadConstraints | nindent 8 }}",
+			"tolerations":                   "{{- toYaml (index .Values \"nginx\").tolerations | nindent 8 }}",
+			"topologySpreadConstraints":     "{{- toYaml (index .Values \"nginx\").topologySpreadConstraints | nindent 8 }}",
 			"terminationGracePeriodSeconds": "[HELMIFY_GRACE_PERIOD:nginx]",
 		}, specMap)
 
@@ -385,9 +385,9 @@ func Test_pod_Process(t *testing.T) {
         livenessProbe: '[HELMIFY_WITH:nginx.livenessProbe:10]'
         resources: '[HELMIFY_WITH:nginx.resources:10]'`
 		output := ReplacePlaceholders(input, "nginx")
-		assert.Contains(t, output, "{{- with .Values.nginx.livenessProbe }}")
+		assert.Contains(t, output, "{{- with (index .Values \"nginx\").livenessProbe }}")
 		assert.Contains(t, output, "livenessProbe:")
-		assert.Contains(t, output, "{{- with .Values.nginx.resources }}")
+		assert.Contains(t, output, "{{- with (index .Values \"nginx\").resources }}")
 		assert.Contains(t, output, "resources:")
 	})
 

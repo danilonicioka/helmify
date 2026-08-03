@@ -227,7 +227,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 			PodAnnotations       string
 			Spec                 string
 		}{
-			CompDef:              fmt.Sprintf(`{{- $comp := index .Values "%s" | default dict -}}`, nameCamel),
+			CompDef:              fmt.Sprintf(`{{ $comp := index .Values "%s" | default dict }}`, nameCamel),
 			Name:                 nameCamel,
 			Meta:                 meta,
 			Replicas:             replicas,

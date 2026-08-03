@@ -29,7 +29,7 @@ data:
 {{- end }}
 {{- end }}
 {{- else -}}
-{{ "{" }}{{ "{" }}- $comp := index .Values "{{ .Name }}" | default dict -{{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }} $comp := index .Values "{{ .Name }}" | default dict {{ "}" }}{{ "}" }}
 {{ "{" }}{{ "{" }}- if and $comp $comp.secret (not (empty $comp.secret)) -{{ "}" }}{{ "}" }}
 {{ .Meta }}
 {{- if .Type }}

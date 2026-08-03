@@ -77,7 +77,7 @@ helm.sh/chart: {{ include "<CHARTNAME>.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- $app := index .Values .Chart.Name | default dict -}}
+{{- $app := index .Values .Chart.Name | default dict }}
 {{- with $app.labels }}
 {{ toYaml . }}
 {{- end }}
@@ -87,7 +87,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 Annotations helper
 */}}
 {{- define "<CHARTNAME>.annotations" -}}
-{{- $app := index .Values .Chart.Name | default dict -}}
+{{- $app := index .Values .Chart.Name | default dict }}
 {{- with $app.annotations }}
 {{- toYaml . }}
 {{- end }}

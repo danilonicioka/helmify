@@ -2,15 +2,15 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: {{ include "test-app.fullname" . }}-web
-  {{- $annotations := include "test-app.appEmissor.annotations" . }}
+  {{- $annotations := include "test-app.app-emissor.annotations" . }}
   {{- if $annotations }}
   annotations:
     {{- $annotations | nindent 4 }}
   {{- end }}
   labels:
-    {{- include "test-app.appEmissor.labels" . | nindent 4 }}
+    {{- include "test-app.app-emissor.labels" . | nindent 4 }}
 spec:
-  replicas: '{{ .Values.appEmissor.replicas }}'
+  replicas: '{{ (index .Values "app-emissor").replicas }}'
   selector:
     matchLabels:
       app: nginx
@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       annotations:
-        {{- if and (index .Values "appEmissor") (index .Values "appEmissor" "cm") }}
+        {{- if and (index .Values "app-emissor") (index .Values "app-emissor" "cm") }}
         checksum/cm-config: {{ include (print $.Template.BasePath "/cm-app-emissor.yaml") . | sha256sum }}
         {{- end }}
         {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
@@ -27,7 +27,7 @@ spec:
         {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
         checksum/global-secret: {{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}
         {{- end }}
-        {{- if and (index .Values "appEmissor") (index .Values "appEmissor" "secret") }}
+        {{- if and (index .Values "app-emissor") (index .Values "app-emissor" "secret") }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret-app-emissor.yaml") . | sha256sum }}
         {{- end }}
       labels:
@@ -43,17 +43,17 @@ spec:
         - secretRef:
             name: {{ include "test-app.fullname" . }}-global-secret
         {{- end }}
-        {{- if (index .Values "appEmissor").cm }}
+        {{- if (index .Values "app-emissor").cm }}
         - configMapRef:
             name: {{ include "test-app.fullname" . }}-app-emissor-cm
         {{- end }}
-        {{- if (index .Values "appEmissor").secret }}
+        {{- if (index .Values "app-emissor").secret }}
         - secretRef:
             name: {{ include "test-app.fullname" . }}-app-emissor-secret
         {{- end }}
-        image: '{{ .Values.appEmissor.image.repository }}:{{ .Values.appEmissor.image.tag
-          | default .Chart.AppVersion }}'
-{{- with .Values.appEmissor.livenessProbe }}
+        image: '{{ (index .Values "app-emissor").image.repository }}:{{ (index .Values
+          "app-emissor").image.tag | default .Chart.AppVersion }}'
+{{- with (index .Values "app-emissor").livenessProbe }}
         livenessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
@@ -61,25 +61,27 @@ spec:
         ports:
         - containerPort: 80
           name: web
-{{- with .Values.appEmissor.readinessProbe }}
+{{- with (index .Values "app-emissor").readinessProbe }}
         readinessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.appEmissor.resources }}
+{{- with (index .Values "app-emissor").resources }}
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.appEmissor.startupProbe }}
+{{- with (index .Values "app-emissor").startupProbe }}
         startupProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
         volumeMounts:
         - mountPath: /usr/share/nginx/html
           name: www
-      nodeSelector: '{{- toYaml .Values.appEmissor.nodeSelector | nindent 8 }}'
+      nodeSelector: '{{- toYaml (index .Values "app-emissor").nodeSelector | nindent
+        8 }}'
       serviceAccountName: '{{ include "test-app.serviceAccountName" . }}'
-      tolerations: '{{- toYaml .Values.appEmissor.tolerations | nindent 8 }}'
-      topologySpreadConstraints: '{{- toYaml .Values.appEmissor.topologySpreadConstraints
+      tolerations: '{{- toYaml (index .Values "app-emissor").tolerations | nindent 8
+        }}'
+      topologySpreadConstraints: '{{- toYaml (index .Values "app-emissor").topologySpreadConstraints
         | nindent 8 }}'
   updateStrategy: {}
   volumeClaimTemplates:
@@ -89,4 +91,5 @@ spec:
     spec:
       accessModes:
       - ReadWriteOnce
-      resources: '{{ .Values.appEmissor.volumeClaims.www | toYaml | nindent 8 }}'
+      resources: '{{ (index .Values "app-emissor").volumeClaims.www | toYaml | nindent
+        8 }}'

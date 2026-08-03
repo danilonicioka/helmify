@@ -18,6 +18,7 @@ global:
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
+# Note: The component root keys (like 'backend', 'frontend', 'apiService') must be camelCased.
 api:
   # ----------------------------------------------------------------------------
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
@@ -75,11 +76,7 @@ api:
   # -- Internal Kubernetes Service Configuration.
   service:
     type: ClusterIP
-    ports:
-      http:
-        port: 8080
-        targetPort: 8080
-        protocol: TCP
+    ports: {}
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
   # ----------------------------------------------------------------------------
@@ -146,19 +143,19 @@ api:
     - /bin/sh
     - -c
     - date; echo Hello from the Kubernetes cluster
+  nodeSelector: {}
+  schedule: '* * * * *'
   tolerations:
     - effect: NoSchedule
       key: node-role.kubernetes.io/master
       operator: Exists
-  nodeSelector: {}
-  schedule: '* * * * *'
   backoffLimit: 4
   imagePullPolicy: IfNotPresent
   topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
-appEmissor:
+app-emissor:
   # ----------------------------------------------------------------------------
   # 1. CORE WORKLOAD SETTINGS
   # ----------------------------------------------------------------------------
@@ -204,11 +201,7 @@ appEmissor:
       host: test-app-frontend.tjpa.jus.br
   service:
     type: ClusterIP
-    ports:
-      http:
-        port: 80
-        targetPort: 8080
-        protocol: TCP
+    ports: {}
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
@@ -291,11 +284,8 @@ myapp:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
+    my.prop2: val 1
     my.prop3: "true"
-    dummyconfigmapkey: dummyconfigmapvalue
-    my_config.properties: |
-      health.healthProbeBindAddress=8081
-      metrics.bindAddress=127.0.0.1:8080
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallationTemplate
@@ -307,16 +297,19 @@ myapp:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
     my.prop1: "1"
-    my.prop2: val 1
+    dummyconfigmapkey: dummyconfigmapvalue
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
   # No default secrets for web frontend component
   secret:
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+    VAR2: my_secret_var_2
     ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     VAR1: my_secret_var_1
-    VAR2: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
@@ -343,18 +336,14 @@ myapp:
   service:
     type: ClusterIP
     ports:
-      http:
-        port: 80
-        targetPort: 8080
-        protocol: TCP
       https:
-        targetPort: https
         port: 8443
+        targetPort: https
     loadBalancerSourceRanges:
       - 10.0.0.0/8
-    ipFamilyPolicy: SingleStack
     ipFamilies:
       - IPv4
+    ipFamilyPolicy: SingleStack
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
@@ -409,92 +398,7 @@ myapp:
     - /bin/sh
     - -c
     - echo 'Initializing container...'
-  nodeSelector:
-    region: east
-    type: user-node
-  topologySpreadConstraints: []
-  podSecurityContext:
-    runAsUser: 65532
-    runAsNonRoot: true
-    fsGroup: 20000
   tolerations: []
-  proxySidecar:
-    livenessProbe: {}
-    # livenessProbe:
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 20
-    #   failureThreshold: 3
-
-    readinessProbe: {}
-    # readinessProbe:
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 10
-    #   successThreshold: 2
-    #   failureThreshold: 3
-
-    startupProbe: {}
-    # startupProbe:
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 5
-    #   failureThreshold: 30
-
-    args:
-      - --secure-listen-address=0.0.0.0:8443
-      - --v=10
-    image:
-      repository: gcr.io/kubebuilder/kube-rbac-proxy
-      tag: v0.8.0
-    resources: {}
-    # resources:
-    #   limits:
-    #     cpu: 500m
-    #     memory: 512Mi
-    #   requests:
-    #     cpu: 100m
-    #     memory: 256Mi
-  initContainer:
-    livenessProbe: {}
-    # livenessProbe:
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 20
-    #   failureThreshold: 3
-
-    readinessProbe: {}
-    # readinessProbe:
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 10
-    #   successThreshold: 2
-    #   failureThreshold: 3
-
-    startupProbe: {}
-    # startupProbe:
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 5
-    #   failureThreshold: 30
-
-    image:
-      repository: bash
-      tag: latest
-    resources: {}
-    # resources:
-    #   limits:
-    #     cpu: 500m
-    #     memory: 512Mi
-    #   requests:
-    #     cpu: 100m
-    #     memory: 256Mi
   app:
     livenessProbe: {}
     # livenessProbe:
@@ -539,15 +443,101 @@ myapp:
     #   requests:
     #     cpu: 100m
     #     memory: 256Mi
-  revisionHistoryLimit: 5
+  topologySpreadConstraints: []
+  proxySidecar:
+    readinessProbe: {}
+    # readinessProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 10
+    #   successThreshold: 2
+    #   failureThreshold: 3
+
+    startupProbe: {}
+    # startupProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 5
+    #   failureThreshold: 30
+
+    args:
+      - --secure-listen-address=0.0.0.0:8443
+      - --v=10
+    image:
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.8.0
+    resources: {}
+    # resources:
+    #   limits:
+    #     cpu: 500m
+    #     memory: 512Mi
+    #   requests:
+    #     cpu: 100m
+    #     memory: 256Mi
+
+    livenessProbe: {}
+    # livenessProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 20
+    #   failureThreshold: 3
+  initContainer:
+    image:
+      repository: bash
+      tag: latest
+    resources: {}
+    # resources:
+    #   limits:
+    #     cpu: 500m
+    #     memory: 512Mi
+    #   requests:
+    #     cpu: 100m
+    #     memory: 256Mi
+
+    livenessProbe: {}
+    # livenessProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 20
+    #   failureThreshold: 3
+
+    readinessProbe: {}
+    # readinessProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 10
+    #   successThreshold: 2
+    #   failureThreshold: 3
+
+    startupProbe: {}
+    # startupProbe:
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 5
+    #   failureThreshold: 30
   persistence:
     enabled: true
     storageClass: manual
     storageRequest: 3Gi
     storageLimit: 5Gi
+  podSecurityContext:
+    fsGroup: 20000
+    runAsUser: 65532
+    runAsNonRoot: true
+  revisionHistoryLimit: 5
+  nodeSelector:
+    region: east
+    type: user-node
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
+# Note: The component root keys (like 'backend', 'frontend', 'apiService') must be camelCased.
 nginx:
   # ----------------------------------------------------------------------------
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
@@ -607,10 +597,6 @@ nginx:
   service:
     type: ClusterIP
     ports:
-      http:
-        port: 8080
-        targetPort: 8080
-        protocol: TCP
       web:
         port: 80
   # ----------------------------------------------------------------------------

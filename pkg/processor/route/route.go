@@ -176,12 +176,12 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 
 	var compExtraction string
 	if isPrimary {
-		compExtraction = fmt.Sprintf(`{{- $app := index .Values "%s" | default dict -}}
-{{- $route := $app.route | default dict -}}`, nameCamel)
+		compExtraction = fmt.Sprintf(`{{- $app := index .Values "%s" | default dict }}
+{{- $route := $app.route | default dict }}`, nameCamel)
 	} else {
-		compExtraction = fmt.Sprintf(`{{- $app := index .Values "%s" | default dict -}}
-{{- $routes := $app.routes | default dict -}}
-{{- $route := index $routes "%s" | default dict -}}`, nameCamel, name)
+		compExtraction = fmt.Sprintf(`{{- $app := index .Values "%s" | default dict }}
+{{- $routes := $app.routes | default dict }}
+{{- $route := index $routes "%s" | default dict }}`, nameCamel, name)
 	}
 
 	data := fmt.Sprintf(`%[1]s

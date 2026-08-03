@@ -51,22 +51,22 @@ spec:
         - secretRef:
             name: {{ include "test-app.fullname" . }}-api-emissor-secret
         {{- end }}
-        image: '{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion
-          }}'
-{{- with .Values.api.livenessProbe }}
+        image: '{{ (index .Values "api").image.repository }}:{{ (index .Values "api").image.tag
+          | default .Chart.AppVersion }}'
+{{- with (index .Values "api").livenessProbe }}
         livenessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
         name: fluentd-elasticsearch
-{{- with .Values.api.readinessProbe }}
+{{- with (index .Values "api").readinessProbe }}
         readinessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.api.resources }}
+{{- with (index .Values "api").resources }}
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.api.startupProbe }}
+{{- with (index .Values "api").startupProbe }}
         startupProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
@@ -76,14 +76,14 @@ spec:
         - mountPath: /var/lib/docker/containers
           name: varlibdockercontainers
           readOnly: true
-      nodeSelector: '{{- toYaml .Values.api.nodeSelector | nindent 8 }}'
+      nodeSelector: '{{- toYaml (index .Values "api").nodeSelector | nindent 8 }}'
       serviceAccountName: '{{ include "test-app.serviceAccountName" . }}'
       {{- if not (kindIs "nil" .Values.api.terminationGracePeriodSeconds) }}
       terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds }}
       {{- end }}
-      tolerations: '{{- toYaml .Values.api.tolerations | nindent 8 }}'
-      topologySpreadConstraints: '{{- toYaml .Values.api.topologySpreadConstraints | nindent
-        8 }}'
+      tolerations: '{{- toYaml (index .Values "api").tolerations | nindent 8 }}'
+      topologySpreadConstraints: '{{- toYaml (index .Values "api").topologySpreadConstraints
+        | nindent 8 }}'
       volumes:
       - hostPath:
           path: /var/log
