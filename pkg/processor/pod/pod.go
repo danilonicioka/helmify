@@ -596,7 +596,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 		compKebab := processor.NormalizeComponentName(comp)
 
 		filename := "cm-" + compKebab + ".yaml"
-		if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) {
+		if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) || !processor.IsMultiDeployment(appMeta) {
 			filename = "cm.yaml"
 		}
 		key := "checksum/cm-config"
@@ -625,7 +625,7 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 		compKebab := processor.NormalizeComponentName(comp)
 
 		filename := "secret-" + compKebab + ".yaml"
-		if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) {
+		if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) || !processor.IsMultiDeployment(appMeta) {
 			filename = "secret.yaml"
 		}
 		key := "checksum/secret"
@@ -640,14 +640,14 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 		compKebab := processor.NormalizeComponentName(objName)
 		if _, exists := annotations["checksum/cm-config"]; !exists {
 			cmFilename := "cm-" + compKebab + ".yaml"
-			if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) {
+			if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) || !processor.IsMultiDeployment(appMeta) {
 				cmFilename = "cm.yaml"
 			}
 			annotations["checksum/cm-config"] = fmt.Sprintf("[HELMIFY_CHECKSUM_CM:%s:cm:checksum/cm-config:%s]", objName, cmFilename)
 		}
 		if _, exists := annotations["checksum/secret"]; !exists {
 			secretFilename := "secret-" + compKebab + ".yaml"
-			if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) {
+			if compKebab == processor.NormalizeComponentName(appMeta.ChartName()) || !processor.IsMultiDeployment(appMeta) {
 				secretFilename = "secret.yaml"
 			}
 			annotations["checksum/secret"] = fmt.Sprintf("[HELMIFY_CHECKSUM_SECRET:%s:secret:checksum/secret:%s]", objName, secretFilename)
@@ -782,8 +782,8 @@ ${1}{{- end }}`)
 
 	// 7. Handle terminationGracePeriodSeconds placeholders
 	rGrace := regexp.MustCompile(`(?m)^(\s*)terminationGracePeriodSeconds:\s*'\[HELMIFY_GRACE_PERIOD:([^\]]+)\]'`)
-	s = rGrace.ReplaceAllString(s, `${1}{{- if not (kindIs "nil" .Values.${2}.terminationGracePeriodSeconds) }}
-${1}terminationGracePeriodSeconds: {{ .Values.${2}.terminationGracePeriodSeconds }}
+	s = rGrace.ReplaceAllString(s, `${1}{{- if not (kindIs "nil" (index .Values "${2}").terminationGracePeriodSeconds) }}
+${1}terminationGracePeriodSeconds: {{ (index .Values "${2}").terminationGracePeriodSeconds }}
 ${1}{{- end }}`)
 
 	// 8. Handle PVC volumes conditional placement
