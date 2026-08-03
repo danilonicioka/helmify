@@ -218,12 +218,15 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	}
 	isMulti := len(componentKeys) > 1
 
-	if isMulti {
+	if len(componentKeys) > 0 {
 		helpersFile := filepath.Join(cDir, "templates", "_helpers.tpl")
 		content, err := os.ReadFile(helpersFile)
 		if err == nil {
 			var toAppend string
 			for _, compKey := range componentKeys {
+				if compKey == chartName && !isMulti {
+					continue
+				}
 				if !strings.Contains(string(content), fmt.Sprintf("define \"%s.%s.labels\"", chartName, compKey)) {
 					toAppend += fmt.Sprintf("\n{{/*\n%[2]s-specific labels\n*/}}\n{{- define \"%[1]s.%[2]s.labels\" -}}\n{{ include \"%[1]s.labels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- with (index .Values \"%[2]s\").labels }}\n{{ toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific annotations\n*/}}\n{{- define \"%[1]s.%[2]s.annotations\" -}}\n{{- with (index .Values \"%[2]s\").annotations }}\n{{- toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific selector labels\n*/}}\n{{- define \"%[1]s.%[2]s.selectorLabels\" -}}\n{{ include \"%[1]s.selectorLabels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- end }}\n", chartName, compKey)
 				}
@@ -958,12 +961,10 @@ func isWorkloadComponent(compKebab string, chartName string, files map[string][]
 			return true
 		}
 	}
-	if compKebab == chartName {
-		defaultNames := []string{"deploy.yaml", "sts.yaml", "daemonset.yaml", "job.yaml", "cronjob.yaml", "svc.yaml", "route.yaml", "ingress.yaml", "cm.yaml", "secret.yaml"}
-		for _, name := range defaultNames {
-			if _, exists := files[name]; exists {
-				return true
-			}
+	defaultNames := []string{"deploy.yaml", "sts.yaml", "daemonset.yaml", "job.yaml", "cronjob.yaml", "svc.yaml", "route.yaml", "ingress.yaml", "cm.yaml", "secret.yaml"}
+	for _, name := range defaultNames {
+		if _, exists := files[name]; exists {
+			return true
 		}
 	}
 	return false
