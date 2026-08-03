@@ -713,19 +713,19 @@ func toNode(v interface{}, depth int, path string) *yaml.Node {
 				} else {
 					switch k {
 					case "strategy":
-						keyNode.FootComment = "strategy:\n  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
+						keyNode.FootComment = "  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
 					case "resources":
-						keyNode.FootComment = "resources:\n  limits:\n    cpu: 500m\n    memory: 512Mi\n  requests:\n    cpu: 100m\n    memory: 256Mi"
+						keyNode.FootComment = "  limits:\n    cpu: 500m\n    memory: 1Gi\n  requests:\n    cpu: 100m\n    memory: 512Mi"
 					case "startupProbe":
-						keyNode.FootComment = "startupProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 5\n  failureThreshold: 30"
+						keyNode.FootComment = "  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 5\n  failureThreshold: 30\n  successThreshold: 1"
 					case "livenessProbe":
-						keyNode.FootComment = "livenessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 20\n  failureThreshold: 3"
+						keyNode.FootComment = "  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  failureThreshold: 3\n  successThreshold: 1"
 					case "readinessProbe":
-						keyNode.FootComment = "readinessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  successThreshold: 2\n  failureThreshold: 3"
+						keyNode.FootComment = "  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  successThreshold: 1\n  failureThreshold: 3"
 					case "labels":
-						keyNode.FootComment = "  # app.openshift.io/runtime: openjdk"
+						keyNode.FootComment = "app.openshift.io/runtime: openjdk"
 					case "annotations":
-						keyNode.FootComment = "  # app.openshift.io/connects-to: '[{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"name\":\"db\"}]'"
+						keyNode.FootComment = "app.openshift.io/connects-to: '[{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"name\":\"db\"}]'"
 					}
 				}
 			}
@@ -775,19 +775,19 @@ func injectFootComments(node *yaml.Node) {
 				if keyNode.FootComment == "" {
 					switch k {
 					case "strategy":
-						keyNode.FootComment = "strategy:\n  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
+						keyNode.FootComment = "  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
 					case "resources":
-						keyNode.FootComment = "resources:\n  limits:\n    cpu: 500m\n    memory: 512Mi\n  requests:\n    cpu: 100m\n    memory: 256Mi"
+						keyNode.FootComment = "  limits:\n    cpu: 500m\n    memory: 1Gi\n  requests:\n    cpu: 100m\n    memory: 512Mi"
 					case "startupProbe":
-						keyNode.FootComment = "startupProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 5\n  failureThreshold: 30"
+						keyNode.FootComment = "  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 5\n  failureThreshold: 30\n  successThreshold: 1"
 					case "livenessProbe":
-						keyNode.FootComment = "livenessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 20\n  failureThreshold: 3"
+						keyNode.FootComment = "  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  failureThreshold: 3\n  successThreshold: 1"
 					case "readinessProbe":
-						keyNode.FootComment = "readinessProbe:\n  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  successThreshold: 2\n  failureThreshold: 3"
+						keyNode.FootComment = "  tcpSocket:\n    port: 8080\n  initialDelaySeconds: 0\n  periodSeconds: 10\n  successThreshold: 1\n  failureThreshold: 3"
 					case "labels":
-						keyNode.FootComment = "  # app.openshift.io/runtime: openjdk"
+						keyNode.FootComment = "app.openshift.io/runtime: openjdk"
 					case "annotations":
-						keyNode.FootComment = "  # app.openshift.io/connects-to: '[{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"name\":\"db\"}]'"
+						keyNode.FootComment = "app.openshift.io/connects-to: '[{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"name\":\"db\"}]'"
 					}
 				}
 			}
