@@ -8,7 +8,7 @@ metadata:
     {{- $annotations | nindent 4 }}
   {{- end }}
   labels:
-    {{- include "test-app.nginx.labels" . | nindent 4 }}{{- $comp := index .Values "nginx" | default dict -}}
+    {{- include "test-app.nginx.labels" . | nindent 4 }}{{ $comp := index .Values "nginx" | default dict }}
 spec:
   type: {{ $comp.service.type }}
   selector:

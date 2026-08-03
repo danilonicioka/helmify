@@ -15,7 +15,7 @@ spec:
       template:
         spec:
           containers:
-          - command: '{{- toYaml .Values.api.command | nindent 12 }}'
+          - command: '{{- toYaml (index .Values "api").command | nindent 12 }}'
             envFrom:
             {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
             - configMapRef:
@@ -33,30 +33,32 @@ spec:
             - secretRef:
                 name: {{ include "test-app.fullname" . }}-api-emissor-secret
             {{- end }}
-            image: '{{ .Values.api.image.repository }}:{{ .Values.api.image.tag |
-              default .Chart.AppVersion }}'
-            imagePullPolicy: '{{ .Values.api.imagePullPolicy }}'
-{{- with .Values.api.livenessProbe }}
+            image: '{{ (index .Values "api").image.repository }}:{{ (index .Values
+              "api").image.tag | default .Chart.AppVersion }}'
+            imagePullPolicy: '{{ (index .Values "api").imagePullPolicy }}'
+{{- with (index .Values "api").livenessProbe }}
             livenessProbe:
               {{- toYaml . | nindent 14 }}
             {{- end }}
             name: hello
-{{- with .Values.api.readinessProbe }}
+{{- with (index .Values "api").readinessProbe }}
             readinessProbe:
               {{- toYaml . | nindent 14 }}
             {{- end }}
-{{- with .Values.api.resources }}
+{{- with (index .Values "api").resources }}
             resources:
               {{- toYaml . | nindent 14 }}
             {{- end }}
-{{- with .Values.api.startupProbe }}
+{{- with (index .Values "api").startupProbe }}
             startupProbe:
               {{- toYaml . | nindent 14 }}
             {{- end }}
-          nodeSelector: '{{- toYaml .Values.api.nodeSelector | nindent 12 }}'
+          nodeSelector: '{{- toYaml (index .Values "api").nodeSelector | nindent 12
+            }}'
           restartPolicy: OnFailure
           serviceAccountName: '{{ include "test-app.serviceAccountName" . }}'
-          tolerations: '{{- toYaml .Values.api.tolerations | nindent 12 }}'
-          topologySpreadConstraints: '{{- toYaml .Values.api.topologySpreadConstraints
+          tolerations: '{{- toYaml (index .Values "api").tolerations | nindent 12
+            }}'
+          topologySpreadConstraints: '{{- toYaml (index .Values "api").topologySpreadConstraints
             | nindent 12 }}'
-  schedule: '{{ .Values.api.schedule | quote }}'
+  schedule: '{{ (index .Values "api").schedule | quote }}'

@@ -85,7 +85,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 			var toAppend string
 			for _, compKey := range componentKeys {
 				if !strings.Contains(string(content), fmt.Sprintf("define \"%s.%s.labels\"", chartName, compKey)) {
-					toAppend += fmt.Sprintf("\n{{/*\n%[2]s-specific labels\n*/}}\n{{- define \"%[1]s.%[2]s.labels\" -}}\n{{ include \"%[1]s.labels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- with .Values.%[2]s.labels }}\n{{ toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific annotations\n*/}}\n{{- define \"%[1]s.%[2]s.annotations\" -}}\n{{- with .Values.%[2]s.annotations }}\n{{- toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific selector labels\n*/}}\n{{- define \"%[1]s.%[2]s.selectorLabels\" -}}\n{{ include \"%[1]s.selectorLabels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- end }}\n", chartName, compKey)
+					toAppend += fmt.Sprintf("\n{{/*\n%[2]s-specific labels\n*/}}\n{{- define \"%[1]s.%[2]s.labels\" -}}\n{{ include \"%[1]s.labels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- with (index .Values \"%[2]s\").labels }}\n{{ toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific annotations\n*/}}\n{{- define \"%[1]s.%[2]s.annotations\" -}}\n{{- with (index .Values \"%[2]s\").annotations }}\n{{- toYaml . }}\n{{- end }}\n{{- end }}\n\n{{/*\n%[2]s-specific selector labels\n*/}}\n{{- define \"%[1]s.%[2]s.selectorLabels\" -}}\n{{ include \"%[1]s.selectorLabels\" . }}\napp.kubernetes.io/component: {{ include \"%[1]s.fullname\" . }}-%[2]s\n{{- end }}\n", chartName, compKey)
 				}
 			}
 			if toAppend != "" {

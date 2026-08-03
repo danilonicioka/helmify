@@ -16,17 +16,17 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
-const imagePullPolicyTemplate = "{{ .Values.%[1]s.%[2]s.imagePullPolicy }}"
-const envValue = "{{ quote .Values.%[1]s.%[2]s.%[3]s.%[4]s }}"
+const imagePullPolicyTemplate = `{{ (index .Values "%[1]s").%[2]s.imagePullPolicy }}`
+const envValue = `{{ quote (index .Values "%[1]s").%[2]s.%[3]s.%[4]s }}`
 const baseIndent = 8
 
-const probeTemplate = `{{- with .Values.%[1]s }}
+const probeTemplate = `{{- with (index .Values "%[1]s") }}
 %[2]s:
   {{- toYaml . | nindent %[3]d }}
 {{- end }}`
 
-const numericTemplate = `{{- if not (kindIs "nil" .Values.%[1]s) }}
-%[2]s: {{ .Values.%[1]s }}
+const numericTemplate = `{{- if not (kindIs "nil" (index .Values "%[1]s")) }}
+%[2]s: {{ (index .Values "%[1]s") }}
 {{- end }}`
 
 func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpec, addIndent int) (map[string]interface{}, helmify.Values, error) {
@@ -108,7 +108,7 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 			return nil, nil, err
 		}
 		if len(securityContextMap) > 0 {
-			err = unstructured.SetNestedField(specMap, fmt.Sprintf(`{{- toYaml .Values.%[1]s.podSecurityContext | nindent %d }}`, objName, nindent), "securityContext")
+			err = unstructured.SetNestedField(specMap, fmt.Sprintf(`{{- toYaml (index .Values "%[1]s").podSecurityContext | nindent %d }}`, objName, nindent), "securityContext")
 			if err != nil {
 				return nil, nil, err
 			}
@@ -121,7 +121,7 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 	}
 
 	// process nodeSelector if presented:
-	err = unstructured.SetNestedField(specMap, fmt.Sprintf(`{{- toYaml .Values.%s.nodeSelector | nindent %d }}`, objName, nindent), "nodeSelector")
+	err = unstructured.SetNestedField(specMap, fmt.Sprintf(`{{- toYaml (index .Values "%s").nodeSelector | nindent %d }}`, objName, nindent), "nodeSelector")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -138,7 +138,7 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 	}
 
 	// process tolerations if presented:
-	err = unstructured.SetNestedField(specMap, fmt.Sprintf(`{{- toYaml .Values.%s.tolerations | nindent %d }}`, objName, nindent), "tolerations")
+	err = unstructured.SetNestedField(specMap, fmt.Sprintf(`{{- toYaml (index .Values "%s").tolerations | nindent %d }}`, objName, nindent), "tolerations")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -164,7 +164,7 @@ func ProcessSpec(objName string, appMeta helmify.AppMetadata, spec corev1.PodSpe
 	}
 
 	// process topologySpreadConstraints if presented:
-	err = unstructured.SetNestedField(specMap, fmt.Sprintf(`{{- toYaml .Values.%s.topologySpreadConstraints | nindent %d }}`, objName, nindent), "topologySpreadConstraints")
+	err = unstructured.SetNestedField(specMap, fmt.Sprintf(`{{- toYaml (index .Values "%s").topologySpreadConstraints | nindent %d }}`, objName, nindent), "topologySpreadConstraints")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -234,6 +234,12 @@ func processContainers(objName string, values helmify.Values, containerType stri
 			valuePath = []string{objName, containerName}
 		}
 		valuePathStr := strings.Join(valuePath, ".")
+		var valPath string
+		if len(valuePath) == 1 {
+			valPath = fmt.Sprintf(`(index .Values "%s")`, valuePath[0])
+		} else {
+			valPath = fmt.Sprintf(`(index .Values "%s").%s`, valuePath[0], valuePath[1])
+		}
 
 		_, exists := (containers[i].(map[string]interface{}))["resources"]
 		if exists {
@@ -248,7 +254,7 @@ func processContainers(objName string, values helmify.Values, containerType stri
 			return nil, nil, err
 		}
 		if exists && len(args) > 0 {
-			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf(`{{- toYaml .Values.%s.args | nindent %d }}`, valuePathStr, nindent), "args")
+			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf(`{{- toYaml %s.args | nindent %d }}`, valPath, nindent), "args")
 			if err != nil {
 				return nil, nil, err
 			}
@@ -264,7 +270,7 @@ func processContainers(objName string, values helmify.Values, containerType stri
 			return nil, nil, err
 		}
 		if exists && len(command) > 0 {
-			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf(`{{- toYaml .Values.%s.command | nindent %d }}`, valuePathStr, nindent), "command")
+			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf(`{{- toYaml %s.command | nindent %d }}`, valPath, nindent), "command")
 			if err != nil {
 				return nil, nil, err
 			}
@@ -345,9 +351,14 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 	} else {
 		valuePath = []string{name, containerName}
 	}
-	valuePathStr := strings.Join(valuePath, ".")
+	var valPath string
+	if len(valuePath) == 1 {
+		valPath = fmt.Sprintf(`(index .Values "%s")`, valuePath[0])
+	} else {
+		valPath = fmt.Sprintf(`(index .Values "%s").%s`, valuePath[0], valuePath[1])
+	}
 
-	c.Image = fmt.Sprintf("{{ .Values.%[1]s.image.repository }}:{{ .Values.%[1]s.image.tag | default .Chart.AppVersion }}", valuePathStr)
+	c.Image = fmt.Sprintf("{{ %s.image.repository }}:{{ %s.image.tag | default .Chart.AppVersion }}", valPath, valPath)
 
 	err := unstructured.SetNestedField(*values, repo, append(valuePath, "image", "repository")...)
 	if err != nil {
@@ -392,7 +403,7 @@ func processPodContainer(name string, appMeta helmify.AppMetadata, c corev1.Cont
 		if err != nil {
 			return c, fmt.Errorf("%w: unable to set container imagePullPolicy", err)
 		}
-		c.ImagePullPolicy = corev1.PullPolicy(fmt.Sprintf("{{ .Values.%s.imagePullPolicy }}", valuePathStr))
+		c.ImagePullPolicy = corev1.PullPolicy(fmt.Sprintf("{{ %s.imagePullPolicy }}", valPath))
 	}
 
 	c, err = processProbes(name, containerName, c, values, isPrimary)
@@ -657,11 +668,37 @@ func AddReloadingAnnotations(appMeta helmify.AppMetadata, objName string, annota
 func ReplacePlaceholders(s string, chartName string) string {
 	// 1. Handle single quotes: key: '[HELMIFY_WITH:path:indent]'
 	r1 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*'\[HELMIFY_WITH:([^:]+):([0-9]+)\]'`)
-	s = r1.ReplaceAllString(s, "{{- with .Values.${3} }}\n${1}${2}:\n${1}  {{- toYaml . | nindent ${4} }}\n${1}{{- end }}")
+	s = r1.ReplaceAllStringFunc(s, func(match string) string {
+		matches := r1.FindStringSubmatch(match)
+		indentMatch, keyMatch, pathMatch, nindentMatch := matches[1], matches[2], matches[3], matches[4]
+		
+		var valPath string
+		parts := strings.Split(pathMatch, ".")
+		if len(parts) == 1 {
+			valPath = fmt.Sprintf(`(index .Values "%s")`, parts[0])
+		} else {
+			valPath = fmt.Sprintf(`(index .Values "%s").%s`, parts[0], strings.Join(parts[1:], "."))
+		}
+		
+		return fmt.Sprintf("{{- with %s }}\n%s%s:\n%s  {{- toYaml . | nindent %s }}\n%s{{- end }}", valPath, indentMatch, keyMatch, indentMatch, nindentMatch, indentMatch)
+	})
 
 	// 2. Handle block scalars if they occur: key: |-\n  [HELMIFY_WITH:path:indent]
 	r2 := regexp.MustCompile(`(?m)^(\s*)([a-zA-Z0-9]+):\s*\|-\s*\n\s*\[HELMIFY_WITH:([^:]+):([0-9]+)\]`)
-	s = r2.ReplaceAllString(s, "{{- with .Values.${3} }}\n${1}${2}:\n${1}  {{- toYaml . | nindent ${4} }}\n${1}{{- end }}")
+	s = r2.ReplaceAllStringFunc(s, func(match string) string {
+		matches := r2.FindStringSubmatch(match)
+		indentMatch, keyMatch, pathMatch, nindentMatch := matches[1], matches[2], matches[3], matches[4]
+		
+		var valPath string
+		parts := strings.Split(pathMatch, ".")
+		if len(parts) == 1 {
+			valPath = fmt.Sprintf(`(index .Values "%s")`, parts[0])
+		} else {
+			valPath = fmt.Sprintf(`(index .Values "%s").%s`, parts[0], strings.Join(parts[1:], "."))
+		}
+		
+		return fmt.Sprintf("{{- with %s }}\n%s%s:\n%s  {{- toYaml . | nindent %s }}\n%s{{- end }}", valPath, indentMatch, keyMatch, indentMatch, nindentMatch, indentMatch)
+	})
 	// 3. Handle HELMIFY_ENV_FROM: envFrom: '[HELMIFY_ENV_FROM:name:kebabName:indent]'
 	r3_3 := regexp.MustCompile(`(?m)^(\s*(?:-\s+)?)envFrom:\s*'\[HELMIFY_ENV_FROM:([^:]+):([^:]+):([0-9]+)\]'`)
 	s = r3_3.ReplaceAllStringFunc(s, func(match string) string {

@@ -1,4 +1,4 @@
-{{- $comp := index .Values "myapp" | default dict -}}
+{{ $comp := index .Values "myapp" | default dict }}
 {{- if and $comp $comp.cm }}
 apiVersion: v1
 kind: ConfigMap
@@ -18,7 +18,7 @@ data:
 {{- end }}
 {{- end }}
 ---
-{{- $comp := index .Values "myapp" | default dict -}}
+{{ $comp := index .Values "myapp" | default dict }}
 {{- if and $comp $comp.cm }}
 apiVersion: v1
 kind: ConfigMap

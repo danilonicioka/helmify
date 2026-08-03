@@ -8,7 +8,7 @@ metadata:
     {{- $annotations | nindent 4 }}
   {{- end }}
   labels:
-    {{- include "test-app.myapp.labels" . | nindent 4 }}{{- $comp := index .Values "myapp" | default dict -}}
+    {{- include "test-app.myapp.labels" . | nindent 4 }}{{ $comp := index .Values "myapp" | default dict }}
 spec:
   type: {{ $comp.service.type }}
   selector:
@@ -33,7 +33,7 @@ metadata:
     {{- $annotations | nindent 4 }}
   {{- end }}
   labels:
-    {{- include "test-app.myapp.labels" . | nindent 4 }}{{- $comp := index .Values "myapp" | default dict -}}
+    {{- include "test-app.myapp.labels" . | nindent 4 }}{{ $comp := index .Values "myapp" | default dict }}
 spec:
   type: {{ $comp.service.type }}
   selector:
@@ -48,7 +48,7 @@ spec:
     {{- end }}
     {{- end }}
   loadBalancerSourceRanges:
-  {{- $comp := index .Values "myapp" | default dict -}}
+  {{ $comp := index .Values "myapp" | default dict }}
   {{- $comp.service.loadBalancerSourceRanges | toYaml | nindent 2 }}
 ---
 apiVersion: v1
@@ -61,12 +61,12 @@ metadata:
     {{- $annotations | nindent 4 }}
   {{- end }}
   labels:
-    {{- include "test-app.myapp.labels" . | nindent 4 }}{{- $comp := index .Values "myapp" | default dict -}}
+    {{- include "test-app.myapp.labels" . | nindent 4 }}{{ $comp := index .Values "myapp" | default dict }}
 spec:
   type: {{ $comp.service.type }}
   selector:
     {{- include "test-app.myapp.selectorLabels" . | nindent 4 }}
-  {{- $comp := index .Values "myapp" | default dict -}}
+  {{ $comp := index .Values "myapp" | default dict }}
   {{- if $comp.service.ipFamilyPolicy }}
   ipFamilyPolicy: {{ $comp.service.ipFamilyPolicy }}
   {{- end }}

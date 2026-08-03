@@ -31,7 +31,7 @@ data:
 {{- end }}
 {{- end }}
 {{- else -}}
-{{ "{" }}{{ "{" }}- $comp := index .Values "{{ .Name }}" | default dict -{{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }} $comp := index .Values "{{ .Name }}" | default dict {{ "}" }}{{ "}" }}
 {{ "{" }}{{ "{" }}- if and $comp $comp.cm {{ "}" }}{{ "}" }}
 {{ .Meta }}
 {{- if .Immutable }}

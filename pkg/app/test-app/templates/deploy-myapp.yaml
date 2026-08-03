@@ -1,4 +1,4 @@
-{{- $comp := index .Values "myapp" | default dict -}}
+{{ $comp := index .Values "myapp" | default dict }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -50,8 +50,8 @@ spec:
         {{- end }}
     spec:
       containers:
-      - args: {{- toYaml .Values.myapp.app.args | nindent 8 }}
-        command: {{- toYaml .Values.myapp.app.command | nindent 8 }}
+      - args: {{- toYaml (index .Values "myapp").app.args | nindent 8 }}
+        command: {{- toYaml (index .Values "myapp").app.command | nindent 8 }}
         env:
         - name: APP_NAME
           valueFrom:
@@ -78,26 +78,26 @@ spec:
         - secretRef:
             name: {{ include "test-app.fullname" . }}-myapp-secret
         {{- end }}
-        image: {{ .Values.myapp.app.image.repository }}:{{ .Values.myapp.app.image.tag
+        image: {{ (index .Values "myapp").app.image.repository }}:{{ (index .Values "myapp").app.image.tag
           | default .Chart.AppVersion }}
-{{- with .Values.myapp.app.livenessProbe }}
+{{- with (index .Values "myapp").app.livenessProbe }}
         livenessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
         name: app
-{{- with .Values.myapp.app.readinessProbe }}
+{{- with (index .Values "myapp").app.readinessProbe }}
         readinessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.myapp.app.resources }}
+{{- with (index .Values "myapp").app.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.myapp.app.containerSecurityContext }}
+{{- with (index .Values "myapp").app.containerSecurityContext }}
         securityContext:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.myapp.app.startupProbe }}
+{{- with (index .Values "myapp").app.startupProbe }}
         startupProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
@@ -113,7 +113,7 @@ spec:
         - mountPath: /usr/share/nginx/html
           name: sample-pv-storage
         {{- end }}
-      - args: {{- toYaml .Values.myapp.proxySidecar.args | nindent 8 }}
+      - args: {{- toYaml (index .Values "myapp").proxySidecar.args | nindent 8 }}
         envFrom:
         {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
         - configMapRef:
@@ -131,9 +131,9 @@ spec:
         - secretRef:
             name: {{ include "test-app.fullname" . }}-myapp-secret
         {{- end }}
-        image: {{ .Values.myapp.proxySidecar.image.repository }}:{{ .Values.myapp.proxySidecar.image.tag
-          | default .Chart.AppVersion }}
-{{- with .Values.myapp.proxySidecar.livenessProbe }}
+        image: {{ (index .Values "myapp").proxySidecar.image.repository }}:{{ (index .Values
+          "myapp").proxySidecar.image.tag | default .Chart.AppVersion }}
+{{- with (index .Values "myapp").proxySidecar.livenessProbe }}
         livenessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
@@ -141,20 +141,20 @@ spec:
         ports:
         - containerPort: 8443
           name: https
-{{- with .Values.myapp.proxySidecar.readinessProbe }}
+{{- with (index .Values "myapp").proxySidecar.readinessProbe }}
         readinessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.myapp.proxySidecar.resources }}
+{{- with (index .Values "myapp").proxySidecar.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.myapp.proxySidecar.startupProbe }}
+{{- with (index .Values "myapp").proxySidecar.startupProbe }}
         startupProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
       initContainers:
-      - command: {{- toYaml .Values.myapp.command | nindent 8 }}
+      - command: {{- toYaml (index .Values "myapp").command | nindent 8 }}
         envFrom:
         {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
         - configMapRef:
@@ -172,34 +172,35 @@ spec:
         - secretRef:
             name: {{ include "test-app.fullname" . }}-myapp-secret
         {{- end }}
-        image: {{ .Values.myapp.initContainer.image.repository }}:{{ .Values.myapp.initContainer.image.tag
-          | default .Chart.AppVersion }}
-{{- with .Values.myapp.livenessProbe }}
+        image: {{ (index .Values "myapp").initContainer.image.repository }}:{{ (index .Values
+          "myapp").initContainer.image.tag | default .Chart.AppVersion }}
+{{- with (index .Values "myapp").livenessProbe }}
         livenessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
         name: init-container
-{{- with .Values.myapp.readinessProbe }}
+{{- with (index .Values "myapp").readinessProbe }}
         readinessProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.myapp.resources }}
+{{- with (index .Values "myapp").resources }}
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-{{- with .Values.myapp.startupProbe }}
+{{- with (index .Values "myapp").startupProbe }}
         startupProbe:
           {{- toYaml . | nindent 10 }}
         {{- end }}
-      nodeSelector: {{- toYaml .Values.myapp.nodeSelector | nindent 8 }}
-      securityContext: {{- toYaml .Values.myapp.podSecurityContext | nindent 8 }}
+      nodeSelector: {{- toYaml (index .Values "myapp").nodeSelector | nindent 8 }}
+      securityContext: {{- toYaml (index .Values "myapp").podSecurityContext | nindent
+        8 }}
       serviceAccountName: {{ include "test-app.serviceAccountName" . }}
       {{- if not (kindIs "nil" .Values.myapp.terminationGracePeriodSeconds) }}
       terminationGracePeriodSeconds: {{ .Values.myapp.terminationGracePeriodSeconds }}
       {{- end }}
-      tolerations: {{- toYaml .Values.myapp.tolerations | nindent 8 }}
-      topologySpreadConstraints: {{- toYaml .Values.myapp.topologySpreadConstraints | nindent
-        8 }}
+      tolerations: {{- toYaml (index .Values "myapp").tolerations | nindent 8 }}
+      topologySpreadConstraints: {{- toYaml (index .Values "myapp").topologySpreadConstraints
+        | nindent 8 }}
       volumes:
       - configMap:
           name: {{ include "test-app.fullname" . }}-{{ include "test-app.fullname" . }}-my-config

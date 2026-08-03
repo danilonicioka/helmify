@@ -19,8 +19,8 @@ import (
 const (
 	pdbTempSpec = `
 spec:
-  minAvailable: {{ .Values.%[1]s.minAvailable }}
-  maxUnavailable: {{ .Values.%[1]s.maxUnavailable }}
+  minAvailable: {{ (index .Values "%[1]s").minAvailable }}
+  maxUnavailable: {{ (index .Values "%[1]s").maxUnavailable }}
   selector:%[2]s
     {{- include "%[3]s" . | nindent 6 }}`
 )

@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	svcTempSpec = `{{- $comp := index .Values "%[1]s" | default dict }}
+	svcTempSpec = `{{ $comp := index .Values "%[1]s" | default dict }}
 spec:
   type: {{ $comp.service.type }}
   selector:%[2]s
@@ -39,13 +39,13 @@ spec:
 const (
 	lbSourceRangesTempSpec = `
   loadBalancerSourceRanges:
-  {{- $comp := index .Values "%[1]s" | default dict -}}
+  {{ $comp := index .Values "%[1]s" | default dict }}
   {{- $comp.service.loadBalancerSourceRanges | toYaml | nindent 2 }}`
 )
 
 const (
 	ipFamilyTempSpec = `
-  {{- $comp := index .Values "%[1]s" | default dict -}}
+  {{ $comp := index .Values "%[1]s" | default dict }}
   {{- if $comp.service.ipFamilyPolicy }}
   ipFamilyPolicy: {{ $comp.service.ipFamilyPolicy }}
   {{- end }}
