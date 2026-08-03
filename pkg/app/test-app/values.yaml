@@ -81,43 +81,13 @@ api:
   # 4. RESOURCES (Operational Overlay-Only)
   # ----------------------------------------------------------------------------
   resources: {}
-  # limits:
-  #   cpu: 500m
-  #   memory: 512Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 256Mi
 
   # ----------------------------------------------------------------------------
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
   startupProbe: {}
-  # startupProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
-
   livenessProbe: {}
-  # livenessProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
   readinessProbe: {}
-  # readinessProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
   # ----------------------------------------------------------------------------
@@ -206,43 +176,13 @@ app-emissor:
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
   resources: {}
-  # limits:
-  #   cpu: 500m
-  #   memory: 512Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 256Mi
 
   # ----------------------------------------------------------------------------
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
   startupProbe: {}
-  # startupProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
-
   livenessProbe: {}
-  # livenessProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
   readinessProbe: {}
-  # readinessProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
   # ----------------------------------------------------------------------------
@@ -348,43 +288,13 @@ myapp:
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
   resources: {}
-  # limits:
-  #   cpu: 500m
-  #   memory: 512Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 256Mi
 
   # ----------------------------------------------------------------------------
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
   startupProbe: {}
-  # startupProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
-
   livenessProbe: {}
-  # livenessProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
   readinessProbe: {}
-  # readinessProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
   # ----------------------------------------------------------------------------
@@ -603,43 +513,13 @@ nginx:
   # 4. RESOURCES (Operational Overlay-Only)
   # ----------------------------------------------------------------------------
   resources: {}
-  # limits:
-  #   cpu: 500m
-  #   memory: 512Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 256Mi
 
   # ----------------------------------------------------------------------------
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
   startupProbe: {}
-  # startupProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
-
   livenessProbe: {}
-  # livenessProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
   readinessProbe: {}
-  # readinessProbe:
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
   # ----------------------------------------------------------------------------
