@@ -78,8 +78,8 @@ spec:
           readOnly: true
       nodeSelector: '{{- toYaml (index .Values "api").nodeSelector | nindent 8 }}'
       serviceAccountName: '{{ include "test-app.serviceAccountName" . }}'
-      {{- if not (kindIs "nil" .Values.api.terminationGracePeriodSeconds) }}
-      terminationGracePeriodSeconds: {{ .Values.api.terminationGracePeriodSeconds }}
+      {{- if not (kindIs "nil" (index .Values "api").terminationGracePeriodSeconds) }}
+      terminationGracePeriodSeconds: {{ (index .Values "api").terminationGracePeriodSeconds }}
       {{- end }}
       tolerations: '{{- toYaml (index .Values "api").tolerations | nindent 8 }}'
       topologySpreadConstraints: '{{- toYaml (index .Values "api").topologySpreadConstraints

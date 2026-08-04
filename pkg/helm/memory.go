@@ -265,7 +265,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 
 	var valuesNode yaml.Node
 	if err := yaml.Unmarshal(res, &valuesNode); err == nil {
-		if devVals, err := generateDevValues(&valuesNode); err == nil {
+		if devVals, err := generateDevValues(&valuesNode, isMulti); err == nil {
 			m.Files["values-ca.yaml"] = devVals
 		}
 	}

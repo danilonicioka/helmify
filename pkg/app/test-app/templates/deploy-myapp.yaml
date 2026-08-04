@@ -195,8 +195,8 @@ spec:
       securityContext: {{- toYaml (index .Values "myapp").podSecurityContext | nindent
         8 }}
       serviceAccountName: {{ include "test-app.serviceAccountName" . }}
-      {{- if not (kindIs "nil" .Values.myapp.terminationGracePeriodSeconds) }}
-      terminationGracePeriodSeconds: {{ .Values.myapp.terminationGracePeriodSeconds }}
+      {{- if not (kindIs "nil" (index .Values "myapp").terminationGracePeriodSeconds) }}
+      terminationGracePeriodSeconds: {{ (index .Values "myapp").terminationGracePeriodSeconds }}
       {{- end }}
       tolerations: {{- toYaml (index .Values "myapp").tolerations | nindent 8 }}
       topologySpreadConstraints: {{- toYaml (index .Values "myapp").topologySpreadConstraints

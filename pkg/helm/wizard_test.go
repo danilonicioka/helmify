@@ -78,11 +78,11 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	devValuesBytes, ok := files["values-ca.yaml"]
 	assert.True(t, ok)
 	devValuesStr := string(devValuesBytes)
-	assert.Contains(t, devValuesStr, "global:")
-	assert.Contains(t, devValuesStr, "TZ: America/Sao_Paulo")
+	assert.NotContains(t, devValuesStr, "global:")
+	assert.NotContains(t, devValuesStr, "TZ: America/Sao_Paulo")
 	assert.Contains(t, devValuesStr, "test-single-app:")
 	assert.Contains(t, devValuesStr, "VAR_A: VAL_A")
-	assert.Contains(t, devValuesStr, "SECRET_B: VAL_B")
+	assert.NotContains(t, devValuesStr, "SECRET_B: VAL_B")
 	// values-ca.yaml must NOT contain infrastructure-only parameters like replicas, image, port, etc.
 	assert.NotContains(t, devValuesStr, "replicas:")
 	assert.NotContains(t, devValuesStr, "repository:")
