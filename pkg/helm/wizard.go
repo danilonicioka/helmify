@@ -521,7 +521,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	if valuesData, ok := outputFiles["values.yaml"]; ok {
 		var valuesNode yaml.Node
 		if err := yaml.Unmarshal(valuesData, &valuesNode); err == nil {
-			if devVals, err := generateDevValues(&valuesNode); err == nil {
+			if devVals, err := generateDevValues(&valuesNode, params.Type == "multi"); err == nil {
 				outputFiles["values-ca.yaml"] = devVals
 			}
 		}
