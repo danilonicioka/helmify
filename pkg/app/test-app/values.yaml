@@ -132,9 +132,6 @@ api:
 
   imagePullPolicy: IfNotPresent
   schedule: '* * * * *'
-  topologySpreadConstraints: []
-  nodeSelector: {}
-  backoffLimit: 4
   tolerations:
     - effect: NoSchedule
       key: node-role.kubernetes.io/master
@@ -147,6 +144,9 @@ api:
     - /bin/sh
     - -c
     - date; echo Hello from the Kubernetes cluster
+  topologySpreadConstraints: []
+  backoffLimit: 4
+  nodeSelector: {}
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -244,11 +244,11 @@ app-emissor:
       maxUnavailable: 0
   terminationGracePeriodSeconds: 30
   nodeSelector: {}
+  tolerations: []
   volumeClaims:
     www:
       requests:
         storage: 1Gi
-  tolerations: []
   topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
@@ -274,10 +274,10 @@ myapp:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
+    dummyconfigmapkey: dummyconfigmapvalue
     my_config.properties: |
       health.healthProbeBindAddress=8081
       metrics.bindAddress=127.0.0.1:8080
-    dummyconfigmapkey: dummyconfigmapvalue
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallationTemplate
@@ -293,16 +293,16 @@ myapp:
     my.prop3: "true"
   # No default secrets for web frontend component
   secret:
-    VAR1: my_secret_var_1
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+    VAR2: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
-    VAR2: my_secret_var_2
     ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
+    VAR1: my_secret_var_1
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -329,11 +329,11 @@ myapp:
       https:
         port: 8443
         targetPort: https
-    loadBalancerSourceRanges:
-      - 10.0.0.0/8
     ipFamilyPolicy: SingleStack
     ipFamilies:
       - IPv4
+    loadBalancerSourceRanges:
+      - 10.0.0.0/8
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
@@ -382,11 +382,62 @@ myapp:
       maxUnavailable: 0
   terminationGracePeriodSeconds: 10
   topologySpreadConstraints: []
+  proxySidecar:
+    image:
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.8.0
+    resources: {}
+    #   limits:
+    #     cpu: 500m
+    #     memory: 1Gi
+    #   requests:
+    #     cpu: 100m
+    #     memory: 512Mi
+
+    livenessProbe: {}
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 10
+    #   failureThreshold: 3
+    #   successThreshold: 1
+
+    readinessProbe: {}
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 10
+    #   successThreshold: 1
+    #   failureThreshold: 3
+
+    startupProbe: {}
+    #   tcpSocket:
+    #     port: 8080
+    #   initialDelaySeconds: 0
+    #   periodSeconds: 5
+    #   failureThreshold: 30
+    #   successThreshold: 1
+
+    args:
+      - --secure-listen-address=0.0.0.0:8443
+      - --v=10
+  persistence:
+    enabled: true
+    storageClass: manual
+    storageRequest: 3Gi
+    storageLimit: 5Gi
+  podSecurityContext:
+    runAsUser: 65532
+    runAsNonRoot: true
+    fsGroup: 20000
   revisionHistoryLimit: 5
-  tolerations: []
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
   nodeSelector:
-    region: east
     type: user-node
+    region: east
   app:
     readinessProbe: {}
     #   tcpSocket:
@@ -412,8 +463,8 @@ myapp:
       - /manager
     containerSecurityContext: {}
     image:
-      tag: latest
       repository: controller
+      tag: latest
     resources: {}
     #   limits:
     #     cpu: 500m
@@ -464,57 +515,7 @@ myapp:
     #   periodSeconds: 5
     #   failureThreshold: 30
     #   successThreshold: 1
-  podSecurityContext:
-    runAsNonRoot: true
-    fsGroup: 20000
-    runAsUser: 65532
-  proxySidecar:
-    startupProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 5
-    #   failureThreshold: 30
-    #   successThreshold: 1
-
-    args:
-      - --secure-listen-address=0.0.0.0:8443
-      - --v=10
-    image:
-      tag: v0.8.0
-      repository: gcr.io/kubebuilder/kube-rbac-proxy
-    resources: {}
-    #   limits:
-    #     cpu: 500m
-    #     memory: 1Gi
-    #   requests:
-    #     cpu: 100m
-    #     memory: 512Mi
-
-    livenessProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 10
-    #   failureThreshold: 3
-    #   successThreshold: 1
-
-    readinessProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 10
-    #   successThreshold: 1
-    #   failureThreshold: 3
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
-  persistence:
-    enabled: true
-    storageClass: manual
-    storageRequest: 3Gi
-    storageLimit: 5Gi
+  tolerations: []
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================

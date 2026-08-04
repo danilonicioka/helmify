@@ -36,7 +36,7 @@ func handleGenerateWizard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/x-tar")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.tar.gz"`, params.ChartName))
+	w.Header().Set("Content-Disposition", `attachment; filename="chart.tar.gz"`)
 
 	if err := helm.WriteTarGz(files, params.ChartName, w); err != nil {
 		logrus.WithError(err).Error("Failed to write tar.gz stream")
