@@ -160,7 +160,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/x-tar")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.tar.gz"`, conf.ChartName))
+	w.Header().Set("Content-Disposition", `attachment; filename="chart.tar.gz"`)
 
 	if err := memOut.ToTarGz(conf.ChartName, w); err != nil {
 		logrus.WithError(err).Error("TarGz streaming failed")
@@ -221,7 +221,7 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/x-tar")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.tar.gz"`, req.ChartName))
+	w.Header().Set("Content-Disposition", `attachment; filename="chart.tar.gz"`)
 
 	gw := gzip.NewWriter(w)
 	defer gw.Close()

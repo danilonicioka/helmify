@@ -27,10 +27,7 @@ func generateDevValues(rootNode *yaml.Node, isMulti bool) ([]byte, error) {
 	}
 	devRoot.Content = append(devRoot.Content, &devMap)
 
-	// Add header comments
-	devMap.HeadComment = "Standardized TJPA Application Values (values-ca.yaml)\n" +
-		"This file contains application-specific environment variables (cm).\n" +
-		"Developers can manage their ConfigMaps here, separating dev/app configs from the core infrastructure."
+	// No header comments requested by user
 
 	for i := 0; i < len(origMap.Content); i += 2 {
 		keyNode := origMap.Content[i]
@@ -63,6 +60,8 @@ func generateDevValues(rootNode *yaml.Node, isMulti bool) ([]byte, error) {
 		}
 	}
 
+	removeComments(&devRoot)
+
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
@@ -70,4 +69,16 @@ func generateDevValues(rootNode *yaml.Node, isMulti bool) ([]byte, error) {
 		return nil, err
 	}
 	return buf.Bytes(), nil
+}
+
+func removeComments(node *yaml.Node) {
+	if node == nil {
+		return
+	}
+	node.HeadComment = ""
+	node.LineComment = ""
+	node.FootComment = ""
+	for _, child := range node.Content {
+		removeComments(child)
+	}
 }
