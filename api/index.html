@@ -1216,7 +1216,13 @@
                     tag: (compData.image && compData.image.tag) || ''
                 },
                 service: {
-                    port: (compData.service && compData.service.port) || 8080
+                    ports: {
+                        http: {
+                            port: (compData.service && compData.service.ports && compData.service.ports.http && compData.service.ports.http.port) || (compData.service && compData.service.port) || 8080,
+                            targetPort: (compData.service && compData.service.ports && compData.service.ports.http && compData.service.ports.http.targetPort) || (compData.service && compData.service.port) || 8080,
+                            protocol: 'TCP'
+                        }
+                    }
                 },
                 cm: compData.cm || {},
                 secret: compData.secret || {},
@@ -1250,7 +1256,13 @@
                     tag: ''
                 },
                 service: {
-                    port: isFrontend ? 80 : 8080
+                    ports: {
+                        http: {
+                            port: isFrontend ? 80 : 8080,
+                            targetPort: 8080,
+                            protocol: 'TCP'
+                        }
+                    }
                 },
                 cm: isFrontend ? { 'BACKEND_API_URL': 'http://chart-model-multi-backend:8080' } : {
                     'SPRING_PROFILES_ACTIVE': 'prd',
@@ -1451,7 +1463,12 @@
             const config = components[activeComponent];
             const repVal = parseInt(document.getElementById('compReplicas').value, 10);
             config.replicas = isNaN(repVal) ? 1 : repVal;
-            config.service.port = parseInt(document.getElementById('compPort').value, 10) || 8080;
+            let svcPort = parseInt(document.getElementById('compPort').value, 10) || 8080;
+            if (!config.service.ports) config.service.ports = { http: { protocol: 'TCP' } };
+            if (!config.service.ports.http) config.service.ports.http = { protocol: 'TCP' };
+            config.service.ports.http.port = svcPort;
+            config.service.ports.http.targetPort = svcPort;
+            delete config.service.port;
             config.image.repository = document.getElementById('compRepo').value;
             config.image.tag = document.getElementById('compTag').value;
             config.route.path = document.getElementById('compRoutePath').value;
@@ -1495,7 +1512,13 @@
             const config = components[activeComponent];
 
             document.getElementById('compReplicas').value = config.replicas;
-            document.getElementById('compPort').value = config.service.port;
+            let displayPort = 8080;
+            if (config.service.ports && config.service.ports.http && config.service.ports.http.port) {
+                displayPort = config.service.ports.http.port;
+            } else if (config.service.port) {
+                displayPort = config.service.port;
+            }
+            document.getElementById('compPort').value = displayPort;
             document.getElementById('compRepo').value = config.image.repository;
             document.getElementById('compTag').value = config.image.tag || '';
             document.getElementById('compRoutePath').value = config.route.path || '';
