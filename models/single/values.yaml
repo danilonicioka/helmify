@@ -95,41 +95,41 @@ chart-model-single:
   # 4. RESOURCES (Operational Overlay-Only)
   # ----------------------------------------------------------------------------
   # Kept empty by default; the recommended configuration is commented below.
-  resources: {}
-    # limits:
-    #   cpu: 500m
-    #   memory: 512Mi
-    # requests:
-    #   cpu: 100m
-    #   memory: 256Mi
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
 
   # ----------------------------------------------------------------------------
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
   # Probes are empty by default; the recommended tcpSocket configuration is commented below.
-  startupProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
+  startupProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
 
-  livenessProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
+  livenessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
 
-  readinessProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
+  readinessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
 
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
