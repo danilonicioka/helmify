@@ -57,6 +57,9 @@ backend:
   route:
     # -- Shared annotations for routes.
     annotations: {}
+      # haproxy.router.openshift.io/timeout: 60s
+      # haproxy.router.openshift.io/balance: roundrobin
+      # haproxy.router.openshift.io/disable_cookies: "true"
     
     # -- Shared TLS edge termination configuration.
     tls:
@@ -101,7 +104,6 @@ backend:
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
   startupProbe: {}
-  # startupProbe:
   #   tcpSocket:
   #     port: 8080
   #   initialDelaySeconds: 0
@@ -110,7 +112,6 @@ backend:
   #   successThreshold: 1
 
   livenessProbe: {}
-  # livenessProbe:
   #   tcpSocket:
   #     port: 8080
   #   initialDelaySeconds: 0
@@ -119,7 +120,6 @@ backend:
   #   successThreshold: 1
 
   readinessProbe: {}
-  # readinessProbe:
   #   tcpSocket:
   #     port: 8080
   #   initialDelaySeconds: 0
@@ -180,6 +180,9 @@ frontend:
   # ----------------------------------------------------------------------------
   route:
     annotations: {}
+      # haproxy.router.openshift.io/timeout: 60s
+      # haproxy.router.openshift.io/balance: roundrobin
+      # haproxy.router.openshift.io/disable_cookies: "true"
     tls:
       termination: edge
       insecureEdgeTerminationPolicy: Redirect
@@ -213,7 +216,6 @@ frontend:
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
   startupProbe: {}
-  # startupProbe:
   #   tcpSocket:
   #     port: 8080
   #   initialDelaySeconds: 0
@@ -222,7 +224,6 @@ frontend:
   #   successThreshold: 1
 
   livenessProbe: {}
-  # livenessProbe:
   #   tcpSocket:
   #     port: 8080
   #   initialDelaySeconds: 0
@@ -231,7 +232,6 @@ frontend:
   #   successThreshold: 1
 
   readinessProbe: {}
-  # readinessProbe:
   #   tcpSocket:
   #     port: 8080
   #   initialDelaySeconds: 0
