@@ -294,7 +294,13 @@ func processReplicas(name string, deployment *appsv1.Deployment, values *helmify
 	if deployment.Spec.Replicas == nil {
 		return "", nil
 	}
-	_, err := values.Add(int64(*deployment.Spec.Replicas), name, "replicas")
+	
+	repl := *deployment.Spec.Replicas
+	if repl == 0 {
+		repl = 1
+	}
+	
+	_, err := values.Add(int64(repl), name, "replicas")
 	if err != nil {
 		return "", err
 	}

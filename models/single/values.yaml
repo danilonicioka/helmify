@@ -28,7 +28,7 @@ chart-model-single:
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
   # ----------------------------------------------------------------------------
   # -- Number of replica pods.
-  replicas: 0
+  replicas: 1
 
   # -- Custom labels to add to the deployment/pods
   labels: {}
