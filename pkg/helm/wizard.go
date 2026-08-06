@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/fs"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -320,6 +321,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 
 		// Re-marshal preserving comments
+		setBlockStyle(&rootNode)
 		var buf bytes.Buffer
 		enc := yaml.NewEncoder(&buf)
 		enc.SetIndent(2)
@@ -328,6 +330,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		valuesStr := buf.String()
 		valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
+		valuesStr = formatValues(valuesStr)
 		outputFiles["values.yaml"] = []byte(valuesStr)
 
 	} else {
@@ -493,6 +496,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 
 		// Re-marshal values.yaml preserving comments
+		setBlockStyle(&rootNode)
 		var buf bytes.Buffer
 		enc := yaml.NewEncoder(&buf)
 		enc.SetIndent(2)
@@ -502,6 +506,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		valuesStr := buf.String()
 		// Replace chart name inside values.yaml (e.g. in affinity matching labels)
 		valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
+		valuesStr = formatValues(valuesStr)
 		outputFiles["values.yaml"] = []byte(valuesStr)
 	}
 
@@ -530,6 +535,15 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	outputFiles[".gitlab-ci.yml"] = helmify.GitLabCI
 
 	return outputFiles, nil
+}
+
+func formatValues(valuesStr string) string {
+	blocks := []string{"startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "persistence:"}
+	for _, block := range blocks {
+		r := regexp.MustCompile(`(?m)^([^\n#]+)\n(\s+` + block + `)`)
+		valuesStr = r.ReplaceAllString(valuesStr, "$1\n\n$2")
+	}
+	return valuesStr
 }
 
 func replaceChartName(content string, oldChartName, newChartName string) string {

@@ -603,6 +603,7 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 	resStr = strings.ReplaceAll(resStr, "chart-model-single", chartName)
 	resStr = strings.ReplaceAll(resStr, "chart-model-multi", chartName)
 	resStr = strings.ReplaceAll(resStr, "chart-model", chartName)
+	resStr = formatValues(resStr)
 
 	return []byte(resStr), nil
 }
