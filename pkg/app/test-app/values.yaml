@@ -28,12 +28,10 @@ api:
   # -- Custom labels to add to the backend deployment/pods
   labels:
     k8s-app: fluentd-logging
-  # app.openshift.io/runtime: openjdk
   # -- Custom annotations to add to the backend deployment 
   annotations: {}
   #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
-  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: quay.io/fluentd_elasticsearch/fluentd
@@ -99,6 +97,7 @@ api:
     periodSeconds: 5
     failureThreshold: 30
     successThreshold: 1
+
   livenessProbe:
     tcpSocket:
       port: 8080
@@ -106,6 +105,7 @@ api:
     periodSeconds: 10
     failureThreshold: 3
     successThreshold: 1
+
   readinessProbe:
     tcpSocket:
       port: 8080
@@ -121,6 +121,7 @@ api:
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
+
   terminationGracePeriodSeconds: 30
   # ----------------------------------------------------------------------------
   # 7. PERSISTENCE
@@ -130,8 +131,13 @@ api:
   #   storageClass: thin
   #   storageRequest: 512Mi
 
-  nodeSelector: {}
+  tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/master
+      operator: Exists
+  topologySpreadConstraints: []
   backoffLimit: 4
+  nodeSelector: {}
   command:
     - perl
     - -Mbignum=bpi
@@ -141,11 +147,6 @@ api:
     - -c
     - date; echo Hello from the Kubernetes cluster
   schedule: '* * * * *'
-  topologySpreadConstraints: []
-  tolerations:
-    - effect: NoSchedule
-      key: node-role.kubernetes.io/master
-      operator: Exists
   imagePullPolicy: IfNotPresent
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
@@ -159,10 +160,9 @@ app-emissor:
   labels: {}
   #   app.openshift.io/runtime: openjdk
 
-  # app.openshift.io/runtime: nodejs
   # -- Custom annotations to add to the frontend deployment 
   annotations: {}
-  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
   image:
     repository: registry.k8s.io/nginx-slim
@@ -220,6 +220,7 @@ app-emissor:
     periodSeconds: 5
     failureThreshold: 30
     successThreshold: 1
+
   livenessProbe:
     tcpSocket:
       port: 8080
@@ -227,6 +228,7 @@ app-emissor:
     periodSeconds: 10
     failureThreshold: 3
     successThreshold: 1
+
   readinessProbe:
     tcpSocket:
       port: 8080
@@ -242,14 +244,15 @@ app-emissor:
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
+
   terminationGracePeriodSeconds: 30
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
   volumeClaims:
     www:
       requests:
         storage: 1Gi
-  nodeSelector: {}
-  tolerations: []
-  topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -262,10 +265,9 @@ myapp:
   labels: {}
   #   app.openshift.io/runtime: openjdk
 
-  # app.openshift.io/runtime: nodejs
   # -- Custom annotations to add to the frontend deployment 
   annotations: {}
-  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
   image:
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/test-app-frontend
@@ -275,12 +277,6 @@ myapp:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
-    my.prop2: val 1
-    my.prop3: "true"
-    dummyconfigmapkey: dummyconfigmapvalue
-    my_config.properties: |
-      health.healthProbeBindAddress=8081
-      metrics.bindAddress=127.0.0.1:8080
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallationTemplate
@@ -291,16 +287,22 @@ myapp:
           podTemplates:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
+    dummyconfigmapkey: dummyconfigmapvalue
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
     my.prop1: "1"
+    my.prop2: val 1
+    my.prop3: "true"
   # No default secrets for web frontend component
   secret:
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+    VAR2: my_secret_var_2
     ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     VAR1: my_secret_var_1
-    VAR2: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
@@ -335,9 +337,9 @@ myapp:
         targetPort: https
     loadBalancerSourceRanges:
       - 10.0.0.0/8
+    ipFamilyPolicy: SingleStack
     ipFamilies:
       - IPv4
-    ipFamilyPolicy: SingleStack
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
@@ -358,6 +360,7 @@ myapp:
     periodSeconds: 5
     failureThreshold: 30
     successThreshold: 1
+
   livenessProbe:
     tcpSocket:
       port: 8080
@@ -365,6 +368,7 @@ myapp:
     periodSeconds: 10
     failureThreshold: 3
     successThreshold: 1
+
   readinessProbe:
     tcpSocket:
       port: 8080
@@ -380,8 +384,31 @@ myapp:
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
+
   terminationGracePeriodSeconds: 10
+
+  persistence:
+    storageClass: manual
+    storageRequest: 3Gi
+    storageLimit: 5Gi
+    enabled: true
+  initContainer:
+    image:
+      repository: bash
+      tag: latest
+  topologySpreadConstraints: []
+  podSecurityContext:
+    runAsUser: 65532
+    runAsNonRoot: true
+    fsGroup: 20000
+  tolerations: []
   app:
+    args:
+      - --health-probe-bind-address=:8081
+      - --metrics-bind-address=127.0.0.1:8080
+      - --leader-elect
+    command:
+      - /manager
     containerSecurityContext: {}
     image:
       repository: controller
@@ -393,54 +420,35 @@ myapp:
       requests:
         cpu: 100m
         memory: 20Mi
+
     livenessProbe:
       httpGet:
         path: /healthz
         port: 8081
       initialDelaySeconds: 15
       periodSeconds: 20
+
     readinessProbe:
+      initialDelaySeconds: 5
       periodSeconds: 10
       httpGet:
         path: /readyz
         port: 8081
-      initialDelaySeconds: 5
-    args:
-      - --health-probe-bind-address=:8081
-      - --metrics-bind-address=127.0.0.1:8080
-      - --leader-elect
-    command:
-      - /manager
   revisionHistoryLimit: 5
-  topologySpreadConstraints: []
   command:
     - /bin/sh
     - -c
     - echo 'Initializing container...'
-  podSecurityContext:
-    runAsNonRoot: true
-    fsGroup: 20000
-    runAsUser: 65532
-  tolerations: []
   nodeSelector:
     type: user-node
     region: east
   proxySidecar:
+    image:
+      tag: v0.8.0
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
     args:
       - --secure-listen-address=0.0.0.0:8443
       - --v=10
-    image:
-      repository: gcr.io/kubebuilder/kube-rbac-proxy
-      tag: v0.8.0
-  initContainer:
-    image:
-      repository: bash
-      tag: latest
-  persistence:
-    storageLimit: 5Gi
-    enabled: true
-    storageClass: manual
-    storageRequest: 3Gi
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -455,12 +463,10 @@ nginx:
   labels: {}
   #   app.openshift.io/runtime: openjdk
 
-  # app.openshift.io/runtime: openjdk
   # -- Custom annotations to add to the backend deployment 
   annotations: {}
   #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
-  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/test-app-backend
@@ -528,6 +534,7 @@ nginx:
     periodSeconds: 5
     failureThreshold: 30
     successThreshold: 1
+
   livenessProbe:
     tcpSocket:
       port: 8080
@@ -535,6 +542,7 @@ nginx:
     periodSeconds: 10
     failureThreshold: 3
     successThreshold: 1
+
   readinessProbe:
     tcpSocket:
       port: 8080
@@ -550,6 +558,7 @@ nginx:
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 0
+
   terminationGracePeriodSeconds: 30
   # ----------------------------------------------------------------------------
   # 7. PERSISTENCE
