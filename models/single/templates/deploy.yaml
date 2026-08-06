@@ -49,9 +49,13 @@ spec:
           image: "{{ $app.image.repository }}:{{ $app.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $app.image.pullPolicy }}
           ports:
-            - name: http
-              containerPort: {{ $app.service.targetPort }}
-              protocol: TCP
+            {{- range $key, $val := $app.service.ports }}
+            - name: {{ $key }}
+              containerPort: {{ $val.targetPort }}
+              {{- if $val.protocol }}
+              protocol: {{ $val.protocol }}
+              {{- end }}
+            {{- end }}
           
           # 4. Clean Configuration Management: Full Decoupling via envFrom
           envFrom:
