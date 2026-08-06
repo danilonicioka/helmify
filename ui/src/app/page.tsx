@@ -106,7 +106,7 @@ export default function HelmifyUI() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${chartName}.tar.gz`;
+      a.download = 'chart.tar.gz';
       document.body.appendChild(a);
       a.click();
       a.remove();

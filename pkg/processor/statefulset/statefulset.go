@@ -69,7 +69,11 @@ func (d statefulset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unst
 	}
 
 	if ssSpec.Replicas != nil {
-		repl, err := values.Add(*ssSpec.Replicas, nameCamel, "replicas")
+		replCount := *ssSpec.Replicas
+		if replCount == 0 {
+			replCount = 1
+		}
+		repl, err := values.Add(replCount, nameCamel, "replicas")
 		if err != nil {
 			return true, nil, err
 		}

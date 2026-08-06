@@ -24,14 +24,14 @@ api:
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
   # ----------------------------------------------------------------------------
   # -- Number of replica pods.
-  replicas: 0
+  replicas: 1
   # -- Custom labels to add to the backend deployment/pods
   labels:
     k8s-app: fluentd-logging
   # app.openshift.io/runtime: openjdk
   # -- Custom annotations to add to the backend deployment 
   annotations: {}
-  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
   # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
   image:
@@ -82,41 +82,37 @@ api:
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
   # ----------------------------------------------------------------------------
-  resources: {}
-  # limits:
-  #   cpu: 500m
-  #   memory: 512Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 256Mi
-
+  resources:
+    limits:
+      cpu: 500m
+      memory: 200Mi
+    requests:
+      cpu: 100m
+      memory: 200Mi
   # ----------------------------------------------------------------------------
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
-  startupProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
-
-  livenessProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
-  readinessProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
+  startupProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+  livenessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+  readinessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
   # ----------------------------------------------------------------------------
@@ -134,9 +130,8 @@ api:
   #   storageClass: thin
   #   storageRequest: 512Mi
 
-  backoffLimit: 4
   nodeSelector: {}
-  imagePullPolicy: IfNotPresent
+  backoffLimit: 4
   command:
     - perl
     - -Mbignum=bpi
@@ -146,11 +141,12 @@ api:
     - -c
     - date; echo Hello from the Kubernetes cluster
   schedule: '* * * * *'
+  topologySpreadConstraints: []
   tolerations:
     - effect: NoSchedule
       key: node-role.kubernetes.io/master
       operator: Exists
-  topologySpreadConstraints: []
+  imagePullPolicy: IfNotPresent
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -161,7 +157,7 @@ app-emissor:
   replicas: 2
   # -- Custom labels to add to the frontend deployment/pods
   labels: {}
-  # app.openshift.io/runtime: openjdk
+  #   app.openshift.io/runtime: openjdk
 
   # app.openshift.io/runtime: nodejs
   # -- Custom annotations to add to the frontend deployment 
@@ -183,7 +179,7 @@ app-emissor:
   # ----------------------------------------------------------------------------
   route:
     annotations: {}
-    # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+    #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
     # haproxy.router.openshift.io/timeout: 60s
     # haproxy.router.openshift.io/balance: roundrobin
@@ -207,41 +203,37 @@ app-emissor:
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
-  resources: {}
-  # limits:
-  #   cpu: 500m
-  #   memory: 512Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 256Mi
-
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
   # ----------------------------------------------------------------------------
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
-  startupProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
-
-  livenessProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
-  readinessProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
+  startupProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+  livenessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+  readinessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
   # ----------------------------------------------------------------------------
@@ -251,13 +243,13 @@ app-emissor:
       maxSurge: 25%
       maxUnavailable: 0
   terminationGracePeriodSeconds: 30
-  tolerations: []
-  topologySpreadConstraints: []
-  nodeSelector: {}
   volumeClaims:
     www:
       requests:
         storage: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -268,7 +260,7 @@ myapp:
   replicas: 3
   # -- Custom labels to add to the frontend deployment/pods
   labels: {}
-  # app.openshift.io/runtime: openjdk
+  #   app.openshift.io/runtime: openjdk
 
   # app.openshift.io/runtime: nodejs
   # -- Custom annotations to add to the frontend deployment 
@@ -283,11 +275,12 @@ myapp:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
+    my.prop2: val 1
+    my.prop3: "true"
     dummyconfigmapkey: dummyconfigmapvalue
     my_config.properties: |
       health.healthProbeBindAddress=8081
       metrics.bindAddress=127.0.0.1:8080
-    my.prop3: "true"
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallationTemplate
@@ -299,25 +292,24 @@ myapp:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
     my.prop1: "1"
-    my.prop2: val 1
   # No default secrets for web frontend component
   secret:
-    VAR1: my_secret_var_1
-    VAR2: my_secret_var_2
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
+    VAR1: my_secret_var_1
+    VAR2: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
   route:
     annotations: {}
-    # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+    #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
     # haproxy.router.openshift.io/timeout: 60s
     # haproxy.router.openshift.io/balance: roundrobin
@@ -339,51 +331,47 @@ myapp:
     type: ClusterIP
     ports:
       https:
-        targetPort: https
         port: 8443
+        targetPort: https
     loadBalancerSourceRanges:
       - 10.0.0.0/8
-    ipFamilyPolicy: SingleStack
     ipFamilies:
       - IPv4
+    ipFamilyPolicy: SingleStack
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
-  resources: {}
-  # limits:
-  #   cpu: 500m
-  #   memory: 512Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 256Mi
-
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
   # ----------------------------------------------------------------------------
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
-  startupProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
-
-  livenessProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
-  readinessProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
+  startupProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+  livenessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+  readinessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
   # ----------------------------------------------------------------------------
@@ -393,143 +381,66 @@ myapp:
       maxSurge: 25%
       maxUnavailable: 0
   terminationGracePeriodSeconds: 10
-  proxySidecar:
-    image:
-      repository: gcr.io/kubebuilder/kube-rbac-proxy
-      tag: v0.8.0
-    resources: {}
-    #   limits:
-    #     cpu: 500m
-    #     memory: 1Gi
-    #   requests:
-    #     cpu: 100m
-    #     memory: 512Mi
-
-    livenessProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 10
-    #   failureThreshold: 3
-    #   successThreshold: 1
-
-    readinessProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 10
-    #   successThreshold: 1
-    #   failureThreshold: 3
-
-    startupProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 5
-    #   failureThreshold: 30
-    #   successThreshold: 1
-
-    args:
-      - --secure-listen-address=0.0.0.0:8443
-      - --v=10
-  nodeSelector:
-    type: user-node
-    region: east
-  topologySpreadConstraints: []
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
-  podSecurityContext:
-    fsGroup: 20000
-    runAsUser: 65532
-    runAsNonRoot: true
   app:
+    containerSecurityContext: {}
     image:
       repository: controller
       tag: latest
-    resources: {}
-    #   limits:
-    #     cpu: 500m
-    #     memory: 1Gi
-    #   requests:
-    #     cpu: 100m
-    #     memory: 512Mi
-
-    livenessProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 10
-    #   failureThreshold: 3
-    #   successThreshold: 1
-
-    readinessProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 10
-    #   successThreshold: 1
-    #   failureThreshold: 3
-
-    startupProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 5
-    #   failureThreshold: 30
-    #   successThreshold: 1
-
+    resources:
+      limits:
+        cpu: 100m
+        memory: 30Mi
+      requests:
+        cpu: 100m
+        memory: 20Mi
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8081
+      initialDelaySeconds: 15
+      periodSeconds: 20
+    readinessProbe:
+      periodSeconds: 10
+      httpGet:
+        path: /readyz
+        port: 8081
+      initialDelaySeconds: 5
     args:
       - --health-probe-bind-address=:8081
       - --metrics-bind-address=127.0.0.1:8080
       - --leader-elect
     command:
       - /manager
-    containerSecurityContext: {}
+  revisionHistoryLimit: 5
+  topologySpreadConstraints: []
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
+  podSecurityContext:
+    runAsNonRoot: true
+    fsGroup: 20000
+    runAsUser: 65532
+  tolerations: []
+  nodeSelector:
+    type: user-node
+    region: east
+  proxySidecar:
+    args:
+      - --secure-listen-address=0.0.0.0:8443
+      - --v=10
+    image:
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.8.0
   initContainer:
-    resources: {}
-    #   limits:
-    #     cpu: 500m
-    #     memory: 1Gi
-    #   requests:
-    #     cpu: 100m
-    #     memory: 512Mi
-
-    livenessProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 10
-    #   failureThreshold: 3
-    #   successThreshold: 1
-
-    readinessProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 10
-    #   successThreshold: 1
-    #   failureThreshold: 3
-
-    startupProbe: {}
-    #   tcpSocket:
-    #     port: 8080
-    #   initialDelaySeconds: 0
-    #   periodSeconds: 5
-    #   failureThreshold: 30
-    #   successThreshold: 1
-
     image:
       repository: bash
       tag: latest
-  tolerations: []
-  revisionHistoryLimit: 5
   persistence:
+    storageLimit: 5Gi
     enabled: true
     storageClass: manual
     storageRequest: 3Gi
-    storageLimit: 5Gi
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -539,15 +450,15 @@ nginx:
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
   # ----------------------------------------------------------------------------
   # -- Number of replica pods.
-  replicas: 0
+  replicas: 1
   # -- Custom labels to add to the backend deployment/pods
   labels: {}
-  # app.openshift.io/runtime: openjdk
+  #   app.openshift.io/runtime: openjdk
 
   # app.openshift.io/runtime: openjdk
   # -- Custom annotations to add to the backend deployment 
   annotations: {}
-  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
   # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
   image:
@@ -600,41 +511,37 @@ nginx:
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
   # ----------------------------------------------------------------------------
-  resources: {}
-  # limits:
-  #   cpu: 500m
-  #   memory: 512Mi
-  # requests:
-  #   cpu: 100m
-  #   memory: 256Mi
-
+  resources:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
   # ----------------------------------------------------------------------------
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
-  startupProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 5
-  #   failureThreshold: 30
-  #   successThreshold: 1
-
-  livenessProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
-  readinessProbe: {}
-  #   tcpSocket:
-  #     port: 8080
-  #   initialDelaySeconds: 0
-  #   periodSeconds: 10
-  #   failureThreshold: 3
-  #   successThreshold: 1
-
+  startupProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+  livenessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+  readinessProbe:
+    tcpSocket:
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
   # ----------------------------------------------------------------------------
