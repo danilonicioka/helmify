@@ -8,6 +8,11 @@ app-emissor:
   cm: {}
 myapp:
   cm:
+    dummyconfigmapkey: dummyconfigmapvalue
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
+    my.prop3: "true"
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallationTemplate
@@ -20,10 +25,5 @@ myapp:
               distribution: "OnePerHost"
     my.prop1: "1"
     my.prop2: val 1
-    dummyconfigmapkey: dummyconfigmapvalue
-    my_config.properties: |
-      health.healthProbeBindAddress=8081
-      metrics.bindAddress=127.0.0.1:8080
-    my.prop3: "true"
 nginx:
   cm: {}
