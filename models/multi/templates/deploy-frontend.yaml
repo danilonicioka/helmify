@@ -80,15 +80,15 @@ spec:
           {{- end }}
 
           # Tiered "Fail-Fast" Health Probes
-          {{- if and $comp.startupProbe $comp.startupProbe.tcpSocket }}
+          {{- if and $comp.startupProbe (not (empty $comp.startupProbe)) }}
           startupProbe:
             {{- toYaml $comp.startupProbe | nindent 12 }}
           {{- end }}
-          {{- if and $comp.livenessProbe $comp.livenessProbe.tcpSocket }}
+          {{- if and $comp.livenessProbe (not (empty $comp.livenessProbe)) }}
           livenessProbe:
             {{- toYaml $comp.livenessProbe | nindent 12 }}
           {{- end }}
-          {{- if and $comp.readinessProbe $comp.readinessProbe.tcpSocket }}
+          {{- if and $comp.readinessProbe (not (empty $comp.readinessProbe)) }}
           readinessProbe:
             {{- toYaml $comp.readinessProbe | nindent 12 }}
           {{- end }}
