@@ -78,7 +78,7 @@ func (d daemonset) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 	}
 	comp := processor.GetComponent(obj)
 	labelHelper := appMeta.ChartName() + ".selectorLabels"
-	if comp != "" && (comp != appMeta.ChartName() || processor.IsMultiDeployment(appMeta)) {
+	if comp != "" && processor.IsMultiDeployment(appMeta) {
 		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), comp)
 	}
 
