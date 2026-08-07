@@ -949,10 +949,6 @@
             <div id="component-config-panel" style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
                 <div class="form-group row">
                     <div>
-                        <label for="compReplicas">Replicas</label>
-                        <input type="number" id="compReplicas" value="2" min="0">
-                    </div>
-                    <div>
                         <label for="compPort">Service Port</label>
                         <input type="number" id="compPort" value="8080">
                     </div>
@@ -1461,8 +1457,7 @@
             if (!activeComponent || !components[activeComponent]) return;
 
             const config = components[activeComponent];
-            const repVal = parseInt(document.getElementById('compReplicas').value, 10);
-            config.replicas = isNaN(repVal) ? 1 : repVal;
+            config.replicas = 1;
             let svcPort = parseInt(document.getElementById('compPort').value, 10) || 8080;
             if (!config.service.ports) config.service.ports = { http: { protocol: 'TCP' } };
             if (!config.service.ports.http) config.service.ports.http = { protocol: 'TCP' };
@@ -1511,7 +1506,6 @@
 
             const config = components[activeComponent];
 
-            document.getElementById('compReplicas').value = config.replicas;
             let displayPort = 8080;
             if (config.service.ports && config.service.ports.http && config.service.ports.http.port) {
                 displayPort = config.service.ports.http.port;
