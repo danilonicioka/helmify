@@ -81,7 +81,7 @@ func (r pdb) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructured
 	}
 
 	labelHelper := appMeta.ChartName() + ".selectorLabels"
-	if nameCamel != "" && (nameCamel != appMeta.ChartName() || processor.IsMultiDeployment(appMeta)) {
+	if nameCamel != "" && processor.IsMultiDeployment(appMeta) {
 		labelHelper = fmt.Sprintf("%s.%s.selectorLabels", appMeta.ChartName(), nameCamel)
 	}
 

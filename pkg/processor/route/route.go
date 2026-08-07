@@ -161,7 +161,7 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 
 	labelHelper := appMeta.ChartName() + ".labels"
 	normalizedComp := processor.NormalizeComponentName(targetComponent)
-	if normalizedComp != "" && (normalizedComp != appMeta.ChartName() || processor.IsMultiDeployment(appMeta)) {
+	if normalizedComp != "" && processor.IsMultiDeployment(appMeta) {
 		labelHelper = fmt.Sprintf("%s.%s.labels", appMeta.ChartName(), normalizedComp)
 	}
 
