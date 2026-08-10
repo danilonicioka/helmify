@@ -95,6 +95,12 @@ spec:
           resources:
             {{- toYaml $app.resources | nindent 12 }}
           {{- end }}
+
+          {{- if and $app.persistence $app.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ $app.persistence.mountPath | default "/var/lib/data" }}
+          {{- end }}
       
       # 5. Graceful connection draining lifecycle settings
       {{- if $app.terminationGracePeriodSeconds }}
@@ -116,4 +122,11 @@ spec:
       {{- if $app.topologySpreadConstraints }}
       topologySpreadConstraints:
         {{- toYaml $app.topologySpreadConstraints | nindent 8 }}
+      {{- end }}
+
+      {{- if and $app.persistence $app.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "chart-model-single.fullname" . }}
       {{- end }}

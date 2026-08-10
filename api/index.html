@@ -981,6 +981,22 @@
                     </div>
                 </div>
 
+                <!-- Persistence Configuration -->
+                <div class="section-subtitle">Persistence (PVC)</div>
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <span>Enable Persistent Volume Claim</span>
+                        <label class="route-switch">
+                            <input type="checkbox" id="persistenceEnabled" onchange="saveAndPreview()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                        <label for="persistenceMountPath">Mount Path</label>
+                        <input type="text" id="persistenceMountPath" placeholder="/var/lib/data" oninput="saveAndPreview()">
+                    </div>
+                </div>
+
                 <!-- Routes Configurations -->
                 <div class="section-subtitle">Routes</div>
                 
@@ -1224,6 +1240,10 @@
                 secret: compData.secret || {},
                 connectsTo: compData.connectsTo || [],
                 runtime: compData.runtime || '',
+                persistence: {
+                    enabled: !!(compData.persistence && compData.persistence.enabled),
+                    mountPath: (compData.persistence && compData.persistence.mountPath) || '/var/lib/data'
+                },
                 route: {
                     path: (compData.route && compData.route.path) || '',
                     default: {
@@ -1267,6 +1287,10 @@
                 secret: isFrontend ? {} : { 'DB_PASSWORD': 'vault-decrypted-secret-key-goes-here' },
                 connectsTo: isFrontend ? ['backend'] : [],
                 runtime: isFrontend ? 'nodejs' : 'spring-boot',
+                persistence: {
+                    enabled: false,
+                    mountPath: '/var/lib/data'
+                },
                 route: {
                     path: '',
                     default: { enabled: true, host: `chart-model-${name}.apps.ocp-hub.i.tj.pa.gov.br` },
@@ -1472,6 +1496,10 @@
             config.connectsTo = connectsToStr ? connectsToStr.split(',').map(s => s.trim()).filter(Boolean) : [];
             config.runtime = document.getElementById('compRuntime').value.trim();
 
+            if (!config.persistence) config.persistence = { enabled: false, mountPath: '/var/lib/data' };
+            config.persistence.enabled = document.getElementById('persistenceEnabled').checked;
+            config.persistence.mountPath = document.getElementById('persistenceMountPath').value.trim() || '/var/lib/data';
+
             config.route.default.enabled = document.getElementById('routeDefaultEnabled').checked;
             config.route.default.host = '';
 
@@ -1518,6 +1546,14 @@
             document.getElementById('compRoutePath').value = config.route.path || '';
             document.getElementById('compConnectsTo').value = (config.connectsTo || []).join(', ');
             document.getElementById('compRuntime').value = config.runtime || '';
+
+            if (config.persistence) {
+                document.getElementById('persistenceEnabled').checked = config.persistence.enabled;
+                document.getElementById('persistenceMountPath').value = config.persistence.mountPath || '/var/lib/data';
+            } else {
+                document.getElementById('persistenceEnabled').checked = false;
+                document.getElementById('persistenceMountPath').value = '/var/lib/data';
+            }
 
             document.getElementById('routeDefaultEnabled').checked = config.route.default.enabled;
 

@@ -1,0 +1,22 @@
+{{- $app := index .Values .Chart.Name | default dict -}}
+{{- if and $app.persistence $app.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if $app.persistence.storageClass }}
+  {{- if (eq "-" $app.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ $app.persistence.storageClass }}"
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $app.persistence.storageRequest | default "1Gi" }}
+{{- end }}
