@@ -128,6 +128,7 @@ type DeploymentParams struct {
 	Service          ServiceParams     `json:"service"`
 	Cm               map[string]string `json:"cm"`
 	Secret           map[string]string `json:"secret"`
+	Persistence      PersistenceParams `json:"persistence"`
 	Route            RouteParams       `json:"route"`
 	ConnectsTo       []string          `json:"connectsTo"`
 	Runtime          string            `json:"runtime"`
@@ -159,6 +160,12 @@ type RouteParams struct {
 type SubRouteParams struct {
 	Enabled bool   `json:"enabled"`
 	Host    string `json:"host"`
+}
+
+// PersistenceParams configures PVC persistence.
+type PersistenceParams struct {
+	Enabled   bool   `json:"enabled"`
+	MountPath string `json:"mountPath"`
 }
 
 // GenerateWizardChart reads single or multi chart templates from the embedded ModelsFS,
@@ -297,6 +304,16 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.OverviewAppRoute != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "annotations", "console.alpha.openshift.io/overview-app-route"}, depConfig.OverviewAppRoute)
 		}
+
+		if depConfig.Persistence.Enabled {
+			_ = setYamlPath(&rootNode, []string{appKey, "persistence", "enabled"}, true)
+			if depConfig.Persistence.MountPath != "" {
+				_ = setYamlPath(&rootNode, []string{appKey, "persistence", "mountPath"}, depConfig.Persistence.MountPath)
+			}
+		} else {
+			_ = setYamlPath(&rootNode, []string{appKey, "persistence", "enabled"}, false)
+		}
+
 		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)
 		_ = setYamlPath(&rootNode, []string{appKey, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
 		if depConfig.Route.Default.Host != "" {
@@ -476,6 +493,15 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			// Add primary route annotation if supplied
 			if depConfig.OverviewAppRoute != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "annotations", "console.alpha.openshift.io/overview-app-route"}, depConfig.OverviewAppRoute)
+			}
+
+			if depConfig.Persistence.Enabled {
+				_ = setYamlPath(&rootNode, []string{compName, "persistence", "enabled"}, true)
+				if depConfig.Persistence.MountPath != "" {
+					_ = setYamlPath(&rootNode, []string{compName, "persistence", "mountPath"}, depConfig.Persistence.MountPath)
+				}
+			} else {
+				_ = setYamlPath(&rootNode, []string{compName, "persistence", "enabled"}, false)
 			}
 
 			_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)

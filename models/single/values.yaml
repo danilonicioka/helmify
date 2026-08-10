@@ -145,10 +145,11 @@ chart-model-single:
   # ----------------------------------------------------------------------------
   # 7. PERSISTENCE
   # ----------------------------------------------------------------------------
-  # persistence:
-  #   enabled: false
-  #   storageClass: thin
-  #   storageRequest: 512Mi
+  persistence:
+    enabled: false
+    mountPath: "/var/lib/data"
+    storageClass: ""
+    storageRequest: 1Gi
 
 # ==============================================================================
 # III. GLOBAL SCHEDULING & COMMON CONFIGS

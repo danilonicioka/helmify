@@ -139,10 +139,11 @@ backend:
   # ----------------------------------------------------------------------------
   # 7. PERSISTENCE
   # ----------------------------------------------------------------------------
-  # persistence:
-  #   enabled: false
-  #   storageClass: thin
-  #   storageRequest: 512Mi
+  persistence:
+    enabled: false
+    mountPath: "/var/lib/data"
+    storageClass: ""
+    storageRequest: 1Gi
 
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
@@ -245,6 +246,15 @@ frontend:
       maxUnavailable: 0
   
   terminationGracePeriodSeconds: 30
+
+  # ----------------------------------------------------------------------------
+  # 7. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  persistence:
+    enabled: false
+    mountPath: "/var/lib/data"
+    storageClass: ""
+    storageRequest: 1Gi
 
 # ==============================================================================
 # IV. GLOBAL SCHEDULING & COMMON CONFIGS

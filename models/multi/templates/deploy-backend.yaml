@@ -112,15 +112,16 @@ spec:
           resources:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
-      
-      # Graceful connection draining lifecycle settings
-      {{- if $comp.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
-      {{- end }}
 
-      {{- with .Values.nodeSelector }}
-        {- if and $comp.files (not (empty $comp.files)) }
-        volumeMounts:
+          {{- if and $comp.persistence $comp.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
+          {{- end }}
+          {- if and $comp.files (not (empty $comp.files)) }
+          {{- if not (and $comp.persistence $comp.persistence.enabled) }}
+          volumeMounts:
+          {{- end }}
           {- range $comp.files }}
           - name: {{ $key }}
             mountPath: {{ $val.mountPath }}
@@ -128,7 +129,14 @@ spec:
             subPath: {{ $val.subPath }}
             {- end }
           {- end }
-        {- end }
+          {- end }
+      
+      # Graceful connection draining lifecycle settings
+      {{- if $comp.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
+      {{- end }}
+
+      {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -145,8 +153,13 @@ spec:
         {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {- if and $comp.files (not (empty $comp.files)) }
+      {- if or (and $comp.files (not (empty $comp.files))) (and $comp.persistence $comp.persistence.enabled) }
       volumes:
+        {{- if and $comp.persistence $comp.persistence.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "chart-model-multi.fullname" $ }}-backend
+        {{- end }}
         {- range $comp.files }}
         - name: {{ $key }}
           configMap:

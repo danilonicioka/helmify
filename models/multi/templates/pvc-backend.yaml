@@ -1,0 +1,22 @@
+{{- $comp := index .Values "backend" | default dict -}}
+{{- if and $comp.persistence $comp.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "chart-model-multi.fullname" . }}-backend
+  labels:
+    {{- include "chart-model-multi.backend.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  {{- if $comp.persistence.storageClass }}
+  {{- if (eq "-" $comp.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ $comp.persistence.storageClass }}"
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $comp.persistence.storageRequest | default "1Gi" }}
+{{- end }}
