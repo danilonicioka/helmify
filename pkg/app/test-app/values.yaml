@@ -126,12 +126,11 @@ api:
   # ----------------------------------------------------------------------------
   # 7. PERSISTENCE
   # ----------------------------------------------------------------------------
-  # persistence:
-  #   enabled: false
-  #   storageClass: thin
-  #   storageRequest: 512Mi
-
-  imagePullPolicy: IfNotPresent
+  persistence:
+    enabled: false
+    mountPath: "/var/lib/data"
+    storageClass: ""
+    storageRequest: 1Gi
   nodeSelector: {}
   command:
     - perl
@@ -141,13 +140,14 @@ api:
     - /bin/sh
     - -c
     - date; echo Hello from the Kubernetes cluster
-  schedule: '* * * * *'
+  imagePullPolicy: IfNotPresent
   tolerations:
     - effect: NoSchedule
       key: node-role.kubernetes.io/master
       operator: Exists
   topologySpreadConstraints: []
   backoffLimit: 4
+  schedule: '* * * * *'
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -246,13 +246,21 @@ app-emissor:
       maxUnavailable: 0
 
   terminationGracePeriodSeconds: 30
+  # ----------------------------------------------------------------------------
+  # 7. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  persistence:
+    enabled: false
+    mountPath: "/var/lib/data"
+    storageClass: ""
+    storageRequest: 1Gi
   volumeClaims:
     www:
       requests:
         storage: 1Gi
+  nodeSelector: {}
   tolerations: []
   topologySpreadConstraints: []
-  nodeSelector: {}
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -277,10 +285,6 @@ myapp:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
-    dummyconfigmapkey: dummyconfigmapvalue
-    my_config.properties: |
-      health.healthProbeBindAddress=8081
-      metrics.bindAddress=127.0.0.1:8080
     my.prop1: "1"
     my.prop2: val 1
     my.prop3: "true"
@@ -294,18 +298,22 @@ myapp:
           podTemplates:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
+    dummyconfigmapkey: dummyconfigmapvalue
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
   # No default secrets for web frontend component
   secret:
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
+    VAR1: my_secret_var_1
+    VAR2: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
-    VAR1: my_secret_var_1
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
-    VAR2: my_secret_var_2
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -386,19 +394,41 @@ myapp:
       maxUnavailable: 0
 
   terminationGracePeriodSeconds: 10
+  # ----------------------------------------------------------------------------
+  # 7. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  persistence:
+    enabled: true
+    mountPath: "/var/lib/data"
+    storageClass: manual
+    storageRequest: 3Gi
+    storageLimit: 5Gi
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
   tolerations: []
+  proxySidecar:
+    image:
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.8.0
+    args:
+      - --secure-listen-address=0.0.0.0:8443
+      - --v=10
+  initContainer:
+    image:
+      repository: bash
+      tag: latest
   podSecurityContext:
+    runAsUser: 65532
     runAsNonRoot: true
     fsGroup: 20000
-    runAsUser: 65532
+  revisionHistoryLimit: 5
+  nodeSelector:
+    region: east
+    type: user-node
+  topologySpreadConstraints: []
   app:
-
-    readinessProbe:
-      initialDelaySeconds: 5
-      periodSeconds: 10
-      httpGet:
-        port: 8081
-        path: /readyz
     args:
       - --health-probe-bind-address=:8081
       - --metrics-bind-address=127.0.0.1:8080
@@ -410,45 +440,26 @@ myapp:
       repository: controller
       tag: latest
     resources:
-      requests:
-        memory: 20Mi
-        cpu: 100m
       limits:
-        memory: 30Mi
         cpu: 100m
+        memory: 30Mi
+      requests:
+        cpu: 100m
+        memory: 20Mi
 
     livenessProbe:
+      initialDelaySeconds: 15
+      periodSeconds: 20
       httpGet:
         path: /healthz
         port: 8081
-      initialDelaySeconds: 15
-      periodSeconds: 20
-  topologySpreadConstraints: []
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
-  proxySidecar:
-    image:
-      tag: v0.8.0
-      repository: gcr.io/kubebuilder/kube-rbac-proxy
-    args:
-      - --secure-listen-address=0.0.0.0:8443
-      - --v=10
-  nodeSelector:
-    region: east
-    type: user-node
 
-  persistence:
-    storageLimit: 5Gi
-    enabled: true
-    storageClass: manual
-    storageRequest: 3Gi
-  initContainer:
-    image:
-      repository: bash
-      tag: latest
-  revisionHistoryLimit: 5
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      httpGet:
+        path: /readyz
+        port: 8081
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -563,11 +574,11 @@ nginx:
   # ----------------------------------------------------------------------------
   # 7. PERSISTENCE
   # ----------------------------------------------------------------------------
-  # persistence:
-  #   enabled: false
-  #   storageClass: thin
-  #   storageRequest: 512Mi
-
+  persistence:
+    enabled: false
+    mountPath: "/var/lib/data"
+    storageClass: ""
+    storageRequest: 1Gi
   minAvailable: 2
 # ==============================================================================
 # IV. GLOBAL SCHEDULING & COMMON CONFIGS

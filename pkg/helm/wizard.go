@@ -276,7 +276,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, []string{appKey, "image", "tag"}, depConfig.Image.Tag)
 		}
 		if depConfig.Service.Port > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "service", "port"}, depConfig.Service.Port)
+			_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "port"}, depConfig.Service.Port)
+			_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "targetPort"}, depConfig.Service.Port)
+			_ = setYamlPath(&rootNode, []string{appKey, "startupProbe", "tcpSocket", "port"}, depConfig.Service.Port)
+			_ = setYamlPath(&rootNode, []string{appKey, "livenessProbe", "tcpSocket", "port"}, depConfig.Service.Port)
+			_ = setYamlPath(&rootNode, []string{appKey, "readinessProbe", "tcpSocket", "port"}, depConfig.Service.Port)
 		}
 		if depConfig.Cm != nil {
 			_ = setYamlPath(&rootNode, []string{appKey, "cm"}, depConfig.Cm)
@@ -459,7 +463,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, []string{compName, "image", "tag"}, depConfig.Image.Tag)
 			}
 			if depConfig.Service.Port > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "service", "port"}, depConfig.Service.Port)
+				_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "port"}, depConfig.Service.Port)
+				_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "targetPort"}, depConfig.Service.Port)
+				_ = setYamlPath(&rootNode, []string{compName, "startupProbe", "tcpSocket", "port"}, depConfig.Service.Port)
+				_ = setYamlPath(&rootNode, []string{compName, "livenessProbe", "tcpSocket", "port"}, depConfig.Service.Port)
+				_ = setYamlPath(&rootNode, []string{compName, "readinessProbe", "tcpSocket", "port"}, depConfig.Service.Port)
 			}
 			if depConfig.Cm != nil {
 				_ = setYamlPath(&rootNode, []string{compName, "cm"}, depConfig.Cm)
