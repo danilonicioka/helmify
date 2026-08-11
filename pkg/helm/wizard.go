@@ -301,7 +301,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, []string{appKey, "route", "path"}, depConfig.Route.Path)
 		}
 		if len(depConfig.ConnectsTo) > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "connectsTo"}, depConfig.ConnectsTo)
+			var connects []string
+			for _, c := range depConfig.ConnectsTo {
+				connects = append(connects, fmt.Sprintf(`{"apiVersion":"apps/v1","kind":"Deployment","name":"%s"}`, c))
+			}
+			_ = setYamlPath(&rootNode, []string{appKey, "annotations", "app.openshift.io/connects-to"}, "["+strings.Join(connects, ",")+"]")
 		}
 		// Set runtime properties directly under the standard labels map
 		if depConfig.Runtime != "" {
@@ -494,7 +498,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
 			}
 			if len(depConfig.ConnectsTo) > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "connectsTo"}, depConfig.ConnectsTo)
+				var connects []string
+				for _, c := range depConfig.ConnectsTo {
+					connects = append(connects, fmt.Sprintf(`{"apiVersion":"apps/v1","kind":"Deployment","name":"%s"}`, c))
+				}
+				_ = setYamlPath(&rootNode, []string{compName, "annotations", "app.openshift.io/connects-to"}, "["+strings.Join(connects, ",")+"]")
 			}
 			defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, compName, depConfig.Route.Path, true)
 			_ = setYamlPath(&rootNode, []string{compName, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
