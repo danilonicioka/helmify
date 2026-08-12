@@ -66,7 +66,7 @@ get_chart_info:
 
 deploy_new_env:
   stage: deploy
-  needs: ["get_chart_version"]
+  needs: ["get_chart_info"]
   trigger:
     project: "devops/cicd"
     branch: main
