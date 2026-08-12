@@ -26,6 +26,6 @@ spec:
     name: {{ include "chart-model-single.fullname" . }}
     weight: 100
   port:
-    targetPort: http
+    targetPort: {{ if and $app.service $app.service.ports }}{{ if hasKey $app.service.ports "http" }}http{{ else }}{{ keys $app.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
   wildcardPolicy: None
 {{- end }}

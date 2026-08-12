@@ -119,7 +119,7 @@ Helmify can also be run as a web service, allowing you to generate charts via HT
 | Method | Route | Description |
 |--------|-------|-------------|
 | `GET` | `/healthz` | Health check endpoint. Returns `200 OK`. |
-| `POST` | `/v1/generate` | Generates a Helm chart from the Kubernetes manifests sent in the request body. |
+| `POST` | `/v1/generate` | Extracts data from raw Kubernetes manifests and auto-detects/generates a standard compliant `models/single` or `models/multi` Helm chart. |
 
 ### API Usage Examples
 
