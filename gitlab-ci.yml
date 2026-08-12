@@ -46,7 +46,7 @@ variables:
     description: "Location and format of the values file in the repository (change env to match the desired environment)"
     value: "variaveis/values-env.yaml"
 
-get_chart_version:
+get_chart_info:
   stage: prepare
   script:
     - export CHART_VERSION="$(grep -E '^[[:space:]]*version:[[:space:]]*' chart/Chart.yaml | head -n1 | sed -E 's/^[[:space:]]*version:[[:space:]]*//')"
