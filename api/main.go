@@ -15,10 +15,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/arttor/helmify/pkg/app"
 	"github.com/arttor/helmify/pkg/config"
 	"github.com/arttor/helmify/pkg/helm"
-	"github.com/arttor/helmify/pkg/translator/k8smanifest"
 	"github.com/sirupsen/logrus"
 )
 
@@ -146,15 +144,18 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	logrus.WithFields(logrus.Fields{
 		"chart_name": conf.ChartName,
 		"op":         "generate",
-	}).Info("Generating chart")
+	}).Info("Generating standard chart via extractor")
 
-	memOut := helm.NewMemoryOutput()
-	memOut.DevRepoURL = conf.DevRepoURL
-	engine := app.NewEngine(conf, memOut)
-	trans := k8smanifest.New(conf, r.Body)
+	params, err := helm.ExtractWizardParams(r.Body, conf)
+	if err != nil {
+		logrus.WithError(err).Error("Extraction failed")
+		sendError(w, fmt.Sprintf("Failed to extract data: %v", err), http.StatusInternalServerError)
+		return
+	}
 
-	if err := engine.Run(r.Context(), trans); err != nil {
-		logrus.WithError(err).Error("Engine execution failed")
+	files, err := helm.GenerateWizardChart(params)
+	if err != nil {
+		logrus.WithError(err).Error("Failed to generate standard chart")
 		sendError(w, fmt.Sprintf("Failed to generate chart: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -162,7 +163,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/x-tar")
 	w.Header().Set("Content-Disposition", `attachment; filename="chart.tar.gz"`)
 
-	if err := memOut.ToTarGz(conf.ChartName, w); err != nil {
+	if err := helm.WriteTarGz(files, conf.ChartName, w); err != nil {
 		logrus.WithError(err).Error("TarGz streaming failed")
 	}
 }
@@ -177,21 +178,24 @@ func handlePreview(w http.ResponseWriter, r *http.Request) {
 	logrus.WithFields(logrus.Fields{
 		"chart_name": conf.ChartName,
 		"op":         "preview",
-	}).Info("Generating preview")
+	}).Info("Generating preview via extractor")
 
-	memOut := helm.NewMemoryOutput()
-	memOut.DevRepoURL = conf.DevRepoURL
-	engine := app.NewEngine(conf, memOut)
-	trans := k8smanifest.New(conf, r.Body)
+	params, err := helm.ExtractWizardParams(r.Body, conf)
+	if err != nil {
+		logrus.WithError(err).Error("Extraction failed")
+		sendError(w, fmt.Sprintf("Failed to extract data: %v", err), http.StatusInternalServerError)
+		return
+	}
 
-	if err := engine.Run(r.Context(), trans); err != nil {
+	files, err := helm.GenerateWizardChart(params)
+	if err != nil {
 		logrus.WithError(err).Error("Preview execution failed")
 		sendError(w, fmt.Sprintf("Failed to generate preview: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	preview := make(map[string]string)
-	for name, content := range memOut.Files {
+	for name, content := range files {
 		preview[name] = string(content)
 	}
 
