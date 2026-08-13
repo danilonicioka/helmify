@@ -327,6 +327,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.Persistence.MountPath != "" {
 				_ = setYamlPath(&rootNode, []string{appKey, "persistence", "mountPath"}, depConfig.Persistence.MountPath)
 			}
+			_ = setYamlPath(&rootNode, []string{appKey, "strategy", "type"}, "Recreate")
 		} else {
 			_ = setYamlPath(&rootNode, []string{appKey, "persistence", "enabled"}, false)
 		}
@@ -531,6 +532,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				if depConfig.Persistence.MountPath != "" {
 					_ = setYamlPath(&rootNode, []string{compName, "persistence", "mountPath"}, depConfig.Persistence.MountPath)
 				}
+				_ = setYamlPath(&rootNode, []string{compName, "strategy", "type"}, "Recreate")
 			} else {
 				_ = setYamlPath(&rootNode, []string{compName, "persistence", "enabled"}, false)
 			}
