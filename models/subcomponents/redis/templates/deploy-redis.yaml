@@ -1,0 +1,129 @@
+{{- if .Values.redis.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis
+  labels:
+    {{- include "<CHART_NAME>.redis.labels" . | nindent 4 }}
+  {{- $annotations := include "<CHART_NAME>.redis.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not (kindIs "nil" .Values.redis.replicas) }}
+  replicas: {{ .Values.redis.replicas }}
+  {{- end }}
+  {{- if .Values.redis.strategy }}
+  strategy:
+    {{- toYaml .Values.redis.strategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "<CHART_NAME>.redis.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if and .Values.redis .Values.redis.cm (not (empty .Values.redis.cm)) }}
+        checksum/config: '{{ include (print $.Template.BasePath "/cm-redis.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and .Values.redis .Values.redis.secret (not (empty .Values.redis.secret)) }}
+        checksum/secret: '{{ include (print $.Template.BasePath "/secret-redis.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
+        {{- end }}
+      labels:
+        {{- include "<CHART_NAME>.redis.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: redis
+              containerPort: 6379
+          
+          {{- if or (and .Values.redis.cm (not (empty .Values.redis.cm))) (and .Values.redis.secret (not (empty .Values.redis.secret))) (and .Values.global (not (empty .Values.global))) }}
+          envFrom:
+            {{- if and .Values.redis.cm (not (empty .Values.redis.cm)) }}
+            - configMapRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-redis-cm
+            {{- end }}
+            {{- if and .Values.redis.secret (not (empty .Values.redis.secret)) }}
+            - secretRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-redis-secret
+            {{- end }}
+            {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+            - configMapRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-global-cm
+            {{- end }}
+            {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+            - secretRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-global-secret
+            {{- end }}
+          {{- end }}
+
+          {{- if and .Values.redis.startupProbe (not (empty .Values.redis.startupProbe)) }}
+          startupProbe:
+            {{- toYaml .Values.redis.startupProbe | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.redis.livenessProbe (not (empty .Values.redis.livenessProbe)) }}
+          livenessProbe:
+            {{- toYaml .Values.redis.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.redis.readinessProbe (not (empty .Values.redis.readinessProbe)) }}
+          readinessProbe:
+            {{- toYaml .Values.redis.readinessProbe | nindent 12 }}
+          {{- end }}
+
+          {{- if and .Values.redis.resources .Values.redis.resources.limits }}
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          {{- end }}
+
+          {{- if and .Values.redis.persistence .Values.redis.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.redis.persistence.mountPath | default "/data" }}
+          {{- end }}
+      
+      {{- if .Values.redis.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.redis.terminationGracePeriodSeconds }}
+      {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.redis.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml .Values.redis.topologySpreadConstraints | nindent 8 }}
+      {{- end }}
+
+      {{- if and .Values.redis.persistence .Values.redis.persistence.enabled }}
+      volumes:
+        - name: data
+          {{- if .Values.redis.persistence.ephemeral }}
+          emptyDir: {}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ include "<CHART_NAME>.fullname" $ }}-redis
+          {{- end }}
+      {{- end }}
+{{- end -}}

@@ -1,0 +1,88 @@
+postgres:
+  # ----------------------------------------------------------------------------
+  # 1. CORE WORKLOAD SETTINGS
+  # ----------------------------------------------------------------------------
+  enabled: false
+  replicas: 1
+  labels:
+    app.openshift.io/runtime: postgresql
+  annotations: {}
+
+  image:
+    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+
+  # ----------------------------------------------------------------------------
+  # 2. APPLICATION CONFIGURATION (Variables & Credentials)
+  # ----------------------------------------------------------------------------
+  cm:
+    POSTGRES_DB: app_db
+  secret:
+    POSTGRES_USER: app_user
+    POSTGRES_PASSWORD: app_password
+
+  # ----------------------------------------------------------------------------
+  # 3. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  service:
+    type: ClusterIP
+    ports:
+      postgres:
+        port: 5432
+        targetPort: 5432
+
+  # ----------------------------------------------------------------------------
+  # 4. RESOURCES (Operational Overlay-Only)
+  # ----------------------------------------------------------------------------
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  # ----------------------------------------------------------------------------
+  # 5. TIERED "FAIL-FAST" HEALTH PROBES
+  # ----------------------------------------------------------------------------
+  startupProbe:
+    tcpSocket:
+      port: 5432
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+  livenessProbe:
+    tcpSocket:
+      port: 5432
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+  readinessProbe:
+    tcpSocket:
+      port: 5432
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+
+  # ----------------------------------------------------------------------------
+  # 6. LIFECYCLE & HA STRATEGY
+  # ----------------------------------------------------------------------------
+  strategy:
+    type: Recreate
+  terminationGracePeriodSeconds: 30
+
+  # ----------------------------------------------------------------------------
+  # 7. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  persistence:
+    enabled: false
+    ephemeral: true
+    mountPath: "/var/lib/postgresql/data"
+    storageClass: ""
+    storageRequest: 1Gi
+    accessModes:
+      - ReadWriteOnce

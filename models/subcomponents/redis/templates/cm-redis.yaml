@@ -1,0 +1,12 @@
+{{- if and .Values.redis .Values.redis.cm (not (empty .Values.redis.cm)) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis-cm
+  labels:
+    {{- include "<CHART_NAME>.redis.labels" . | nindent 4 }}
+data:
+  {{- range $key, $val := .Values.redis.cm }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}

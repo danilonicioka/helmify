@@ -129,6 +129,9 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 
 	cleanedPodAnnotations := map[string]string{}
 	for k, v := range depl.Spec.Template.ObjectMeta.Annotations {
+		if strings.HasPrefix(k, "checksum/") || strings.HasPrefix(k, "helm.sh/") || strings.HasPrefix(k, "meta.helm.sh/") {
+			continue
+		}
 		cleanedPodAnnotations[k] = v
 	}
 	if len(cleanedPodAnnotations) > 0 {

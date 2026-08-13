@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/arttor/helmify/pkg/helm"
 	"github.com/sirupsen/logrus"
@@ -95,5 +96,27 @@ func handlePreviewWizard(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(preview); err != nil {
 		logrus.WithError(err).Error("Failed to encode preview to JSON")
+	}
+}
+
+func handleSubcomponents(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	
+	subcomponents := []string{}
+	entries, err := os.ReadDir("models/subcomponents")
+	if err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				subcomponents = append(subcomponents, e.Name())
+			}
+		}
+	}
+	
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(subcomponents); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

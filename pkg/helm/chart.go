@@ -537,10 +537,10 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 		}
 
 		if _, exists := values["backend"]; !exists {
-			deleteYamlPath(&rootNode, "backend")
+			deleteYamlPath(&rootNode, []string{"backend"})
 		}
 		if _, exists := values["frontend"]; !exists {
-			deleteYamlPath(&rootNode, "frontend")
+			deleteYamlPath(&rootNode, []string{"frontend"})
 		}
 	} else if compKey != "" {
 		renameRootKey(&rootNode, oldChartName, compKey)

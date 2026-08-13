@@ -118,7 +118,8 @@ type WizardParams struct {
 	Type         string                      `json:"type"` // "single" or "multi"
 	DevRepoURL   string                      `json:"devRepoUrl"`
 	GlobalConfig map[string]string           `json:"globalConfig"`
-	Deployments  map[string]DeploymentParams `json:"deployments"`
+	Deployments     map[string]DeploymentParams `json:"deployments"`
+	Subcomponents   []string                    `json:"subcomponents"`
 }
 
 // DeploymentParams represents configuration for a component deployment.
@@ -227,11 +228,28 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 	// Copy non-component files (Chart.yaml, helpers, global config, .helmignore)
 	for relPath, data := range embeddedFiles {
+
 		if !strings.Contains(relPath, "templates/") || relPath == "templates/_helpers.tpl" || relPath == "templates/cm-global.yaml" {
-			// Replace oldChartName with new ChartName in non-component files
 			content := replaceChartName(string(data), oldChartName, params.ChartName)
 			outputFiles[relPath] = []byte(content)
 		}
+	}
+
+	// Inject subcomponent templates
+	for _, sub := range params.Subcomponents {
+		subPath := fmt.Sprintf("models/subcomponents/%s/templates", sub)
+		_ = fs.WalkDir(helmify.ModelsFS, subPath, func(path string, d fs.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return nil
+			}
+			data, err := helmify.ModelsFS.ReadFile(path)
+			if err == nil {
+				outRelPath := filepath.Join("templates", filepath.Base(path))
+				content := strings.ReplaceAll(string(data), "<CHART_NAME>", params.ChartName)
+				outputFiles[outRelPath] = []byte(content)
+			}
+			return nil
+		})
 	}
 
 	// 3. Process component templates
@@ -251,6 +269,13 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		// Copy templates as-is but replacing name/references
 		for relPath, data := range embeddedFiles {
 			if strings.Contains(relPath, "templates/") && relPath != "templates/_helpers.tpl" && relPath != "templates/cm-global.yaml" {
+				base := filepath.Base(relPath)
+				if strings.HasSuffix(base, "-redis.yaml") || strings.HasSuffix(base, "-postgres.yaml") {
+					continue
+				}
+				if base == "pvc.yaml" && !depConfig.Persistence.Enabled {
+					continue
+				}
 				content := replaceChartName(string(data), oldChartName, params.ChartName)
 				outputFiles[relPath] = []byte(content)
 			}
@@ -300,6 +325,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Route.Path != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "route", "path"}, depConfig.Route.Path)
 		}
+		for _, sub := range params.Subcomponents {
+			depConfig.ConnectsTo = append(depConfig.ConnectsTo, params.ChartName+"-"+sub)
+		}
 		if len(depConfig.ConnectsTo) > 0 {
 			var connects []string
 			for _, c := range depConfig.ConnectsTo {
@@ -329,7 +357,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 			_ = setYamlPath(&rootNode, []string{appKey, "strategy"}, map[string]string{"type": "Recreate"})
 		} else {
-			_ = setYamlPath(&rootNode, []string{appKey, "persistence", "enabled"}, false)
+			deleteYamlPath(&rootNode, []string{appKey, "persistence"})
 		}
 
 		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)
@@ -384,10 +412,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 		// Delete default components if not requested
 		if _, ok := params.Deployments["backend"]; !ok {
-			deleteYamlPath(&rootNode, "backend")
+			deleteYamlPath(&rootNode, []string{"backend"})
 		}
 		if _, ok := params.Deployments["frontend"]; !ok {
-			deleteYamlPath(&rootNode, "frontend")
+			deleteYamlPath(&rootNode, []string{"frontend"})
 		}
 		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
@@ -406,6 +434,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 				filename := filepath.Base(relPath)
 				if strings.Contains(filename, "-"+baseComp) || strings.Contains(filename, baseComp+"-") || strings.Contains(filename, baseComp+".") {
+					if strings.Contains(filename, "pvc") && !depConfig.Persistence.Enabled {
+						continue
+					}
 					compKebab := processor.NormalizeComponentName(compName)
 					newFilename := strings.Replace(filename, baseComp, compKebab, 1)
 					newRelPath := filepath.Join("templates", newFilename)
@@ -534,7 +565,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				}
 				_ = setYamlPath(&rootNode, []string{compName, "strategy"}, map[string]string{"type": "Recreate"})
 			} else {
-				_ = setYamlPath(&rootNode, []string{compName, "persistence", "enabled"}, false)
+				deleteYamlPath(&rootNode, []string{compName, "persistence"})
 			}
 
 			_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
@@ -567,6 +598,20 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
 		valuesStr = formatValues(valuesStr)
 		outputFiles["values.yaml"] = []byte(valuesStr)
+	}
+
+	// Inject subcomponent values snippets
+	var subValuesStr string
+	for _, sub := range params.Subcomponents {
+		subPath := fmt.Sprintf("models/subcomponents/%s/values-snippet.yaml", sub)
+		if data, err := helmify.ModelsFS.ReadFile(subPath); err == nil {
+			subValuesStr += "\n\n" + strings.ReplaceAll(string(data), "<CHART_NAME>", params.ChartName)
+		}
+	}
+	if len(subValuesStr) > 0 {
+		if valuesData, ok := outputFiles["values.yaml"]; ok {
+			outputFiles["values.yaml"] = []byte(string(valuesData) + subValuesStr)
+		}
 	}
 
 	if chartData, ok := outputFiles["Chart.yaml"]; ok && params.DevRepoURL != "" {
@@ -662,17 +707,22 @@ func renameRootKey(node *yaml.Node, oldKey, newKey string) {
 	}
 }
 
-func deleteYamlPath(node *yaml.Node, key string) {
+func deleteYamlPath(node *yaml.Node, path []string) {
 	if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
-		deleteYamlPath(node.Content[0], key)
+		deleteYamlPath(node.Content[0], path)
 		return
 	}
-	if node.Kind != yaml.MappingNode {
+	if node.Kind != yaml.MappingNode || len(path) == 0 {
 		return
 	}
+	key := path[0]
 	for i := 0; i < len(node.Content); i += 2 {
 		if node.Content[i].Value == key {
-			node.Content = append(node.Content[:i], node.Content[i+2:]...)
+			if len(path) == 1 {
+				node.Content = append(node.Content[:i], node.Content[i+2:]...)
+				return
+			}
+			deleteYamlPath(node.Content[i+1], path[1:])
 			return
 		}
 	}

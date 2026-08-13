@@ -131,7 +131,6 @@ api:
     mountPath: "/var/lib/data"
     storageClass: ""
     storageRequest: 1Gi
-  nodeSelector: {}
   command:
     - perl
     - -Mbignum=bpi
@@ -146,8 +145,9 @@ api:
       key: node-role.kubernetes.io/master
       operator: Exists
   topologySpreadConstraints: []
-  backoffLimit: 4
   schedule: '* * * * *'
+  nodeSelector: {}
+  backoffLimit: 4
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -258,9 +258,9 @@ app-emissor:
     www:
       requests:
         storage: 1Gi
+  topologySpreadConstraints: []
   nodeSelector: {}
   tolerations: []
-  topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -285,6 +285,10 @@ myapp:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
+    dummyconfigmapkey: dummyconfigmapvalue
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
     my.prop1: "1"
     my.prop2: val 1
     my.prop3: "true"
@@ -298,12 +302,9 @@ myapp:
           podTemplates:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
-    dummyconfigmapkey: dummyconfigmapvalue
-    my_config.properties: |
-      health.healthProbeBindAddress=8081
-      metrics.bindAddress=127.0.0.1:8080
   # No default secrets for web frontend component
   secret:
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     VAR1: my_secret_var_1
     VAR2: my_secret_var_2
     str: |
@@ -313,7 +314,6 @@ myapp:
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -403,11 +403,7 @@ myapp:
     storageClass: manual
     storageRequest: 3Gi
     storageLimit: 5Gi
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
-  tolerations: []
+  revisionHistoryLimit: 5
   proxySidecar:
     image:
       repository: gcr.io/kubebuilder/kube-rbac-proxy
@@ -415,27 +411,20 @@ myapp:
     args:
       - --secure-listen-address=0.0.0.0:8443
       - --v=10
-  initContainer:
-    image:
-      repository: bash
-      tag: latest
+  tolerations: []
+  nodeSelector:
+    type: user-node
+    region: east
+  topologySpreadConstraints: []
   podSecurityContext:
     runAsUser: 65532
     runAsNonRoot: true
     fsGroup: 20000
-  revisionHistoryLimit: 5
-  nodeSelector:
-    region: east
-    type: user-node
-  topologySpreadConstraints: []
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
   app:
-    args:
-      - --health-probe-bind-address=:8081
-      - --metrics-bind-address=127.0.0.1:8080
-      - --leader-elect
-    command:
-      - /manager
-    containerSecurityContext: {}
     image:
       repository: controller
       tag: latest
@@ -448,18 +437,29 @@ myapp:
         memory: 20Mi
 
     livenessProbe:
-      initialDelaySeconds: 15
-      periodSeconds: 20
       httpGet:
         path: /healthz
         port: 8081
+      initialDelaySeconds: 15
+      periodSeconds: 20
 
     readinessProbe:
-      initialDelaySeconds: 5
-      periodSeconds: 10
       httpGet:
         path: /readyz
         port: 8081
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    args:
+      - --health-probe-bind-address=:8081
+      - --metrics-bind-address=127.0.0.1:8080
+      - --leader-elect
+    command:
+      - /manager
+    containerSecurityContext: {}
+  initContainer:
+    image:
+      repository: bash
+      tag: latest
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
