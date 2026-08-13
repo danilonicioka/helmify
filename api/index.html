@@ -911,21 +911,13 @@
                 <label for="devRepoUrl">Developer Source Repository URL (Argo CD GitOps)</label>
                 <input type="text" id="devRepoUrl" value="" placeholder="e.g. http://gitlab-dev.i.tj.pa.gov.br/squad-seguranca/my-app.git">
             </div>
-            <!-- Auxiliary Components -->
-            <div class="form-group" style="margin-top: 1.5rem; background: var(--bg-card); padding: 15px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                <label style="margin-bottom: 12px; font-weight: 600;">Optional Auxiliary Components</label>
-                <div style="display: flex; gap: 20px; flex-wrap: wrap;" id="subcomponentsContainer">
-                    <!-- Dynamic subcomponents will be injected here -->
-                </div>
-            </div>
             <!-- Global Env Vars -->
             <div id="global-config-section">
                 <div class="section-subtitle">
                     <span>Global ConfigMap Env Variables</span>
-                    <button type="button" class="btn-add-item" onclick="addGlobalConfig()">+ Add Global Var</button>
                 </div>
-                <div id="global-config-list">
-                    <!-- Dynamically populated -->
+                <div class="form-group">
+                    <textarea id="global-config-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveGlobalConfig()" style="font-family: monospace; font-size: 0.85rem; line-height: 1.4; resize: vertical; padding: 10px;"></textarea>
                 </div>
             </div>
 
@@ -948,6 +940,7 @@
                     </div>
                 </div>
 
+                <!-- 1. CORE WORKLOAD SETTINGS -->
                 <div class="form-group">
                     <label for="compRepo">Image Repository</label>
                     <input type="text" id="compRepo" value="tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-app" placeholder="image registry url">
@@ -957,10 +950,6 @@
                     <div>
                         <label for="compTag">Image Tag (Defaults to appVersion)</label>
                         <input type="text" id="compTag" placeholder="e.g. 1.0.0">
-                    </div>
-                    <div>
-                        <label for="compRoutePath">Route Path Prefix</label>
-                        <input type="text" id="compRoutePath" placeholder="e.g. /api">
                     </div>
                 </div>
 
@@ -975,25 +964,36 @@
                     </div>
                 </div>
 
-                <!-- Persistence Configuration -->
-                <div class="section-subtitle">Persistence (PVC)</div>
-                <div class="route-card">
-                    <div class="route-card-header">
-                        <span>Enable Persistent Volume Claim</span>
-                        <label class="route-switch">
-                            <input type="checkbox" id="persistenceEnabled" onchange="saveAndPreview()">
-                            <span class="slider"></span>
-                        </label>
+                <!-- 2. APPLICATION CONFIGURATION -->
+                <!-- ConfigMap variables -->
+                <div class="section-subtitle">
+                    <span>Deployment ConfigMap (Env Vars)</span>
+                </div>
+                <div class="form-group">
+                    <textarea id="comp-cm-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveAndPreview()" style="font-family: monospace; font-size: 0.85rem; line-height: 1.4; resize: vertical; padding: 10px;"></textarea>
+                </div>
+
+                <!-- Secret variables -->
+                <div class="section-subtitle">
+                    <span>Deployment Secrets</span>
+                </div>
+                <div class="form-group">
+                    <textarea id="comp-secret-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveAndPreview()" style="font-family: monospace; font-size: 0.85rem; line-height: 1.4; resize: vertical; padding: 10px;"></textarea>
+                </div>
+
+                <!-- 3. ROUTING & NETWORKING -->
+                <div class="section-subtitle">Routing & Networking</div>
+                <div class="form-group row">
+                    <div>
+                        <label for="compPort">Service Port</label>
+                        <input type="number" id="compPort" value="8080">
                     </div>
-                    <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
-                        <label for="persistenceMountPath">Mount Path</label>
-                        <input type="text" id="persistenceMountPath" placeholder="/var/lib/data" oninput="saveAndPreview()">
+                    <div>
+                        <label for="compRoutePath">Route Path Prefix</label>
+                        <input type="text" id="compRoutePath" placeholder="e.g. /api">
                     </div>
                 </div>
 
-                <!-- Routes Configurations -->
-                <div class="section-subtitle">Routes</div>
-                
                 <!-- Default Route -->
                 <div class="route-card">
                     <div class="route-card-header">
@@ -1002,6 +1002,10 @@
                             <input type="checkbox" id="routeDefaultEnabled" checked>
                             <span class="slider"></span>
                         </label>
+                    </div>
+                    <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                        <label for="routeDefaultHost">Route Hostname</label>
+                        <input type="text" id="routeDefaultHost" placeholder="e.g. chart-model-single.apps.ocp-hub.i.tj.pa.gov.br" oninput="saveAndPreview()">
                     </div>
                 </div>
 
@@ -1014,6 +1018,10 @@
                             <span class="slider"></span>
                         </label>
                     </div>
+                    <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                        <label for="routeIntHost">Route Hostname</label>
+                        <input type="text" id="routeIntHost" placeholder="e.g. chart-model-single-int.i.tjpa.jus.br" oninput="saveAndPreview()">
+                    </div>
                 </div>
 
                 <!-- Internet Route -->
@@ -1025,21 +1033,42 @@
                             <span class="slider"></span>
                         </label>
                     </div>
+                    <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                        <label for="routeExtHost">Route Hostname</label>
+                        <input type="text" id="routeExtHost" placeholder="e.g. chart-model-single.tjpa.jus.br" oninput="saveAndPreview()">
+                    </div>
                 </div>
 
-                <!-- ConfigMap variables -->
-                <div class="section-subtitle">
-                    <span>Deployment ConfigMap (Env Vars)</span>
-                    <button type="button" class="btn-add-item" onclick="addComponentCm()">+ Add Config</button>
+                <!-- 4. PERSISTENCE -->
+                <div class="section-subtitle" style="margin-top: 1.5rem;">Persistence (PVC)</div>
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <span>Enable Persistent Volume Claim</span>
+                        <label class="route-switch">
+                            <input type="checkbox" id="persistenceEnabled" onchange="saveAndPreview()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
-                <div id="comp-cm-list"></div>
-
-                <!-- Secret variables -->
-                <div class="section-subtitle">
-                    <span>Deployment Secrets</span>
-                    <button type="button" class="btn-add-item" onclick="addComponentSecret()">+ Add Secret</button>
+                <div class="route-card" style="margin-top: 0.5rem;">
+                    <div class="route-card-header">
+                        <span>Ephemeral Storage (emptyDir)</span>
+                        <label class="route-switch">
+                            <input type="checkbox" id="persistenceEphemeral" onchange="saveAndPreview()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
                 </div>
-                <div id="comp-secret-list"></div>
+                <div class="form-group row" style="margin-top: 1rem; margin-bottom: 0;">
+                    <div>
+                        <label for="persistenceMountPath">Mount Path</label>
+                        <input type="text" id="persistenceMountPath" placeholder="/var/lib/data" oninput="saveAndPreview()">
+                    </div>
+                    <div>
+                        <label for="persistenceStorage">Storage Size</label>
+                        <input type="text" id="persistenceStorage" placeholder="e.g. 1Gi, 5Gi" oninput="saveAndPreview()">
+                    </div>
+                </div>
             </div>
 
             </div>
@@ -1509,35 +1538,51 @@
             config.connectsTo = connectsToStr ? connectsToStr.split(',').map(s => s.trim()).filter(Boolean) : [];
             config.runtime = document.getElementById('compRuntime').value.trim();
 
-            if (!config.persistence) config.persistence = { enabled: false, mountPath: '/var/lib/data' };
+            if (!config.persistence) config.persistence = { enabled: false, ephemeral: false, mountPath: '/var/lib/data' };
             config.persistence.enabled = document.getElementById('persistenceEnabled').checked;
+            config.persistence.ephemeral = document.getElementById('persistenceEphemeral').checked;
             config.persistence.mountPath = document.getElementById('persistenceMountPath').value.trim() || '/var/lib/data';
+            config.persistence.storageRequest = document.getElementById('persistenceStorage').value.trim() || '1Gi';
 
             config.route.default.enabled = document.getElementById('routeDefaultEnabled').checked;
-            config.route.default.host = '';
+            config.route.default.host = document.getElementById('routeDefaultHost').value.trim();
 
             config.route.internal.enabled = document.getElementById('routeIntEnabled').checked;
-            config.route.internal.host = '';
+            config.route.internal.host = document.getElementById('routeIntHost').value.trim();
 
             config.route.external.enabled = document.getElementById('routeExtEnabled').checked;
-            config.route.external.host = '';
+            config.route.external.host = document.getElementById('routeExtHost').value.trim();
 
             // Collect component ConfigMap
             config.cm = {};
-            const cmRows = document.querySelectorAll('.comp-cm-row');
-            cmRows.forEach(row => {
-                const k = row.querySelector('.cm-key').value.trim();
-                const v = row.querySelector('.cm-value').value;
-                if (k) config.cm[k] = v;
+            document.getElementById('comp-cm-text').value.split('\n').forEach(line => {
+                const idx = line.indexOf('=');
+                const idxColon = line.indexOf(':');
+                if (idx > 0 && (idxColon === -1 || idx < idxColon)) {
+                    const k = line.substring(0, idx).trim();
+                    const v = line.substring(idx + 1).trim();
+                    if (k) config.cm[k] = v;
+                } else if (idxColon > 0) {
+                    const k = line.substring(0, idxColon).trim();
+                    const v = line.substring(idxColon + 1).trim();
+                    if (k) config.cm[k] = v;
+                }
             });
 
-            // Collect component Secrets
+            // Collect component Secret
             config.secret = {};
-            const secretRows = document.querySelectorAll('.comp-secret-row');
-            secretRows.forEach(row => {
-                const k = row.querySelector('.secret-key').value.trim();
-                const v = row.querySelector('.secret-value').value;
-                if (k) config.secret[k] = v;
+            document.getElementById('comp-secret-text').value.split('\n').forEach(line => {
+                const idx = line.indexOf('=');
+                const idxColon = line.indexOf(':');
+                if (idx > 0 && (idxColon === -1 || idx < idxColon)) {
+                    const k = line.substring(0, idx).trim();
+                    const v = line.substring(idx + 1).trim();
+                    if (k) config.secret[k] = v;
+                } else if (idxColon > 0) {
+                    const k = line.substring(0, idxColon).trim();
+                    const v = line.substring(idxColon + 1).trim();
+                    if (k) config.secret[k] = v;
+                }
             });
         }
 
@@ -1562,102 +1607,59 @@
 
             if (config.persistence) {
                 document.getElementById('persistenceEnabled').checked = config.persistence.enabled;
+                document.getElementById('persistenceEphemeral').checked = !!config.persistence.ephemeral;
                 document.getElementById('persistenceMountPath').value = config.persistence.mountPath || '/var/lib/data';
+                document.getElementById('persistenceStorage').value = config.persistence.storageRequest || '1Gi';
             } else {
                 document.getElementById('persistenceEnabled').checked = false;
+                document.getElementById('persistenceEphemeral').checked = false;
                 document.getElementById('persistenceMountPath').value = '/var/lib/data';
+                document.getElementById('persistenceStorage').value = '1Gi';
             }
 
+            // Disable Storage Size input when Ephemeral is true (since emptyDir doesn't use PVC storageRequest)
+            document.getElementById('persistenceStorage').disabled = !!(config.persistence && config.persistence.ephemeral);
+
             document.getElementById('routeDefaultEnabled').checked = config.route.default.enabled;
+            document.getElementById('routeDefaultHost').value = config.route.default.host || '';
 
             document.getElementById('routeIntEnabled').checked = config.route.internal.enabled;
+            document.getElementById('routeIntHost').value = config.route.internal.host || '';
 
             document.getElementById('routeExtEnabled').checked = config.route.external.enabled;
+            document.getElementById('routeExtHost').value = config.route.external.host || '';
 
             // Render ConfigMaps
-            const cmContainer = document.getElementById('comp-cm-list');
-            cmContainer.innerHTML = '';
-            Object.entries(config.cm || {}).forEach(([k, v]) => {
-                cmContainer.appendChild(createKeyValueRow(k, v, 'comp-cm-row', 'cm-key', 'cm-value'));
-            });
+            const cmText = Object.entries(config.cm || {}).map(([k, v]) => `${k}=${v}`).join('\n');
+            document.getElementById('comp-cm-text').value = cmText;
 
             // Render Secrets
-            const secretContainer = document.getElementById('comp-secret-list');
-            secretContainer.innerHTML = '';
-            Object.entries(config.secret || {}).forEach(([k, v]) => {
-                secretContainer.appendChild(createKeyValueRow(k, v, 'comp-secret-row', 'secret-key', 'secret-value'));
-            });
+            const secretText = Object.entries(config.secret || {}).map(([k, v]) => `${k}=${v}`).join('\n');
+            document.getElementById('comp-secret-text').value = secretText;
         }
 
         // Handle Global Config lists
         function renderGlobalConfigList() {
-            const container = document.getElementById('global-config-list');
-            container.innerHTML = '';
-            Object.entries(globalConfig).forEach(([k, v]) => {
-                const row = document.createElement('div');
-                row.className = 'kv-row global-config-row';
-                row.innerHTML = `
-                    <input type="text" class="global-key" value="${k}" placeholder="KEY" oninput="saveGlobalConfig()">
-                    <input type="text" class="global-value" value="${v}" placeholder="VALUE" oninput="saveGlobalConfig()">
-                    <button type="button" class="btn-icon" onclick="removeGlobalConfig(this)">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                    </button>
-                `;
-                container.appendChild(row);
-            });
-        }
-
-        function addGlobalConfig() {
-            globalConfig[''] = '';
-            renderGlobalConfigList();
-            updatePreview();
+            const text = Object.entries(globalConfig || {}).map(([k, v]) => `${k}=${v}`).join('\n');
+            document.getElementById('global-config-text').value = text;
         }
 
         function saveGlobalConfig() {
             globalConfig = {};
-            const rows = document.querySelectorAll('.global-config-row');
-            rows.forEach(row => {
-                const k = row.querySelector('.global-key').value.trim();
-                const v = row.querySelector('.global-value').value;
-                if (k) globalConfig[k] = v;
+            document.getElementById('global-config-text').value.split('\n').forEach(line => {
+                const idx = line.indexOf('=');
+                const idxColon = line.indexOf(':');
+                if (idx > 0 && (idxColon === -1 || idx < idxColon)) {
+                    const k = line.substring(0, idx).trim();
+                    const v = line.substring(idx + 1).trim();
+                    if (k) globalConfig[k] = v;
+                } else if (idxColon > 0) {
+                    const k = line.substring(0, idxColon).trim();
+                    const v = line.substring(idxColon + 1).trim();
+                    if (k) globalConfig[k] = v;
+                }
             });
             updatePreview();
-        }
-
-        function removeGlobalConfig(btn) {
-            btn.parentElement.remove();
-            saveGlobalConfig();
-        }
-
-        // Generic Key Value Rows generator
-        function createKeyValueRow(k, v, rowClass, keyClass, valClass) {
-            const row = document.createElement('div');
-            row.className = `kv-row ${rowClass}`;
-            row.innerHTML = `
-                <input type="text" class="${keyClass}" value="${k}" placeholder="KEY" oninput="saveAndPreview()">
-                <input type="text" class="${valClass}" value="${v}" placeholder="VALUE" oninput="saveAndPreview()">
-                <button type="button" class="btn-icon" onclick="removeKvRow(this)">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
-            `;
-            return row;
-        }
-
-        function addComponentCm() {
-            const container = document.getElementById('comp-cm-list');
-            container.appendChild(createKeyValueRow('', '', 'comp-cm-row', 'cm-key', 'cm-value'));
-            saveAndPreview();
-        }
-
-        function addComponentSecret() {
-            const container = document.getElementById('comp-secret-list');
-            container.appendChild(createKeyValueRow('', '', 'comp-secret-row', 'secret-key', 'secret-value'));
-            saveAndPreview();
-        }
-
-        function removeKvRow(btn) {
-            btn.parentElement.remove();
-            saveAndPreview();
         }
 
         function saveAndPreview() {

@@ -131,6 +131,8 @@ api:
     mountPath: "/var/lib/data"
     storageClass: ""
     storageRequest: 1Gi
+  topologySpreadConstraints: []
+  nodeSelector: {}
   command:
     - perl
     - -Mbignum=bpi
@@ -139,15 +141,13 @@ api:
     - /bin/sh
     - -c
     - date; echo Hello from the Kubernetes cluster
-  imagePullPolicy: IfNotPresent
+  backoffLimit: 4
   tolerations:
     - effect: NoSchedule
       key: node-role.kubernetes.io/master
       operator: Exists
-  topologySpreadConstraints: []
+  imagePullPolicy: IfNotPresent
   schedule: '* * * * *'
-  nodeSelector: {}
-  backoffLimit: 4
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -258,9 +258,9 @@ app-emissor:
     www:
       requests:
         storage: 1Gi
-  topologySpreadConstraints: []
   nodeSelector: {}
   tolerations: []
+  topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -289,8 +289,6 @@ myapp:
     my_config.properties: |
       health.healthProbeBindAddress=8081
       metrics.bindAddress=127.0.0.1:8080
-    my.prop1: "1"
-    my.prop2: val 1
     my.prop3: "true"
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
@@ -302,18 +300,20 @@ myapp:
           podTemplates:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
+    my.prop1: "1"
+    my.prop2: val 1
   # No default secrets for web frontend component
   secret:
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
-    VAR1: my_secret_var_1
-    VAR2: my_secret_var_2
-    str: |
-      some big not so secret string with
-      multiple lines
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+    VAR2: my_secret_var_2
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
+    str: |
+      some big not so secret string with
+      multiple lines
+    VAR1: my_secret_var_1
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -403,31 +403,20 @@ myapp:
     storageClass: manual
     storageRequest: 3Gi
     storageLimit: 5Gi
-  revisionHistoryLimit: 5
-  proxySidecar:
-    image:
-      repository: gcr.io/kubebuilder/kube-rbac-proxy
-      tag: v0.8.0
-    args:
-      - --secure-listen-address=0.0.0.0:8443
-      - --v=10
-  tolerations: []
-  nodeSelector:
-    type: user-node
-    region: east
-  topologySpreadConstraints: []
-  podSecurityContext:
-    runAsUser: 65532
-    runAsNonRoot: true
-    fsGroup: 20000
   command:
     - /bin/sh
     - -c
     - echo 'Initializing container...'
+  nodeSelector:
+    type: user-node
+    region: east
   app:
+    command:
+      - /manager
+    containerSecurityContext: {}
     image:
-      repository: controller
       tag: latest
+      repository: controller
     resources:
       limits:
         cpu: 100m
@@ -444,22 +433,33 @@ myapp:
       periodSeconds: 20
 
     readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 10
       httpGet:
         path: /readyz
         port: 8081
-      initialDelaySeconds: 5
-      periodSeconds: 10
     args:
       - --health-probe-bind-address=:8081
       - --metrics-bind-address=127.0.0.1:8080
       - --leader-elect
-    command:
-      - /manager
-    containerSecurityContext: {}
+  tolerations: []
+  revisionHistoryLimit: 5
+  proxySidecar:
+    image:
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.8.0
+    args:
+      - --secure-listen-address=0.0.0.0:8443
+      - --v=10
   initContainer:
     image:
       repository: bash
       tag: latest
+  podSecurityContext:
+    runAsUser: 65532
+    runAsNonRoot: true
+    fsGroup: 20000
+  topologySpreadConstraints: []
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================

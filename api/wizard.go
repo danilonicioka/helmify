@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 
+	"github.com/arttor/helmify"
 	"github.com/arttor/helmify/pkg/helm"
 	"github.com/sirupsen/logrus"
 )
@@ -106,7 +106,7 @@ func handleSubcomponents(w http.ResponseWriter, r *http.Request) {
 	}
 	
 	subcomponents := []string{}
-	entries, err := os.ReadDir("models/subcomponents")
+	entries, err := helmify.ModelsFS.ReadDir("models/subcomponents")
 	if err == nil {
 		for _, e := range entries {
 			if e.IsDir() {

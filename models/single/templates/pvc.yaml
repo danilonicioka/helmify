@@ -1,5 +1,5 @@
 {{- $app := index .Values .Chart.Name | default dict -}}
-{{- if and $app.persistence $app.persistence.enabled }}
+{{- if and $app.persistence (and $app.persistence.enabled (not $app.persistence.ephemeral)) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:

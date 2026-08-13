@@ -127,6 +127,10 @@ spec:
       {{- if and $app.persistence $app.persistence.enabled }}
       volumes:
         - name: data
+          {{- if $app.persistence.ephemeral }}
+          emptyDir: {}
+          {{- else }}
           persistentVolumeClaim:
             claimName: {{ include "chart-model-single.fullname" . }}
+          {{- end }}
       {{- end }}
