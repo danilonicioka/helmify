@@ -168,8 +168,10 @@ type SubRouteParams struct {
 
 // PersistenceParams configures PVC persistence.
 type PersistenceParams struct {
-	Enabled   bool   `json:"enabled"`
-	MountPath string `json:"mountPath"`
+	Enabled        bool   `json:"enabled"`
+	Ephemeral      bool   `json:"ephemeral"`
+	MountPath      string `json:"mountPath"`
+	StorageRequest string `json:"storageRequest"`
 }
 
 // GenerateWizardChart reads single or multi chart templates from the embedded ModelsFS,
@@ -352,8 +354,14 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 		if depConfig.Persistence.Enabled {
 			_ = setYamlPath(&rootNode, []string{appKey, "persistence", "enabled"}, true)
+			if depConfig.Persistence.Ephemeral {
+				_ = setYamlPath(&rootNode, []string{appKey, "persistence", "ephemeral"}, true)
+			}
 			if depConfig.Persistence.MountPath != "" {
 				_ = setYamlPath(&rootNode, []string{appKey, "persistence", "mountPath"}, depConfig.Persistence.MountPath)
+			}
+			if !depConfig.Persistence.Ephemeral && depConfig.Persistence.StorageRequest != "" {
+				_ = setYamlPath(&rootNode, []string{appKey, "persistence", "storageRequest"}, depConfig.Persistence.StorageRequest)
 			}
 			_ = setYamlPath(&rootNode, []string{appKey, "strategy"}, map[string]string{"type": "Recreate"})
 		} else {
@@ -560,8 +568,14 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 			if depConfig.Persistence.Enabled {
 				_ = setYamlPath(&rootNode, []string{compName, "persistence", "enabled"}, true)
+				if depConfig.Persistence.Ephemeral {
+					_ = setYamlPath(&rootNode, []string{compName, "persistence", "ephemeral"}, true)
+				}
 				if depConfig.Persistence.MountPath != "" {
 					_ = setYamlPath(&rootNode, []string{compName, "persistence", "mountPath"}, depConfig.Persistence.MountPath)
+				}
+				if !depConfig.Persistence.Ephemeral && depConfig.Persistence.StorageRequest != "" {
+					_ = setYamlPath(&rootNode, []string{compName, "persistence", "storageRequest"}, depConfig.Persistence.StorageRequest)
 				}
 				_ = setYamlPath(&rootNode, []string{compName, "strategy"}, map[string]string{"type": "Recreate"})
 			} else {

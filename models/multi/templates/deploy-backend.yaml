@@ -157,8 +157,12 @@ spec:
       volumes:
         {{- if and $comp.persistence $comp.persistence.enabled }}
         - name: data
+          {{- if $comp.persistence.ephemeral }}
+          emptyDir: {}
+          {{- else }}
           persistentVolumeClaim:
             claimName: {{ include "chart-model-multi.fullname" $ }}-backend
+          {{- end }}
         {{- end }}
         {- range $comp.files }}
         - name: {{ $key }}
