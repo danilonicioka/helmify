@@ -462,3 +462,11 @@ Helmify can now be used as a migration engine to modernize legacy Helm charts an
 2. Feed `legacy-manifests.yaml` directly into the Helmify converter.
 
 **Why this works:** The Helmify processor automatically strips legacy standard labels (like `helm.sh/chart`, `app.kubernetes.io/managed-by`) and automatically strips injected annotations (like `checksum/config` or `meta.helm.sh/`) before extracting the workload into the new `values.yaml` schema. This completely erases old, messy logic and outputs a perfectly standardized, clean modern chart.
+
+### 🎨 Wizard UI Enhancements (Config Reordering, Persistence & Routes)
+- **Problem**: The UI inputs for components in the wizard were slightly disjointed from the generated `values.yaml` schema, making review confusing. Routes were un-editable checkboxes, ConfigMaps/Secrets required individual clicking to add variables, and Persistence lacked emptyDir vs PVC toggling.
+- **Implementation**:
+  - **Component Reordering**: The configuration fields were strictly reordered to visually map 1-to-1 with `values.yaml` (Core Workload -> Config -> Routing -> Persistence).
+  - **Bulk ConfigMaps & Secrets**: The dynamic individual row additions were completely replaced with multi-line Text Areas. Users can now natively paste blocks of `.env` files (supporting both `KEY=VALUE` and `KEY: VALUE` syntaxes), saving clicks and time.
+  - **Editable Route Overrides**: The auto-generated domains for standard routes (Default, Intranet, Internet) are now fully exposed as text inputs inside the route cards, allowing users to safely override hostnames directly in the UI before generation.
+  - **Persistence Types**: Persistence was expanded to include a new **Storage Size** input (mapping to `storageRequest`) as well as an **Ephemeral Storage (emptyDir)** toggle. When Ephemeral is selected, the Storage Size input is disabled, and emptyDir configurations are injected natively, entirely avoiding PersistentVolumeClaims for cache/scratch workloads.
