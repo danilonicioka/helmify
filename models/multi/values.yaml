@@ -145,6 +145,16 @@ backend:
     storageClass: ""
     storageRequest: 1Gi
 
+  # ----------------------------------------------------------------------------
+  # 8. CUSTOM FILES
+  # ----------------------------------------------------------------------------
+  files: {}
+    # nginx.conf:
+    #   mountPath: "/etc/nginx/nginx.conf"
+    #   content: |
+    #     user nginx;
+    #     worker_processes auto;
+
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -255,6 +265,16 @@ frontend:
     mountPath: "/var/lib/data"
     storageClass: ""
     storageRequest: 1Gi
+
+  # ----------------------------------------------------------------------------
+  # 8. CUSTOM FILES
+  # ----------------------------------------------------------------------------
+  files: {}
+    # nginx.conf:
+    #   mountPath: "/etc/nginx/nginx.conf"
+    #   content: |
+    #     user nginx;
+    #     worker_processes auto;
 
 # ==============================================================================
 # IV. GLOBAL SCHEDULING & COMMON CONFIGS

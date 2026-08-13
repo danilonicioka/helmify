@@ -1,5 +1,5 @@
 {{- $comp := index .Values "frontend" | default dict -}}
-{{- if and $comp $comp.files }}}
+{{- if $comp.files -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -7,8 +7,8 @@ metadata:
   labels:
     {{- include "chart-model-multi.frontend.labels" . | nindent 4 }}
 data:
-  {{- range $key, $val := $comp.files }}
-  {{ $val.subPath | default $key }}: |
-    {{- $val.content | nindent 4 }}
-  {{- end }}
+{{- range $filename, $config := $comp.files }}
+  {{ $filename }}: |
+    {{- $config.content | nindent 4 }}
+{{- end }}
 {{- end }}

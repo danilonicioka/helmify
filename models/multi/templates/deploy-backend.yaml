@@ -113,23 +113,18 @@ spec:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
 
-          {{- if and $comp.persistence $comp.persistence.enabled }}
+          {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files }}
           volumeMounts:
+            {{- if and $comp.persistence $comp.persistence.enabled }}
             - name: data
               mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
+            {{- end }}
+            {{- range $filename, $config := $comp.files }}
+            - name: {{ $filename | replace "." "-" | lower }}
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
           {{- end }}
-          {- if and $comp.files (not (empty $comp.files)) }
-          {{- if not (and $comp.persistence $comp.persistence.enabled) }}
-          volumeMounts:
-          {{- end }}
-          {- range $comp.files }}
-          - name: {{ $key }}
-            mountPath: {{ $val.mountPath }}
-            {- if .subPath }
-            subPath: {{ $val.subPath }}
-            {- end }
-          {- end }
-          {- end }
       
       # Graceful connection draining lifecycle settings
       {{- if $comp.terminationGracePeriodSeconds }}
@@ -153,7 +148,7 @@ spec:
         {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {- if or (and $comp.files (not (empty $comp.files))) (and $comp.persistence $comp.persistence.enabled) }
+      {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files }}
       volumes:
         {{- if and $comp.persistence $comp.persistence.enabled }}
         - name: data
@@ -161,16 +156,12 @@ spec:
           emptyDir: {}
           {{- else }}
           persistentVolumeClaim:
-            claimName: {{ include "chart-model-multi.fullname" $ }}-backend
+            claimName: {{ include "chart-model-multi.fullname" . }}-backend
           {{- end }}
         {{- end }}
-        {- range $comp.files }}
-        - name: {{ $key }}
+        {{- range $filename, $config := $comp.files }}
+        - name: {{ $filename | replace "." "-" | lower }}
           configMap:
             name: {{ include "chart-model-multi.fullname" $ }}-backend-files
-            defaultMode: 420
-            items:
-              - key: {{ .subPath | default .name }}
-                path: {{ .subPath | default .name }}
-        {- end }
-      {- end }
+        {{- end }}
+      {{- end }}

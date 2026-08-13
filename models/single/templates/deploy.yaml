@@ -96,10 +96,17 @@ spec:
             {{- toYaml $app.resources | nindent 12 }}
           {{- end }}
 
-          {{- if and $app.persistence $app.persistence.enabled }}
+          {{- if or (and $app.persistence $app.persistence.enabled) $app.files }}
           volumeMounts:
+            {{- if and $app.persistence $app.persistence.enabled }}
             - name: data
               mountPath: {{ $app.persistence.mountPath | default "/var/lib/data" }}
+            {{- end }}
+            {{- range $filename, $config := $app.files }}
+            - name: {{ $filename | replace "." "-" | lower }}
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
           {{- end }}
       
       # 5. Graceful connection draining lifecycle settings
@@ -124,8 +131,9 @@ spec:
         {{- toYaml $app.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {{- if and $app.persistence $app.persistence.enabled }}
+      {{- if or (and $app.persistence $app.persistence.enabled) $app.files }}
       volumes:
+        {{- if and $app.persistence $app.persistence.enabled }}
         - name: data
           {{- if $app.persistence.ephemeral }}
           emptyDir: {}
@@ -133,4 +141,10 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "chart-model-single.fullname" . }}
           {{- end }}
+        {{- end }}
+        {{- range $filename, $config := $app.files }}
+        - name: {{ $filename | replace "." "-" | lower }}
+          configMap:
+            name: {{ include "chart-model-single.fullname" $ }}-files
+        {{- end }}
       {{- end }}
