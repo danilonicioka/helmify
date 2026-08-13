@@ -3,7 +3,7 @@ default:
     - rke
 
 variables:
-  BUILDER_IMAGE: "registry.access.redhat.com/ubi8/go-toolset:1.21"
+  BUILDER_IMAGE: "registry.access.redhat.com/ubi8/go-toolset:1.25"
   GOPATH: $CI_PROJECT_DIR/.go
   GOCACHE: $CI_PROJECT_DIR/.gocache
 
