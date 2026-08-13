@@ -470,3 +470,4 @@ Helmify can now be used as a migration engine to modernize legacy Helm charts an
   - **Bulk ConfigMaps & Secrets**: The dynamic individual row additions were completely replaced with multi-line Text Areas. Users can now natively paste blocks of `.env` files (supporting both `KEY=VALUE` and `KEY: VALUE` syntaxes), saving clicks and time.
   - **Editable Route Overrides**: The auto-generated domains for standard routes (Default, Intranet, Internet) are now fully exposed as text inputs inside the route cards, allowing users to safely override hostnames directly in the UI before generation.
   - **Persistence Types**: Persistence was expanded to include a new **Storage Size** input (mapping to `storageRequest`) as well as an **Ephemeral Storage (emptyDir)** toggle. When Ephemeral is selected, the Storage Size input is disabled, and emptyDir configurations are injected natively, entirely avoiding PersistentVolumeClaims for cache/scratch workloads.
+
