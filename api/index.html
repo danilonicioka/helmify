@@ -213,7 +213,8 @@
 
         input[type="text"],
         input[type="number"],
-        select {
+        select,
+        textarea {
             width: 100%;
             background-color: var(--bg-card);
             border: 1px solid var(--border-color);
@@ -228,9 +229,17 @@
 
         input[type="text"]:focus,
         input[type="number"]:focus,
-        select:focus {
+        select:focus,
+        textarea:focus {
             border-color: var(--accent);
             box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        textarea {
+            font-family: monospace;
+            resize: vertical;
+            line-height: 1.5;
+            min-height: 80px;
         }
 
         /* Toggle Button Group */
@@ -913,11 +922,17 @@
             </div>
             <!-- Global Env Vars -->
             <div id="global-config-section">
-                <div class="section-subtitle">
+                <div class="section-title">
                     <span>Global ConfigMap Env Variables</span>
                 </div>
                 <div class="form-group">
-                    <textarea id="global-config-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveGlobalConfig()" style="font-family: monospace; font-size: 0.85rem; line-height: 1.4; resize: vertical; padding: 10px;"></textarea>
+                    <textarea id="global-config-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveGlobalConfig()"></textarea>
+                </div>
+                <div class="section-title" style="margin-top: 1rem;">
+                    <span>Global Secrets</span>
+                </div>
+                <div class="form-group">
+                    <textarea id="global-secret-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveGlobalConfig()"></textarea>
                 </div>
             </div>
 
@@ -933,12 +948,6 @@
 
             <!-- Active Component Panel -->
             <div id="component-config-panel" style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
-                <div class="form-group row">
-                    <div>
-                        <label for="compPort">Service Port</label>
-                        <input type="number" id="compPort" value="8080">
-                    </div>
-                </div>
 
                 <!-- 1. CORE WORKLOAD SETTINGS -->
                 <div class="form-group">
@@ -970,7 +979,7 @@
                     <span>Deployment ConfigMap (Env Vars)</span>
                 </div>
                 <div class="form-group">
-                    <textarea id="comp-cm-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveAndPreview()" style="font-family: monospace; font-size: 0.85rem; line-height: 1.4; resize: vertical; padding: 10px;"></textarea>
+                    <textarea id="comp-cm-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveAndPreview()"></textarea>
                 </div>
 
                 <!-- Secret variables -->
@@ -978,7 +987,7 @@
                     <span>Deployment Secrets</span>
                 </div>
                 <div class="form-group">
-                    <textarea id="comp-secret-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveAndPreview()" style="font-family: monospace; font-size: 0.85rem; line-height: 1.4; resize: vertical; padding: 10px;"></textarea>
+                    <textarea id="comp-secret-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveAndPreview()"></textarea>
                 </div>
 
                 <!-- 3. ROUTING & NETWORKING -->
@@ -1040,38 +1049,48 @@
                 </div>
 
                 <!-- 4. PERSISTENCE -->
-                <div class="section-subtitle" style="margin-top: 1.5rem;">Persistence (PVC)</div>
+                <div class="section-subtitle" style="margin-top: 1.5rem;">Persistence (PVC/emptyDir)</div>
                 <div class="route-card">
                     <div class="route-card-header">
-                        <span>Enable Persistent Volume Claim</span>
+                        <span>Enable Storage / Persistence</span>
                         <label class="route-switch">
-                            <input type="checkbox" id="persistenceEnabled" onchange="saveAndPreview()">
+                            <input type="checkbox" id="persistenceEnabled" onchange="togglePersistenceUI(); saveAndPreview()">
                             <span class="slider"></span>
                         </label>
                     </div>
                 </div>
-                <div class="route-card" style="margin-top: 0.5rem;">
-                    <div class="route-card-header">
-                        <span>Ephemeral Storage (emptyDir)</span>
-                        <label class="route-switch">
-                            <input type="checkbox" id="persistenceEphemeral" onchange="saveAndPreview()">
-                            <span class="slider"></span>
-                        </label>
+                
+                <div id="persistence-options" style="display: none; padding-left: 1rem; border-left: 2px solid rgba(255,255,255,0.1); margin-top: 0.5rem;">
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Use Ephemeral Storage (emptyDir) instead of PVC</span>
+                            <label class="route-switch">
+                                <input type="checkbox" id="persistenceEphemeral" onchange="togglePersistenceUI(); saveAndPreview()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group row" style="margin-top: 1rem; margin-bottom: 0;">
+                        <div>
+                            <label for="persistenceMountPath">Mount Path</label>
+                            <input type="text" id="persistenceMountPath" placeholder="/var/lib/data" oninput="saveAndPreview()">
+                        </div>
+                        <div>
+                            <label for="persistenceStorage">Storage Size</label>
+                            <input type="text" id="persistenceStorage" placeholder="e.g. 1Gi, 5Gi" oninput="saveAndPreview()">
+                        </div>
                     </div>
                 </div>
-                <div class="form-group row" style="margin-top: 1rem; margin-bottom: 0;">
-                    <div>
-                        <label for="persistenceMountPath">Mount Path</label>
-                        <input type="text" id="persistenceMountPath" placeholder="/var/lib/data" oninput="saveAndPreview()">
-                    </div>
-                    <div>
-                        <label for="persistenceStorage">Storage Size</label>
-                        <input type="text" id="persistenceStorage" placeholder="e.g. 1Gi, 5Gi" oninput="saveAndPreview()">
-                    </div>
+            </div> <!-- End component-config-panel -->
+            
+            <!-- Global Subcomponents Config -->
+            <div id="subcomponents-section" style="margin-top: 2rem;">
+                <h3 class="section-title">Optional Auxiliary Components</h3>
+                <div id="subcomponentsContainer" style="display: flex; flex-direction: column; gap: 0.5rem; background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+                    <!-- Dynamically populated via JS -->
                 </div>
             </div>
 
-            </div>
         </aside>
 
         <!-- Preview Panel (IDE Layout) -->
@@ -1141,7 +1160,7 @@
         let globalConfig = {
             'TZ': 'America/Belem'
         };
-        let chartNameManuallyEdited = false;
+        let globalSecret = {};
 
         // Components dictionary
         let components = {};
@@ -1179,6 +1198,7 @@
 
                 // Extract global configuration
                 globalConfig = (defaults.global && defaults.global.cm) || { 'TZ': 'America/Belem' };
+                globalSecret = (defaults.global && defaults.global.secret) || {};
 
                 // Extract components
                 components = {};
@@ -1202,8 +1222,6 @@
                 }
 
                 if (chartType === 'single') {
-                    // In single chart, the component key is chart-model-single.
-                    // If user modified chartName, let's rename the component key to the current chartName.
                     const currentName = document.getElementById('chartName').value.trim() || oldKey;
                     components[currentName] = components[oldKey] || createDefaultComponentConfig(currentName, 'app');
                     if (oldKey !== currentName) {
@@ -1212,7 +1230,6 @@
                     activeComponent = currentName;
                     document.getElementById('btn-add-comp').style.display = 'none';
                 } else {
-                    // For multi, let's set active component to the first component found
                     activeComponent = compKeys.includes('backend') ? 'backend' : (compKeys[0] || 'backend');
                     document.getElementById('btn-add-comp').style.display = 'block';
                 }
@@ -1364,6 +1381,7 @@
         });
 
         // Watch chart name changes for single deployment key renaming
+        let chartNameManuallyEdited = false;
         document.getElementById('chartName').addEventListener('input', (e) => {
             chartNameManuallyEdited = true;
             const newName = e.target.value.trim() || 'chart';
@@ -1585,6 +1603,17 @@
                 }
             });
         }
+        function togglePersistenceUI() {
+            const enabled = document.getElementById('persistenceEnabled').checked;
+            const optionsDiv = document.getElementById('persistence-options');
+            if (enabled) {
+                optionsDiv.style.display = 'block';
+                const isEphemeral = document.getElementById('persistenceEphemeral').checked;
+                document.getElementById('persistenceStorage').disabled = isEphemeral;
+            } else {
+                optionsDiv.style.display = 'none';
+            }
+        }
 
         // Render inputs for active component
         function renderActiveComponent() {
@@ -1617,8 +1646,7 @@
                 document.getElementById('persistenceStorage').value = '1Gi';
             }
 
-            // Disable Storage Size input when Ephemeral is true (since emptyDir doesn't use PVC storageRequest)
-            document.getElementById('persistenceStorage').disabled = !!(config.persistence && config.persistence.ephemeral);
+            togglePersistenceUI();
 
             document.getElementById('routeDefaultEnabled').checked = config.route.default.enabled;
             document.getElementById('routeDefaultHost').value = config.route.default.host || '';
@@ -1640,25 +1668,34 @@
 
         // Handle Global Config lists
         function renderGlobalConfigList() {
-            const text = Object.entries(globalConfig || {}).map(([k, v]) => `${k}=${v}`).join('\n');
-            document.getElementById('global-config-text').value = text;
+            const cmText = Object.entries(globalConfig || {}).map(([k, v]) => `${k}=${v}`).join('\n');
+            document.getElementById('global-config-text').value = cmText;
+
+            const secText = Object.entries(globalSecret || {}).map(([k, v]) => `${k}=${v}`).join('\n');
+            document.getElementById('global-secret-text').value = secText;
         }
 
-        function saveGlobalConfig() {
-            globalConfig = {};
-            document.getElementById('global-config-text').value.split('\n').forEach(line => {
+        function parseTextAreaVars(text) {
+            const parsed = {};
+            text.split('\n').forEach(line => {
                 const idx = line.indexOf('=');
                 const idxColon = line.indexOf(':');
                 if (idx > 0 && (idxColon === -1 || idx < idxColon)) {
                     const k = line.substring(0, idx).trim();
                     const v = line.substring(idx + 1).trim();
-                    if (k) globalConfig[k] = v;
+                    if (k) parsed[k] = v;
                 } else if (idxColon > 0) {
                     const k = line.substring(0, idxColon).trim();
                     const v = line.substring(idxColon + 1).trim();
-                    if (k) globalConfig[k] = v;
+                    if (k) parsed[k] = v;
                 }
             });
+            return parsed;
+        }
+
+        function saveGlobalConfig() {
+            globalConfig = parseTextAreaVars(document.getElementById('global-config-text').value);
+            globalSecret = parseTextAreaVars(document.getElementById('global-secret-text').value);
             updatePreview();
         }
 
@@ -1676,14 +1713,16 @@
                 selectedSubcomponents.push(cb.value);
             });
             
-            return {
-                chartName: document.getElementById('chartName').value.trim() || 'chart',
+            const payload = {
+                chartName: document.getElementById('chartName').value || 'chart-model',
                 type: chartType,
-                devRepoUrl: document.getElementById('devRepoUrl').value.trim() || '',
+                devRepoUrl: document.getElementById('devRepoUrl').value || 'https://gitlab.i.tj.pa.gov.br/devops/chart-model-backend.git',
                 globalConfig: globalConfig,
+                globalSecret: globalSecret,
                 deployments: components,
                 subcomponents: selectedSubcomponents
             };
+            return payload;
         }
 
         let generatedFiles = {};

@@ -132,7 +132,6 @@ api:
     storageClass: ""
     storageRequest: 1Gi
   topologySpreadConstraints: []
-  nodeSelector: {}
   command:
     - perl
     - -Mbignum=bpi
@@ -141,13 +140,14 @@ api:
     - /bin/sh
     - -c
     - date; echo Hello from the Kubernetes cluster
-  backoffLimit: 4
+  schedule: '* * * * *'
+  imagePullPolicy: IfNotPresent
+  nodeSelector: {}
   tolerations:
     - effect: NoSchedule
       key: node-role.kubernetes.io/master
       operator: Exists
-  imagePullPolicy: IfNotPresent
-  schedule: '* * * * *'
+  backoffLimit: 4
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -289,6 +289,7 @@ myapp:
     my_config.properties: |
       health.healthProbeBindAddress=8081
       metrics.bindAddress=127.0.0.1:8080
+    my.prop2: val 1
     my.prop3: "true"
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
@@ -301,19 +302,18 @@ myapp:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
     my.prop1: "1"
-    my.prop2: val 1
   # No default secrets for web frontend component
   secret:
+    VAR1: my_secret_var_1
+    VAR2: my_secret_var_2
+    str: |
+      some big not so secret string with
+      multiple lines
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
-    VAR2: my_secret_var_2
     ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
-    str: |
-      some big not so secret string with
-      multiple lines
-    VAR1: my_secret_var_1
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -341,13 +341,13 @@ myapp:
     type: ClusterIP
     ports:
       https:
-        port: 8443
         targetPort: https
-    loadBalancerSourceRanges:
-      - 10.0.0.0/8
+        port: 8443
     ipFamilyPolicy: SingleStack
     ipFamilies:
       - IPv4
+    loadBalancerSourceRanges:
+      - 10.0.0.0/8
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
@@ -403,46 +403,38 @@ myapp:
     storageClass: manual
     storageRequest: 3Gi
     storageLimit: 5Gi
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
-  nodeSelector:
-    type: user-node
-    region: east
   app:
+
+    readinessProbe:
+      httpGet:
+        path: /readyz
+        port: 8081
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    args:
+      - --health-probe-bind-address=:8081
+      - --metrics-bind-address=127.0.0.1:8080
+      - --leader-elect
     command:
       - /manager
     containerSecurityContext: {}
     image:
-      tag: latest
       repository: controller
+      tag: latest
     resources:
       limits:
-        cpu: 100m
         memory: 30Mi
+        cpu: 100m
       requests:
         cpu: 100m
         memory: 20Mi
 
     livenessProbe:
       httpGet:
-        path: /healthz
         port: 8081
+        path: /healthz
       initialDelaySeconds: 15
       periodSeconds: 20
-
-    readinessProbe:
-      initialDelaySeconds: 5
-      periodSeconds: 10
-      httpGet:
-        path: /readyz
-        port: 8081
-    args:
-      - --health-probe-bind-address=:8081
-      - --metrics-bind-address=127.0.0.1:8080
-      - --leader-elect
-  tolerations: []
   revisionHistoryLimit: 5
   proxySidecar:
     image:
@@ -451,15 +443,23 @@ myapp:
     args:
       - --secure-listen-address=0.0.0.0:8443
       - --v=10
-  initContainer:
-    image:
-      repository: bash
-      tag: latest
   podSecurityContext:
     runAsUser: 65532
     runAsNonRoot: true
     fsGroup: 20000
   topologySpreadConstraints: []
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
+  nodeSelector:
+    type: user-node
+    region: east
+  tolerations: []
+  initContainer:
+    image:
+      repository: bash
+      tag: latest
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================

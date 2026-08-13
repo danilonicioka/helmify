@@ -151,6 +151,16 @@ chart-model-single:
     storageClass: ""
     storageRequest: 1Gi
 
+  # ----------------------------------------------------------------------------
+  # 8. CUSTOM FILES
+  # ----------------------------------------------------------------------------
+  files: {}
+    # nginx.conf:
+    #   mountPath: "/etc/nginx/nginx.conf"
+    #   content: |
+    #     user nginx;
+    #     worker_processes auto;
+
 # ==============================================================================
 # III. GLOBAL SCHEDULING & COMMON CONFIGS
 # ==============================================================================

@@ -114,28 +114,36 @@ func GetModelDefaults(chartType string) (map[string]interface{}, error) {
 
 // WizardParams defines the JSON request payload for the Chart Generator Wizard.
 type WizardParams struct {
-	ChartName    string                      `json:"chartName"`
-	Type         string                      `json:"type"` // "single" or "multi"
-	DevRepoURL   string                      `json:"devRepoUrl"`
-	GlobalConfig map[string]string           `json:"globalConfig"`
-	Deployments     map[string]DeploymentParams `json:"deployments"`
-	Subcomponents   []string                    `json:"subcomponents"`
+	ChartName     string                      `json:"chartName"`
+	Type          string                      `json:"type"` // "single" or "multi"
+	DevRepoURL    string                      `json:"devRepoUrl"`
+	GlobalConfig  map[string]string           `json:"globalConfig"`
+	GlobalSecret  map[string]string           `json:"globalSecret"`
+	Deployments   map[string]DeploymentParams `json:"deployments"`
+	Subcomponents []string                    `json:"subcomponents"`
 }
 
 // DeploymentParams represents configuration for a component deployment.
 type DeploymentParams struct {
-	Replicas         *int              `json:"replicas"`
-	Image            ImageParams       `json:"image"`
-	Service          ServiceParams     `json:"service"`
-	Cm               map[string]string `json:"cm"`
-	Secret           map[string]string `json:"secret"`
-	Persistence      PersistenceParams `json:"persistence"`
-	Route            RouteParams       `json:"route"`
-	ConnectsTo       []string          `json:"connectsTo"`
-	Runtime          string            `json:"runtime"`
-	RuntimeNamespace string            `json:"runtimeNamespace"`
-	RuntimeVersion   string            `json:"runtimeVersion"`
-	OverviewAppRoute string            `json:"overviewAppRoute"`
+	Replicas         *int                        `json:"replicas"`
+	Image            ImageParams                 `json:"image"`
+	Service          ServiceParams               `json:"service"`
+	Cm               map[string]string           `json:"cm"`
+	Secret           map[string]string           `json:"secret"`
+	Persistence      PersistenceParams           `json:"persistence"`
+	Route            RouteParams                 `json:"route"`
+	ConnectsTo       []string                    `json:"connectsTo"`
+	Runtime          string                      `json:"runtime"`
+	RuntimeNamespace string                      `json:"runtimeNamespace"`
+	RuntimeVersion   string                      `json:"runtimeVersion"`
+	OverviewAppRoute string                      `json:"overviewAppRoute"`
+	Files            map[string]CustomFileParams `json:"files"`
+}
+
+// CustomFileParams defines custom file injection.
+type CustomFileParams struct {
+	MountPath string `json:"mountPath"`
+	Content   string `json:"content"`
 }
 
 // ImageParams configures the container image.
@@ -387,8 +395,15 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		_ = setYamlPath(&rootNode, []string{appKey, "route", "external", "host"}, externalHost)
 
+		if len(depConfig.Files) > 0 {
+			_ = setYamlPath(&rootNode, []string{appKey, "files"}, depConfig.Files)
+		}
+
 		if len(params.GlobalConfig) > 0 {
 			_ = setYamlPath(&rootNode, []string{"global", "cm"}, params.GlobalConfig)
+		}
+		if len(params.GlobalSecret) > 0 {
+			_ = setYamlPath(&rootNode, []string{"global", "secret"}, params.GlobalSecret)
 		}
 
 		// Re-marshal preserving comments
@@ -593,10 +608,17 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				externalHost = depConfig.Route.External.Host
 			}
 			_ = setYamlPath(&rootNode, []string{compName, "route", "external", "host"}, externalHost)
+
+			if len(depConfig.Files) > 0 {
+				_ = setYamlPath(&rootNode, []string{compName, "files"}, depConfig.Files)
+			}
 		}
 
 		if len(params.GlobalConfig) > 0 {
 			_ = setYamlPath(&rootNode, []string{"global", "cm"}, params.GlobalConfig)
+		}
+		if len(params.GlobalSecret) > 0 {
+			_ = setYamlPath(&rootNode, []string{"global", "secret"}, params.GlobalSecret)
 		}
 
 		// Re-marshal values.yaml preserving comments

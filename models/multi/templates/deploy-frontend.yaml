@@ -104,17 +104,19 @@ spec:
       terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
       {{- end }}
 
+          {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files }}
+          volumeMounts:
+            {{- if and $comp.persistence $comp.persistence.enabled }}
+            - name: data
+              mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
+            {{- end }}
+            {{- range $filename, $config := $comp.files }}
+            - name: {{ $filename | replace "." "-" | lower }}
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
+          {{- end }}
       {{- with .Values.nodeSelector }}
-        {- if and $comp.files (not (empty $comp.files)) }
-        volumeMounts:
-          {- range $comp.files }}
-          - name: {{ $key }}
-            mountPath: {{ $val.mountPath }}
-            {- if .subPath }
-            subPath: {{ $val.subPath }}
-            {- end }
-          {- end }
-        {- end }
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -131,15 +133,20 @@ spec:
         {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {- if and $comp.files (not (empty $comp.files)) }
+      {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files }}
       volumes:
-        {- range $comp.files }}
-        - name: {{ $key }}
+        {{- if and $comp.persistence $comp.persistence.enabled }}
+        - name: data
+          {{- if $comp.persistence.ephemeral }}
+          emptyDir: {}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ include "chart-model-multi.fullname" . }}-frontend
+          {{- end }}
+        {{- end }}
+        {{- range $filename, $config := $comp.files }}
+        - name: {{ $filename | replace "." "-" | lower }}
           configMap:
             name: {{ include "chart-model-multi.fullname" $ }}-frontend-files
-            defaultMode: 420
-            items:
-              - key: {{ .subPath | default .name }}
-                path: {{ .subPath | default .name }}
-        {- end }
-      {- end }
+        {{- end }}
+      {{- end }}
