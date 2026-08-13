@@ -383,6 +383,10 @@
                     <span>POST /v1/generate-wizard</span>
                     <span class="method-badge post">POST</span>
                 </div>
+                <div class="menu-item" onclick="switchTab('get-subcomponents')">
+                    <span>GET /v1/subcomponents</span>
+                    <span class="method-badge get">GET</span>
+                </div>
             </nav>
         </aside>
 
@@ -575,7 +579,8 @@ tar -xvzf portal-certidao.tar.gz</code></pre>
         }
       }
     }
-  }
+  },
+  "subcomponents": ["redis", "postgres"]
 }</code></pre>
                 </div>
 
@@ -602,6 +607,24 @@ tar -xvzf portal-certidao.tar.gz</code></pre>
 
 # Extract the generated Helm chart
 tar -xvzf my-service.tar.gz</code></pre>
+                </div>
+            </div>
+            <!-- SECTION: GET SUBCOMPONENTS -->
+            <div class="doc-section" id="get-subcomponents">
+                <h2>List Available Subcomponents</h2>
+                <p>Retrieves a dynamic list of all available modular subcomponents (e.g., redis, postgres) that can be included in the chart generation.</p>
+
+                <div class="endpoint-url-bar">
+                    <span class="method-badge get">GET</span>
+                    <span class="path">/v1/subcomponents</span>
+                </div>
+
+                <div class="section-title">Example Response</div>
+                <div class="code-block-container">
+                    <pre><code>[
+  "postgres",
+  "redis"
+]</code></pre>
                 </div>
             </div>
         </section>

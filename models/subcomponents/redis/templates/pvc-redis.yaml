@@ -1,0 +1,23 @@
+{{- if and .Values.redis.enabled (and .Values.redis.persistence.enabled (not .Values.redis.persistence.ephemeral)) -}}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis
+  labels:
+    {{- include "<CHART_NAME>.redis.labels" . | nindent 4 }}
+spec:
+  accessModes:
+    {{- range .Values.redis.persistence.accessModes }}
+    - {{ . | quote }}
+    {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.redis.persistence.storageRequest | quote }}
+  {{- if .Values.redis.persistence.storageClass }}
+  {{- if (eq "-" .Values.redis.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ .Values.redis.persistence.storageClass }}"
+  {{- end }}
+  {{- end }}
+{{- end -}}

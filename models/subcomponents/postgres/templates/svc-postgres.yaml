@@ -1,0 +1,21 @@
+{{- if .Values.postgres.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres
+  labels:
+    {{- include "<CHART_NAME>.postgres.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.postgres.service.type | default "ClusterIP" }}
+  ports:
+    {{- range $key, $val := .Values.postgres.service.ports }}
+  - name: {{ $key }}
+    port: {{ $val.port }}
+    targetPort: {{ $val.targetPort | default $val.port }}
+    {{- if $val.protocol }}
+    protocol: {{ $val.protocol }}
+    {{- end }}
+  {{- end }}
+  selector:
+    {{- include "<CHART_NAME>.postgres.selectorLabels" . | nindent 4 }}
+{{- end -}}

@@ -163,6 +163,9 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 		ann := obj.GetAnnotations()
 		valuesAnnotations := make(map[string]interface{})
 		for k, v := range ann {
+			if strings.HasPrefix(k, "checksum/") || strings.HasPrefix(k, "helm.sh/") || strings.HasPrefix(k, "meta.helm.sh/") {
+				continue
+			}
 			valuesAnnotations[k] = v
 		}
 		err = unstructured.SetNestedField(options.values, valuesAnnotations, compName, "annotations")

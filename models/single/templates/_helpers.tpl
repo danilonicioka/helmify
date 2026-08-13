@@ -77,5 +77,3 @@ Annotations helper for single model
 {{- toYaml . }}
 {{- end }}
 {{- end }}
-
-

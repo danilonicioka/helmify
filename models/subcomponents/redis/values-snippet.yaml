@@ -1,0 +1,85 @@
+redis:
+  # ----------------------------------------------------------------------------
+  # 1. CORE WORKLOAD SETTINGS
+  # ----------------------------------------------------------------------------
+  enabled: false
+  replicas: 1
+  labels:
+    app.openshift.io/runtime: redis
+  annotations: {}
+
+  image:
+    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/redis
+    tag: "8.4.0"
+    pullPolicy: IfNotPresent
+
+  # ----------------------------------------------------------------------------
+  # 2. APPLICATION CONFIGURATION (Variables & Credentials)
+  # ----------------------------------------------------------------------------
+  cm: {}
+  secret: {}
+
+  # ----------------------------------------------------------------------------
+  # 3. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  service:
+    type: ClusterIP
+    ports:
+      redis:
+        port: 6379
+        targetPort: 6379
+
+  # ----------------------------------------------------------------------------
+  # 4. RESOURCES (Operational Overlay-Only)
+  # ----------------------------------------------------------------------------
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+  # ----------------------------------------------------------------------------
+  # 5. TIERED "FAIL-FAST" HEALTH PROBES
+  # ----------------------------------------------------------------------------
+  startupProbe:
+    tcpSocket:
+      port: 6379
+    initialDelaySeconds: 0
+    periodSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+  livenessProbe:
+    tcpSocket:
+      port: 6379
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+  readinessProbe:
+    tcpSocket:
+      port: 6379
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    failureThreshold: 3
+    successThreshold: 1
+
+  # ----------------------------------------------------------------------------
+  # 6. LIFECYCLE & HA STRATEGY
+  # ----------------------------------------------------------------------------
+  strategy:
+    type: Recreate
+  terminationGracePeriodSeconds: 30
+
+  # ----------------------------------------------------------------------------
+  # 7. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  persistence:
+    enabled: false
+    ephemeral: true
+    mountPath: "/data"
+    storageClass: ""
+    storageRequest: 1Gi
+    accessModes:
+      - ReadWriteOnce

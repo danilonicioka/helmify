@@ -446,3 +446,19 @@ When components end with numeric suffixes (like `pje-service-1g` or `pje-service
 - **Symptom**: Helm template rendering fails with `template: no template "<chartName>.<component>.selectorLabels" associated with template "gotpl"`. This usually occurred for single-deployment charts where the component name happened to be identical to the chart name.
 - **Cause**: Both `pkg/helm/chart.go` and `pkg/helm/memory.go` intentionally skipped appending the component-specific `define` helper blocks in `_helpers.tpl` when the component array only had one item. However, the component processor files (`service.go` and `deployment.go`) continued trying to reference these templates if `IsMultiDeployment(appMeta)` independently evaluated to true or due to name mismatching logic.
 - **Fix**: Re-wrote the logic in `chart.go` and `memory.go` to unconditionally generate component-specific label, annotation, and selector helper blocks for **all** components defined in `values.yaml` (including the primary/single component). This guarantees the templates exist in `_helpers.tpl` whenever the processor outputs a `{{ include "<chart>.<component>.selectorLabels" }}` tag.
+
+## Modular Subcomponents Architecture
+Helmify now supports a fully modular dynamic subcomponent architecture. Auxiliary components (such as Redis, Postgres, or RabbitMQ) are no longer hardcoded into the core wizard or templates. 
+To add a new subcomponent to the Helmify API wizard, simply create a new directory inside `models/subcomponents/<name>` containing a `values-snippet.yaml` and a `templates/` folder. The API automatically scans this directory and exposes them via the `/v1/subcomponents` endpoint, dynamically bundling them into your chart if requested.
+
+## Migrating Legacy Helm Charts
+Helmify can now be used as a migration engine to modernize legacy Helm charts and convert them into the standardized TJPA architecture. 
+
+**Workflow:**
+1. Render your legacy chart into raw Kubernetes manifests using Helm:
+   ```bash
+   helm template my-legacy-chart/ -f custom-values.yaml > legacy-manifests.yaml
+   ```
+2. Feed `legacy-manifests.yaml` directly into the Helmify converter.
+
+**Why this works:** The Helmify processor automatically strips legacy standard labels (like `helm.sh/chart`, `app.kubernetes.io/managed-by`) and automatically strips injected annotations (like `checksum/config` or `meta.helm.sh/`) before extracting the workload into the new `values.yaml` schema. This completely erases old, messy logic and outputs a perfectly standardized, clean modern chart.

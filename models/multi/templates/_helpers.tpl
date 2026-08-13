@@ -119,6 +119,3 @@ Frontend-specific selector labels
 {{ include "chart-model-multi.selectorLabels" . }}
 app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-frontend
 {{- end }}
-
-
-

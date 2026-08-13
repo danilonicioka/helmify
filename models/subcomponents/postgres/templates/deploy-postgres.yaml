@@ -1,0 +1,129 @@
+{{- if .Values.postgres.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres
+  labels:
+    {{- include "<CHART_NAME>.postgres.labels" . | nindent 4 }}
+  {{- $annotations := include "<CHART_NAME>.postgres.annotations" . }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if not (kindIs "nil" .Values.postgres.replicas) }}
+  replicas: {{ .Values.postgres.replicas }}
+  {{- end }}
+  {{- if .Values.postgres.strategy }}
+  strategy:
+    {{- toYaml .Values.postgres.strategy | nindent 4 }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "<CHART_NAME>.postgres.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- if and .Values.postgres .Values.postgres.cm (not (empty .Values.postgres.cm)) }}
+        checksum/config: '{{ include (print $.Template.BasePath "/cm-postgres.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and .Values.postgres .Values.postgres.secret (not (empty .Values.postgres.secret)) }}
+        checksum/secret: '{{ include (print $.Template.BasePath "/secret-postgres.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
+        {{- end }}
+      labels:
+        {{- include "<CHART_NAME>.postgres.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          imagePullPolicy: {{ .Values.postgres.image.pullPolicy | default "IfNotPresent" }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+          
+          {{- if or (and .Values.postgres.cm (not (empty .Values.postgres.cm))) (and .Values.postgres.secret (not (empty .Values.postgres.secret))) (and .Values.global (not (empty .Values.global))) }}
+          envFrom:
+            {{- if and .Values.postgres.cm (not (empty .Values.postgres.cm)) }}
+            - configMapRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-postgres-cm
+            {{- end }}
+            {{- if and .Values.postgres.secret (not (empty .Values.postgres.secret)) }}
+            - secretRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-postgres-secret
+            {{- end }}
+            {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+            - configMapRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-global-cm
+            {{- end }}
+            {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+            - secretRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-global-secret
+            {{- end }}
+          {{- end }}
+
+          {{- if and .Values.postgres.startupProbe (not (empty .Values.postgres.startupProbe)) }}
+          startupProbe:
+            {{- toYaml .Values.postgres.startupProbe | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.postgres.livenessProbe (not (empty .Values.postgres.livenessProbe)) }}
+          livenessProbe:
+            {{- toYaml .Values.postgres.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.postgres.readinessProbe (not (empty .Values.postgres.readinessProbe)) }}
+          readinessProbe:
+            {{- toYaml .Values.postgres.readinessProbe | nindent 12 }}
+          {{- end }}
+
+          {{- if and .Values.postgres.resources .Values.postgres.resources.limits }}
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+          {{- end }}
+
+          {{- if and .Values.postgres.persistence .Values.postgres.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.postgres.persistence.mountPath | default "/var/lib/postgresql/data" }}
+          {{- end }}
+      
+      {{- if .Values.postgres.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ .Values.postgres.terminationGracePeriodSeconds }}
+      {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.postgres.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml .Values.postgres.topologySpreadConstraints | nindent 8 }}
+      {{- end }}
+
+      {{- if and .Values.postgres.persistence .Values.postgres.persistence.enabled }}
+      volumes:
+        - name: data
+          {{- if .Values.postgres.persistence.ephemeral }}
+          emptyDir: {}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ include "<CHART_NAME>.fullname" $ }}-postgres
+          {{- end }}
+      {{- end }}
+{{- end -}}
