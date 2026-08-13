@@ -160,11 +160,20 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/x-tar")
-	w.Header().Set("Content-Disposition", `attachment; filename="chart.tar.gz"`)
+	valuesOnly := r.URL.Query().Get("values-only") == "true"
+	if valuesOnly {
+		w.Header().Set("Content-Type", "application/x-yaml")
+		w.Header().Set("Content-Disposition", `attachment; filename="values.yaml"`)
+		if valContent, ok := files["values.yaml"]; ok {
+			w.Write(valContent)
+		}
+	} else {
+		w.Header().Set("Content-Type", "application/x-tar")
+		w.Header().Set("Content-Disposition", `attachment; filename="chart.tar.gz"`)
 
-	if err := helm.WriteTarGz(files, conf.ChartName, w); err != nil {
-		logrus.WithError(err).Error("TarGz streaming failed")
+		if err := helm.WriteTarGz(files, conf.ChartName, w); err != nil {
+			logrus.WithError(err).Error("TarGz streaming failed")
+		}
 	}
 }
 
