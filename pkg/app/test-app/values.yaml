@@ -151,7 +151,7 @@ api:
                 - key: app.kubernetes.io/component
                   operator: In
                   values:
-                    - backend
+                    - test-app-backend
             topologyKey: kubernetes.io/hostname
   # ----------------------------------------------------------------------------
   # 9. CUSTOM FILES
@@ -168,10 +168,6 @@ api:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
-  backoffLimit: 4
-  schedule: '* * * * *'
-  imagePullPolicy: IfNotPresent
-  topologySpreadConstraints: []
   command:
     - perl
     - -Mbignum=bpi
@@ -180,6 +176,10 @@ api:
     - /bin/sh
     - -c
     - date; echo Hello from the Kubernetes cluster
+  backoffLimit: 4
+  imagePullPolicy: IfNotPresent
+  topologySpreadConstraints: []
+  schedule: '* * * * *'
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -286,6 +286,24 @@ app-emissor:
     ephemeral: false
     mountPath: "/var/lib/data"
   # ----------------------------------------------------------------------------
+  # 8. SCHEDULING & NODE ASSIGNMENT
+  # ----------------------------------------------------------------------------
+  imagePullSecrets: []
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - test-app-frontend
+            topologyKey: kubernetes.io/hostname
+  # ----------------------------------------------------------------------------
   # 9. CUSTOM FILES
   # ----------------------------------------------------------------------------
   files:
@@ -304,8 +322,6 @@ app-emissor:
     www:
       requests:
         storage: 1Gi
-  nodeSelector: {}
-  tolerations: []
   topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
@@ -335,7 +351,6 @@ myapp:
     my_config.properties: |
       health.healthProbeBindAddress=8081
       metrics.bindAddress=127.0.0.1:8080
-    my.prop2: val 1
     my.prop3: "true"
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
@@ -348,18 +363,19 @@ myapp:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
     my.prop1: "1"
+    my.prop2: val 1
   # No default secrets for web frontend component
   secret:
+    VAR2: my_secret_var_2
+    str: |
+      some big not so secret string with
+      multiple lines
     ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     VAR1: my_secret_var_1
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
-    VAR2: my_secret_var_2
-    str: |
-      some big not so secret string with
-      multiple lines
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -451,6 +467,26 @@ myapp:
     storageRequest: 3Gi
     storageLimit: 5Gi
   # ----------------------------------------------------------------------------
+  # 8. SCHEDULING & NODE ASSIGNMENT
+  # ----------------------------------------------------------------------------
+  imagePullSecrets: []
+  nodeSelector:
+    type: user-node
+    region: east
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - test-app-frontend
+            topologyKey: kubernetes.io/hostname
+  # ----------------------------------------------------------------------------
   # 9. CUSTOM FILES
   # ----------------------------------------------------------------------------
   files:
@@ -465,19 +501,32 @@ myapp:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
-  topologySpreadConstraints: []
   proxySidecar:
     image:
-      tag: v0.8.0
       repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.8.0
     args:
       - --secure-listen-address=0.0.0.0:8443
       - --v=10
-  nodeSelector:
-    region: east
-    type: user-node
-  tolerations: []
+  podSecurityContext:
+    runAsNonRoot: true
+    fsGroup: 20000
+    runAsUser: 65532
+  initContainer:
+    image:
+      repository: bash
+      tag: latest
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
+  topologySpreadConstraints: []
+  revisionHistoryLimit: 5
   app:
+    containerSecurityContext: {}
+    image:
+      tag: latest
+      repository: controller
     resources:
       limits:
         cpu: 100m
@@ -487,41 +536,24 @@ myapp:
         memory: 20Mi
 
     livenessProbe:
-      periodSeconds: 20
       httpGet:
-        path: /healthz
         port: 8081
+        path: /healthz
       initialDelaySeconds: 15
+      periodSeconds: 20
 
     readinessProbe:
-      periodSeconds: 10
       httpGet:
         port: 8081
         path: /readyz
       initialDelaySeconds: 5
+      periodSeconds: 10
     args:
       - --health-probe-bind-address=:8081
       - --metrics-bind-address=127.0.0.1:8080
       - --leader-elect
     command:
       - /manager
-    containerSecurityContext: {}
-    image:
-      repository: controller
-      tag: latest
-  initContainer:
-    image:
-      tag: latest
-      repository: bash
-  podSecurityContext:
-    runAsUser: 65532
-    runAsNonRoot: true
-    fsGroup: 20000
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
-  revisionHistoryLimit: 5
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -658,7 +690,7 @@ nginx:
                 - key: app.kubernetes.io/component
                   operator: In
                   values:
-                    - backend
+                    - test-app-backend
             topologyKey: kubernetes.io/hostname
   # ----------------------------------------------------------------------------
   # 9. CUSTOM FILES
