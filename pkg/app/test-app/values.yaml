@@ -131,6 +131,27 @@ api:
     mountPath: "/var/lib/data"
     storageClass: ""
     storageRequest: 1Gi
+  # ----------------------------------------------------------------------------
+  # 8. CUSTOM FILES
+  # ----------------------------------------------------------------------------
+  files:
+    cm: {}
+    # nginx.conf:
+    #   mountPath: "/etc/nginx/nginx.conf"
+    #   content: |
+    #     user nginx;
+    #     worker_processes auto;
+    secret: {}
+    # key.p12:
+    #   mountPath: "/app/certs/key.p12"
+    #   content: |
+    #     ...
+  nodeSelector: {}
+  tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/master
+      operator: Exists
+  backoffLimit: 4
   topologySpreadConstraints: []
   command:
     - perl
@@ -142,12 +163,6 @@ api:
     - date; echo Hello from the Kubernetes cluster
   schedule: '* * * * *'
   imagePullPolicy: IfNotPresent
-  nodeSelector: {}
-  tolerations:
-    - effect: NoSchedule
-      key: node-role.kubernetes.io/master
-      operator: Exists
-  backoffLimit: 4
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -254,6 +269,21 @@ app-emissor:
     mountPath: "/var/lib/data"
     storageClass: ""
     storageRequest: 1Gi
+  # ----------------------------------------------------------------------------
+  # 8. CUSTOM FILES
+  # ----------------------------------------------------------------------------
+  files:
+    cm: {}
+    # nginx.conf:
+    #   mountPath: "/etc/nginx/nginx.conf"
+    #   content: |
+    #     user nginx;
+    #     worker_processes auto;
+    secret: {}
+    # key.p12:
+    #   mountPath: "/app/certs/key.p12"
+    #   content: |
+    #     ...
   volumeClaims:
     www:
       requests:
@@ -285,11 +315,6 @@ myapp:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
-    dummyconfigmapkey: dummyconfigmapvalue
-    my_config.properties: |
-      health.healthProbeBindAddress=8081
-      metrics.bindAddress=127.0.0.1:8080
-    my.prop2: val 1
     my.prop3: "true"
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
@@ -302,18 +327,23 @@ myapp:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
     my.prop1: "1"
+    my.prop2: val 1
+    dummyconfigmapkey: dummyconfigmapvalue
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
   # No default secrets for web frontend component
   secret:
     VAR1: my_secret_var_1
     VAR2: my_secret_var_2
-    str: |
-      some big not so secret string with
-      multiple lines
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
+    str: |
+      some big not so secret string with
+      multiple lines
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -343,11 +373,11 @@ myapp:
       https:
         targetPort: https
         port: 8443
-    ipFamilyPolicy: SingleStack
     ipFamilies:
       - IPv4
     loadBalancerSourceRanges:
       - 10.0.0.0/8
+    ipFamilyPolicy: SingleStack
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
@@ -403,21 +433,46 @@ myapp:
     storageClass: manual
     storageRequest: 3Gi
     storageLimit: 5Gi
-  app:
-
-    readinessProbe:
-      httpGet:
-        path: /readyz
-        port: 8081
-      initialDelaySeconds: 5
-      periodSeconds: 10
+  # ----------------------------------------------------------------------------
+  # 8. CUSTOM FILES
+  # ----------------------------------------------------------------------------
+  files:
+    cm: {}
+    # nginx.conf:
+    #   mountPath: "/etc/nginx/nginx.conf"
+    #   content: |
+    #     user nginx;
+    #     worker_processes auto;
+    secret: {}
+    # key.p12:
+    #   mountPath: "/app/certs/key.p12"
+    #   content: |
+    #     ...
+  revisionHistoryLimit: 5
+  tolerations: []
+  podSecurityContext:
+    runAsUser: 65532
+    runAsNonRoot: true
+    fsGroup: 20000
+  initContainer:
+    image:
+      repository: bash
+      tag: latest
+  proxySidecar:
+    image:
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.8.0
     args:
-      - --health-probe-bind-address=:8081
-      - --metrics-bind-address=127.0.0.1:8080
-      - --leader-elect
-    command:
-      - /manager
-    containerSecurityContext: {}
+      - --secure-listen-address=0.0.0.0:8443
+      - --v=10
+  nodeSelector:
+    region: east
+    type: user-node
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
+  app:
     image:
       repository: controller
       tag: latest
@@ -431,35 +486,25 @@ myapp:
 
     livenessProbe:
       httpGet:
-        port: 8081
         path: /healthz
+        port: 8081
       initialDelaySeconds: 15
       periodSeconds: 20
-  revisionHistoryLimit: 5
-  proxySidecar:
-    image:
-      repository: gcr.io/kubebuilder/kube-rbac-proxy
-      tag: v0.8.0
+
+    readinessProbe:
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      httpGet:
+        path: /readyz
+        port: 8081
     args:
-      - --secure-listen-address=0.0.0.0:8443
-      - --v=10
-  podSecurityContext:
-    runAsUser: 65532
-    runAsNonRoot: true
-    fsGroup: 20000
+      - --health-probe-bind-address=:8081
+      - --metrics-bind-address=127.0.0.1:8080
+      - --leader-elect
+    command:
+      - /manager
+    containerSecurityContext: {}
   topologySpreadConstraints: []
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
-  nodeSelector:
-    type: user-node
-    region: east
-  tolerations: []
-  initContainer:
-    image:
-      repository: bash
-      tag: latest
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -579,6 +624,21 @@ nginx:
     mountPath: "/var/lib/data"
     storageClass: ""
     storageRequest: 1Gi
+  # ----------------------------------------------------------------------------
+  # 8. CUSTOM FILES
+  # ----------------------------------------------------------------------------
+  files:
+    cm: {}
+    # nginx.conf:
+    #   mountPath: "/etc/nginx/nginx.conf"
+    #   content: |
+    #     user nginx;
+    #     worker_processes auto;
+    secret: {}
+    # key.p12:
+    #   mountPath: "/app/certs/key.p12"
+    #   content: |
+    #     ...
   minAvailable: 2
 # ==============================================================================
 # IV. GLOBAL SCHEDULING & COMMON CONFIGS

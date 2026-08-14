@@ -922,17 +922,22 @@
             </div>
             <!-- Global Env Vars -->
             <div id="global-config-section">
-                <div class="section-title">
+                <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>Global ConfigMap Env Variables</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleEnvVar('global-config')" id="btn-add-global-config">+ Add ConfigMap</button>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="global-config-container" style="display: none;">
                     <textarea id="global-config-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveGlobalConfig()"></textarea>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeEnvVar('global-config')" style="margin-top: 5px;">Remove</button>
                 </div>
-                <div class="section-title" style="margin-top: 1rem;">
+                
+                <div class="section-title" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
                     <span>Global Secrets</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleEnvVar('global-secret')" id="btn-add-global-secret">+ Add Secret</button>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="global-secret-container" style="display: none;">
                     <textarea id="global-secret-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveGlobalConfig()"></textarea>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeEnvVar('global-secret')" style="margin-top: 5px;">Remove</button>
                 </div>
             </div>
 
@@ -975,20 +980,25 @@
 
                 <!-- 2. APPLICATION CONFIGURATION -->
                 <!-- ConfigMap variables -->
-                <div class="section-subtitle">
+                <div class="section-subtitle" style="display: flex; justify-content: space-between; align-items: center;">
                     <span>Deployment ConfigMap (Env Vars)</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleEnvVar('comp-cm')" id="btn-add-comp-cm">+ Add ConfigMap</button>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="comp-cm-container" style="display: none;">
                     <textarea id="comp-cm-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveAndPreview()"></textarea>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeEnvVar('comp-cm')" style="margin-top: 5px;">Remove</button>
                 </div>
 
                 <!-- Secret variables -->
-                <div class="section-subtitle">
+                <div class="section-subtitle" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
                     <span>Deployment Secrets</span>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleEnvVar('comp-secret')" id="btn-add-comp-secret">+ Add Secret</button>
                 </div>
-                <div class="form-group">
+                <div class="form-group" id="comp-secret-container" style="display: none;">
                     <textarea id="comp-secret-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveAndPreview()"></textarea>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeEnvVar('comp-secret')" style="margin-top: 5px;">Remove</button>
                 </div>
+
 
                 <!-- 3. ROUTING & NETWORKING -->
                 <div class="section-subtitle">Routing & Networking</div>
@@ -1008,11 +1018,11 @@
                     <div class="route-card-header">
                         <span>Default OpenShift Route (Self-Signed)</span>
                         <label class="route-switch">
-                            <input type="checkbox" id="routeDefaultEnabled" checked>
+                            <input type="checkbox" id="routeDefaultEnabled" checked onchange="toggleRouteUI(); saveAndPreview()">
                             <span class="slider"></span>
                         </label>
                     </div>
-                    <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                    <div class="form-group" id="routeDefaultHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
                         <label for="routeDefaultHost">Route Hostname</label>
                         <input type="text" id="routeDefaultHost" placeholder="e.g. chart-model-single.apps.ocp-hub.i.tj.pa.gov.br" oninput="saveAndPreview()">
                     </div>
@@ -1023,11 +1033,11 @@
                     <div class="route-card-header">
                         <span>Intranet Route (Valid TLS)</span>
                         <label class="route-switch">
-                            <input type="checkbox" id="routeIntEnabled">
+                            <input type="checkbox" id="routeIntEnabled" onchange="toggleRouteUI(); saveAndPreview()">
                             <span class="slider"></span>
                         </label>
                     </div>
-                    <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                    <div class="form-group" id="routeIntHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
                         <label for="routeIntHost">Route Hostname</label>
                         <input type="text" id="routeIntHost" placeholder="e.g. chart-model-single-int.i.tjpa.jus.br" oninput="saveAndPreview()">
                     </div>
@@ -1038,11 +1048,11 @@
                     <div class="route-card-header">
                         <span>Internet Route (Valid TLS)</span>
                         <label class="route-switch">
-                            <input type="checkbox" id="routeExtEnabled">
+                            <input type="checkbox" id="routeExtEnabled" onchange="toggleRouteUI(); saveAndPreview()">
                             <span class="slider"></span>
                         </label>
                     </div>
-                    <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                    <div class="form-group" id="routeExtHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
                         <label for="routeExtHost">Route Hostname</label>
                         <input type="text" id="routeExtHost" placeholder="e.g. chart-model-single.tjpa.jus.br" oninput="saveAndPreview()">
                     </div>
@@ -1081,6 +1091,17 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Custom Files -->
+                <div class="section-subtitle" style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Custom Files</span>
+                    <div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addCustomFile('cm')">+ Add ConfigMap File</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addCustomFile('secret')">+ Add Secret File</button>
+                    </div>
+                </div>
+                <div id="custom-files-container" style="margin-bottom: 2rem;"></div>
+
             </div> <!-- End component-config-panel -->
             
             <!-- Global Subcomponents Config -->
@@ -1571,6 +1592,18 @@
             config.route.external.enabled = document.getElementById('routeExtEnabled').checked;
             config.route.external.host = document.getElementById('routeExtHost').value.trim();
 
+            config.files = { cm: {}, secret: {} };
+            const fileDivs = document.getElementById('custom-files-container').children;
+            for (let i = 0; i < fileDivs.length; i++) {
+                const type = fileDivs[i].dataset.type;
+                const name = fileDivs[i].querySelector('.file-name').value.trim();
+                const path = fileDivs[i].querySelector('.file-mount').value.trim();
+                const content = fileDivs[i].querySelector('.file-content').value;
+                if (name && path) {
+                    config.files[type][name] = { mountPath: path, content: content };
+                }
+            }
+
             // Collect component ConfigMap
             config.cm = {};
             document.getElementById('comp-cm-text').value.split('\n').forEach(line => {
@@ -1615,6 +1648,67 @@
             }
         }
 
+        function toggleEnvVar(id) {
+            document.getElementById(id + '-container').style.display = 'block';
+            document.getElementById('btn-add-' + id).style.display = 'none';
+        }
+
+        function removeEnvVar(id) {
+            document.getElementById(id + '-container').style.display = 'none';
+            document.getElementById('btn-add-' + id).style.display = 'inline-block';
+            document.getElementById(id + '-text').value = '';
+            if (id.startsWith('global')) {
+                saveGlobalConfig();
+            } else {
+                saveAndPreview();
+            }
+        }
+
+        function addCustomFile(type, filename = '', mountPath = '', content = '') {
+            const container = document.getElementById('custom-files-container');
+            const fileId = 'file-' + Date.now() + Math.floor(Math.random() * 1000);
+            
+            const fileDiv = document.createElement('div');
+            fileDiv.className = 'form-group';
+            fileDiv.id = fileId;
+            fileDiv.style.border = '1px solid var(--border-color)';
+            fileDiv.style.padding = '10px';
+            fileDiv.style.borderRadius = 'var(--radius-md)';
+            fileDiv.style.marginTop = '10px';
+            fileDiv.dataset.type = type; 
+            
+            fileDiv.innerHTML = `
+                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                    <strong style="color: ${type === 'secret' ? '#f43f5e' : '#3b82f6'};">${type === 'secret' ? 'Secret File' : 'ConfigMap File'}</strong>
+                    <button type="button" class="btn btn-danger btn-sm" onclick="document.getElementById('${fileId}').remove(); saveAndPreview()">Remove</button>
+                </div>
+                <div class="form-group row" style="margin-bottom: 10px;">
+                    <div>
+                        <label>Filename (Key)</label>
+                        <input type="text" class="file-name" value="${filename}" placeholder="e.g. nginx.conf" oninput="saveAndPreview()">
+                    </div>
+                    <div>
+                        <label>Mount Path</label>
+                        <input type="text" class="file-mount" value="${mountPath}" placeholder="e.g. /etc/nginx/nginx.conf" oninput="saveAndPreview()">
+                    </div>
+                </div>
+                <label>File Content</label>
+                <textarea class="file-content" rows="4" placeholder="Paste file content here..." oninput="saveAndPreview()">${content}</textarea>
+            `;
+            container.appendChild(fileDiv);
+        }
+
+        function toggleRouteUI() {
+            document.getElementById('routeDefaultHostWrapper').style.display = document.getElementById('routeDefaultEnabled').checked ? 'block' : 'none';
+            document.getElementById('routeIntHostWrapper').style.display = document.getElementById('routeIntEnabled').checked ? 'block' : 'none';
+            document.getElementById('routeExtHostWrapper').style.display = document.getElementById('routeExtEnabled').checked ? 'block' : 'none';
+        }
+
+        // Add listeners for route toggles
+        document.getElementById('routeDefaultEnabled').addEventListener('change', toggleRouteUI);
+        document.getElementById('routeIntEnabled').addEventListener('change', toggleRouteUI);
+        document.getElementById('routeExtEnabled').addEventListener('change', toggleRouteUI);
+
         // Render inputs for active component
         function renderActiveComponent() {
             if (!activeComponent || !components[activeComponent]) return;
@@ -1657,6 +1751,23 @@
             document.getElementById('routeExtEnabled').checked = config.route.external.enabled;
             document.getElementById('routeExtHost').value = config.route.external.host || '';
 
+            const filesContainer = document.getElementById('custom-files-container');
+            filesContainer.innerHTML = '';
+            if (config.files) {
+                if (config.files.cm) {
+                    for (const [name, fileConfig] of Object.entries(config.files.cm)) {
+                        addCustomFile('cm', name, fileConfig.mountPath, fileConfig.content);
+                    }
+                }
+                if (config.files.secret) {
+                    for (const [name, fileConfig] of Object.entries(config.files.secret)) {
+                        addCustomFile('secret', name, fileConfig.mountPath, fileConfig.content);
+                    }
+                }
+            }
+
+			toggleRouteUI();
+
             // Render ConfigMaps
             const cmText = Object.entries(config.cm || {}).map(([k, v]) => `${k}=${v}`).join('\n');
             document.getElementById('comp-cm-text').value = cmText;
@@ -1664,6 +1775,12 @@
             // Render Secrets
             const secretText = Object.entries(config.secret || {}).map(([k, v]) => `${k}=${v}`).join('\n');
             document.getElementById('comp-secret-text').value = secretText;
+
+            if (cmText.trim().length > 0) toggleEnvVar('comp-cm');
+            else { document.getElementById('comp-cm-container').style.display = 'none'; document.getElementById('btn-add-comp-cm').style.display = 'inline-block'; }
+
+            if (secretText.trim().length > 0) toggleEnvVar('comp-secret');
+            else { document.getElementById('comp-secret-container').style.display = 'none'; document.getElementById('btn-add-comp-secret').style.display = 'inline-block'; }
         }
 
         // Handle Global Config lists
@@ -1673,6 +1790,8 @@
 
             const secText = Object.entries(globalSecret || {}).map(([k, v]) => `${k}=${v}`).join('\n');
             document.getElementById('global-secret-text').value = secText;
+            if (cmText.trim().length > 0) toggleEnvVar('global-config');
+            if (secText.trim().length > 0) toggleEnvVar('global-secret');
         }
 
         function parseTextAreaVars(text) {

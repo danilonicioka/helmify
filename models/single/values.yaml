@@ -154,12 +154,18 @@ chart-model-single:
   # ----------------------------------------------------------------------------
   # 8. CUSTOM FILES
   # ----------------------------------------------------------------------------
-  files: {}
-    # nginx.conf:
-    #   mountPath: "/etc/nginx/nginx.conf"
-    #   content: |
-    #     user nginx;
-    #     worker_processes auto;
+  files:
+    cm: {}
+      # nginx.conf:
+      #   mountPath: "/etc/nginx/nginx.conf"
+      #   content: |
+      #     user nginx;
+      #     worker_processes auto;
+    secret: {}
+      # key.p12:
+      #   mountPath: "/app/certs/key.p12"
+      #   content: |
+      #     ...
 
 # ==============================================================================
 # III. GLOBAL SCHEDULING & COMMON CONFIGS
