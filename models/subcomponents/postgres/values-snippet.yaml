@@ -82,7 +82,7 @@ postgres:
     enabled: false
     ephemeral: true
     mountPath: "/var/lib/postgresql/data"
-    storageClass: ""
     storageRequest: 1Gi
+    storageClass: ""
     accessModes:
       - ReadWriteOnce

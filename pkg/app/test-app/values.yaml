@@ -128,9 +128,10 @@ api:
   # ----------------------------------------------------------------------------
   persistence:
     enabled: false
+    ephemeral: false
     mountPath: "/var/lib/data"
-    storageClass: ""
     storageRequest: 1Gi
+    storageClass: ""
   # ----------------------------------------------------------------------------
   # 8. CUSTOM FILES
   # ----------------------------------------------------------------------------
@@ -146,13 +147,11 @@ api:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
-  nodeSelector: {}
   tolerations:
     - effect: NoSchedule
       key: node-role.kubernetes.io/master
       operator: Exists
   backoffLimit: 4
-  topologySpreadConstraints: []
   command:
     - perl
     - -Mbignum=bpi
@@ -162,6 +161,8 @@ api:
     - -c
     - date; echo Hello from the Kubernetes cluster
   schedule: '* * * * *'
+  nodeSelector: {}
+  topologySpreadConstraints: []
   imagePullPolicy: IfNotPresent
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
@@ -266,9 +267,10 @@ app-emissor:
   # ----------------------------------------------------------------------------
   persistence:
     enabled: false
+    ephemeral: false
     mountPath: "/var/lib/data"
-    storageClass: ""
     storageRequest: 1Gi
+    storageClass: ""
   # ----------------------------------------------------------------------------
   # 8. CUSTOM FILES
   # ----------------------------------------------------------------------------
@@ -284,13 +286,13 @@ app-emissor:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
   volumeClaims:
     www:
       requests:
         storage: 1Gi
-  nodeSelector: {}
-  tolerations: []
-  topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -334,13 +336,13 @@ myapp:
       metrics.bindAddress=127.0.0.1:8080
   # No default secrets for web frontend component
   secret:
-    VAR1: my_secret_var_1
-    VAR2: my_secret_var_2
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+    VAR1: my_secret_var_1
+    VAR2: my_secret_var_2
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
@@ -373,11 +375,11 @@ myapp:
       https:
         targetPort: https
         port: 8443
-    ipFamilies:
-      - IPv4
     loadBalancerSourceRanges:
       - 10.0.0.0/8
     ipFamilyPolicy: SingleStack
+    ipFamilies:
+      - IPv4
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
@@ -429,9 +431,10 @@ myapp:
   # ----------------------------------------------------------------------------
   persistence:
     enabled: true
+    ephemeral: false
     mountPath: "/var/lib/data"
-    storageClass: manual
     storageRequest: 3Gi
+    storageClass: manual
     storageLimit: 5Gi
   # ----------------------------------------------------------------------------
   # 8. CUSTOM FILES
@@ -448,16 +451,6 @@ myapp:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
-  revisionHistoryLimit: 5
-  tolerations: []
-  podSecurityContext:
-    runAsUser: 65532
-    runAsNonRoot: true
-    fsGroup: 20000
-  initContainer:
-    image:
-      repository: bash
-      tag: latest
   proxySidecar:
     image:
       repository: gcr.io/kubebuilder/kube-rbac-proxy
@@ -465,38 +458,44 @@ myapp:
     args:
       - --secure-listen-address=0.0.0.0:8443
       - --v=10
-  nodeSelector:
-    region: east
-    type: user-node
   command:
     - /bin/sh
     - -c
     - echo 'Initializing container...'
+  nodeSelector:
+    region: east
+    type: user-node
+  tolerations: []
+  initContainer:
+    image:
+      repository: bash
+      tag: latest
+  revisionHistoryLimit: 5
   app:
     image:
       repository: controller
       tag: latest
     resources:
       limits:
+        cpu: 100m
         memory: 30Mi
-        cpu: 100m
       requests:
-        cpu: 100m
         memory: 20Mi
+        cpu: 100m
 
     livenessProbe:
-      httpGet:
-        path: /healthz
-        port: 8081
-      initialDelaySeconds: 15
       periodSeconds: 20
+      httpGet:
+        port: 8081
+        path: /healthz
+      initialDelaySeconds: 15
 
     readinessProbe:
-      initialDelaySeconds: 5
-      periodSeconds: 10
       httpGet:
         path: /readyz
         port: 8081
+      initialDelaySeconds: 5
+      periodSeconds: 10
     args:
       - --health-probe-bind-address=:8081
       - --metrics-bind-address=127.0.0.1:8080
@@ -504,6 +503,10 @@ myapp:
     command:
       - /manager
     containerSecurityContext: {}
+  podSecurityContext:
+    runAsUser: 65532
+    runAsNonRoot: true
+    fsGroup: 20000
   topologySpreadConstraints: []
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
@@ -621,9 +624,10 @@ nginx:
   # ----------------------------------------------------------------------------
   persistence:
     enabled: false
+    ephemeral: false
     mountPath: "/var/lib/data"
-    storageClass: ""
     storageRequest: 1Gi
+    storageClass: ""
   # ----------------------------------------------------------------------------
   # 8. CUSTOM FILES
   # ----------------------------------------------------------------------------

@@ -79,7 +79,7 @@ redis:
     enabled: false
     ephemeral: true
     mountPath: "/data"
-    storageClass: ""
     storageRequest: 1Gi
+    storageClass: ""
     accessModes:
       - ReadWriteOnce
