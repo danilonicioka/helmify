@@ -333,9 +333,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, []string{appKey, "readinessProbe", "tcpSocket", "port"}, svcPort)
 		}
 		if depConfig.Cm != nil {
+			stripQuotesFromMap(depConfig.Cm)
 			_ = setYamlPath(&rootNode, []string{appKey, "cm"}, depConfig.Cm)
 		}
 		if depConfig.Secret != nil {
+			stripQuotesFromMap(depConfig.Secret)
 			_ = setYamlPath(&rootNode, []string{appKey, "secret"}, depConfig.Secret)
 		}
 		if depConfig.Route.Path != "" {
@@ -411,9 +413,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 
 		if len(params.GlobalConfig) > 0 {
+			stripQuotesFromMap(params.GlobalConfig)
 			_ = setYamlPath(&rootNode, []string{"global", "cm"}, params.GlobalConfig)
 		}
 		if len(params.GlobalSecret) > 0 {
+			stripQuotesFromMap(params.GlobalSecret)
 			_ = setYamlPath(&rootNode, []string{"global", "secret"}, params.GlobalSecret)
 		}
 
@@ -555,9 +559,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, []string{compName, "readinessProbe", "tcpSocket", "port"}, svcPort)
 			}
 			if depConfig.Cm != nil {
+				stripQuotesFromMap(depConfig.Cm)
 				_ = setYamlPath(&rootNode, []string{compName, "cm"}, depConfig.Cm)
 			}
 			if depConfig.Secret != nil {
+				stripQuotesFromMap(depConfig.Secret)
 				_ = setYamlPath(&rootNode, []string{compName, "secret"}, depConfig.Secret)
 			}
 			if depConfig.Route.Path != "" {
@@ -626,14 +632,17 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, []string{compName, "files", "cm"}, depConfig.Files.Cm)
 			}
 			if len(depConfig.Files.Secret) > 0 {
+				
 				_ = setYamlPath(&rootNode, []string{compName, "files", "secret"}, depConfig.Files.Secret)
 			}
 		}
 
 		if len(params.GlobalConfig) > 0 {
+			stripQuotesFromMap(params.GlobalConfig)
 			_ = setYamlPath(&rootNode, []string{"global", "cm"}, params.GlobalConfig)
 		}
 		if len(params.GlobalSecret) > 0 {
+			stripQuotesFromMap(params.GlobalSecret)
 			_ = setYamlPath(&rootNode, []string{"global", "secret"}, params.GlobalSecret)
 		}
 
@@ -876,4 +885,15 @@ func getChartNameFromMetadata(chartYaml []byte) string {
 		return meta.Name
 	}
 	return ""
+}
+
+func stripQuotesFromMap(m map[string]string) {
+	for k, v := range m {
+		val := strings.TrimSpace(v)
+		if (strings.HasPrefix(val, "\"") && strings.HasSuffix(val, "\"")) || (strings.HasPrefix(val, "'") && strings.HasSuffix(val, "'")) {
+			if len(val) >= 2 {
+				m[k] = val[1 : len(val)-1]
+			}
+		}
+	}
 }
