@@ -1,23 +1,32 @@
+# ==============================================================================
+# SUBCOMPONENT DEPLOYMENT CONFIGURATION (postgres)
+# ==============================================================================
 postgres:
   # ----------------------------------------------------------------------------
-  # 1. CORE WORKLOAD SETTINGS
+  # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
   # ----------------------------------------------------------------------------
   enabled: false
+  # -- Number of replica pods.
   replicas: 1
+  # -- Custom labels to add to the deployment/pods
   labels:
     app.openshift.io/runtime: postgresql
+  # -- Custom annotations to add to the deployment 
   annotations: {}
-
   image:
+    # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/postgres
+    # -- Defaults to Chart.appVersion if not specified.
     tag: "16-alpine"
     pullPolicy: IfNotPresent
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION (Variables & Credentials)
   # ----------------------------------------------------------------------------
+  # ConfigMaps unique to this service container.
   cm:
     POSTGRES_DB: app_db
+  # Sensitive variables unique to this service container (Secrets).
   secret:
     POSTGRES_USER: app_user
     POSTGRES_PASSWORD: app_password
@@ -25,6 +34,7 @@ postgres:
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
+  # -- Internal Kubernetes Service Configuration.
   service:
     type: ClusterIP
     ports:
@@ -35,6 +45,7 @@ postgres:
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
   # ----------------------------------------------------------------------------
+  # Kept empty by default; the recommended configuration is commented below.
   resources:
     limits:
       cpu: 500m
@@ -44,8 +55,9 @@ postgres:
       memory: 256Mi
 
   # ----------------------------------------------------------------------------
-  # 5. TIERED "FAIL-FAST" HEALTH PROBES
+  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
+  # Probes are empty by default; the recommended tcpSocket configuration is commented below.
   startupProbe:
     tcpSocket:
       port: 5432
@@ -53,6 +65,7 @@ postgres:
     periodSeconds: 5
     failureThreshold: 30
     successThreshold: 1
+    
   livenessProbe:
     tcpSocket:
       port: 5432
@@ -60,6 +73,7 @@ postgres:
     periodSeconds: 10
     failureThreshold: 3
     successThreshold: 1
+
   readinessProbe:
     tcpSocket:
       port: 5432
@@ -71,18 +85,37 @@ postgres:
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
   # ----------------------------------------------------------------------------
+  # -- Deployment strategy. Use 'RollingUpdate' or 'Recreate' (e.g. for RWO volume claims).
   strategy:
     type: Recreate
+  # -- Connection draining grace period for graceful shutdowns.
   terminationGracePeriodSeconds: 30
 
   # ----------------------------------------------------------------------------
   # 7. PERSISTENCE
   # ----------------------------------------------------------------------------
   persistence:
-    enabled: false
-    ephemeral: true
+    enabled: true
+    ephemeral: false
     mountPath: "/var/lib/postgresql/data"
     storageRequest: 1Gi
     storageClass: ""
-    accessModes:
-      - ReadWriteOnce
+
+  # ----------------------------------------------------------------------------
+  # 8. SCHEDULING & NODE ASSIGNMENT
+  # ----------------------------------------------------------------------------
+  imagePullSecrets: []
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - <CHART_NAME>-postgres
+            topologyKey: kubernetes.io/hostname

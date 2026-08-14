@@ -40,7 +40,7 @@ spec:
       labels:
         {{- include "chart-model-multi.backend.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with $comp.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -140,15 +140,15 @@ spec:
       terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
       {{- end }}
 
-      {{- with .Values.nodeSelector }}
+      {{- with $comp.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with $comp.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with $comp.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}

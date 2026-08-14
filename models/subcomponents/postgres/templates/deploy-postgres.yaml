@@ -39,7 +39,7 @@ spec:
       labels:
         {{- include "<CHART_NAME>.postgres.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with .Values.postgres.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -99,15 +99,15 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.postgres.terminationGracePeriodSeconds }}
       {{- end }}
 
-      {{- with .Values.nodeSelector }}
+      {{- with .Values.postgres.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with .Values.postgres.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with .Values.postgres.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}

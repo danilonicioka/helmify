@@ -147,7 +147,26 @@ backend:
     storageClass: ""
 
   # ----------------------------------------------------------------------------
-  # 8. CUSTOM FILES
+  # 8. SCHEDULING & NODE ASSIGNMENT
+  # ----------------------------------------------------------------------------
+  imagePullSecrets: []
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - chart-model-multi-backend
+            topologyKey: kubernetes.io/hostname
+
+  # ----------------------------------------------------------------------------
+  # 9. CUSTOM FILES
   # ----------------------------------------------------------------------------
   files:
     cm: {}
@@ -271,11 +290,28 @@ frontend:
     enabled: false
     ephemeral: false
     mountPath: "/var/lib/data"
-    storageRequest: 1Gi
-    storageClass: ""
 
   # ----------------------------------------------------------------------------
-  # 8. CUSTOM FILES
+  # 8. SCHEDULING & NODE ASSIGNMENT
+  # ----------------------------------------------------------------------------
+  imagePullSecrets: []
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - chart-model-multi-frontend
+            topologyKey: kubernetes.io/hostname
+
+  # ----------------------------------------------------------------------------
+  # 9. CUSTOM FILES
   # ----------------------------------------------------------------------------
   files:
     cm: {}
@@ -290,22 +326,4 @@ frontend:
       #   content: |
       #     ...
 
-# ==============================================================================
-# IV. GLOBAL SCHEDULING & COMMON CONFIGS
-# ==============================================================================
-imagePullSecrets: []
 
-nodeSelector: {}
-tolerations: []
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-              - key: app.kubernetes.io/name
-                operator: In
-                values:
-                  - chart-model-multi
-          topologyKey: kubernetes.io/hostname
