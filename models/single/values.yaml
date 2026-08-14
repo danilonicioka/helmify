@@ -147,9 +147,10 @@ chart-model-single:
   # ----------------------------------------------------------------------------
   persistence:
     enabled: false
+    ephemeral: false
     mountPath: "/var/lib/data"
-    storageClass: ""
     storageRequest: 1Gi
+    storageClass: ""
 
   # ----------------------------------------------------------------------------
   # 8. CUSTOM FILES

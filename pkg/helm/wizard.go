@@ -374,10 +374,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.Persistence.MountPath != "" {
 				_ = setYamlPath(&rootNode, []string{appKey, "persistence", "mountPath"}, depConfig.Persistence.MountPath)
 			}
-			if !depConfig.Persistence.Ephemeral && depConfig.Persistence.StorageRequest != "" {
-				_ = setYamlPath(&rootNode, []string{appKey, "persistence", "storageRequest"}, depConfig.Persistence.StorageRequest)
+			if !depConfig.Persistence.Ephemeral {
+				if depConfig.Persistence.StorageRequest != "" {
+					_ = setYamlPath(&rootNode, []string{appKey, "persistence", "storageRequest"}, depConfig.Persistence.StorageRequest)
+				}
+				_ = setYamlPath(&rootNode, []string{appKey, "strategy"}, map[string]string{"type": "Recreate"})
 			}
-			_ = setYamlPath(&rootNode, []string{appKey, "strategy"}, map[string]string{"type": "Recreate"})
 		} else {
 			deleteYamlPath(&rootNode, []string{appKey, "persistence"})
 		}
@@ -598,10 +600,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				if depConfig.Persistence.MountPath != "" {
 					_ = setYamlPath(&rootNode, []string{compName, "persistence", "mountPath"}, depConfig.Persistence.MountPath)
 				}
-				if !depConfig.Persistence.Ephemeral && depConfig.Persistence.StorageRequest != "" {
-					_ = setYamlPath(&rootNode, []string{compName, "persistence", "storageRequest"}, depConfig.Persistence.StorageRequest)
+				if !depConfig.Persistence.Ephemeral {
+					if depConfig.Persistence.StorageRequest != "" {
+						_ = setYamlPath(&rootNode, []string{compName, "persistence", "storageRequest"}, depConfig.Persistence.StorageRequest)
+					}
+					_ = setYamlPath(&rootNode, []string{compName, "strategy"}, map[string]string{"type": "Recreate"})
 				}
-				_ = setYamlPath(&rootNode, []string{compName, "strategy"}, map[string]string{"type": "Recreate"})
 			} else {
 				deleteYamlPath(&rootNode, []string{compName, "persistence"})
 			}
