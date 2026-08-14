@@ -1,4 +1,6 @@
 # Helmify
+
+> **Note:** This project is a customized fork of the well-known [arttor/helmify](https://github.com/arttor/helmify.git) project, tailored to generate standardized charts specifically for our environment.
 [![CI](https://github.com/arttor/helmify/actions/workflows/ci.yml/badge.svg)](https://github.com/arttor/helmify/actions/workflows/ci.yml)
 [Documentation](docs/index.md)
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/arttor/helmify)
