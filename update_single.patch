@@ -1,0 +1,49 @@
+--- models/single/values.yaml
++++ models/single/values.yaml
+@@ -151,6 +151,21 @@
+     storageClass: ""
+ 
+   # ----------------------------------------------------------------------------
+-  # 8. CUSTOM FILES
++  # 8. SCHEDULING & NODE ASSIGNMENT
++  # ----------------------------------------------------------------------------
++  imagePullSecrets: []
++  nodeSelector: {}
++  tolerations: []
++  affinity:
++    podAntiAffinity:
++      preferredDuringSchedulingIgnoredDuringExecution:
++        - weight: 100
++          podAffinityTerm:
++            labelSelector:
++              matchExpressions:
++                - key: app.kubernetes.io/component
++                  operator: In
++                  values:
++                    - chart-model-single
++            topologyKey: kubernetes.io/hostname
++
++  # ----------------------------------------------------------------------------
++  # 9. CUSTOM FILES
+   # ----------------------------------------------------------------------------
+   files:
+@@ -171,19 +186,0 @@
+-# ==============================================================================
+-# III. GLOBAL SCHEDULING & COMMON CONFIGS
+-# ==============================================================================
+-imagePullSecrets: []
+-
+-nodeSelector: {}
+-tolerations: []
+-affinity:
+-  podAntiAffinity:
+-    preferredDuringSchedulingIgnoredDuringExecution:
+-      - weight: 100
+-        podAffinityTerm:
+-          labelSelector:
+-            matchExpressions:
+-              - key: app.kubernetes.io/name
+-                operator: In
+-                values:
+-                  - chart-model-single
+-          topologyKey: kubernetes.io/hostname

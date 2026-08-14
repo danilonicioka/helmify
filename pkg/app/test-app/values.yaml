@@ -133,7 +133,28 @@ api:
     storageRequest: 1Gi
     storageClass: ""
   # ----------------------------------------------------------------------------
-  # 8. CUSTOM FILES
+  # 8. SCHEDULING & NODE ASSIGNMENT
+  # ----------------------------------------------------------------------------
+  imagePullSecrets: []
+  nodeSelector: {}
+  tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/master
+      operator: Exists
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - backend
+            topologyKey: kubernetes.io/hostname
+  # ----------------------------------------------------------------------------
+  # 9. CUSTOM FILES
   # ----------------------------------------------------------------------------
   files:
     cm: {}
@@ -147,11 +168,10 @@ api:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
-  tolerations:
-    - effect: NoSchedule
-      key: node-role.kubernetes.io/master
-      operator: Exists
   backoffLimit: 4
+  schedule: '* * * * *'
+  imagePullPolicy: IfNotPresent
+  topologySpreadConstraints: []
   command:
     - perl
     - -Mbignum=bpi
@@ -160,10 +180,6 @@ api:
     - /bin/sh
     - -c
     - date; echo Hello from the Kubernetes cluster
-  schedule: '* * * * *'
-  nodeSelector: {}
-  topologySpreadConstraints: []
-  imagePullPolicy: IfNotPresent
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -269,10 +285,8 @@ app-emissor:
     enabled: false
     ephemeral: false
     mountPath: "/var/lib/data"
-    storageRequest: 1Gi
-    storageClass: ""
   # ----------------------------------------------------------------------------
-  # 8. CUSTOM FILES
+  # 9. CUSTOM FILES
   # ----------------------------------------------------------------------------
   files:
     cm: {}
@@ -286,13 +300,13 @@ app-emissor:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
-  nodeSelector: {}
-  tolerations: []
-  topologySpreadConstraints: []
   volumeClaims:
     www:
       requests:
         storage: 1Gi
+  nodeSelector: {}
+  tolerations: []
+  topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -317,6 +331,11 @@ myapp:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
+    dummyconfigmapkey: dummyconfigmapvalue
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
+    my.prop2: val 1
     my.prop3: "true"
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
@@ -329,20 +348,15 @@ myapp:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
     my.prop1: "1"
-    my.prop2: val 1
-    dummyconfigmapkey: dummyconfigmapvalue
-    my_config.properties: |
-      health.healthProbeBindAddress=8081
-      metrics.bindAddress=127.0.0.1:8080
   # No default secrets for web frontend component
   secret:
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
+    VAR1: my_secret_var_1
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
-    VAR1: my_secret_var_1
     VAR2: my_secret_var_2
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
@@ -373,8 +387,8 @@ myapp:
     type: ClusterIP
     ports:
       https:
-        targetPort: https
         port: 8443
+        targetPort: https
     loadBalancerSourceRanges:
       - 10.0.0.0/8
     ipFamilyPolicy: SingleStack
@@ -433,11 +447,11 @@ myapp:
     enabled: true
     ephemeral: false
     mountPath: "/var/lib/data"
-    storageRequest: 3Gi
     storageClass: manual
+    storageRequest: 3Gi
     storageLimit: 5Gi
   # ----------------------------------------------------------------------------
-  # 8. CUSTOM FILES
+  # 9. CUSTOM FILES
   # ----------------------------------------------------------------------------
   files:
     cm: {}
@@ -451,51 +465,40 @@ myapp:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
+  topologySpreadConstraints: []
   proxySidecar:
     image:
-      repository: gcr.io/kubebuilder/kube-rbac-proxy
       tag: v0.8.0
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
     args:
       - --secure-listen-address=0.0.0.0:8443
       - --v=10
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
   nodeSelector:
     region: east
     type: user-node
   tolerations: []
-  initContainer:
-    image:
-      repository: bash
-      tag: latest
-  revisionHistoryLimit: 5
   app:
-    image:
-      repository: controller
-      tag: latest
     resources:
       limits:
         cpu: 100m
         memory: 30Mi
       requests:
-        memory: 20Mi
         cpu: 100m
+        memory: 20Mi
 
     livenessProbe:
       periodSeconds: 20
       httpGet:
-        port: 8081
         path: /healthz
+        port: 8081
       initialDelaySeconds: 15
 
     readinessProbe:
-      httpGet:
-        path: /readyz
-        port: 8081
-      initialDelaySeconds: 5
       periodSeconds: 10
+      httpGet:
+        port: 8081
+        path: /readyz
+      initialDelaySeconds: 5
     args:
       - --health-probe-bind-address=:8081
       - --metrics-bind-address=127.0.0.1:8080
@@ -503,11 +506,22 @@ myapp:
     command:
       - /manager
     containerSecurityContext: {}
+    image:
+      repository: controller
+      tag: latest
+  initContainer:
+    image:
+      tag: latest
+      repository: bash
   podSecurityContext:
     runAsUser: 65532
     runAsNonRoot: true
     fsGroup: 20000
-  topologySpreadConstraints: []
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
+  revisionHistoryLimit: 5
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -629,7 +643,25 @@ nginx:
     storageRequest: 1Gi
     storageClass: ""
   # ----------------------------------------------------------------------------
-  # 8. CUSTOM FILES
+  # 8. SCHEDULING & NODE ASSIGNMENT
+  # ----------------------------------------------------------------------------
+  imagePullSecrets: []
+  nodeSelector: {}
+  tolerations: []
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - backend
+            topologyKey: kubernetes.io/hostname
+  # ----------------------------------------------------------------------------
+  # 9. CUSTOM FILES
   # ----------------------------------------------------------------------------
   files:
     cm: {}
@@ -644,21 +676,3 @@ nginx:
     #   content: |
     #     ...
   minAvailable: 2
-# ==============================================================================
-# IV. GLOBAL SCHEDULING & COMMON CONFIGS
-# ==============================================================================
-imagePullSecrets: []
-nodeSelector: {}
-tolerations: []
-affinity:
-  podAntiAffinity:
-    preferredDuringSchedulingIgnoredDuringExecution:
-      - weight: 100
-        podAffinityTerm:
-          labelSelector:
-            matchExpressions:
-              - key: app.kubernetes.io/name
-                operator: In
-                values:
-                  - test-app
-          topologyKey: kubernetes.io/hostname

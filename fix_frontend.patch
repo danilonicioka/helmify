@@ -1,0 +1,28 @@
+--- models/multi/values.yaml
++++ models/multi/values.yaml
+@@ -293,6 +293,21 @@
+     mountPath: "/var/lib/data"
+ 
+   # ----------------------------------------------------------------------------
++  # 8. SCHEDULING & NODE ASSIGNMENT
++  # ----------------------------------------------------------------------------
++  imagePullSecrets: []
++  nodeSelector: {}
++  tolerations: []
++  affinity:
++    podAntiAffinity:
++      preferredDuringSchedulingIgnoredDuringExecution:
++        - weight: 100
++          podAffinityTerm:
++            labelSelector:
++              matchExpressions:
++                - key: app.kubernetes.io/component
++                  operator: In
++                  values:
++                    - chart-model-multi-frontend
++            topologyKey: kubernetes.io/hostname
++
++  # ----------------------------------------------------------------------------
+   # 9. CUSTOM FILES
+   # ----------------------------------------------------------------------------
+   files:

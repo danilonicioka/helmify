@@ -7,9 +7,7 @@ metadata:
     {{- include "<CHART_NAME>.redis.labels" . | nindent 4 }}
 spec:
   accessModes:
-    {{- range .Values.redis.persistence.accessModes }}
-    - {{ . | quote }}
-    {{- end }}
+    - ReadWriteOnce
   resources:
     requests:
       storage: {{ .Values.redis.persistence.storageRequest | quote }}

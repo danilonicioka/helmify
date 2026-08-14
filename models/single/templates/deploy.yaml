@@ -21,6 +21,7 @@ spec:
   selector:
     matchLabels:
       {{- include "chart-model-single.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ include "chart-model-single.name" . }}
   template:
     metadata:
       annotations:
@@ -39,8 +40,9 @@ spec:
         {{- end }}
       labels:
         {{- include "chart-model-single.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: {{ include "chart-model-single.name" . }}
     spec:
-      {{- with .Values.imagePullSecrets }}
+      {{- with $app.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -123,15 +125,15 @@ spec:
       terminationGracePeriodSeconds: {{ $app.terminationGracePeriodSeconds }}
       {{- end }}
 
-      {{- with .Values.nodeSelector }}
+      {{- with $app.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with $app.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with $app.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
