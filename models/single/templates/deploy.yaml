@@ -102,10 +102,19 @@ spec:
             - name: data
               mountPath: {{ $app.persistence.mountPath | default "/var/lib/data" }}
             {{- end }}
-            {{- range $filename, $config := $app.files }}
+            {{- if and $app.files $app.files.cm }}
+            {{- range $filename, $config := $app.files.cm }}
             - name: {{ $filename | replace "." "-" | lower }}
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+            {{- if and $app.files $app.files.secret }}
+            {{- range $filename, $config := $app.files.secret }}
+            - name: {{ $filename | replace "." "-" | lower }}-secret
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
             {{- end }}
           {{- end }}
       
@@ -142,9 +151,18 @@ spec:
             claimName: {{ include "chart-model-single.fullname" . }}
           {{- end }}
         {{- end }}
-        {{- range $filename, $config := $app.files }}
+        {{- if and $app.files $app.files.cm }}
+        {{- range $filename, $config := $app.files.cm }}
         - name: {{ $filename | replace "." "-" | lower }}
           configMap:
             name: {{ include "chart-model-single.fullname" $ }}-files
+        {{- end }}
+        {{- end }}
+        {{- if and $app.files $app.files.secret }}
+        {{- range $filename, $config := $app.files.secret }}
+        - name: {{ $filename | replace "." "-" | lower }}-secret
+          secret:
+            secretName: {{ include "chart-model-single.fullname" $ }}-files-secret
+        {{- end }}
         {{- end }}
       {{- end }}

@@ -148,12 +148,18 @@ backend:
   # ----------------------------------------------------------------------------
   # 8. CUSTOM FILES
   # ----------------------------------------------------------------------------
-  files: {}
-    # nginx.conf:
-    #   mountPath: "/etc/nginx/nginx.conf"
-    #   content: |
-    #     user nginx;
-    #     worker_processes auto;
+  files:
+    cm: {}
+      # nginx.conf:
+      #   mountPath: "/etc/nginx/nginx.conf"
+      #   content: |
+      #     user nginx;
+      #     worker_processes auto;
+    secret: {}
+      # key.p12:
+      #   mountPath: "/app/certs/key.p12"
+      #   content: |
+      #     ...
 
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
@@ -269,12 +275,18 @@ frontend:
   # ----------------------------------------------------------------------------
   # 8. CUSTOM FILES
   # ----------------------------------------------------------------------------
-  files: {}
-    # nginx.conf:
-    #   mountPath: "/etc/nginx/nginx.conf"
-    #   content: |
-    #     user nginx;
-    #     worker_processes auto;
+  files:
+    cm: {}
+      # nginx.conf:
+      #   mountPath: "/etc/nginx/nginx.conf"
+      #   content: |
+      #     user nginx;
+      #     worker_processes auto;
+    secret: {}
+      # key.p12:
+      #   mountPath: "/app/certs/key.p12"
+      #   content: |
+      #     ...
 
 # ==============================================================================
 # IV. GLOBAL SCHEDULING & COMMON CONFIGS

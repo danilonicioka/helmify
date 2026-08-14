@@ -137,7 +137,13 @@ type DeploymentParams struct {
 	RuntimeNamespace string                      `json:"runtimeNamespace"`
 	RuntimeVersion   string                      `json:"runtimeVersion"`
 	OverviewAppRoute string                      `json:"overviewAppRoute"`
-	Files            map[string]CustomFileParams `json:"files"`
+	Files            CustomFiles                 `json:"files"`
+}
+
+// CustomFiles holds cm and secret files
+type CustomFiles struct {
+	Cm     map[string]CustomFileParams `json:"cm"`
+	Secret map[string]CustomFileParams `json:"secret"`
 }
 
 // CustomFileParams defines custom file injection.
@@ -395,8 +401,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		_ = setYamlPath(&rootNode, []string{appKey, "route", "external", "host"}, externalHost)
 
-		if len(depConfig.Files) > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "files"}, depConfig.Files)
+		if len(depConfig.Files.Cm) > 0 {
+			_ = setYamlPath(&rootNode, []string{appKey, "files", "cm"}, depConfig.Files.Cm)
+		}
+		if len(depConfig.Files.Secret) > 0 {
+			_ = setYamlPath(&rootNode, []string{appKey, "files", "secret"}, depConfig.Files.Secret)
 		}
 
 		if len(params.GlobalConfig) > 0 {
@@ -609,8 +618,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 			_ = setYamlPath(&rootNode, []string{compName, "route", "external", "host"}, externalHost)
 
-			if len(depConfig.Files) > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "files"}, depConfig.Files)
+			if len(depConfig.Files.Cm) > 0 {
+				_ = setYamlPath(&rootNode, []string{compName, "files", "cm"}, depConfig.Files.Cm)
+			}
+			if len(depConfig.Files.Secret) > 0 {
+				_ = setYamlPath(&rootNode, []string{compName, "files", "secret"}, depConfig.Files.Secret)
 			}
 		}
 
