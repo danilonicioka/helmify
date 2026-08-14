@@ -4,7 +4,7 @@ import "embed"
 
 // ModelsFS embeds the models directory containing single and multi Helm charts.
 //
-//go:embed models
+//go:embed all:models
 var ModelsFS embed.FS
 
 //go:embed gitlab-ci.yml
