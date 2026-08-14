@@ -5,7 +5,7 @@ redis:
   # ----------------------------------------------------------------------------
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
   # ----------------------------------------------------------------------------
-  enabled: false
+  enabled: true
   # -- Number of replica pods.
   replicas: 1
   # -- Custom labels to add to the deployment/pods
