@@ -206,6 +206,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 		}
 	} else if len(params.Deployments) > 1 {
 		params.Type = "multi"
+	} else {
+		return params, fmt.Errorf("no valid Kubernetes Deployments found in input (ensure your manifests are correct and contain at least one Deployment)")
 	}
 
 	return params, nil

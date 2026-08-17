@@ -176,9 +176,9 @@ api:
     - /bin/sh
     - -c
     - date; echo Hello from the Kubernetes cluster
-  backoffLimit: 4
   imagePullPolicy: IfNotPresent
   topologySpreadConstraints: []
+  backoffLimit: 4
   schedule: '* * * * *'
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
@@ -348,9 +348,7 @@ myapp:
   # ----------------------------------------------------------------------------
   cm:
     dummyconfigmapkey: dummyconfigmapvalue
-    my_config.properties: |
-      health.healthProbeBindAddress=8081
-      metrics.bindAddress=127.0.0.1:8080
+    my.prop2: val 1
     my.prop3: "true"
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
@@ -363,19 +361,21 @@ myapp:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
     my.prop1: "1"
-    my.prop2: val 1
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
   # No default secrets for web frontend component
   secret:
-    VAR2: my_secret_var_2
-    str: |
-      some big not so secret string with
-      multiple lines
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
-    VAR1: my_secret_var_1
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+    VAR1: my_secret_var_1
+    str: |
+      some big not so secret string with
+      multiple lines
+    VAR2: my_secret_var_2
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -471,8 +471,8 @@ myapp:
   # ----------------------------------------------------------------------------
   imagePullSecrets: []
   nodeSelector:
-    type: user-node
     region: east
+    type: user-node
   tolerations: []
   affinity:
     podAntiAffinity:
@@ -501,17 +501,11 @@ myapp:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
-  proxySidecar:
-    image:
-      repository: gcr.io/kubebuilder/kube-rbac-proxy
-      tag: v0.8.0
-    args:
-      - --secure-listen-address=0.0.0.0:8443
-      - --v=10
   podSecurityContext:
+    runAsUser: 65532
     runAsNonRoot: true
     fsGroup: 20000
-    runAsUser: 65532
+  revisionHistoryLimit: 5
   initContainer:
     image:
       repository: bash
@@ -521,39 +515,45 @@ myapp:
     - -c
     - echo 'Initializing container...'
   topologySpreadConstraints: []
-  revisionHistoryLimit: 5
-  app:
-    containerSecurityContext: {}
+  proxySidecar:
     image:
-      tag: latest
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.8.0
+    args:
+      - --secure-listen-address=0.0.0.0:8443
+      - --v=10
+  app:
+    image:
       repository: controller
+      tag: latest
     resources:
+      requests:
+        memory: 20Mi
+        cpu: 100m
       limits:
         cpu: 100m
         memory: 30Mi
-      requests:
-        cpu: 100m
-        memory: 20Mi
 
     livenessProbe:
-      httpGet:
-        port: 8081
-        path: /healthz
-      initialDelaySeconds: 15
       periodSeconds: 20
+      httpGet:
+        path: /healthz
+        port: 8081
+      initialDelaySeconds: 15
 
     readinessProbe:
-      httpGet:
-        port: 8081
-        path: /readyz
-      initialDelaySeconds: 5
       periodSeconds: 10
+      httpGet:
+        path: /readyz
+        port: 8081
+      initialDelaySeconds: 5
     args:
       - --health-probe-bind-address=:8081
       - --metrics-bind-address=127.0.0.1:8080
       - --leader-elect
     command:
       - /manager
+    containerSecurityContext: {}
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
