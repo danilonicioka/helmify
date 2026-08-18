@@ -46,7 +46,7 @@ Send a raw manifest payload to the endpoint to download a generated chart archiv
 curl -X POST \
   -H "X-Chart-Name: my-chart" \
   --data-binary @my-app.yaml \
-  http://<helmify-api-url>/v1/generate \
+  http://<helmify-url>/v1/generate \
   --output my-chart.tar.gz
 ```
 

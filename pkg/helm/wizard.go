@@ -12,8 +12,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/arttor/helmify"
-	"github.com/arttor/helmify/pkg/processor"
+	"github.com/danilonicioka/helmify"
+	"github.com/danilonicioka/helmify/pkg/processor"
 	"gopkg.in/yaml.v3"
 )
 

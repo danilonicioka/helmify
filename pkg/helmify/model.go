@@ -3,7 +3,7 @@ package helmify
 import (
 	"io"
 
-	"github.com/arttor/helmify/pkg/config"
+	"github.com/danilonicioka/helmify/pkg/config"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )

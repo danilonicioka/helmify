@@ -6,9 +6,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/arttor/helmify/pkg/config"
-	"github.com/arttor/helmify/pkg/helm"
-	"github.com/arttor/helmify/pkg/translator/k8smanifest"
+	"github.com/danilonicioka/helmify/pkg/config"
+	"github.com/danilonicioka/helmify/pkg/helm"
+	"github.com/danilonicioka/helmify/pkg/translator/k8smanifest"
 	"github.com/stretchr/testify/assert"
 	"helm.sh/helm/v3/pkg/action"
 )

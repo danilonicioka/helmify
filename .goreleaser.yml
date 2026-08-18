@@ -37,15 +37,15 @@ checksum:
 brews:
   -
     tap:
-      owner: arttor
+      owner: danilonicioka
       name: homebrew-tap
     commit_author:
-      name: arttor
-      email: torubarov-a-a@yandex.ru
+      name: danilonicioka
+      email: danilo.ren12@gmail.com
     commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
     folder: Formula
-    homepage: "https://github.com/arttor/helmify"
-    description: "Creates Helm chart from Kubernetes yaml."
+    homepage: "https://github.com/danilonicioka/helmify"
+    description: "Helmify - Kubernetes manifest to Helm chart converter."
     license: "MIT"
     test: |
       system "#{bin}/helmify --version"
@@ -53,5 +53,5 @@ brews:
       bin.install "helmify"
 release:
   github:
-    owner: arttor
+    owner: danilonicioka
     name: helmify

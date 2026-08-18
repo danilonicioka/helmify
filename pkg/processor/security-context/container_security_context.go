@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/arttor/helmify/pkg/helmify"
+	"github.com/danilonicioka/helmify/pkg/helmify"
 	"github.com/iancoleman/strcase"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )

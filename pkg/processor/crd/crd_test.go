@@ -4,10 +4,10 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/arttor/helmify/pkg/config"
-	"github.com/arttor/helmify/pkg/metadata"
+	"github.com/danilonicioka/helmify/pkg/config"
+	"github.com/danilonicioka/helmify/pkg/metadata"
 
-	"github.com/arttor/helmify/internal"
+	"github.com/danilonicioka/helmify/internal"
 	"github.com/stretchr/testify/assert"
 )
 

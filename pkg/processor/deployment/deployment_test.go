@@ -3,10 +3,10 @@ package deployment
 import (
 	"testing"
 
-	"github.com/arttor/helmify/pkg/metadata"
+	"github.com/danilonicioka/helmify/pkg/metadata"
 
-	"github.com/arttor/helmify/internal"
-	"github.com/arttor/helmify/pkg/processor"
+	"github.com/danilonicioka/helmify/internal"
+	"github.com/danilonicioka/helmify/pkg/processor"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )

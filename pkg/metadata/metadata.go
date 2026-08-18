@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/arttor/helmify/pkg/config"
+	"github.com/danilonicioka/helmify/pkg/config"
 
-	"github.com/arttor/helmify/pkg/helmify"
+	"github.com/danilonicioka/helmify/pkg/helmify"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"

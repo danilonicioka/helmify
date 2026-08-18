@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/arttor/helmify/pkg/processor"
+	"github.com/danilonicioka/helmify/pkg/processor"
 )
 
 // getRouteHostPrefix returns the hostname prefix for a given component.

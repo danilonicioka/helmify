@@ -7,13 +7,13 @@ LABEL org.opencontainers.image.description="Helmify - Kubernetes manifest to Hel
 WORKDIR /app
 
 # The binary is built in the 'build-api' CI job
-COPY helmify-api /usr/local/bin/helmify-api
+COPY helmify /usr/local/bin/helmify
 
 # Ensure the binary is executable and handle OpenShift non-root user
-RUN chmod +x /usr/local/bin/helmify-api && \
-    chown 1001:0 /usr/local/bin/helmify-api
+RUN chmod +x /usr/local/bin/helmify && \
+    chown 1001:0 /usr/local/bin/helmify
 
 USER 1001
 EXPOSE 8080
 
-ENTRYPOINT ["/usr/local/bin/helmify-api"]
+ENTRYPOINT ["/usr/local/bin/helmify"]
