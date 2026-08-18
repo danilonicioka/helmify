@@ -491,6 +491,7 @@ tar -xvzf chart.tar.gz</code></pre>
                     <pre><code>helm template chart -f values-dev.yaml | curl -X POST "http://helmify.apps.ocp-dev.i.tj.pa.gov.br/v1/generate" \
   -H "X-Chart-Name: chart" \
   -H "X-Generate-All-Templates: true" \
+  -H "X-Dev-Repo-Url: https://gitlab-ca.tjpa.jus.br/group/project" \
   -H "Content-Type: text/yaml" \
   --data-binary @- \
   --output chart.tar.gz</code></pre>
