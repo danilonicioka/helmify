@@ -20,14 +20,14 @@ stages:
     - if: $CI_COMMIT_BRANCH
 
 # ---------------------------------------------------------------------------
-# Stage: Build (API)
+# Stage: Build
 # ---------------------------------------------------------------------------
-build-api:
+build:
   stage: build
   extends: .branch_rules
   image: $BUILDER_IMAGE
   cache:
-    key: "api-deps-$CI_COMMIT_REF_SLUG"
+    key: "build-deps-$CI_COMMIT_REF_SLUG"
     paths:
       - .go/pkg/mod
       - .gocache
@@ -64,7 +64,7 @@ push-to-quay:
   needs:
     - job: setup-vars
       artifacts: true
-    - job: build-api
+    - job: build
       artifacts: true
   script:
     - podman login $QUAY_URL -u $QUAY_USER -p $QUAY_PASS --tls-verify=false

@@ -5,9 +5,9 @@ ui/.next
 api/ui/out
 
 # Binaries
-helmify-api
-helmify
-helmify-pro
+/helmify-api
+/helmify
+/helmify-pro
 
 # Binaries for programs and plugins
 *.exe
