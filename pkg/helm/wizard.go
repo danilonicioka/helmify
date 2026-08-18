@@ -675,10 +675,16 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 	}
 
-	if chartData, ok := outputFiles["Chart.yaml"]; ok && params.DevRepoURL != "" {
+	if chartData, ok := outputFiles["Chart.yaml"]; ok {
 		var chartNode yaml.Node
 		if err := yaml.Unmarshal(chartData, &chartNode); err == nil {
-			_ = setYamlPath(&chartNode, []string{"annotations", "tjpa.jus.br/dev-source-repo"}, params.DevRepoURL)
+			if params.DevRepoURL != "" {
+				_ = setYamlPath(&chartNode, []string{"annotations", "tjpa.jus.br/dev-source-repo"}, params.DevRepoURL)
+			}
+			cv := strings.TrimSpace(helmify.ChartVersion)
+			_ = setYamlPath(&chartNode, []string{"version"}, cv)
+			_ = setYamlPath(&chartNode, []string{"appVersion"}, cv)
+
 			var buf bytes.Buffer
 			enc := yaml.NewEncoder(&buf)
 			enc.SetIndent(2)

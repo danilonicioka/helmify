@@ -9,3 +9,6 @@ var ModelsFS embed.FS
 
 //go:embed gitlab-ci.yml
 var GitLabCI []byte
+
+//go:embed CHART_VERSION
+var ChartVersion string
