@@ -95,10 +95,10 @@ chart-model-single:
   # Kept empty by default; the recommended configuration is commented below.
   resources:
     limits:
-      cpu: 500m
+      cpu: 100m
       memory: 512Mi
     requests:
-      cpu: 100m
+      cpu: 30m
       memory: 256Mi
 
   # ----------------------------------------------------------------------------
