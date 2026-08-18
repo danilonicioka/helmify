@@ -464,16 +464,22 @@
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>kustomize build config/default | curl -X POST "http://localhost:8080/v1/generate" \
-  -H "X-Chart-Name: portal-certidao" \
+                    <pre><code>kustomize build overlays/dev | curl -X POST "http://helmify.apps.ocp-dev.i.tj.pa.gov.br/v1/generate" \
+  -H "X-Chart-Name: chart" \
   -H "X-Generate-All-Templates: true" \
-  -H "X-Dev-Repo-Url: https://github.com/my-org/my-app" \
+  -H "X-Dev-Repo-Url: https://gitlab-ca.tjpa.jus.br/group/project" \
   -H "Content-Type: text/yaml" \
   --data-binary @- \
-  --output portal-certidao.tar.gz
+  --output chart.tar.gz</code></pre>
+                </div>
 
-# Extract the generated Helm chart
-tar -xvzf portal-certidao.tar.gz</code></pre>
+                <div class="code-block-container">
+                    <div class="code-block-header">
+                        <span>Bash</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code># Extract the generated Helm chart
+tar -xvzf chart.tar.gz</code></pre>
                 </div>
 
                 <div class="section-title">Example Command (Helm Template Output Pipe)</div>
@@ -482,15 +488,21 @@ tar -xvzf portal-certidao.tar.gz</code></pre>
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>helm template my-release my-chart -f values-env.yaml | curl -X POST "http://localhost:8080/v1/generate" \
-  -H "X-Chart-Name: portal-certidao" \
+                    <pre><code>helm template chart -f values-dev.yaml | curl -X POST "http://helmify.apps.ocp-dev.i.tj.pa.gov.br/v1/generate" \
+  -H "X-Chart-Name: chart" \
   -H "X-Generate-All-Templates: true" \
   -H "Content-Type: text/yaml" \
   --data-binary @- \
-  --output portal-certidao.tar.gz
+  --output chart.tar.gz</code></pre>
+                </div>
 
-# Extract the generated Helm chart
-tar -xvzf portal-certidao.tar.gz</code></pre>
+                <div class="code-block-container">
+                    <div class="code-block-header">
+                        <span>Bash</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code># Extract the generated Helm chart
+tar -xvzf chart.tar.gz</code></pre>
                 </div>
 
                 <div class="section-title">Example Command (Extract Values Only)</div>
@@ -499,8 +511,19 @@ tar -xvzf portal-certidao.tar.gz</code></pre>
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>kustomize build overlays/prd | curl -s -X POST "http://localhost:8080/v1/generate?values-only=true" \
-  -H "X-Chart-Name: portal-certidao" \
+                    <pre><code>kustomize build overlays/dev | curl -s -X POST "http://helmify.apps.ocp-dev.i.tj.pa.gov.br/v1/generate?values-only=true" \
+  -H "X-Chart-Name: chart" \
+  -H "Content-Type: text/yaml" \
+  --data-binary @- > values-dev.yaml</code></pre>
+                </div>
+
+                <div class="code-block-container">
+                    <div class="code-block-header">
+                        <span>cURL</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>helm template chart -f values-prd.yaml | curl -s -X POST "http://helmify.apps.ocp-dev.i.tj.pa.gov.br/v1/generate?values-only=true" \
+  -H "X-Chart-Name: chart" \
   -H "Content-Type: text/yaml" \
   --data-binary @- > values-prd.yaml</code></pre>
                 </div>
