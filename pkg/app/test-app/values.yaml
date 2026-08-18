@@ -168,6 +168,8 @@ api:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
+  topologySpreadConstraints: []
+  backoffLimit: 4
   command:
     - perl
     - -Mbignum=bpi
@@ -177,8 +179,6 @@ api:
     - -c
     - date; echo Hello from the Kubernetes cluster
   imagePullPolicy: IfNotPresent
-  topologySpreadConstraints: []
-  backoffLimit: 4
   schedule: '* * * * *'
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
@@ -347,9 +347,6 @@ myapp:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
-    dummyconfigmapkey: dummyconfigmapvalue
-    my.prop2: val 1
-    my.prop3: "true"
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallationTemplate
@@ -361,21 +358,24 @@ myapp:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
     my.prop1: "1"
+    my.prop2: val 1
+    dummyconfigmapkey: dummyconfigmapvalue
     my_config.properties: |
       health.healthProbeBindAddress=8081
       metrics.bindAddress=127.0.0.1:8080
+    my.prop3: "true"
   # No default secrets for web frontend component
   secret:
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     VAR1: my_secret_var_1
+    VAR2: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
-    VAR2: my_secret_var_2
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -405,11 +405,11 @@ myapp:
       https:
         port: 8443
         targetPort: https
+    ipFamilies:
+      - IPv4
     loadBalancerSourceRanges:
       - 10.0.0.0/8
     ipFamilyPolicy: SingleStack
-    ipFamilies:
-      - IPv4
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
   # ----------------------------------------------------------------------------
@@ -501,28 +501,16 @@ myapp:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
-  podSecurityContext:
-    runAsUser: 65532
-    runAsNonRoot: true
-    fsGroup: 20000
-  revisionHistoryLimit: 5
   initContainer:
     image:
       repository: bash
       tag: latest
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
-  topologySpreadConstraints: []
-  proxySidecar:
-    image:
-      repository: gcr.io/kubebuilder/kube-rbac-proxy
-      tag: v0.8.0
-    args:
-      - --secure-listen-address=0.0.0.0:8443
-      - --v=10
+  podSecurityContext:
+    runAsUser: 65532
+    runAsNonRoot: true
+    fsGroup: 20000
   app:
+    containerSecurityContext: {}
     image:
       repository: controller
       tag: latest
@@ -535,25 +523,37 @@ myapp:
         memory: 30Mi
 
     livenessProbe:
-      periodSeconds: 20
       httpGet:
         path: /healthz
         port: 8081
       initialDelaySeconds: 15
+      periodSeconds: 20
 
     readinessProbe:
-      periodSeconds: 10
       httpGet:
         path: /readyz
         port: 8081
       initialDelaySeconds: 5
+      periodSeconds: 10
     args:
       - --health-probe-bind-address=:8081
       - --metrics-bind-address=127.0.0.1:8080
       - --leader-elect
     command:
       - /manager
-    containerSecurityContext: {}
+  proxySidecar:
+    image:
+      repository: gcr.io/kubebuilder/kube-rbac-proxy
+      tag: v0.8.0
+    args:
+      - --secure-listen-address=0.0.0.0:8443
+      - --v=10
+  topologySpreadConstraints: []
+  revisionHistoryLimit: 5
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================

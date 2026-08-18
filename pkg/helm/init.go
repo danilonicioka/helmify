@@ -148,8 +148,8 @@ const defaultChartfile = `apiVersion: v2
 name: %s
 description: A standardized, production-grade model Helm chart for Tribunal de Justica do Para (TJPA) applications.
 type: application
-version: 1.0.0
-appVersion: "1.0.0"
+version: 2.0.0
+appVersion: "2.0.0"
 `
 
 const certManagerDependencies = `
