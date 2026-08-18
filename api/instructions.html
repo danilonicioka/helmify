@@ -379,14 +379,7 @@
                     <span>POST /v1/generate</span>
                     <span class="method-badge post">POST</span>
                 </div>
-                <div class="menu-item" onclick="switchTab('post-generate-wizard')">
-                    <span>POST /v1/generate-wizard</span>
-                    <span class="method-badge post">POST</span>
-                </div>
-                <div class="menu-item" onclick="switchTab('get-subcomponents')">
-                    <span>GET /v1/subcomponents</span>
-                    <span class="method-badge get">GET</span>
-                </div>
+
             </nav>
         </aside>
 
@@ -429,31 +422,7 @@
                             <td class="param-type">string</td>
                             <td>Required. The name of the target chart (e.g. <code>portal-certidao</code>).</td>
                         </tr>
-                        <tr>
-                            <td class="param-name">X-Crd</td>
-                            <td class="param-type">boolean</td>
-                            <td>Whether to extract Custom Resource Definitions (default: <code>false</code>).</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">X-Cert-Manager-Subchart</td>
-                            <td class="param-type">boolean</td>
-                            <td>Add Cert-Manager subchart settings (default: <code>false</code>).</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">X-Cert-Manager-Install-Crd</td>
-                            <td class="param-type">boolean</td>
-                            <td>Install Cert-Manager CRDs automatically (default: <code>false</code>).</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">X-Add-Webhook-Option</td>
-                            <td class="param-type">boolean</td>
-                            <td>Enable Webhook support validation logic (default: <code>false</code>).</td>
-                        </tr>
-                        <tr>
-                            <td class="param-name">X-Optional-Crds</td>
-                            <td class="param-type">boolean</td>
-                            <td>Allow toggling CRD install dynamically via values (default: <code>false</code>).</td>
-                        </tr>
+
                         <tr>
                             <td class="param-name">X-Generate-All-Templates</td>
                             <td class="param-type">boolean</td>
@@ -488,22 +457,6 @@
                 <div class="section-title">Request Body</div>
                 <p>Raw string of the source Kubernetes resource manifests (YAML format). Multiple resources should be delimited by <code>---</code> lines.</p>
 
-                <div class="section-title">Example Command (Local Manifest)</div>
-                <div class="code-block-container">
-                    <div class="code-block-header">
-                        <span>cURL</span>
-                        <button class="btn-copy" onclick="copyCode(this)">Copy</button>
-                    </div>
-                    <pre><code>curl -X POST "http://localhost:8080/v1/generate" \
-  -H "X-Chart-Name: portal-certidao" \
-  -H "X-Crd: false" \
-  -H "Content-Type: text/yaml" \
-  --data-binary @deployment.yaml \
-  --output portal-certidao.tar.gz
-
-# Extract the generated Helm chart
-tar -xvzf portal-certidao.tar.gz</code></pre>
-                </div>
 
                 <div class="section-title">Example Command (Kustomize Output Pipe)</div>
                 <div class="code-block-container">
@@ -515,6 +468,23 @@ tar -xvzf portal-certidao.tar.gz</code></pre>
   -H "X-Chart-Name: portal-certidao" \
   -H "X-Generate-All-Templates: true" \
   -H "X-Dev-Repo-Url: https://github.com/my-org/my-app" \
+  -H "Content-Type: text/yaml" \
+  --data-binary @- \
+  --output portal-certidao.tar.gz
+
+# Extract the generated Helm chart
+tar -xvzf portal-certidao.tar.gz</code></pre>
+                </div>
+
+                <div class="section-title">Example Command (Helm Template Output Pipe)</div>
+                <div class="code-block-container">
+                    <div class="code-block-header">
+                        <span>cURL</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy</button>
+                    </div>
+                    <pre><code>helm template my-release my-chart -f values-env.yaml | curl -X POST "http://localhost:8080/v1/generate" \
+  -H "X-Chart-Name: portal-certidao" \
+  -H "X-Generate-All-Templates: true" \
   -H "Content-Type: text/yaml" \
   --data-binary @- \
   --output portal-certidao.tar.gz
@@ -536,97 +506,7 @@ tar -xvzf portal-certidao.tar.gz</code></pre>
                 </div>
             </div>
 
-            <!-- SECTION: POST GENERATE WIZARD -->
-            <div class="doc-section" id="post-generate-wizard">
-                <h2>Download Chart Wizard</h2>
-                <p>Processes a structured JSON configuration payload, translates it to Helm chart resources, and generates a packaged, gzip-compressed tarball (<code>.tar.gz</code>) stream for download.</p>
 
-                <div class="endpoint-url-bar">
-                    <span class="method-badge post">POST</span>
-                    <span class="path">/v1/generate-wizard</span>
-                </div>
-
-                <div class="section-title">Request Body (JSON)</div>
-                <div class="code-block-container">
-                    <div class="code-block-header">
-                        <span>JSON Body structure</span>
-                    </div>
-                    <pre><code>{
-  "chartName": "my-service",
-  "type": "single",
-  "globalConfig": {
-    "TZ": "America/Belem"
-  },
-  "deployments": {
-    "frontend": {
-      "replicas": 2,
-      "image": {
-        "repository": "quay.enterprise.tjpa.jus.br/devops/nginx",
-        "tag": "1.25"
-      },
-      "service": {
-        "port": 80
-      },
-      "cm": {
-        "DB_USER": "admin"
-      },
-      "secret": {},
-      "route": {
-        "path": "/",
-        "default": {
-          "enabled": true,
-          "host": "my-service.apps.ocp.tjpa.jus.br"
-        }
-      }
-    }
-  },
-  "subcomponents": ["redis", "postgres"]
-}</code></pre>
-                </div>
-
-                <div class="section-title">Example Command</div>
-                <div class="code-block-container">
-                    <div class="code-block-header">
-                        <span>cURL</span>
-                        <button class="btn-copy" onclick="copyCode(this)">Copy</button>
-                    </div>
-                    <pre><code>curl -X POST "http://localhost:8080/v1/generate-wizard" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "chartName": "my-service",
-    "type": "single",
-    "deployments": {
-      "frontend": {
-        "replicas": 2,
-        "image": {"repository": "nginx", "tag": "alpine"},
-        "service": {"port": 80}
-      }
-    }
-  }' \
-  --output my-service.tar.gz
-
-# Extract the generated Helm chart
-tar -xvzf my-service.tar.gz</code></pre>
-                </div>
-            </div>
-            <!-- SECTION: GET SUBCOMPONENTS -->
-            <div class="doc-section" id="get-subcomponents">
-                <h2>List Available Subcomponents</h2>
-                <p>Retrieves a dynamic list of all available modular subcomponents (e.g., redis, postgres) that can be included in the chart generation.</p>
-
-                <div class="endpoint-url-bar">
-                    <span class="method-badge get">GET</span>
-                    <span class="path">/v1/subcomponents</span>
-                </div>
-
-                <div class="section-title">Example Response</div>
-                <div class="code-block-container">
-                    <pre><code>[
-  "postgres",
-  "redis"
-]</code></pre>
-                </div>
-            </div>
         </section>
     </main>
 
