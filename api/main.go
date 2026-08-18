@@ -13,8 +13,10 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"strings"
 	"time"
 
+	"github.com/arttor/helmify"
 	"github.com/arttor/helmify/pkg/config"
 	"github.com/arttor/helmify/pkg/helm"
 	"github.com/sirupsen/logrus"
@@ -290,8 +292,10 @@ func parseConfig(r *http.Request) config.Config {
 func handleHomeOrAssets(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/" || r.URL.Path == "/index.html" {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(homeHTML)
+		cv := strings.TrimSpace(helmify.ChartVersion)
+		htmlStr := strings.Replace(string(homeHTML), "{{CHART_VERSION}}", cv, 1)
+		w.Write([]byte(htmlStr))
 		return
 	}
-	getUIHandler().ServeHTTP(w, r)
+	http.NotFound(w, r)
 }
