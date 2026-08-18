@@ -178,8 +178,8 @@ api:
     - /bin/sh
     - -c
     - date; echo Hello from the Kubernetes cluster
-  imagePullPolicy: IfNotPresent
   schedule: '* * * * *'
+  imagePullPolicy: IfNotPresent
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -318,11 +318,11 @@ app-emissor:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
+  topologySpreadConstraints: []
   volumeClaims:
     www:
       requests:
         storage: 1Gi
-  topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -347,6 +347,7 @@ myapp:
   # 2. APPLICATION CONFIGURATION
   # ----------------------------------------------------------------------------
   cm:
+    my.prop3: "true"
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallationTemplate
@@ -358,12 +359,11 @@ myapp:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
     my.prop1: "1"
-    my.prop2: val 1
     dummyconfigmapkey: dummyconfigmapvalue
     my_config.properties: |
       health.healthProbeBindAddress=8081
       metrics.bindAddress=127.0.0.1:8080
-    my.prop3: "true"
+    my.prop2: val 1
   # No default secrets for web frontend component
   secret:
     ca.crt: |-
@@ -371,11 +371,11 @@ myapp:
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
     ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
-    VAR1: my_secret_var_1
-    VAR2: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
+    VAR1: my_secret_var_1
+    VAR2: my_secret_var_2
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -405,10 +405,10 @@ myapp:
       https:
         port: 8443
         targetPort: https
-    ipFamilies:
-      - IPv4
     loadBalancerSourceRanges:
       - 10.0.0.0/8
+    ipFamilies:
+      - IPv4
     ipFamilyPolicy: SingleStack
   # ----------------------------------------------------------------------------
   # 4. RESOURCES
@@ -463,9 +463,9 @@ myapp:
     enabled: true
     ephemeral: false
     mountPath: "/var/lib/data"
-    storageClass: manual
     storageRequest: 3Gi
     storageLimit: 5Gi
+    storageClass: manual
   # ----------------------------------------------------------------------------
   # 8. SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
@@ -501,23 +501,21 @@ myapp:
     #   mountPath: "/app/certs/key.p12"
     #   content: |
     #     ...
-  initContainer:
-    image:
-      repository: bash
-      tag: latest
-  podSecurityContext:
-    runAsUser: 65532
-    runAsNonRoot: true
-    fsGroup: 20000
   app:
+    args:
+      - --health-probe-bind-address=:8081
+      - --metrics-bind-address=127.0.0.1:8080
+      - --leader-elect
+    command:
+      - /manager
     containerSecurityContext: {}
     image:
       repository: controller
       tag: latest
     resources:
       requests:
-        memory: 20Mi
         cpu: 100m
+        memory: 20Mi
       limits:
         cpu: 100m
         memory: 30Mi
@@ -530,17 +528,11 @@ myapp:
       periodSeconds: 20
 
     readinessProbe:
+      periodSeconds: 10
       httpGet:
         path: /readyz
         port: 8081
       initialDelaySeconds: 5
-      periodSeconds: 10
-    args:
-      - --health-probe-bind-address=:8081
-      - --metrics-bind-address=127.0.0.1:8080
-      - --leader-elect
-    command:
-      - /manager
   proxySidecar:
     image:
       repository: gcr.io/kubebuilder/kube-rbac-proxy
@@ -548,8 +540,16 @@ myapp:
     args:
       - --secure-listen-address=0.0.0.0:8443
       - --v=10
+  podSecurityContext:
+    runAsUser: 65532
+    runAsNonRoot: true
+    fsGroup: 20000
   topologySpreadConstraints: []
   revisionHistoryLimit: 5
+  initContainer:
+    image:
+      repository: bash
+      tag: latest
   command:
     - /bin/sh
     - -c

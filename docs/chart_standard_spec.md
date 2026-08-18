@@ -38,6 +38,9 @@ The `Chart.yaml` file must be API version `v2` (Helm 3+) and wrap string fields 
 - `name`: Chart name matching directory name (Required)
 - `version`: SemVer 2 version of the chart (Required)
 - `appVersion`: Version of the packaged application, wrapped in quotes (e.g. `"1.2.0"`) (Required)
+
+> [!NOTE]
+> **Single Source of Truth (SSoT):** The Helmify engine and its UI automatically derive the `version` and `appVersion` fields from a central `CHART_VERSION` file located at the root of the helmify repository. When a chart is generated or updated via `helmify`, these fields are injected dynamically. To upgrade the standard version across all new charts and the web interface, simply update the `CHART_VERSION` file.
 - `description`: Single-sentence description of the chart (Optional)
 - `type`: `"application"` or `"library"` (Defaults to `"application"`)
 - `dependencies`: List of dependency charts (Optional)

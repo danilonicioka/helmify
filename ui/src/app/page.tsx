@@ -504,7 +504,7 @@ export default function HelmifyUI() {
         <div>© 2026 Helmify — Advanced Agentic Coding</div>
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 bg-green-500 rounded-full" /> API Online</span>
-          <span>v1.3.0</span>
+          <span>Chart v{process.env.NEXT_PUBLIC_CHART_VERSION || '2.0.0'}</span>
         </div>
       </footer>
     </div>
