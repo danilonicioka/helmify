@@ -31,8 +31,11 @@ backend:
 
   # -- Custom labels to add to the backend deployment/pods
   labels: {}
+    # app.openshift.io/runtime: "quarkus"
+
   # -- Custom annotations to add to the backend deployment 
   annotations: {}
+    # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"my-db"}]'
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-backend
@@ -192,8 +195,11 @@ frontend:
 
   # -- Custom labels to add to the frontend deployment/pods
   labels: {}
+    # app.openshift.io/runtime: "nodejs"
+
   # -- Custom annotations to add to the frontend deployment 
   annotations: {}
+    # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"chart-model-multi-backend"}]'
 
   image:
     repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-frontend
