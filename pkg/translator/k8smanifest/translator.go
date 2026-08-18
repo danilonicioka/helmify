@@ -4,10 +4,10 @@ import (
 	"context"
 	"io"
 
-	"github.com/arttor/helmify/pkg/config"
-	"github.com/arttor/helmify/pkg/decoder"
-	"github.com/arttor/helmify/pkg/file"
-	"github.com/arttor/helmify/pkg/translator"
+	"github.com/danilonicioka/helmify/pkg/config"
+	"github.com/danilonicioka/helmify/pkg/decoder"
+	"github.com/danilonicioka/helmify/pkg/file"
+	"github.com/danilonicioka/helmify/pkg/translator"
 )
 
 // Translator implements translator.Translator for raw Kubernetes YAML/JSON manifests.

@@ -5,11 +5,11 @@ import (
 	"io"
 	"text/template"
 
-	"github.com/arttor/helmify/pkg/processor/pod"
+	"github.com/danilonicioka/helmify/pkg/processor/pod"
 
-	"github.com/arttor/helmify/pkg/helmify"
-	"github.com/arttor/helmify/pkg/processor"
-	yamlformat "github.com/arttor/helmify/pkg/yaml"
+	"github.com/danilonicioka/helmify/pkg/helmify"
+	"github.com/danilonicioka/helmify/pkg/processor"
+	yamlformat "github.com/danilonicioka/helmify/pkg/yaml"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"

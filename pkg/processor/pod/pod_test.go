@@ -3,12 +3,12 @@ package pod
 import (
 	"testing"
 
-	"github.com/arttor/helmify/pkg/helmify"
-	"github.com/arttor/helmify/pkg/metadata"
+	"github.com/danilonicioka/helmify/pkg/helmify"
+	"github.com/danilonicioka/helmify/pkg/metadata"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 
-	"github.com/arttor/helmify/internal"
+	"github.com/danilonicioka/helmify/internal"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -6,9 +6,9 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/arttor/helmify/pkg/helmify"
-	"github.com/arttor/helmify/pkg/processor"
-	securityContext "github.com/arttor/helmify/pkg/processor/security-context"
+	"github.com/danilonicioka/helmify/pkg/helmify"
+	"github.com/danilonicioka/helmify/pkg/processor"
+	securityContext "github.com/danilonicioka/helmify/pkg/processor/security-context"
 	"github.com/iancoleman/strcase"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

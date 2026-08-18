@@ -14,9 +14,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/yaml"
 
-	"github.com/arttor/helmify/pkg/helmify"
-	"github.com/arttor/helmify/pkg/processor"
-	yamlformat "github.com/arttor/helmify/pkg/yaml"
+	"github.com/danilonicioka/helmify/pkg/helmify"
+	"github.com/danilonicioka/helmify/pkg/processor"
+	yamlformat "github.com/danilonicioka/helmify/pkg/yaml"
 )
 
 const crdTeml = `apiVersion: apiextensions.k8s.io/v1

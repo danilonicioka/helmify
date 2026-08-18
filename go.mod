@@ -1,4 +1,4 @@
-module github.com/arttor/helmify
+module github.com/danilonicioka/helmify
 
 go 1.25.0
 

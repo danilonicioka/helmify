@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	roothelmify "github.com/arttor/helmify"
+	roothelmify "github.com/danilonicioka/helmify"
 )
 
 const helmIgnore = `# Patterns to ignore when building packages.

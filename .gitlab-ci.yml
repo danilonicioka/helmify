@@ -20,25 +20,8 @@ stages:
     - if: $CI_COMMIT_BRANCH
 
 # ---------------------------------------------------------------------------
-# Stage: Build (UI & API)
+# Stage: Build (API)
 # ---------------------------------------------------------------------------
-build-ui:
-  stage: build
-  extends: .branch_rules
-  image: registry.access.redhat.com/ubi8/nodejs-20:latest
-  cache:
-    key: "ui-deps-$CI_COMMIT_REF_SLUG"
-    paths:
-      - ui/node_modules
-  script:
-    - cd ui
-    - npm install
-    - npm run build
-  artifacts:
-    paths:
-      - ui/out
-    expire_in: 1 hour
-
 build-api:
   stage: build
   extends: .branch_rules
@@ -48,15 +31,11 @@ build-api:
     paths:
       - .go/pkg/mod
       - .gocache
-  needs:
-    - build-ui
   script:
-    - mkdir -p api/ui/out
-    - cp -a ui/out/. api/ui/out/
-    - go build -buildvcs=false -o helmify-api ./api
+    - go build -buildvcs=false -o helmify ./cmd/helmify
   artifacts:
     paths:
-      - helmify-api
+      - helmify
     expire_in: 1 hour
 
 # ---------------------------------------------------------------------------

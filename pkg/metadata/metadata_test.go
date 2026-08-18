@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/arttor/helmify/pkg/config"
+	"github.com/danilonicioka/helmify/pkg/config"
 
-	"github.com/arttor/helmify/internal"
+	"github.com/danilonicioka/helmify/internal"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )

@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/arttor/helmify/pkg/helm"
+	"github.com/danilonicioka/helmify/pkg/helm"
 )
 
 func TestWriteTarGzLocal(t *testing.T) {

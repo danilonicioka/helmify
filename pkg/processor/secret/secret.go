@@ -7,9 +7,9 @@ import (
 	"text/template"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/arttor/helmify/pkg/processor"
+	"github.com/danilonicioka/helmify/pkg/processor"
 
-	"github.com/arttor/helmify/pkg/helmify"
+	"github.com/danilonicioka/helmify/pkg/helmify"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"

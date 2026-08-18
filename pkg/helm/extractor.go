@@ -6,8 +6,8 @@ import (
 	"io"
 	"strings"
 
-	"github.com/arttor/helmify/pkg/config"
-	"github.com/arttor/helmify/pkg/decoder"
+	"github.com/danilonicioka/helmify/pkg/config"
+	"github.com/danilonicioka/helmify/pkg/decoder"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 

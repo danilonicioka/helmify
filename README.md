@@ -1,14 +1,14 @@
 # Helmify
 
-> **Note:** This project is a customized fork of the well-known [arttor/helmify](https://github.com/arttor/helmify.git) project, tailored to generate standardized charts specifically for our environment.
-[![CI](https://github.com/arttor/helmify/actions/workflows/ci.yml/badge.svg)](https://github.com/arttor/helmify/actions/workflows/ci.yml)
+> **Note:** This project is a customized fork of the well-known [arttor/helmify](https://github.com/danilonicioka/helmify.git) project, tailored to generate standardized charts specifically for our environment.
+[![CI](https://github.com/danilonicioka/helmify/actions/workflows/ci.yml/badge.svg)](https://github.com/danilonicioka/helmify/actions/workflows/ci.yml)
 [Documentation](docs/index.md)
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/arttor/helmify)
-![GitHub](https://img.shields.io/github/license/arttor/helmify)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/arttor/helmify)
-[![Go Report Card](https://goreportcard.com/badge/github.com/arttor/helmify)](https://goreportcard.com/report/github.com/arttor/helmify)
-[![GoDoc](https://godoc.org/github.com/arttor/helmify?status.svg)](https://pkg.go.dev/github.com/arttor/helmify?tab=doc)
-![GitHub total downloads](https://img.shields.io/github/downloads/arttor/helmify/total)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/danilonicioka/helmify)
+![GitHub](https://img.shields.io/github/license/danilonicioka/helmify)
+![GitHub release (latest by date)](https://img.shields.io/github/v/release/danilonicioka/helmify)
+[![Go Report Card](https://goreportcard.com/badge/github.com/danilonicioka/helmify)](https://goreportcard.com/report/github.com/danilonicioka/helmify)
+[![GoDoc](https://godoc.org/github.com/danilonicioka/helmify?status.svg)](https://pkg.go.dev/github.com/danilonicioka/helmify?tab=doc)
+![GitHub total downloads](https://img.shields.io/github/downloads/danilonicioka/helmify/total)
 
 CLI and Web API Service that creates [Helm](https://github.com/helm/helm) charts from Kubernetes manifests.
 
@@ -112,7 +112,7 @@ This fork incorporates specific behaviors designed to meet organizational requir
     ```
     Will create 'mychart' directory with Helm chart from kustomize output.
 
-## Helmify API
+## Helmify
 
 Helmify can also be run as a web service, allowing you to generate charts via HTTP requests. This is useful for integrating Helmify into CI/CD pipelines or web-based tools.
 
@@ -130,7 +130,7 @@ Helmify can also be run as a web service, allowing you to generate charts via HT
 curl -X POST \
   -H "X-Chart-Name: my-chart" \
   --data-binary @my-app.yaml \
-  http://<helmify-api-url>/v1/generate \
+  http://<helmify-url>/v1/generate \
   --output my-chart.tar.gz
 ```
 
@@ -141,7 +141,7 @@ kustomize build <dir> | curl -X POST \
   -H "X-Generate-All-Templates: true" \
   -H "X-Dev-Repo-Url: https://github.com/my-org/my-app" \
   --data-binary @- \
-  http://<helmify-api-url>/v1/generate \
+  http://<helmify-url>/v1/generate \
   --output my-chart.tar.gz
 ```
 
@@ -171,7 +171,7 @@ You can configure the chart generation by sending the following optional headers
     ```makefile
     HELMIFY = $(shell pwd)/bin/helmify
     helmify:
-    	$(call go-get-tool,$(HELMIFY),github.com/arttor/helmify/cmd/helmify@v0.3.7)
+    	$(call go-get-tool,$(HELMIFY),github.com/danilonicioka/helmify/cmd/helmify@v0.3.7)
     
     helm: manifests kustomize helmify
     	$(KUSTOMIZE) build config/default | $(HELMIFY)
@@ -183,7 +183,7 @@ You can configure the chart generation by sending the following optional headers
     .PHONY: helmify
     helmify: $(HELMIFY) ## Download helmify locally if necessary.
     $(HELMIFY): $(LOCALBIN)
-    	test -s $(LOCALBIN)/helmify || GOBIN=$(LOCALBIN) go install github.com/arttor/helmify/cmd/helmify@latest
+    	test -s $(LOCALBIN)/helmify || GOBIN=$(LOCALBIN) go install github.com/danilonicioka/helmify/cmd/helmify@latest
         
     helm: manifests kustomize helmify
     	$(KUSTOMIZE) build config/default | $(HELMIFY)
@@ -192,9 +192,9 @@ You can configure the chart generation by sending the following optional headers
 
 ## Install
 
-With [Homebrew](https://brew.sh/) (for MacOS or Linux): `brew install arttor/tap/helmify`
+With [Homebrew](https://brew.sh/) (for MacOS or Linux): `brew install danilonicioka/tap/helmify`
 
-Or download suitable for your system binary from [the Releases page](https://github.com/arttor/helmify/releases/latest).
+Or download suitable for your system binary from [the Releases page](https://github.com/danilonicioka/helmify/releases/latest).
 Unpack the helmify binary and add it to your PATH and you are good to go!
 
 ## Available options
@@ -260,11 +260,11 @@ Helmify deliberately preserves the **exact component name** (typically kebab-cas
 
 5. **Dynamic Port Extraction (Anti-Duplication)**:
    - To prevent Helmify from artificially injecting duplicate ports during the model merge phase (e.g. merging a model's `http:` port with a manifest's `"8080"` port), the standardized models (`models/single` and `models/multi`) explicitly leave the `service.ports` map empty (`{}`). Helmify will dynamically populate this map using strictly what is defined in the input manifests.
-    - If there is a version mismatch between the deployed Helmify API and your local branch, the template names and values keys can diverge (e.g., writing the ConfigMap with name `adm-estrutura` but referencing `adm-estrutura-judiciaria` in the Deployment). **Always ensure the remote server is running the same commit as your local branch to keep naming consistent.**
+    - If there is a version mismatch between the deployed Helmify and your local branch, the template names and values keys can diverge (e.g., writing the ConfigMap with name `adm-estrutura` but referencing `adm-estrutura-judiciaria` in the Deployment). **Always ensure the remote server is running the same commit as your local branch to keep naming consistent.**
 
 ## Manifest Validation Checklist (Before Helmifying)
 
-Before sending your manifests to the Helmify API or CLI, run the following verification steps to ensure correct template generation and naming alignment:
+Before sending your manifests to Helmify (or its CLI), run the following verification steps to ensure correct template generation and naming alignment:
 
 1. **Shared ConfigMaps / Secrets Verification**:
    - Check if any ConfigMap or Secret is referenced by more than one workload (e.g., used by both frontend and backend).
@@ -363,10 +363,10 @@ Check list before submitting PR:
 ## ⚠️ Known Issues: Deployed Version Mismatch (Diagnostic Report)
 
 ### Symptom
-When generating charts via the remote Helmify API service, you may observe duplicate template files (e.g., `cm-adm-estrutura.yaml` and `cm-admestrutura.yaml`, or `secret-adm-estrutura.yaml` and `secret-admestrutura.yaml`) and name resolution mismatches inside the `Deployment` env/envFrom references.
+When generating charts via the remote Helmify service, you may observe duplicate template files (e.g., `cm-adm-estrutura.yaml` and `cm-admestrutura.yaml`, or `secret-adm-estrutura.yaml` and `secret-admestrutura.yaml`) and name resolution mismatches inside the `Deployment` env/envFrom references.
 
 ### Cause
-The remote Helmify API instance running on OpenShift (`https://helmify.apps.ocp-dev.i.tj.pa.gov.br`) is currently running an **outdated version** built from the `gitlab/main` branch (last commit: June 12, `38ff265`).
+The remote Helmify instance running on OpenShift (`https://helmify.apps.ocp-dev.i.tj.pa.gov.br`) is currently running an **outdated version** built from the `gitlab/main` branch (last commit: June 12, `38ff265`).
 
 The local/upstream `main` branch contains **24 commits of bug fixes and feature additions** since then, including:
 1. **Commit `9bc1752`**: `fix: prevent premature stripping of common suffixes...`
@@ -451,7 +451,7 @@ When components end with numeric suffixes (like `pje-service-1g` or `pje-service
 
 ## Modular Subcomponents Architecture
 Helmify now supports a fully modular dynamic subcomponent architecture. Auxiliary components (such as Redis, Postgres, or RabbitMQ) are no longer hardcoded into the core wizard or templates. 
-To add a new subcomponent to the Helmify API wizard, simply create a new directory inside `models/subcomponents/<name>` containing a `values-snippet.yaml` and a `templates/` folder. The API automatically scans this directory and exposes them via the `/v1/subcomponents` endpoint, dynamically bundling them into your chart if requested.
+To add a new subcomponent to the Helmify wizard, simply create a new directory inside `models/subcomponents/<name>` containing a `values-snippet.yaml` and a `templates/` folder. The engine automatically scans this directory and exposes them via the `/v1/subcomponents` endpoint, dynamically bundling them into your chart if requested.
 
 ## Migrating Legacy Helm Charts
 Helmify can now be used as a migration engine to modernize legacy Helm charts and convert them into the standardized TJPA architecture. 

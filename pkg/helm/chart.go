@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	roothelmify "github.com/arttor/helmify"
-	"github.com/arttor/helmify/pkg/helmify"
-	"github.com/arttor/helmify/pkg/processor"
+	roothelmify "github.com/danilonicioka/helmify"
+	"github.com/danilonicioka/helmify/pkg/helmify"
+	"github.com/danilonicioka/helmify/pkg/processor"
 
 	"github.com/sirupsen/logrus"
 

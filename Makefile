@@ -1,11 +1,11 @@
 .PHONY: build lint container-build clean
 
-APP_NAME = helmify-api
+APP_NAME = helmify
 IMAGE_TAG = latest
 
 # Build the Go API
 build:
-	go build -buildvcs=false -o $(APP_NAME) ./api
+	go build -buildvcs=false -o $(APP_NAME) ./cmd/helmify
 
 # Run linter
 lint:
