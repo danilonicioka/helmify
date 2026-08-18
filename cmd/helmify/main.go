@@ -42,16 +42,11 @@ func init() {
 
 
 func main() {
-	port := os.Getenv("HELMIFY_PORT")
-	// If a Kubernetes service is named "helmify", it injects HELMIFY_PORT=tcp://...
-	if strings.HasPrefix(port, "tcp://") {
-		port = ""
-	}
-	
+	port := os.Getenv("SERVER_PORT")
 	if port == "" {
 		port = os.Getenv("PORT") // Fallback to standard PORT
 	}
-	if port == "" || strings.HasPrefix(port, "tcp://") {
+	if port == "" {
 		port = "8080"
 	}
 
