@@ -6,19 +6,23 @@ redis:
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
   # ----------------------------------------------------------------------------
   enabled: true
-  # -- Number of replica pods.
-  replicas: 1
-  # -- Custom labels to add to the deployment/pods
-  labels:
-    app.openshift.io/runtime: redis
-  # -- Custom annotations to add to the deployment 
-  annotations: {}
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
-    repository: registry.example.com/devops/redis
+    repository: {{REGISTRY}}/devops/redis
     # -- Defaults to Chart.appVersion if not specified.
     tag: "8.4.0"
     pullPolicy: IfNotPresent
+    pullSecrets: []
+
+  # -- Number of replica pods.
+  replicas: 1
+
+  # -- Custom labels to add to the deployment/pods
+  labels:
+    app.openshift.io/runtime: redis
+
+  # -- Custom annotations to add to the deployment 
+  annotations: {}
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION (Variables & Credentials)
@@ -99,12 +103,12 @@ redis:
     ephemeral: true
     mountPath: "/data"
     storageRequest: 1Gi
+    accessMode: ReadWriteMany
     storageClass: ""
 
   # ----------------------------------------------------------------------------
   # 8. SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  imagePullSecrets: []
   nodeSelector: {}
   tolerations: []
   affinity:

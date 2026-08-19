@@ -7,7 +7,7 @@ metadata:
     {{- include "<CHART_NAME>.postgres.labels" . | nindent 4 }}
 spec:
   accessModes:
-    - ReadWriteOnce
+    - {{ .Values.postgres.persistence.accessMode | default "ReadWriteMany" }}
   resources:
     requests:
       storage: {{ .Values.postgres.persistence.storageRequest | quote }}

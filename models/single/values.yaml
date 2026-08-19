@@ -28,7 +28,7 @@ chart-model-single:
   # ----------------------------------------------------------------------------
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
-    repository: registry.example.com/devops/chart-model-app
+    repository: {{REGISTRY}}/chart-model-app
     # -- Defaults to Chart.appVersion if not specified.
     tag: "latest"
     pullPolicy: IfNotPresent
@@ -109,17 +109,17 @@ chart-model-single:
     # -- Internal Route with self-signed certificate (to default OCP apps).
     default:
       enabled: true
-      host: chart-model-single.apps.example.com
+      host: chart-model-single.{{DEFAULT_DOMAIN}}
 
     # -- Internal Route with valid certificate (to intranet Organization).
     internal:
       enabled: false
-      host: chart-model-single-internal.example.com
+      host: chart-model-single-{{INTERNAL_DOMAIN}}
 
     # -- External Route with valid certificate (to internet Organization).
     external:
       enabled: false
-      host: chart-model.example.com
+      host: chart-model.{{EXTERNAL_DOMAIN}}
 
   # -- Internal Kubernetes Service Configuration.
   service:

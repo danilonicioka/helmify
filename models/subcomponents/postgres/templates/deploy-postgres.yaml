@@ -39,7 +39,7 @@ spec:
       labels:
         {{- include "<CHART_NAME>.postgres.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with .Values.postgres.imagePullSecrets }}
+      {{- with .Values.postgres.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
