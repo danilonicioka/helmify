@@ -972,7 +972,7 @@
                 <!-- 1. CORE WORKLOAD SETTINGS -->
                 <div class="form-group">
                     <label for="compRepo">Image Repository</label>
-                    <input type="text" id="compRepo" value="registry.example.com/devops/chart-model-app" placeholder="image registry url">
+                    <input type="text" id="compRepo" value="{{REGISTRY}}/chart-model-app" placeholder="image registry url">
                 </div>
 
                 <div class="form-group row">
@@ -1054,7 +1054,7 @@
                     </div>
                     <div class="form-group" id="routeIntHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
                         <label for="routeIntHost">Route Hostname</label>
-                        <input type="text" id="routeIntHost" placeholder="e.g. chart-model-single-int.internal.example.com" oninput="saveAndPreview()">
+                        <input type="text" id="routeIntHost" placeholder="e.g. chart-model-single-int.{{INTERNAL_DOMAIN}}" oninput="saveAndPreview()">
                     </div>
                 </div>
 
@@ -1069,7 +1069,7 @@
                     </div>
                     <div class="form-group" id="routeExtHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
                         <label for="routeExtHost">Route Hostname</label>
-                        <input type="text" id="routeExtHost" placeholder="e.g. chart-model-single.example.com" oninput="saveAndPreview()">
+                        <input type="text" id="routeExtHost" placeholder="e.g. chart-model-single.{{EXTERNAL_DOMAIN}}" oninput="saveAndPreview()">
                     </div>
                 </div>
 
@@ -1378,7 +1378,7 @@
             return {
                 replicas: isFrontend ? 0 : 2,
                 image: {
-                    repository: `registry.example.com/devops/chart-model-${suffix}`,
+                    repository: `{{REGISTRY}}/chart-model-${suffix}`,
                     tag: ''
                 },
                 service: {
@@ -1407,8 +1407,8 @@
                 route: {
                     path: '',
                     default: { enabled: true, host: `chart-model-${name}.{{DEFAULT_DOMAIN}}` },
-                    internal: { enabled: false, host: `chart-model-${name}-int.internal.example.com` },
-                    external: { enabled: false, host: `chart-model-${name}.example.com` }
+                    internal: { enabled: false, host: `chart-model-${name}-int.{{INTERNAL_DOMAIN}}` },
+                    external: { enabled: false, host: `chart-model-${name}.{{EXTERNAL_DOMAIN}}` }
                 }
             };
         }

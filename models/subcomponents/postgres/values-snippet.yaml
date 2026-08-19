@@ -6,19 +6,23 @@ postgres:
   # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
   # ----------------------------------------------------------------------------
   enabled: true
-  # -- Number of replica pods.
-  replicas: 1
-  # -- Custom labels to add to the deployment/pods
-  labels:
-    app.openshift.io/runtime: postgresql
-  # -- Custom annotations to add to the deployment 
-  annotations: {}
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
-    repository: registry.example.com/devops/postgres
+    repository: {{REGISTRY}}/devops/postgres
     # -- Defaults to Chart.appVersion if not specified.
     tag: "16-alpine"
     pullPolicy: IfNotPresent
+    pullSecrets: []
+
+  # -- Number of replica pods.
+  replicas: 1
+
+  # -- Custom labels to add to the deployment/pods
+  labels:
+    app.openshift.io/runtime: postgresql
+
+  # -- Custom annotations to add to the deployment 
+  annotations: {}
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION (Variables & Credentials)
@@ -87,7 +91,10 @@ postgres:
   # ----------------------------------------------------------------------------
   # -- Deployment strategy. Use 'RollingUpdate' or 'Recreate' (e.g. for RWO volume claims).
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 0
   # -- Connection draining grace period for graceful shutdowns.
   terminationGracePeriodSeconds: 30
 
@@ -99,12 +106,12 @@ postgres:
     ephemeral: false
     mountPath: "/var/lib/postgresql/data"
     storageRequest: 1Gi
+    accessMode: ReadWriteMany
     storageClass: ""
 
   # ----------------------------------------------------------------------------
   # 8. SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  imagePullSecrets: []
   nodeSelector: {}
   tolerations: []
   affinity:

@@ -35,8 +35,8 @@ Defines environment variables for the container using two maps:
 ### 3. Routing & Networking
 Configures the internal Kubernetes `service` (ports and type) and OpenShift routes:
 - **Default Route:** Internal route with self-signed TLS.
-- **Internal Route:** Valid certificate for the internal Organization intranet (`*-internal.example.com`).
-- **External Route:** Valid certificate for the external internet (`*.example.com`).
+- **Internal Route:** Valid certificate for the internal Organization intranet (`*-{{INTERNAL_DOMAIN}}`).
+- **External Route:** Valid certificate for the external internet (`*.{{EXTERNAL_DOMAIN}}`).
 
 ### 4. Resources
 Defines CPU and Memory `requests` and `limits`.

@@ -739,7 +739,7 @@ spec:
     spec:
       containers:
       - name: my-app
-        image: registry.example.com/devops/my-app:1.0.0
+        image: {{REGISTRY}}/my-app:1.0.0
         ports:
         - containerPort: 8080
         env:

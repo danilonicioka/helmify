@@ -61,6 +61,13 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 			continue
 		}
 		content := files[name]
+		contentStr := string(content)
+		contentStr = strings.ReplaceAll(contentStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
+		contentStr = strings.ReplaceAll(contentStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
+		contentStr = strings.ReplaceAll(contentStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
+		contentStr = strings.ReplaceAll(contentStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
+		content = []byte(contentStr)
+
 		var pathStr string
 		if name == ".gitlab-ci.yml" || name == "README.md" {
 			pathStr = name
