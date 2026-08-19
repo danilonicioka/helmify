@@ -113,8 +113,14 @@ func GetModelDefaults(chartType string) (map[string]interface{}, error) {
 		return nil, err
 	}
 
+	dataStr := string(data)
+	dataStr = strings.ReplaceAll(dataStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
+	dataStr = strings.ReplaceAll(dataStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
+	dataStr = strings.ReplaceAll(dataStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
+	dataStr = strings.ReplaceAll(dataStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
+
 	var m map[string]interface{}
-	if err := yaml.Unmarshal(data, &m); err != nil {
+	if err := yaml.Unmarshal([]byte(dataStr), &m); err != nil {
 		return nil, err
 	}
 
@@ -298,9 +304,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				if strings.HasSuffix(base, "-redis.yaml") || strings.HasSuffix(base, "-postgres.yaml") {
 					continue
 				}
-				if base == "pvc.yaml" && !depConfig.Persistence.Enabled {
-					continue
-				}
 				content := replaceChartName(string(data), oldChartName, params.ChartName)
 				outputFiles[relPath] = []byte(content)
 			}
@@ -479,9 +482,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 				filename := filepath.Base(relPath)
 				if strings.Contains(filename, "-"+baseComp) || strings.Contains(filename, baseComp+"-") || strings.Contains(filename, baseComp+".") {
-					if strings.Contains(filename, "pvc") && !depConfig.Persistence.Enabled {
-						continue
-					}
 					compKebab := processor.NormalizeComponentName(compName)
 					newFilename := strings.Replace(filename, baseComp, compKebab, 1)
 					newRelPath := filepath.Join("templates", newFilename)
