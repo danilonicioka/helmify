@@ -560,10 +560,10 @@ tar -xvzf chart.tar.gz</code></pre>
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>helm template chart -f values-prd.yaml | curl -s -X POST "http://helmify{{DEFAULT_DOMAIN}}/v1/generate?values-only=true" \
+                    <pre><code>helm template chart -f values-env.yaml | curl -s -X POST "http://helmify{{DEFAULT_DOMAIN}}/v1/generate?values-only=true" \
   -H "X-Chart-Name: chart" \
   -H "Content-Type: text/yaml" \
-  --data-binary @- > values-prd.yaml</code></pre>
+  --data-binary @- > values.tmp.yaml && mv values.tmp.yaml values-env.yaml</code></pre>
                 </div>
             </div>
 
