@@ -8,7 +8,7 @@ redis:
   enabled: true
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
-    repository: {{REGISTRY}}/devops/redis
+    repository: "{{REGISTRY}}/devops/redis"
     # -- Defaults to Chart.appVersion if not specified.
     tag: "8.4.0"
     pullPolicy: IfNotPresent

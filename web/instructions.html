@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Helmify Engine — API Reference</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-base: hsl(230, 25%, 8%);
@@ -198,8 +201,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         h2 {
@@ -252,7 +262,8 @@
             font-size: 0.9rem;
         }
 
-        th, td {
+        th,
+        td {
             text-align: left;
             padding: 0.75rem;
             border-bottom: 1px solid var(--border-color);
@@ -344,6 +355,7 @@
         }
     </style>
 </head>
+
 <body>
 
 
@@ -354,15 +366,29 @@
         </div>
         <div class="header-actions">
             <a href="/" class="header-nav-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
                 <span>Portal Home</span>
             </a>
             <a href="/wizard" class="header-nav-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"></path><path d="M2 17l10 5 10-5"></path><path d="M2 12l10 5 10-5"></path></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"></path>
+                    <path d="M2 17l10 5 10-5"></path>
+                    <path d="M2 12l10 5 10-5"></path>
+                </svg>
                 <span>Go to Wizard</span>
             </a>
             <a href="/converter/" class="header-nav-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+                    <path d="M9 3v18"></path>
+                    <path d="m16 15-3-3 3-3"></path>
+                </svg>
                 <span>Go to Converter</span>
             </a>
         </div>
@@ -387,20 +413,26 @@
             <!-- SECTION: INTRO -->
             <div class="doc-section active" id="intro">
                 <h2>Introduction</h2>
-                <p>The Helmify Engine provides a set of REST endpoints that allow automated pipelines, custom scripts, and integration services to generate or preview Helm charts programmatically from Kubernetes/OpenShift resource manifests or structured configs.</p>
-                
+                <p>The Helmify Engine provides a set of REST endpoints that allow automated pipelines, custom scripts,
+                    and integration services to generate or preview Helm charts programmatically from
+                    Kubernetes/OpenShift resource manifests or structured configs.</p>
+
                 <div class="callout">
-                    <p><strong>Note:</strong> All API requests are fully offline-compatible. The engine generates chart outputs using in-memory templating models and does not communicate with external registries during runtime.</p>
+                    <p><strong>Note:</strong> All API requests are fully offline-compatible. The engine generates chart
+                        outputs using in-memory templating models and does not communicate with external registries
+                        during runtime.</p>
                 </div>
 
                 <div class="section-title">Base URL</div>
-                <p>When running the container locally or in OpenShift, endpoints are exposed relative to your host URL (e.g. <code>http://localhost:8080</code>).</p>
+                <p>When running the container locally or in OpenShift, endpoints are exposed relative to your host URL
+                    (e.g. <code>http://localhost:8080</code>).</p>
             </div>
 
             <!-- SECTION: POST GENERATE -->
             <div class="doc-section" id="post-generate">
                 <h2>Generate packaged Helm Chart</h2>
-                <p>Translates Kubernetes resource manifests and downloads a packed, gzip-compressed tar archive (<code>.tar.gz</code>) containing the completed chart layout.</p>
+                <p>Translates Kubernetes resource manifests and downloads a packed, gzip-compressed tar archive
+                    (<code>.tar.gz</code>) containing the completed chart layout.</p>
 
                 <div class="endpoint-url-bar">
                     <span class="method-badge post">POST</span>
@@ -426,12 +458,14 @@
                         <tr>
                             <td class="param-name">X-Generate-All-Templates</td>
                             <td class="param-type">boolean</td>
-                            <td>Generate all standard boilerplate templates (CM, Secret, Routes) for all components (default: <code>false</code>).</td>
+                            <td>Generate all standard boilerplate templates (CM, Secret, Routes) for all components
+                                (default: <code>false</code>).</td>
                         </tr>
                         <tr>
                             <td class="param-name">X-Dev-Repo-Url</td>
                             <td class="param-type">string</td>
-                            <td>{{ORG_NAME}} developer source repository URL annotation for Chart.yaml (default: <code>""</code>).</td>
+                            <td>{{ORG_NAME}} developer source repository URL annotation for Chart.yaml (default:
+                                <code>""</code>).</td>
                         </tr>
                     </tbody>
                 </table>
@@ -449,13 +483,16 @@
                         <tr>
                             <td class="param-name">values-only</td>
                             <td class="param-type">boolean</td>
-                            <td>If set to <code>true</code>, the endpoint intercepts the response and returns only the generated <code>values.yaml</code> content in plain text instead of the packaged chart tarball.</td>
+                            <td>If set to <code>true</code>, the endpoint intercepts the response and returns only the
+                                generated <code>values.yaml</code> content in plain text instead of the packaged chart
+                                tarball.</td>
                         </tr>
                     </tbody>
                 </table>
 
                 <div class="section-title">Request Body</div>
-                <p>Raw string of the source Kubernetes resource manifests (YAML format). Multiple resources should be delimited by <code>---</code> lines.</p>
+                <p>Raw string of the source Kubernetes resource manifests (YAML format). Multiple resources should be
+                    delimited by <code>---</code> lines.</p>
 
 
                 <div class="section-title">Example Command (Kustomize Output Pipe)</div>
@@ -464,7 +501,7 @@
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>kustomize build overlays/dev | curl -X POST "http://helmify.{{DEFAULT_DOMAIN}}/v1/generate" \
+                    <pre><code>kustomize build overlays/dev | curl -X POST "http://helmify{{DEFAULT_DOMAIN}}/v1/generate" \
   -H "X-Chart-Name: chart" \
   -H "X-Generate-All-Templates: true" \
   -H "X-Dev-Repo-Url: https://gitlab-ca.example.com/group/project" \
@@ -488,7 +525,7 @@ tar -xvzf chart.tar.gz</code></pre>
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>helm template chart -f values-dev.yaml | curl -X POST "http://helmify.{{DEFAULT_DOMAIN}}/v1/generate" \
+                    <pre><code>helm template chart -f values-dev.yaml | curl -X POST "http://helmify{{DEFAULT_DOMAIN}}/v1/generate" \
   -H "X-Chart-Name: chart" \
   -H "X-Generate-All-Templates: true" \
   -H "X-Dev-Repo-Url: https://gitlab-ca.example.com/group/project" \
@@ -512,7 +549,7 @@ tar -xvzf chart.tar.gz</code></pre>
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>kustomize build overlays/dev | curl -s -X POST "http://helmify.{{DEFAULT_DOMAIN}}/v1/generate?values-only=true" \
+                    <pre><code>kustomize build overlays/dev | curl -s -X POST "http://helmify{{DEFAULT_DOMAIN}}/v1/generate?values-only=true" \
   -H "X-Chart-Name: chart" \
   -H "Content-Type: text/yaml" \
   --data-binary @- > values-dev.yaml</code></pre>
@@ -523,7 +560,7 @@ tar -xvzf chart.tar.gz</code></pre>
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>helm template chart -f values-prd.yaml | curl -s -X POST "http://helmify.{{DEFAULT_DOMAIN}}/v1/generate?values-only=true" \
+                    <pre><code>helm template chart -f values-prd.yaml | curl -s -X POST "http://helmify{{DEFAULT_DOMAIN}}/v1/generate?values-only=true" \
   -H "X-Chart-Name: chart" \
   -H "Content-Type: text/yaml" \
   --data-binary @- > values-prd.yaml</code></pre>
@@ -539,7 +576,7 @@ tar -xvzf chart.tar.gz</code></pre>
             // Remove active classes
             document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.doc-section').forEach(el => el.classList.remove('active'));
-            
+
             // Add active class to selected menu item
             const activeMenuItem = Array.from(document.querySelectorAll('.menu-item')).find(el => {
                 return el.getAttribute('onclick').includes(tabId);
@@ -554,7 +591,7 @@ tar -xvzf chart.tar.gz</code></pre>
         function copyCode(btn) {
             const preElement = btn.parentElement.nextElementSibling;
             const codeText = preElement.textContent;
-            
+
             navigator.clipboard.writeText(codeText).then(() => {
                 const originalText = btn.textContent;
                 btn.textContent = 'Copied!';
@@ -571,4 +608,5 @@ tar -xvzf chart.tar.gz</code></pre>
         }
     </script>
 </body>
+
 </html>
