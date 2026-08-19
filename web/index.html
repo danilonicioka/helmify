@@ -933,7 +933,7 @@
             <!-- Developer Source Repository URL -->
             <div class="form-group">
                 <label for="devRepoUrl">Developer Source Repository URL (Argo CD GitOps)</label>
-                <input type="text" id="devRepoUrl" value="" placeholder="e.g. http://gitlab.example.com/squad/my-app.git">
+                <input type="text" id="devRepoUrl" value="" placeholder="e.g. http://gitlab.{{INTERNAL_DOMAIN}}/squad/my-app.git">
             </div>
             <!-- Global Env Vars -->
             <div id="global-config-section">
@@ -1887,7 +1887,7 @@
             const payload = {
                 chartName: document.getElementById('chartName').value || 'chart-model',
                 type: chartType,
-                devRepoUrl: document.getElementById('devRepoUrl').value || 'https://gitlab.example.com/devops/chart-model-backend.git',
+                devRepoUrl: document.getElementById('devRepoUrl').value || 'https://gitlab.{{INTERNAL_DOMAIN}}/devops/chart-model-backend.git',
                 globalConfig: globalConfig,
                 globalSecret: globalSecret,
                 deployments: components,
