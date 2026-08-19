@@ -933,7 +933,7 @@
             <!-- Developer Source Repository URL -->
             <div class="form-group">
                 <label for="devRepoUrl">Developer Source Repository URL (Argo CD GitOps)</label>
-                <input type="text" id="devRepoUrl" value="" placeholder="e.g. http://gitlab-dev.i.tj.pa.gov.br/squad-seguranca/my-app.git">
+                <input type="text" id="devRepoUrl" value="" placeholder="e.g. http://gitlab.example.com/squad/my-app.git">
             </div>
             <!-- Global Env Vars -->
             <div id="global-config-section">
@@ -1039,7 +1039,7 @@
                     </div>
                     <div class="form-group" id="routeDefaultHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
                         <label for="routeDefaultHost">Route Hostname</label>
-                        <input type="text" id="routeDefaultHost" placeholder="e.g. chart-model-single.apps.ocp-hub.i.tj.pa.gov.br" oninput="saveAndPreview()">
+                        <input type="text" id="routeDefaultHost" placeholder="e.g. chart-model-single.{{DEFAULT_DOMAIN}}" oninput="saveAndPreview()">
                     </div>
                 </div>
 
@@ -1406,7 +1406,7 @@
                 },
                 route: {
                     path: '',
-                    default: { enabled: true, host: `chart-model-${name}.apps.ocp-hub.i.tj.pa.gov.br` },
+                    default: { enabled: true, host: `chart-model-${name}.{{DEFAULT_DOMAIN}}` },
                     internal: { enabled: false, host: `chart-model-${name}-int.internal.example.com` },
                     external: { enabled: false, host: `chart-model-${name}.example.com` }
                 }
@@ -1887,7 +1887,7 @@
             const payload = {
                 chartName: document.getElementById('chartName').value || 'chart-model',
                 type: chartType,
-                devRepoUrl: document.getElementById('devRepoUrl').value || 'https://gitlab.i.tj.pa.gov.br/devops/chart-model-backend.git',
+                devRepoUrl: document.getElementById('devRepoUrl').value || 'https://gitlab.example.com/devops/chart-model-backend.git',
                 globalConfig: globalConfig,
                 globalSecret: globalSecret,
                 deployments: components,

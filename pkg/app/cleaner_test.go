@@ -237,7 +237,7 @@ metadata:
   name: jurisprudencia-app-dev
   namespace: my-namespace
 spec:
-  host: iande.apps.ocp-dev.i.tj.pa.gov.br
+  host: iande.apps.example.com
   port:
     targetPort: http
   tls:

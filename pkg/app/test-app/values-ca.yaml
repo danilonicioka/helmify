@@ -1,14 +1,18 @@
 global:
   cm:
-    TZ: America/Belem
-  secret: {}
-api:
+    TZ: "America/Belem"
+backend:
   cm: {}
-app-emissor:
+frontend:
   cm: {}
 myapp:
   cm:
+    my.prop2: val 1
     my.prop3: "true"
+    dummyconfigmapkey: dummyconfigmapvalue
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallationTemplate
@@ -20,10 +24,3 @@ myapp:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
     my.prop1: "1"
-    my.prop2: val 1
-    dummyconfigmapkey: dummyconfigmapvalue
-    my_config.properties: |
-      health.healthProbeBindAddress=8081
-      metrics.bindAddress=127.0.0.1:8080
-nginx:
-  cm: {}

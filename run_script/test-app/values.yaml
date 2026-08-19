@@ -112,7 +112,7 @@ batch:
     # -- Internal Route with self-signed certificate (to default OCP apps).
     default:
       enabled: true
-      host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
+      host: test-app-backend.apps.example.com
     # -- Internal Route with valid certificate (to intranet Organization).
     internal:
       enabled: false
@@ -245,7 +245,7 @@ cron:
     # -- Internal Route with self-signed certificate (to default OCP apps).
     default:
       enabled: true
-      host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
+      host: test-app-backend.apps.example.com
     # -- Internal Route with valid certificate (to intranet Organization).
     internal:
       enabled: false
@@ -377,7 +377,7 @@ fluentdElasticsearch:
     # -- Internal Route with self-signed certificate (to default OCP apps).
     default:
       enabled: true
-      host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
+      host: test-app-backend.apps.example.com
     # -- Internal Route with valid certificate (to intranet Organization).
     internal:
       enabled: false
@@ -525,7 +525,7 @@ myapp:
     path: "/"
     default:
       enabled: true
-      host: test-app-frontend.apps.ocp-dev.i.tj.pa.gov.br
+      host: test-app-frontend.apps.example.com
     internal:
       enabled: false
       host: test-app-frontend-internal.example.com
@@ -787,7 +787,7 @@ nginx:
     # -- Internal Route with self-signed certificate (to default OCP apps).
     default:
       enabled: true
-      host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
+      host: test-app-backend.apps.example.com
     # -- Internal Route with valid certificate (to intranet Organization).
     internal:
       enabled: false

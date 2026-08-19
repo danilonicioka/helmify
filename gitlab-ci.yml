@@ -1,83 +1,23 @@
-default:
-  image: example-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/runner-tools:latest
-  tags:
-    - rke
-
-workflow:
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "web"'  # Trigger manual
-    - when: never                         # Bloqueia outros
+# Standard Generic Pipeline Template
+# This is a simple generic placeholder. Organizations should mount their own pipeline or override this.
 
 stages:
-  - prepare
+  - build
   - deploy
 
 variables:
-  # 1. Target Environment
-  ENV_: 
-    description: "Environment where the project will be deployed"
-    value: "prd"
-    options:
-      - "hml"
-      - "prd"
-      - "dev"
+  APP_NAME: $CI_PROJECT_NAME
 
-  # 2. Enable Custom Application (CA) source
-  ENABLE_CA_SOURCE:
-    description: "Enable values from gitlab-ca as source"
-    value: "false"
-    options:
-      - "false"
-      - "true"
-
-  # 3. Dev Application Repository Revision
-  DEV_APP_REPO_REVISION:
-    description: "Branch, tag or commit SHA for the developer CA source repository:"
-    value: "main"
-    options:
-      - "main"
-      - "hml"
-      - "dev"
-      - "develop"
-      - "homolog"
-
-  # 4. Dynamic Values File Path
-  DEV_VALUES_PATH:
-    description: "Location and format of the values file in the repository (change env to match the desired environment)"
-    value: "variaveis/values-env.yaml"
-
-get_chart_info:
-  stage: prepare
+build_image:
+  stage: build
+  image: registry.example.com/devops/runner-tools:latest
   script:
-    - export CHART_VERSION="$(grep -E '^[[:space:]]*version:[[:space:]]*' chart/Chart.yaml | head -n1 | sed -E 's/^[[:space:]]*version:[[:space:]]*//')"
-    - echo "Detected chart version $CHART_VERSION"
-    - export DEV_APP_REPO_URL="$(awk '/^sources:/ {getline; if ($1 == "-") print $2}' chart/Chart.yaml | tr -d '\"' | tr -d "\'")"
-    - |
-      if [ -z "$DEV_APP_REPO_URL" ]; then
-        echo "Aviso: Campo 'sources' não encontrado ou vazio no Chart.yaml."
-      else
-        echo "Detected dev source repo $DEV_APP_REPO_URL"
-      fi
-    - echo "CHART_VERSION=$CHART_VERSION" > variables.env
-    - echo "DEV_APP_REPO_URL=$DEV_APP_REPO_URL" >> variables.env
-  artifacts:
-      reports:
-        dotenv: variables.env
+    - echo "Building generic container image for $APP_NAME..."
+    - # Build commands go here
 
-deploy_new_env:
+deploy_helm:
   stage: deploy
-  needs: ["get_chart_info"]
-  trigger:
-    project: "devops/cicd"
-    branch: main
-    strategy: depend
-  variables:
-    APP_NAME: $CI_PROJECT_NAME
-    DEPLOY_MODE: "helm"
-    GITLAB_GROUP: $CI_PROJECT_NAMESPACE
-    ENV: $ENV_
-    PROJ_CHART_VERSION: $CHART_VERSION
-    ENABLE_CA_SOURCE: $ENABLE_CA_SOURCE
-    DEV_APP_REPO_URL: $DEV_APP_REPO_URL
-    DEV_APP_REPO_REVISION: $DEV_APP_REPO_REVISION
-    DEV_VALUES_PATH: $DEV_VALUES_PATH
+  image: registry.example.com/devops/runner-tools:latest
+  script:
+    - echo "Deploying generic Helm chart for $APP_NAME..."
+    - # Deploy commands go here

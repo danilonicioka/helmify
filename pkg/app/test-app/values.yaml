@@ -1,4 +1,4 @@
-# Standardized Standardized Helm Chart values.yaml (Multi-Deployment Model)
+# Standardized Standardized Helm Chart values.yaml
 # Designed in compliance with OpenShift Security Context Constraints (SCC)
 # and the 6 Core Architectural Rules.
 
@@ -12,73 +12,57 @@ nameOverride: ""
 fullnameOverride: test-app
 # -- Global configuration shared across all deployments in the chart.
 global:
-  cm:
-    TZ: America/Belem
+
+  cm: {}
+
   secret: {}
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
-# Note: The component root keys (like 'backend', 'frontend', 'apiService') must be camelCased.
 api:
   # ----------------------------------------------------------------------------
-  # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
+  # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
-  # -- Number of replica pods.
-  replicas: 1
-  # -- Custom labels to add to the backend deployment/pods
-  labels:
-    k8s-app: fluentd-logging
-  # -- Custom annotations to add to the backend deployment 
-  annotations: {}
-  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
-
   image:
-    # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: quay.io/fluentd_elasticsearch/fluentd
-    # -- Defaults to Chart.appVersion if not specified.
     tag: v2.5.2
     pullPolicy: IfNotPresent
-  # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION (Variables & Credentials)
-  # ----------------------------------------------------------------------------
-  # ConfigMaps unique to this service container.
-  cm: {}
-  # Sensitive variables unique to this service container (Secrets).
-  secret: {}
-  # ----------------------------------------------------------------------------
-  # 3. ROUTING & NETWORKING
-  # ----------------------------------------------------------------------------
-  route:
-    # -- Shared annotations for routes.
-    annotations: {}
-    # haproxy.router.openshift.io/timeout: 60s
-    # haproxy.router.openshift.io/balance: roundrobin
-    # haproxy.router.openshift.io/disable_cookies: "true"
+    pullSecrets: []
 
-    # -- Shared TLS edge termination configuration.
-    tls:
-      termination: edge
-      insecureEdgeTerminationPolicy: Redirect
-    # -- Shared path for routes.
-    path: "/api"
-    # -- Internal Route with self-signed certificate (to default OCP apps).
-    default:
-      enabled: true
-      host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
-    # -- Internal Route with valid certificate (to intranet Organization).
-    internal:
-      enabled: false
-      host: test-app-backend-internal.example.com
-    # -- External Route with valid certificate (to internet Organization).
-    external:
-      enabled: false
-      host: test-app-backend.example.com
-  # -- Internal Kubernetes Service Configuration.
-  service:
-    type: ClusterIP
-    ports: {}
+  replicas: 1
+
+  labels:
+    k8s-app: fluentd-logging
+  # app.openshift.io/runtime: "quarkus"
+
+  annotations: {}
+  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"my-db"}]'
+
   # ----------------------------------------------------------------------------
-  # 4. RESOURCES (Operational Overlay-Only)
+  # 2. APPLICATION CONFIGURATION & SECRETS
+  # ----------------------------------------------------------------------------
+  cm: {}
+
+  secret: {}
+
+  vso:
+    enabled: false
+    role: "test-app-backend-role"
+    path: "kv/data/test-app/backend"
+
+    files: {}
+    # my_vault_key.p12:
+    #   mountPath: "/app/certs/my_vault_key.p12"
+  files:
+
+    cm: {}
+    # application.properties:
+    #   mountPath: "/deployments/config/application.properties"
+    #   content: |
+    #     quarkus.http.port=8080
+    secret: {}
+  # ----------------------------------------------------------------------------
+  # 3. RESOURCES
   # ----------------------------------------------------------------------------
   resources:
     limits:
@@ -88,7 +72,42 @@ api:
       cpu: 100m
       memory: 200Mi
   # ----------------------------------------------------------------------------
-  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
+  # 4. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  route:
+
+    annotations: {}
+    #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+    path: "/"
+    default:
+      enabled: true
+      host: test-app-backend.apps.example.com
+    internal:
+      enabled: false
+      host: test-app-backend-internal.example.com
+    external:
+      enabled: false
+      host: test-app-backend.example.com
+
+  service:
+    type: ClusterIP
+    ports: {}
+  # ----------------------------------------------------------------------------
+  # 5. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  persistence:
+    enabled: false
+    ephemeral: false
+    mountPath: "/var/lib/data"
+    storageRequest: 1Gi
+    accessMode: ReadWriteMany
+    storageClass: ""
+  # ----------------------------------------------------------------------------
+  # 6. PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
   startupProbe:
     tcpSocket:
@@ -113,9 +132,7 @@ api:
     periodSeconds: 10
     failureThreshold: 3
     successThreshold: 1
-  # ----------------------------------------------------------------------------
-  # 6. LIFECYCLE & HA STRATEGY
-  # ----------------------------------------------------------------------------
+
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -124,23 +141,15 @@ api:
 
   terminationGracePeriodSeconds: 30
   # ----------------------------------------------------------------------------
-  # 7. PERSISTENCE
+  # 7. SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  persistence:
-    enabled: false
-    ephemeral: false
-    mountPath: "/var/lib/data"
-    storageRequest: 1Gi
-    storageClass: ""
-  # ----------------------------------------------------------------------------
-  # 8. SCHEDULING & NODE ASSIGNMENT
-  # ----------------------------------------------------------------------------
-  imagePullSecrets: []
   nodeSelector: {}
+
   tolerations:
     - effect: NoSchedule
       key: node-role.kubernetes.io/master
       operator: Exists
+
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -153,24 +162,6 @@ api:
                   values:
                     - test-app-backend
             topologyKey: kubernetes.io/hostname
-  # ----------------------------------------------------------------------------
-  # 9. CUSTOM FILES
-  # ----------------------------------------------------------------------------
-  files:
-    cm: {}
-    # nginx.conf:
-    #   mountPath: "/etc/nginx/nginx.conf"
-    #   content: |
-    #     user nginx;
-    #     worker_processes auto;
-    secret: {}
-    # key.p12:
-    #   mountPath: "/app/certs/key.p12"
-    #   content: |
-    #     ...
-  imagePullPolicy: IfNotPresent
-  topologySpreadConstraints: []
-  backoffLimit: 4
   command:
     - perl
     - -Mbignum=bpi
@@ -179,61 +170,55 @@ api:
     - /bin/sh
     - -c
     - date; echo Hello from the Kubernetes cluster
+  imagePullPolicy: IfNotPresent
+  topologySpreadConstraints: []
+  backoffLimit: 4
   schedule: '* * * * *'
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
 app-emissor:
   # ----------------------------------------------------------------------------
-  # 1. CORE WORKLOAD SETTINGS
+  # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
-  replicas: 2
-  # -- Custom labels to add to the frontend deployment/pods
-  labels: {}
-  #   app.openshift.io/runtime: openjdk
-
-  # -- Custom annotations to add to the frontend deployment 
-  annotations: {}
-  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
-
   image:
     repository: registry.k8s.io/nginx-slim
     tag: "0.8"
     pullPolicy: IfNotPresent
+    pullSecrets: []
+
+  replicas: 2
+
+  labels: {}
+  # app.openshift.io/runtime: "nginx"
+
+  annotations: {}
+  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"backend"}]'
+
   # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION
+  # 2. APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
   cm: {}
-  # No default secrets for web frontend component
-  secret: {}
-  # ----------------------------------------------------------------------------
-  # 3. ROUTING & NETWORKING
-  # ----------------------------------------------------------------------------
-  route:
-    annotations: {}
-    #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
-    # haproxy.router.openshift.io/timeout: 60s
-    # haproxy.router.openshift.io/balance: roundrobin
-    # haproxy.router.openshift.io/disable_cookies: "true"
-    tls:
-      termination: edge
-      insecureEdgeTerminationPolicy: Redirect
-    path: "/"
-    default:
-      enabled: true
-      host: test-app-frontend.apps.ocp-dev.i.tj.pa.gov.br
-    internal:
-      enabled: false
-      host: test-app-frontend-internal.example.com
-    external:
-      enabled: false
-      host: test-app-frontend.example.com
-  service:
-    type: ClusterIP
-    ports: {}
+  secret: {}
+
+  vso:
+    enabled: false
+    role: "test-app-frontend-role"
+    path: "kv/data/test-app/frontend"
+
+    files: {}
+  files:
+
+    cm: {}
+    # nginx.conf:
+    #   mountPath: "/etc/nginx/nginx.conf"
+    #   content: |
+    #     user nginx;
+    #     worker_processes auto;
+    secret: {}
   # ----------------------------------------------------------------------------
-  # 4. RESOURCES
+  # 3. RESOURCES
   # ----------------------------------------------------------------------------
   resources:
     limits:
@@ -243,7 +228,42 @@ app-emissor:
       cpu: 30m
       memory: 256Mi
   # ----------------------------------------------------------------------------
-  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
+  # 4. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  route:
+
+    annotations: {}
+    #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+    path: "/"
+    default:
+      enabled: true
+      host: test-app-frontend.apps.example.com
+    internal:
+      enabled: false
+      host: test-app-frontend-internal.example.com
+    external:
+      enabled: false
+      host: test-app-frontend.example.com
+
+  service:
+    type: ClusterIP
+    ports: {}
+  # ----------------------------------------------------------------------------
+  # 5. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  persistence:
+    enabled: false
+    ephemeral: false
+    mountPath: "/var/lib/data"
+    storageRequest: 1Gi
+    accessMode: ReadWriteMany
+    storageClass: ""
+  # ----------------------------------------------------------------------------
+  # 6. PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
   startupProbe:
     tcpSocket:
@@ -268,9 +288,7 @@ app-emissor:
     periodSeconds: 10
     failureThreshold: 3
     successThreshold: 1
-  # ----------------------------------------------------------------------------
-  # 6. LIFECYCLE & HA STRATEGY
-  # ----------------------------------------------------------------------------
+
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -279,18 +297,12 @@ app-emissor:
 
   terminationGracePeriodSeconds: 30
   # ----------------------------------------------------------------------------
-  # 7. PERSISTENCE
+  # 7. SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  persistence:
-    enabled: false
-    ephemeral: false
-    mountPath: "/var/lib/data"
-  # ----------------------------------------------------------------------------
-  # 8. SCHEDULING & NODE ASSIGNMENT
-  # ----------------------------------------------------------------------------
-  imagePullSecrets: []
   nodeSelector: {}
+
   tolerations: []
+
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -303,51 +315,40 @@ app-emissor:
                   values:
                     - test-app-frontend
             topologyKey: kubernetes.io/hostname
-  # ----------------------------------------------------------------------------
-  # 9. CUSTOM FILES
-  # ----------------------------------------------------------------------------
-  files:
-    cm: {}
-    # nginx.conf:
-    #   mountPath: "/etc/nginx/nginx.conf"
-    #   content: |
-    #     user nginx;
-    #     worker_processes auto;
-    secret: {}
-    # key.p12:
-    #   mountPath: "/app/certs/key.p12"
-    #   content: |
-    #     ...
-  topologySpreadConstraints: []
   volumeClaims:
     www:
       requests:
         storage: 1Gi
+  topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
 myapp:
   # ----------------------------------------------------------------------------
-  # 1. CORE WORKLOAD SETTINGS
+  # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
-  replicas: 3
-  # -- Custom labels to add to the frontend deployment/pods
-  labels: {}
-  #   app.openshift.io/runtime: openjdk
-
-  # -- Custom annotations to add to the frontend deployment 
-  annotations: {}
-  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
-
   image:
     repository: registry.example.com/devops/test-app-frontend
     tag: "latest"
     pullPolicy: IfNotPresent
+    pullSecrets: []
+
+  replicas: 3
+
+  labels: {}
+  # app.openshift.io/runtime: "nginx"
+
+  annotations: {}
+  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"backend"}]'
+
   # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION
+  # 2. APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
   cm:
-    my.prop3: "true"
+    dummyconfigmapkey: dummyconfigmapvalue
+    my_config.properties: |
+      health.healthProbeBindAddress=8081
+      metrics.bindAddress=127.0.0.1:8080
     myval.yaml: |
       apiVersion: clickhouse.altinity.com/v1
       kind: ClickHouseInstallationTemplate
@@ -360,58 +361,37 @@ myapp:
               distribution: "OnePerHost"
     my.prop1: "1"
     my.prop2: val 1
-    dummyconfigmapkey: dummyconfigmapvalue
-    my_config.properties: |
-      health.healthProbeBindAddress=8081
-      metrics.bindAddress=127.0.0.1:8080
-  # No default secrets for web frontend component
+    my.prop3: "true"
+
   secret:
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
     VAR1: my_secret_var_1
     VAR2: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
-  # ----------------------------------------------------------------------------
-  # 3. ROUTING & NETWORKING
-  # ----------------------------------------------------------------------------
-  route:
-    annotations: {}
-    #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
-    # haproxy.router.openshift.io/timeout: 60s
-    # haproxy.router.openshift.io/balance: roundrobin
-    # haproxy.router.openshift.io/disable_cookies: "true"
-    tls:
-      termination: edge
-      insecureEdgeTerminationPolicy: Redirect
-    path: "/"
-    default:
-      enabled: true
-      host: test-app-frontend.apps.ocp-dev.i.tj.pa.gov.br
-    internal:
-      enabled: false
-      host: test-app-frontend-internal.example.com
-    external:
-      enabled: false
-      host: test-app-frontend.example.com
-  service:
-    type: ClusterIP
-    ports:
-      https:
-        port: 8443
-        targetPort: https
-    loadBalancerSourceRanges:
-      - 10.0.0.0/8
-    ipFamilyPolicy: SingleStack
-    ipFamilies:
-      - IPv4
+  vso:
+    enabled: false
+    role: "test-app-frontend-role"
+    path: "kv/data/test-app/frontend"
+
+    files: {}
+  files:
+
+    cm: {}
+    # nginx.conf:
+    #   mountPath: "/etc/nginx/nginx.conf"
+    #   content: |
+    #     user nginx;
+    #     worker_processes auto;
+    secret: {}
   # ----------------------------------------------------------------------------
-  # 4. RESOURCES
+  # 3. RESOURCES
   # ----------------------------------------------------------------------------
   resources:
     limits:
@@ -421,7 +401,51 @@ myapp:
       cpu: 30m
       memory: 256Mi
   # ----------------------------------------------------------------------------
-  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
+  # 4. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  route:
+
+    annotations: {}
+    #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+    path: "/"
+    default:
+      enabled: true
+      host: test-app-frontend.apps.example.com
+    internal:
+      enabled: false
+      host: test-app-frontend-internal.example.com
+    external:
+      enabled: false
+      host: test-app-frontend.example.com
+
+  service:
+    type: ClusterIP
+    ports:
+      https:
+        targetPort: https
+        port: 8443
+    loadBalancerSourceRanges:
+      - 10.0.0.0/8
+    ipFamilyPolicy: SingleStack
+    ipFamilies:
+      - IPv4
+  # ----------------------------------------------------------------------------
+  # 5. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  persistence:
+    enabled: true
+    ephemeral: false
+    mountPath: "/var/lib/data"
+    storageRequest: 3Gi
+    accessMode: ReadWriteMany
+    storageClass: manual
+    storageLimit: 5Gi
+  # ----------------------------------------------------------------------------
+  # 6. PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
   startupProbe:
     tcpSocket:
@@ -446,9 +470,7 @@ myapp:
     periodSeconds: 10
     failureThreshold: 3
     successThreshold: 1
-  # ----------------------------------------------------------------------------
-  # 6. LIFECYCLE & HA STRATEGY
-  # ----------------------------------------------------------------------------
+
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -457,23 +479,14 @@ myapp:
 
   terminationGracePeriodSeconds: 10
   # ----------------------------------------------------------------------------
-  # 7. PERSISTENCE
+  # 7. SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  persistence:
-    enabled: true
-    ephemeral: false
-    mountPath: "/var/lib/data"
-    storageClass: manual
-    storageRequest: 3Gi
-    storageLimit: 5Gi
-  # ----------------------------------------------------------------------------
-  # 8. SCHEDULING & NODE ASSIGNMENT
-  # ----------------------------------------------------------------------------
-  imagePullSecrets: []
   nodeSelector:
-    region: east
     type: user-node
+    region: east
+
   tolerations: []
+
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -486,47 +499,29 @@ myapp:
                   values:
                     - test-app-frontend
             topologyKey: kubernetes.io/hostname
-  # ----------------------------------------------------------------------------
-  # 9. CUSTOM FILES
-  # ----------------------------------------------------------------------------
-  files:
-    cm: {}
-    # nginx.conf:
-    #   mountPath: "/etc/nginx/nginx.conf"
-    #   content: |
-    #     user nginx;
-    #     worker_processes auto;
-    secret: {}
-    # key.p12:
-    #   mountPath: "/app/certs/key.p12"
-    #   content: |
-    #     ...
-  initContainer:
-    image:
-      repository: bash
-      tag: latest
   app:
+
     resources:
       limits:
-        memory: 30Mi
         cpu: 100m
+        memory: 30Mi
       requests:
         cpu: 100m
         memory: 20Mi
 
     livenessProbe:
+      periodSeconds: 20
       httpGet:
         path: /healthz
         port: 8081
       initialDelaySeconds: 15
-      periodSeconds: 20
 
     readinessProbe:
-      initialDelaySeconds: 5
-      periodSeconds: 10
       httpGet:
         path: /readyz
         port: 8081
+      initialDelaySeconds: 5
+      periodSeconds: 10
     args:
       - --health-probe-bind-address=:8081
       - --metrics-bind-address=127.0.0.1:8080
@@ -537,6 +532,10 @@ myapp:
     image:
       repository: controller
       tag: latest
+  initContainer:
+    image:
+      repository: bash
+      tag: latest
   proxySidecar:
     args:
       - --secure-listen-address=0.0.0.0:8443
@@ -544,83 +543,62 @@ myapp:
     image:
       repository: gcr.io/kubebuilder/kube-rbac-proxy
       tag: v0.8.0
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
-  topologySpreadConstraints: []
   podSecurityContext:
     runAsUser: 65532
     runAsNonRoot: true
     fsGroup: 20000
+  topologySpreadConstraints: []
   revisionHistoryLimit: 5
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
-# Note: The component root keys (like 'backend', 'frontend', 'apiService') must be camelCased.
 nginx:
   # ----------------------------------------------------------------------------
-  # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
+  # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
-  # -- Number of replica pods.
-  replicas: 1
-  # -- Custom labels to add to the backend deployment/pods
-  labels: {}
-  #   app.openshift.io/runtime: openjdk
-
-  # -- Custom annotations to add to the backend deployment 
-  annotations: {}
-  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
-
   image:
-    # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: registry.example.com/devops/test-app-backend
-    # -- Defaults to Chart.appVersion if not specified.
     tag: "latest"
     pullPolicy: IfNotPresent
-  # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION (Variables & Credentials)
-  # ----------------------------------------------------------------------------
-  # ConfigMaps unique to this service container.
-  cm: {}
-  # Sensitive variables unique to this service container (Secrets).
-  secret: {}
-  # ----------------------------------------------------------------------------
-  # 3. ROUTING & NETWORKING
-  # ----------------------------------------------------------------------------
-  route:
-    # -- Shared annotations for routes.
-    annotations: {}
-    # haproxy.router.openshift.io/timeout: 60s
-    # haproxy.router.openshift.io/balance: roundrobin
-    # haproxy.router.openshift.io/disable_cookies: "true"
+    pullSecrets: []
 
-    # -- Shared TLS edge termination configuration.
-    tls:
-      termination: edge
-      insecureEdgeTerminationPolicy: Redirect
-    # -- Shared path for routes.
-    path: "/api"
-    # -- Internal Route with self-signed certificate (to default OCP apps).
-    default:
-      enabled: true
-      host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
-    # -- Internal Route with valid certificate (to intranet Organization).
-    internal:
-      enabled: false
-      host: test-app-backend-internal.example.com
-    # -- External Route with valid certificate (to internet Organization).
-    external:
-      enabled: false
-      host: test-app-backend.example.com
-  # -- Internal Kubernetes Service Configuration.
-  service:
-    type: ClusterIP
-    ports:
-      web:
-        port: 80
+  replicas: 1
+
+  labels: {}
+  # app.openshift.io/runtime: "quarkus"
+
+  annotations: {}
+  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"my-db"}]'
+
   # ----------------------------------------------------------------------------
-  # 4. RESOURCES (Operational Overlay-Only)
+  # 2. APPLICATION CONFIGURATION & SECRETS
+  # ----------------------------------------------------------------------------
+  cm: {}
+
+  secret: {}
+
+  vso:
+    enabled: false
+    role: "test-app-backend-role"
+    path: "kv/data/test-app/backend"
+
+    files: {}
+    # my_vault_key.p12:
+    #   mountPath: "/app/certs/my_vault_key.p12"
+  files:
+
+    cm: {}
+    # application.properties:
+    #   mountPath: "/deployments/config/application.properties"
+    #   content: |
+    #     quarkus.http.port=8080
+    secret: {}
+  # ----------------------------------------------------------------------------
+  # 3. RESOURCES
   # ----------------------------------------------------------------------------
   resources:
     limits:
@@ -630,7 +608,44 @@ nginx:
       cpu: 30m
       memory: 256Mi
   # ----------------------------------------------------------------------------
-  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
+  # 4. ROUTING & NETWORKING
+  # ----------------------------------------------------------------------------
+  route:
+
+    annotations: {}
+    #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+    path: "/"
+    default:
+      enabled: true
+      host: test-app-backend.apps.example.com
+    internal:
+      enabled: false
+      host: test-app-backend-internal.example.com
+    external:
+      enabled: false
+      host: test-app-backend.example.com
+
+  service:
+    type: ClusterIP
+    ports:
+      web:
+        port: 80
+  # ----------------------------------------------------------------------------
+  # 5. PERSISTENCE
+  # ----------------------------------------------------------------------------
+  persistence:
+    enabled: false
+    ephemeral: false
+    mountPath: "/var/lib/data"
+    storageRequest: 1Gi
+    accessMode: ReadWriteMany
+    storageClass: ""
+  # ----------------------------------------------------------------------------
+  # 6. PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
   startupProbe:
     tcpSocket:
@@ -655,9 +670,7 @@ nginx:
     periodSeconds: 10
     failureThreshold: 3
     successThreshold: 1
-  # ----------------------------------------------------------------------------
-  # 6. LIFECYCLE & HA STRATEGY
-  # ----------------------------------------------------------------------------
+
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -666,20 +679,12 @@ nginx:
 
   terminationGracePeriodSeconds: 30
   # ----------------------------------------------------------------------------
-  # 7. PERSISTENCE
+  # 7. SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  persistence:
-    enabled: false
-    ephemeral: false
-    mountPath: "/var/lib/data"
-    storageRequest: 1Gi
-    storageClass: ""
-  # ----------------------------------------------------------------------------
-  # 8. SCHEDULING & NODE ASSIGNMENT
-  # ----------------------------------------------------------------------------
-  imagePullSecrets: []
   nodeSelector: {}
+
   tolerations: []
+
   affinity:
     podAntiAffinity:
       preferredDuringSchedulingIgnoredDuringExecution:
@@ -692,19 +697,4 @@ nginx:
                   values:
                     - test-app-backend
             topologyKey: kubernetes.io/hostname
-  # ----------------------------------------------------------------------------
-  # 9. CUSTOM FILES
-  # ----------------------------------------------------------------------------
-  files:
-    cm: {}
-    # nginx.conf:
-    #   mountPath: "/etc/nginx/nginx.conf"
-    #   content: |
-    #     user nginx;
-    #     worker_processes auto;
-    secret: {}
-    # key.p12:
-    #   mountPath: "/app/certs/key.p12"
-    #   content: |
-    #     ...
   minAvailable: 2
