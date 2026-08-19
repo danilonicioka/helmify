@@ -121,21 +121,21 @@ spec:
             {{- end }}
             {{- if and $comp.files $comp.files.cm }}
             {{- range $filename, $config := $comp.files.cm }}
-            - name: {{ $filename | replace "." "-" | lower }}
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
             {{- if and $comp.files $comp.files.secret }}
             {{- range $filename, $config := $comp.files.secret }}
-            - name: {{ $filename | replace "." "-" | lower }}-secret
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
             {{- if and $comp.vso $comp.vso.enabled $comp.vso.files }}
             {{- range $filename, $config := $comp.vso.files }}
-            - name: {{ $filename | replace "." "-" | lower }}-vso
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
@@ -171,14 +171,14 @@ spec:
         {{- end }}
         {{- if and $comp.files $comp.files.cm }}
         {{- range $filename, $config := $comp.files.cm }}
-        - name: {{ $filename | replace "." "-" | lower }}
+        - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
           configMap:
             name: {{ include "chart-model-multi.fullname" $ }}-frontend-files
         {{- end }}
         {{- end }}
         {{- if and $comp.files $comp.files.secret }}
         {{- range $filename, $config := $comp.files.secret }}
-        - name: {{ $filename | replace "." "-" | lower }}-secret
+        - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
           secret:
             secretName: {{ include "chart-model-multi.fullname" $ }}-frontend-files-secret
             items:
@@ -188,7 +188,7 @@ spec:
         {{- end }}
         {{- if and $comp.vso $comp.vso.enabled $comp.vso.files }}
         {{- range $filename, $config := $comp.vso.files }}
-        - name: {{ $filename | replace "." "-" | lower }}-vso
+        - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
           secret:
             secretName: {{ include "chart-model-multi.fullname" $ }}-frontend-vso-secret
             items:

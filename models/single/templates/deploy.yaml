@@ -115,21 +115,21 @@ spec:
             {{- end }}
             {{- if and $app.files $app.files.cm }}
             {{- range $filename, $config := $app.files.cm }}
-            - name: {{ $filename | replace "." "-" | lower }}
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
             {{- if and $app.files $app.files.secret }}
             {{- range $filename, $config := $app.files.secret }}
-            - name: {{ $filename | replace "." "-" | lower }}-secret
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
             {{- if and $app.vso $app.vso.enabled $app.vso.files }}
             {{- range $filename, $config := $app.vso.files }}
-            - name: {{ $filename | replace "." "-" | lower }}-vso
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
@@ -171,14 +171,14 @@ spec:
         {{- end }}
         {{- if and $app.files $app.files.cm }}
         {{- range $filename, $config := $app.files.cm }}
-        - name: {{ $filename | replace "." "-" | lower }}
+        - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
           configMap:
             name: {{ include "chart-model-single.fullname" $ }}-files
         {{- end }}
         {{- end }}
         {{- if and $app.files $app.files.secret }}
         {{- range $filename, $config := $app.files.secret }}
-        - name: {{ $filename | replace "." "-" | lower }}-secret
+        - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
           secret:
             secretName: {{ include "chart-model-single.fullname" $ }}-files-secret
             items:
@@ -188,7 +188,7 @@ spec:
         {{- end }}
         {{- if and $app.vso $app.vso.enabled $app.vso.files }}
         {{- range $filename, $config := $app.vso.files }}
-        - name: {{ $filename | replace "." "-" | lower }}-vso
+        - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
           secret:
             secretName: {{ include "chart-model-single.fullname" $ }}-vso-secret
             items:
