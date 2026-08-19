@@ -1,9 +1,9 @@
-{{- $comp := index .Values "backend" | default dict -}}
+{{- $comp := index .Values "frontend" | default dict -}}
 {{- if and $comp.persistence (and $comp.persistence.enabled (not $comp.persistence.ephemeral)) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-backend
+  name: {{ include "chart-model-multi.fullname" . }}-frontend
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
 spec:

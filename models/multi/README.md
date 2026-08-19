@@ -1,6 +1,6 @@
-# Standardized TJPA Helm Chart
+# Standardized Standardized Helm Chart
 
-This Helm chart is a standardized, production-grade template designed for applications deployed at **Tribunal de Justiça do Pará (TJPA)**, especially when targeting **Red Hat OpenShift**. It serves as a base blueprint for developers, incorporating container security best practices and strict compliance with core architectural rules.
+This Helm chart is a standardized, production-grade template designed for applications deployed at **Organization**, especially when targeting **Red Hat OpenShift**. It serves as a base blueprint for developers, incorporating container security best practices and strict compliance with core architectural rules.
 
 ## Core Architectural Design Rules
 
@@ -35,8 +35,8 @@ Defines environment variables for the container using two maps:
 ### 3. Routing & Networking
 Configures the internal Kubernetes `service` (ports and type) and OpenShift routes:
 - **Default Route:** Internal route with self-signed TLS.
-- **Internal Route:** Valid certificate for the internal TJPA intranet (`*-i.tjpa.jus.br`).
-- **External Route:** Valid certificate for the external internet (`*.tjpa.jus.br`).
+- **Internal Route:** Valid certificate for the internal Organization intranet (`*-internal.example.com`).
+- **External Route:** Valid certificate for the external internet (`*.example.com`).
 
 ### 4. Resources
 Defines CPU and Memory `requests` and `limits`.

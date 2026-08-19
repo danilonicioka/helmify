@@ -1,4 +1,4 @@
-# Standardized TJPA Application Values (values-ca.yaml)
+# Standardized Organization Application Values (values-ca.yaml)
 # This file contains application-specific environment variables (cm) and credentials (secret).
 # Developers can manage their ConfigMaps and Secrets here, separating dev/app configs from the core infrastructure.
 # -- Global configuration shared across all deployments in the chart.

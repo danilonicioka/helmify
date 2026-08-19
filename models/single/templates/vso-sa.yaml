@@ -1,0 +1,9 @@
+{{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if and $comp.vso $comp.vso.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-sa
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+{{- end }}

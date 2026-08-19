@@ -34,4 +34,4 @@ testbin/*
 # Build artifacts
 dist/
 vendor/
-tjpa-binarios/
+example-binarios/

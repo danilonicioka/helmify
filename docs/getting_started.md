@@ -6,7 +6,7 @@ This guide provides an overview of Helmify, instructions for installing and runn
 
 ## 1. Overview
 
-Helmify is a CLI and Web API service that generates **Helm charts** from Kubernetes manifests. It supports plain manifests, Kustomize output, and OpenShift-specific resources (Routes, SCC, etc.). The tool aims to provide production‑ready, TJPA‑compliant charts with consistent labeling, non‑root containers, and deterministic rollouts.
+Helmify is a CLI and Web API service that generates **Helm charts** from Kubernetes manifests. It supports plain manifests, Kustomize output, and OpenShift-specific resources (Routes, SCC, etc.). The tool aims to provide production‑ready, Organization‑compliant charts with consistent labeling, non‑root containers, and deterministic rollouts.
 
 ### Key Benefits
 - **Simplifies Migration**: Transition easily from raw YAML manifests or Kustomize setups to reusable Helm charts.

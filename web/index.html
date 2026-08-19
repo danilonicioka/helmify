@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TJPA Helm Chart Generator Wizard</title>
+    <title>Standardized Helm Chart Generator Wizard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
@@ -890,8 +890,8 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
             </button>
             <div>
-                <h1>TJPA Helmify Wizard</h1>
-                <p>Generate production-grade TJPA Helm charts dynamically on-the-fly</p>
+                <h1>Helmify Wizard</h1>
+                <p>Generate production-grade {{ORG_NAME}} Helm charts dynamically on-the-fly</p>
             </div>
         </div>
         <div style="display: flex; gap: 0.75rem; align-items: center;">
@@ -972,7 +972,7 @@
                 <!-- 1. CORE WORKLOAD SETTINGS -->
                 <div class="form-group">
                     <label for="compRepo">Image Repository</label>
-                    <input type="text" id="compRepo" value="tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-app" placeholder="image registry url">
+                    <input type="text" id="compRepo" value="registry.example.com/devops/chart-model-app" placeholder="image registry url">
                 </div>
 
                 <div class="form-group row">
@@ -1054,7 +1054,7 @@
                     </div>
                     <div class="form-group" id="routeIntHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
                         <label for="routeIntHost">Route Hostname</label>
-                        <input type="text" id="routeIntHost" placeholder="e.g. chart-model-single-int.i.tjpa.jus.br" oninput="saveAndPreview()">
+                        <input type="text" id="routeIntHost" placeholder="e.g. chart-model-single-int.internal.example.com" oninput="saveAndPreview()">
                     </div>
                 </div>
 
@@ -1069,7 +1069,7 @@
                     </div>
                     <div class="form-group" id="routeExtHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
                         <label for="routeExtHost">Route Hostname</label>
-                        <input type="text" id="routeExtHost" placeholder="e.g. chart-model-single.tjpa.jus.br" oninput="saveAndPreview()">
+                        <input type="text" id="routeExtHost" placeholder="e.g. chart-model-single.example.com" oninput="saveAndPreview()">
                     </div>
                 </div>
 
@@ -1104,6 +1104,18 @@
                             <label for="persistenceStorage">Storage Size</label>
                             <input type="text" id="persistenceStorage" placeholder="e.g. 1Gi, 5Gi" oninput="saveAndPreview()">
                         </div>
+                    </div>
+                </div>
+
+                <!-- 5. VAULT SECRETS OPERATOR (VSO) -->
+                <div class="section-subtitle" style="margin-top: 1.5rem;">Vault Secrets Operator (VSO)</div>
+                <div class="route-card">
+                    <div class="route-card-header">
+                        <span>Enable OpenBao VSO Integration</span>
+                        <label class="route-switch">
+                            <input type="checkbox" id="vsoEnabled" onchange="saveAndPreview()">
+                            <span class="slider"></span>
+                        </label>
                     </div>
                 </div>
 
@@ -1339,6 +1351,9 @@
                     enabled: !!(compData.persistence && compData.persistence.enabled),
                     mountPath: (compData.persistence && compData.persistence.mountPath) || '/var/lib/data'
                 },
+                vso: {
+                    enabled: !!(compData.vso && compData.vso.enabled)
+                },
                 route: {
                     path: (compData.route && compData.route.path) || '',
                     default: {
@@ -1363,7 +1378,7 @@
             return {
                 replicas: isFrontend ? 0 : 2,
                 image: {
-                    repository: `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-${suffix}`,
+                    repository: `registry.example.com/devops/chart-model-${suffix}`,
                     tag: ''
                 },
                 service: {
@@ -1386,11 +1401,14 @@
                     enabled: false,
                     mountPath: '/var/lib/data'
                 },
+                vso: {
+                    enabled: false
+                },
                 route: {
                     path: '',
                     default: { enabled: true, host: `chart-model-${name}.apps.ocp-hub.i.tj.pa.gov.br` },
-                    internal: { enabled: false, host: `chart-model-${name}-int.i.tjpa.jus.br` },
-                    external: { enabled: false, host: `chart-model-${name}.tjpa.jus.br` }
+                    internal: { enabled: false, host: `chart-model-${name}-int.internal.example.com` },
+                    external: { enabled: false, host: `chart-model-${name}.example.com` }
                 }
             };
         }
@@ -1598,6 +1616,9 @@
             config.persistence.mountPath = document.getElementById('persistenceMountPath').value.trim() || '/var/lib/data';
             config.persistence.storageRequest = document.getElementById('persistenceStorage').value.trim() || '1Gi';
 
+            if (!config.vso) config.vso = { enabled: false };
+            config.vso.enabled = document.getElementById('vsoEnabled').checked;
+
             config.route.default.enabled = document.getElementById('routeDefaultEnabled').checked;
             config.route.default.host = document.getElementById('routeDefaultHost').value.trim();
 
@@ -1662,6 +1683,8 @@
                 optionsDiv.style.display = 'none';
             }
         }
+
+
 
         function toggleEnvVar(id) {
             document.getElementById(id + '-container').style.display = 'block';
@@ -1753,6 +1776,12 @@
                 document.getElementById('persistenceEphemeral').checked = false;
                 document.getElementById('persistenceMountPath').value = '/var/lib/data';
                 document.getElementById('persistenceStorage').value = '1Gi';
+            }
+
+            if (config.vso) {
+                document.getElementById('vsoEnabled').checked = config.vso.enabled;
+            } else {
+                document.getElementById('vsoEnabled').checked = false;
             }
 
             togglePersistenceUI();

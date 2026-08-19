@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TJPA Helmify Engine — API Reference</title>
+    <title>Helmify Engine — API Reference</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
@@ -349,7 +349,7 @@
 
     <header>
         <div class="logo-section">
-            <h1>TJPA Helmify Engine</h1>
+            <h1>Helmify Engine</h1>
             <p>Developer REST API Reference Guide</p>
         </div>
         <div class="header-actions">
@@ -387,7 +387,7 @@
             <!-- SECTION: INTRO -->
             <div class="doc-section active" id="intro">
                 <h2>Introduction</h2>
-                <p>The TJPA Helmify Engine provides a set of REST endpoints that allow automated pipelines, custom scripts, and integration services to generate or preview Helm charts programmatically from Kubernetes/OpenShift resource manifests or structured configs.</p>
+                <p>The Helmify Engine provides a set of REST endpoints that allow automated pipelines, custom scripts, and integration services to generate or preview Helm charts programmatically from Kubernetes/OpenShift resource manifests or structured configs.</p>
                 
                 <div class="callout">
                     <p><strong>Note:</strong> All API requests are fully offline-compatible. The engine generates chart outputs using in-memory templating models and does not communicate with external registries during runtime.</p>
@@ -431,7 +431,7 @@
                         <tr>
                             <td class="param-name">X-Dev-Repo-Url</td>
                             <td class="param-type">string</td>
-                            <td>TJPA developer source repository URL annotation for Chart.yaml (default: <code>""</code>).</td>
+                            <td>{{ORG_NAME}} developer source repository URL annotation for Chart.yaml (default: <code>""</code>).</td>
                         </tr>
                     </tbody>
                 </table>
@@ -467,7 +467,7 @@
                     <pre><code>kustomize build overlays/dev | curl -X POST "http://helmify.apps.ocp-dev.i.tj.pa.gov.br/v1/generate" \
   -H "X-Chart-Name: chart" \
   -H "X-Generate-All-Templates: true" \
-  -H "X-Dev-Repo-Url: https://gitlab-ca.tjpa.jus.br/group/project" \
+  -H "X-Dev-Repo-Url: https://gitlab-ca.example.com/group/project" \
   -H "Content-Type: text/yaml" \
   --data-binary @- \
   --output chart.tar.gz</code></pre>
@@ -491,7 +491,7 @@ tar -xvzf chart.tar.gz</code></pre>
                     <pre><code>helm template chart -f values-dev.yaml | curl -X POST "http://helmify.apps.ocp-dev.i.tj.pa.gov.br/v1/generate" \
   -H "X-Chart-Name: chart" \
   -H "X-Generate-All-Templates: true" \
-  -H "X-Dev-Repo-Url: https://gitlab-ca.tjpa.jus.br/group/project" \
+  -H "X-Dev-Repo-Url: https://gitlab-ca.example.com/group/project" \
   -H "Content-Type: text/yaml" \
   --data-binary @- \
   --output chart.tar.gz</code></pre>

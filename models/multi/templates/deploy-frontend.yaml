@@ -41,9 +41,14 @@ spec:
       labels:
         {{- include "chart-model-multi.frontend.selectorLabels" . | nindent 8 }}
     spec:
-      {{- with $comp.imagePullSecrets }}
+      {{- with $comp.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if and $comp.vso $comp.vso.enabled }}
+      serviceAccountName: {{ include "chart-model-multi.fullname" . }}-frontend-sa
+      {{- else if .Values.serviceAccount }}
+      serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
       {{- end }}
       containers:
         - name: frontend
@@ -76,6 +81,10 @@ spec:
             {{- if and $comp.secret (not (empty $comp.secret)) }}
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" . }}-frontend-secret
+            {{- end }}
+            {{- if and $comp.vso $comp.vso.enabled }}
+            - secretRef:
+                name: {{ include "chart-model-multi.fullname" . }}-frontend-vso-secret
             {{- end }}
           {{- end }}
 
@@ -124,6 +133,13 @@ spec:
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
+            {{- if and $comp.vso $comp.vso.enabled $comp.vso.files }}
+            {{- range $filename, $config := $comp.vso.files }}
+            - name: {{ $filename | replace "." "-" | lower }}-vso
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
           {{- end }}
       {{- with $comp.nodeSelector }}
       nodeSelector:
@@ -165,6 +181,19 @@ spec:
         - name: {{ $filename | replace "." "-" | lower }}-secret
           secret:
             secretName: {{ include "chart-model-multi.fullname" $ }}-frontend-files-secret
+            items:
+              - key: {{ $filename }}
+                path: {{ $filename }}
+        {{- end }}
+        {{- end }}
+        {{- if and $comp.vso $comp.vso.enabled $comp.vso.files }}
+        {{- range $filename, $config := $comp.vso.files }}
+        - name: {{ $filename | replace "." "-" | lower }}-vso
+          secret:
+            secretName: {{ include "chart-model-multi.fullname" $ }}-frontend-vso-secret
+            items:
+              - key: {{ $filename }}
+                path: {{ $filename }}
         {{- end }}
         {{- end }}
       {{- end }}

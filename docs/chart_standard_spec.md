@@ -1,12 +1,12 @@
-# TJPA Helm Chart Standard Specification Guide
+# Standardized Helm Chart Standard Specification Guide
 
-This guide establishes the strict specification and structural patterns for all Helm Charts within the TJPA (Tribunal de Justiça do Pará) ecosystem. It serves as the reference architecture for manual chart creation and the specification base for the `helmify` automation parser, wizard, and converter.
+This guide establishes the strict specification and structural patterns for all Helm Charts within the Organization ecosystem. It serves as the reference architecture for manual chart creation and the specification base for the `helmify` automation parser, wizard, and converter.
 
 ---
 
 ## 1. Directory Structure
 
-All TJPA charts must conform to the following layout:
+All Organization charts must conform to the following layout:
 
 ```
 <chart-name>/
@@ -22,8 +22,8 @@ All TJPA charts must conform to the following layout:
     deploy.yaml       # Deployment/StatefulSet template
     svc.yaml          # ClusterIP Service definition
     route-default.yaml# OpenShift Default Route (Self-Signed / OCP dev router)
-    route-int.yaml    # OpenShift Internal Route (Intranet / TJPA intranet router)
-    route-ext.yaml    # OpenShift External Route (Internet / TJPA internet router)
+    route-int.yaml    # OpenShift Internal Route (Intranet / Organization intranet router)
+    route-ext.yaml    # OpenShift External Route (Internet / Organization internet router)
     secret.yaml       # Decoupled secrets manifest
 ```
 
@@ -213,7 +213,7 @@ files:
 
 ## 6. Route Definition & The 3 Variations
 
-To accommodate the secure routing layers at TJPA, every chart template must include three Route files corresponding to default, intranet, and internet zones:
+To accommodate the secure routing layers at Organization, every chart template must include three Route files corresponding to default, intranet, and internet zones:
 
 ### A. Default Route (`route-default.yaml`)
 - **Router**: OpenShift default router (often self-signed certificates).
@@ -222,16 +222,16 @@ To accommodate the secure routing layers at TJPA, every chart template must incl
 - **Host Example**: `<app-name>.apps.ocp-dev.i.tj.pa.gov.br`
 
 ### B. Internal Route (`route-int.yaml`)
-- **Router**: TJPA intranet router (trusted corporate wildcard certificate).
-- **Target**: Internal TJPA employees/intranet subnet.
+- **Router**: Organization intranet router (trusted corporate wildcard certificate).
+- **Target**: Internal Organization employees/intranet subnet.
 - **Default**: `enabled: false`
-- **Host Example**: `<app-name>-i.tjpa.jus.br`
+- **Host Example**: `<app-name>-internal.example.com`
 
 ### C. External Route (`route-ext.yaml`)
-- **Router**: TJPA internet DMZ router (publicly signed SSL wildcard certificate).
+- **Router**: Organization internet DMZ router (publicly signed SSL wildcard certificate).
 - **Target**: External public internet clients.
 - **Default**: `enabled: false`
-- **Host Example**: `<app-name>.tjpa.jus.br`
+- **Host Example**: `<app-name>.example.com`
 
 ### Route Template Structure
 Routes are configured with Edge SSL termination:

@@ -93,7 +93,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: jurisprudencia-dev
   name: jurisprudencia-dev-g88f7cc858
-  namespace: tjpa-iande
+  namespace: my-namespace
 ---
 apiVersion: v1
 data:
@@ -103,7 +103,7 @@ metadata:
   labels:
     app.kubernetes.io/instance: jurisprudencia-dev
   name: jurisprudencia-dev-5tt65kb6bk
-  namespace: tjpa-iande
+  namespace: my-namespace
 type: Opaque
 ---
 apiVersion: v1
@@ -113,7 +113,7 @@ metadata:
     app.kubernetes.io/instance: jurisprudencia-dev
     app.kubernetes.io/name: app
   name: app-dev
-  namespace: tjpa-iande
+  namespace: my-namespace
 spec:
   ports:
   - name: http
@@ -130,7 +130,7 @@ metadata:
     app.kubernetes.io/instance: jurisprudencia-dev
     app.kubernetes.io/name: app
   name: app-dev
-  namespace: tjpa-iande
+  namespace: my-namespace
 spec:
   replicas: 1
   selector:
@@ -163,7 +163,7 @@ metadata:
     app.kubernetes.io/instance: jurisprudencia-dev
     app.kubernetes.io/name: celery
   name: celery-dev
-  namespace: tjpa-iande
+  namespace: my-namespace
 spec:
   replicas: 20
   selector:
@@ -200,7 +200,7 @@ metadata:
     app.kubernetes.io/instance: jurisprudencia-dev
     app.kubernetes.io/name: kombu
   name: kombu-dev
-  namespace: tjpa-iande
+  namespace: my-namespace
 spec:
   replicas: 1
   selector:
@@ -235,7 +235,7 @@ metadata:
     app.kubernetes.io/instance: jurisprudencia-dev
     app.kubernetes.io/name: app
   name: jurisprudencia-app-dev
-  namespace: tjpa-iande
+  namespace: my-namespace
 spec:
   host: iande.apps.ocp-dev.i.tj.pa.gov.br
   port:

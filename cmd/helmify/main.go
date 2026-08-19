@@ -16,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/danilonicioka/helmify"
 	"github.com/danilonicioka/helmify/pkg/config"
 	"github.com/danilonicioka/helmify/pkg/helm"
 	"github.com/danilonicioka/helmify/web"
@@ -42,6 +41,8 @@ func init() {
 
 
 func main() {
+	config.LoadEnvConfig()
+
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
 		port = os.Getenv("PORT") // Fallback to standard PORT
@@ -58,21 +59,29 @@ func main() {
 	mux.HandleFunc("/v1/subcomponents", handleSubcomponents)
 	mux.HandleFunc("/v1/preview", handlePreview)
 	mux.HandleFunc("/v1/download", handleDownload)
+	mux.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(config.GlobalEnvConfig)
+	})
 	mux.HandleFunc("/wizard", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(web.WizardHTML)
+		htmlStr := strings.ReplaceAll(string(web.WizardHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/wizard/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(web.WizardHTML)
+		htmlStr := strings.ReplaceAll(string(web.WizardHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/instructions", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(web.InstructionsHTML)
+		htmlStr := strings.ReplaceAll(string(web.InstructionsHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/instructions/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(web.InstructionsHTML)
+		htmlStr := strings.ReplaceAll(string(web.InstructionsHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -80,11 +89,13 @@ func main() {
 	})
 	mux.HandleFunc("/converter", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(web.ConverterHTML)
+		htmlStr := strings.ReplaceAll(string(web.ConverterHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/converter/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Write(web.ConverterHTML)
+		htmlStr := strings.ReplaceAll(string(web.ConverterHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		w.Write([]byte(htmlStr))
 	})
 	// Serve the portal homepage or other assets on /
 	mux.HandleFunc("/", handleHomeOrAssets)
@@ -286,8 +297,9 @@ func parseConfig(r *http.Request) config.Config {
 func handleHomeOrAssets(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/" || r.URL.Path == "/index.html" {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		cv := strings.TrimSpace(helmify.ChartVersion)
-		htmlStr := strings.Replace(string(web.HomeHTML), "{{CHART_VERSION}}", cv, 1)
+		cv := config.GlobalEnvConfig.ChartVersion
+		htmlStr := strings.ReplaceAll(string(web.HomeHTML), "{{CHART_VERSION}}", cv)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
 		w.Write([]byte(htmlStr))
 		return
 	}

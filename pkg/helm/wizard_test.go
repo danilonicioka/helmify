@@ -21,7 +21,7 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 			"test-single-app": {
 				Replicas: intPtr(3),
 				Image: ImageParams{
-					Repository: "quay.io/tjpa/my-app",
+					Repository: "quay.io/my-org/my-app",
 					Tag:        "v2.1.0",
 				},
 				Service: ServiceParams{
@@ -58,7 +58,7 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	valuesStr := string(valuesBytes)
 	assert.Contains(t, valuesStr, "test-single-app:")
 	assert.Contains(t, valuesStr, "replicas: 3")
-	assert.Contains(t, valuesStr, "repository: quay.io/tjpa/my-app")
+	assert.Contains(t, valuesStr, "repository: quay.io/my-org/my-app")
 	assert.Contains(t, valuesStr, "tag: v2.1.0")
 	assert.Contains(t, valuesStr, "port: 9090")
 	assert.Contains(t, valuesStr, "VAR_A: VAL_A")
@@ -97,7 +97,7 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 			"backend": {
 				Replicas: intPtr(2),
 				Image: ImageParams{
-					Repository: "quay.io/tjpa/backend-app",
+					Repository: "quay.io/my-org/backend-app",
 					Tag:        "v1.0.0",
 				},
 				Service: ServiceParams{
@@ -113,7 +113,7 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 			"bff": {
 				Replicas: intPtr(1),
 				Image: ImageParams{
-					Repository: "quay.io/tjpa/bff-app",
+					Repository: "quay.io/my-org/bff-app",
 					Tag:        "v1.1.0",
 				},
 				Service: ServiceParams{
@@ -187,7 +187,7 @@ func TestGenerateWizardChart_ZeroReplicas(t *testing.T) {
 			"test-zero-replicas": {
 				Replicas: intPtr(0),
 				Image: ImageParams{
-					Repository: "quay.io/tjpa/my-app",
+					Repository: "quay.io/my-org/my-app",
 				},
 			},
 		},

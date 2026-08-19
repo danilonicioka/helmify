@@ -183,9 +183,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		"nameOverride":            "",
 		"fullnameOverride":        chartName,
 		"global": map[string]interface{}{
-			"cm": map[string]interface{}{
-				"TZ": "America/Belem",
-			},
+			"cm":     map[string]interface{}{},
 			"secret": map[string]interface{}{},
 		},
 	}
@@ -366,7 +364,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 	if err != nil {
 		return err
 	}
-	err = overwriteValuesFile(cDir, res, isMulti)
+	err = overwriteValuesFile(cDir, res, chartName, isMulti, values)
 	if err != nil {
 		return err
 	}
@@ -636,7 +634,7 @@ func mergeYamlNode(dest *yaml.Node, src interface{}, path []string) error {
 	return setYamlPath(dest, path, src)
 }
 
-func overwriteValuesFile(chartDir string, res []byte, isMulti bool) error {
+func overwriteValuesFile(chartDir string, res []byte, chartName string, isMulti bool, values helmify.Values) error {
 	file := filepath.Join(chartDir, "values.yaml")
 	err := os.WriteFile(file, res, 0600)
 	if err != nil {
@@ -645,15 +643,21 @@ func overwriteValuesFile(chartDir string, res []byte, isMulti bool) error {
 	logrus.WithField("file", file).Info("overwritten")
 
 	fileDev := filepath.Join(chartDir, "values-ca.yaml")
-	var valuesNode yaml.Node
-	if err := yaml.Unmarshal(res, &valuesNode); err == nil {
-		if devVals, err := generateDevValues(&valuesNode, isMulti); err == nil {
-			err = os.WriteFile(fileDev, devVals, 0600)
-			if err != nil {
-				return fmt.Errorf("%w: unable to write values-ca.yaml", err)
-			}
-			logrus.WithField("file", fileDev).Info("overwritten")
+	basePath := "models/single"
+	if isMulti {
+		basePath = "models/multi"
+	}
+	caData, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values-ca.yaml"))
+	if err == nil {
+		mergedCa, err := mergeDevValues(caData, chartName, values)
+		if err == nil {
+			err = os.WriteFile(fileDev, mergedCa, 0600)
 		}
+
+		if err != nil {
+			return fmt.Errorf("%w: unable to write values-ca.yaml", err)
+		}
+		logrus.WithField("file", fileDev).Info("overwritten")
 	}
 
 	return nil
@@ -829,7 +833,7 @@ func getPriority(key string, value interface{}, depth int) int {
 		return -1
 	}
 
-	tjpaPriority := map[string]int{
+	fieldPriority := map[string]int{
 		"labels":                        1,
 		"runtime":                       2,
 		"image":                         3,
@@ -864,7 +868,7 @@ func getPriority(key string, value interface{}, depth int) int {
 		"ports":       41,
 	}
 
-	if p, ok := tjpaPriority[key]; ok {
+	if p, ok := fieldPriority[key]; ok {
 		return p
 	}
 

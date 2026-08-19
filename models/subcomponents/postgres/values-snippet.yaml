@@ -15,7 +15,7 @@ postgres:
   annotations: {}
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
-    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/postgres
+    repository: registry.example.com/devops/postgres
     # -- Defaults to Chart.appVersion if not specified.
     tag: "16-alpine"
     pullPolicy: IfNotPresent

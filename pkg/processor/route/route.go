@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/danilonicioka/helmify/pkg/config"
 	"github.com/danilonicioka/helmify/pkg/helmify"
 	"github.com/danilonicioka/helmify/pkg/processor"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -29,7 +30,7 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 		return false, nil, nil
 	}
 
-	// === TJPA SPECIFICATION: Skip standalone processing of existing external route manifests ===
+	// === SPECIFICATION: Skip standalone processing of existing external route manifests ===
 	if strings.HasSuffix(obj.GetName(), "-ext") {
 		return true, nil, nil
 	}
@@ -116,11 +117,11 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 		},
 		"internal": map[string]interface{}{
 			"enabled": false,
-			"host":    fmt.Sprintf("%s-int.i.tjpa.jus.br", name),
+			"host":    fmt.Sprintf("%s-int.%s", name, config.GlobalEnvConfig.InternalDomain),
 		},
 		"external": map[string]interface{}{
 			"enabled": false,
-			"host":    fmt.Sprintf("%s.tjpa.jus.br", name),
+			"host":    fmt.Sprintf("%s.%s", name, config.GlobalEnvConfig.ExternalDomain),
 		},
 	}
 
