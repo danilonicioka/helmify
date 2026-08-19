@@ -1,4 +1,4 @@
-# Standardized TJPA Helm Chart values.yaml (Multi-Deployment Model)
+# Standardized Standardized Helm Chart values.yaml (Multi-Deployment Model)
 # Designed in compliance with OpenShift Security Context Constraints (SCC)
 # and the 6 Core Architectural Rules.
 
@@ -113,14 +113,14 @@ batch:
     default:
       enabled: true
       host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
-    # -- Internal Route with valid certificate (to intranet TJPA).
+    # -- Internal Route with valid certificate (to intranet Organization).
     internal:
       enabled: false
-      host: test-app-backend-i.tjpa.jus.br
-    # -- External Route with valid certificate (to internet TJPA).
+      host: test-app-backend-internal.example.com
+    # -- External Route with valid certificate (to internet Organization).
     external:
       enabled: false
-      host: test-app-backend.tjpa.jus.br
+      host: test-app-backend.example.com
   # -- Internal Kubernetes Service Configuration.
   service:
     type: ClusterIP
@@ -246,14 +246,14 @@ cron:
     default:
       enabled: true
       host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
-    # -- Internal Route with valid certificate (to intranet TJPA).
+    # -- Internal Route with valid certificate (to intranet Organization).
     internal:
       enabled: false
-      host: test-app-backend-i.tjpa.jus.br
-    # -- External Route with valid certificate (to internet TJPA).
+      host: test-app-backend-internal.example.com
+    # -- External Route with valid certificate (to internet Organization).
     external:
       enabled: false
-      host: test-app-backend.tjpa.jus.br
+      host: test-app-backend.example.com
   # -- Internal Kubernetes Service Configuration.
   service:
     type: ClusterIP
@@ -378,14 +378,14 @@ fluentdElasticsearch:
     default:
       enabled: true
       host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
-    # -- Internal Route with valid certificate (to intranet TJPA).
+    # -- Internal Route with valid certificate (to intranet Organization).
     internal:
       enabled: false
-      host: test-app-backend-i.tjpa.jus.br
-    # -- External Route with valid certificate (to internet TJPA).
+      host: test-app-backend-internal.example.com
+    # -- External Route with valid certificate (to internet Organization).
     external:
       enabled: false
-      host: test-app-backend.tjpa.jus.br
+      host: test-app-backend.example.com
   # -- Internal Kubernetes Service Configuration.
   service:
     type: ClusterIP
@@ -476,7 +476,7 @@ myapp:
   # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
   image:
-    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/test-app-frontend
+    repository: registry.example.com/devops/test-app-frontend
     tag: "latest"
     pullPolicy: IfNotPresent
   # ----------------------------------------------------------------------------
@@ -528,10 +528,10 @@ myapp:
       host: test-app-frontend.apps.ocp-dev.i.tj.pa.gov.br
     internal:
       enabled: false
-      host: test-app-frontend-i.tjpa.jus.br
+      host: test-app-frontend-internal.example.com
     external:
       enabled: false
-      host: test-app-frontend.tjpa.jus.br
+      host: test-app-frontend.example.com
   service:
     type: ClusterIP
     ports:
@@ -759,7 +759,7 @@ nginx:
   # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
-    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/test-app-backend
+    repository: registry.example.com/devops/test-app-backend
     # -- Defaults to Chart.appVersion if not specified.
     tag: "latest"
     pullPolicy: IfNotPresent
@@ -788,14 +788,14 @@ nginx:
     default:
       enabled: true
       host: test-app-backend.apps.ocp-dev.i.tj.pa.gov.br
-    # -- Internal Route with valid certificate (to intranet TJPA).
+    # -- Internal Route with valid certificate (to intranet Organization).
     internal:
       enabled: false
-      host: test-app-backend-i.tjpa.jus.br
-    # -- External Route with valid certificate (to internet TJPA).
+      host: test-app-backend-internal.example.com
+    # -- External Route with valid certificate (to internet Organization).
     external:
       enabled: false
-      host: test-app-backend.tjpa.jus.br
+      host: test-app-backend.example.com
   # -- Internal Kubernetes Service Configuration.
   service:
     type: ClusterIP

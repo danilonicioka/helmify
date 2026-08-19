@@ -12,7 +12,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/danilonicioka/helmify"
+	roothelmify "github.com/danilonicioka/helmify"
+	"github.com/danilonicioka/helmify/pkg/config"
+	"github.com/danilonicioka/helmify/pkg/helmify"
 	"github.com/danilonicioka/helmify/pkg/processor"
 	"gopkg.in/yaml.v3"
 )
@@ -99,7 +101,7 @@ func GetModelDefaults(chartType string) (map[string]interface{}, error) {
 		basePath = "models/multi"
 	}
 
-	data, err := helmify.ModelsFS.ReadFile(filepath.Join(basePath, "values.yaml"))
+	data, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values.yaml"))
 	if err != nil {
 		return nil, err
 	}
@@ -206,14 +208,14 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 	// 1. Walk the embedded directory and read all files
 	embeddedFiles := make(map[string][]byte)
-	err := fs.WalkDir(helmify.ModelsFS, basePath, func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(roothelmify.ModelsFS, basePath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if d.IsDir() {
 			return nil
 		}
-		data, err := helmify.ModelsFS.ReadFile(path)
+		data, err := roothelmify.ModelsFS.ReadFile(path)
 		if err != nil {
 			return err
 		}
@@ -254,11 +256,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	// Inject subcomponent templates
 	for _, sub := range params.Subcomponents {
 		subPath := fmt.Sprintf("models/subcomponents/%s/templates", sub)
-		_ = fs.WalkDir(helmify.ModelsFS, subPath, func(path string, d fs.DirEntry, err error) error {
+		_ = fs.WalkDir(roothelmify.ModelsFS, subPath, func(path string, d fs.DirEntry, err error) error {
 			if err != nil || d.IsDir() {
 				return nil
 			}
-			data, err := helmify.ModelsFS.ReadFile(path)
+			data, err := roothelmify.ModelsFS.ReadFile(path)
 			if err == nil {
 				outRelPath := filepath.Join("templates", filepath.Base(path))
 				content := strings.ReplaceAll(string(data), "<CHART_NAME>", params.ChartName)
@@ -382,8 +384,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				}
 				_ = setYamlPath(&rootNode, []string{appKey, "strategy"}, map[string]string{"type": "Recreate"})
 			}
-		} else {
-			deleteYamlPath(&rootNode, []string{appKey, "persistence"})
 		}
 
 		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)
@@ -612,8 +612,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 					}
 					_ = setYamlPath(&rootNode, []string{compName, "strategy"}, map[string]string{"type": "Recreate"})
 				}
-			} else {
-				deleteYamlPath(&rootNode, []string{compName, "persistence"})
+			
 			}
 
 			_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
@@ -665,7 +664,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	var subValuesStr string
 	for _, sub := range params.Subcomponents {
 		subPath := fmt.Sprintf("models/subcomponents/%s/values-snippet.yaml", sub)
-		if data, err := helmify.ModelsFS.ReadFile(subPath); err == nil {
+		if data, err := roothelmify.ModelsFS.ReadFile(subPath); err == nil {
 			subValuesStr += "\n\n" + strings.ReplaceAll(string(data), "<CHART_NAME>", params.ChartName)
 		}
 	}
@@ -679,9 +678,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		var chartNode yaml.Node
 		if err := yaml.Unmarshal(chartData, &chartNode); err == nil {
 			if params.DevRepoURL != "" {
-				_ = setYamlPath(&chartNode, []string{"annotations", "tjpa.jus.br/dev-source-repo"}, params.DevRepoURL)
+				_ = setYamlPath(&chartNode, []string{"sources"}, []string{params.DevRepoURL})
 			}
-			cv := strings.TrimSpace(helmify.ChartVersion)
+			cv := config.GlobalEnvConfig.ChartVersion
 			_ = setYamlPath(&chartNode, []string{"version"}, cv)
 			_ = setYamlPath(&chartNode, []string{"appVersion"}, cv)
 
@@ -694,22 +693,30 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 	}
 
-	if valuesData, ok := outputFiles["values.yaml"]; ok {
-		var valuesNode yaml.Node
-		if err := yaml.Unmarshal(valuesData, &valuesNode); err == nil {
-			if devVals, err := generateDevValues(&valuesNode, params.Type == "multi"); err == nil {
-				outputFiles["values-ca.yaml"] = devVals
+	basePath = "models/single"
+	if params.Type == "multi" {
+		basePath = "models/multi"
+	}
+	caData, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values-ca.yaml"))
+	if err == nil {
+		if valuesData, ok := outputFiles["values.yaml"]; ok {
+			var values helmify.Values
+			if err := yaml.Unmarshal(valuesData, &values); err == nil {
+				mergedCa, err := mergeDevValues(caData, params.ChartName, values)
+				if err == nil {
+					outputFiles["values-ca.yaml"] = mergedCa
+				}
 			}
 		}
 	}
 
-	outputFiles[".gitlab-ci.yml"] = helmify.GitLabCI
+	outputFiles[".gitlab-ci.yml"] = roothelmify.GitLabCI
 
 	return outputFiles, nil
 }
 
 func formatValues(valuesStr string) string {
-	blocks := []string{"startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "persistence:"}
+	blocks := []string{"imagePullSecrets:", "replicas:", "labels:", "annotations:", "cm:", "secret:", "vso:", "files:", "resources:", "route:", "service:", "persistence:", "startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "nodeSelector:", "tolerations:", "affinity:"}
 	for _, block := range blocks {
 		r := regexp.MustCompile(`(?m)^([^\n#]+)\n(\s+` + block + `)`)
 		valuesStr = r.ReplaceAllString(valuesStr, "$1\n\n$2")

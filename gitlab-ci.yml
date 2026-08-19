@@ -1,5 +1,5 @@
 default:
-  image: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/runner-tools:latest
+  image: example-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/runner-tools:latest
   tags:
     - rke
 
@@ -51,10 +51,10 @@ get_chart_info:
   script:
     - export CHART_VERSION="$(grep -E '^[[:space:]]*version:[[:space:]]*' chart/Chart.yaml | head -n1 | sed -E 's/^[[:space:]]*version:[[:space:]]*//')"
     - echo "Detected chart version $CHART_VERSION"
-    - export DEV_APP_REPO_URL="$(grep -E '^[[:space:]]*tjpa.jus.br/dev-source-repo:[[:space:]]*' chart/Chart.yaml | head -n1 | sed -E 's|^[[:space:]]*tjpa.jus.br/dev-source-repo:[[:space:]]*||' | tr -d '\"' | tr -d "\'")"
+    - export DEV_APP_REPO_URL="$(awk '/^sources:/ {getline; if ($1 == "-") print $2}' chart/Chart.yaml | tr -d '\"' | tr -d "\'")"
     - |
       if [ -z "$DEV_APP_REPO_URL" ]; then
-        echo "Aviso: Anotação 'tjpa.jus.br/dev-source-repo' não encontrada no Chart.yaml."
+        echo "Aviso: Campo 'sources' não encontrado ou vazio no Chart.yaml."
       else
         echo "Detected dev source repo $DEV_APP_REPO_URL"
       fi

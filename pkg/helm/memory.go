@@ -37,7 +37,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	if m.DevRepoURL != "" {
 		var chartNode yaml.Node
 		if err := yaml.Unmarshal(m.Files["Chart.yaml"], &chartNode); err == nil {
-			_ = setYamlPath(&chartNode, []string{"annotations", "tjpa.jus.br/dev-source-repo"}, m.DevRepoURL)
+			_ = setYamlPath(&chartNode, []string{"sources"}, []string{m.DevRepoURL})
 			var buf bytes.Buffer
 			enc := yaml.NewEncoder(&buf)
 			enc.SetIndent(2)
@@ -263,10 +263,15 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	}
 	m.Files["values.yaml"] = res
 
-	var valuesNode yaml.Node
-	if err := yaml.Unmarshal(res, &valuesNode); err == nil {
-		if devVals, err := generateDevValues(&valuesNode, isMulti); err == nil {
-			m.Files["values-ca.yaml"] = devVals
+	basePath := "models/single"
+	if isMulti {
+		basePath = "models/multi"
+	}
+	caData, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values-ca.yaml"))
+	if err == nil {
+		mergedCa, err := mergeDevValues(caData, chartName, values)
+		if err == nil {
+			m.Files["values-ca.yaml"] = mergedCa
 		}
 	}
 

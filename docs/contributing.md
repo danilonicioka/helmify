@@ -17,4 +17,4 @@ We welcome contributions! Follow these steps to keep the project consistent and 
 - Confirm that any new labels follow the standard defined in `templates.md`.
 - Make sure the documentation link in the root `README.md` points to the new page if applicable.
 
-By following this flow we keep Helmify production‑ready, TJPA‑compliant, and easy to maintain.
+By following this flow we keep Helmify production‑ready, Organization‑compliant, and easy to maintain.

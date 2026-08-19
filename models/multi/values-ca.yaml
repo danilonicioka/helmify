@@ -1,0 +1,9 @@
+global:
+  cm:
+    TZ: "America/Belem"
+
+backend:
+  cm: {}
+
+frontend:
+  cm: {}

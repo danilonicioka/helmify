@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/danilonicioka/helmify/pkg/config"
 	"github.com/sirupsen/logrus"
-	roothelmify "github.com/danilonicioka/helmify"
 )
 
 const helmIgnore = `# Patterns to ignore when building packages.
@@ -147,7 +147,7 @@ data:
 `
 const defaultChartfile = `apiVersion: v2
 name: %s
-description: A standardized, production-grade model Helm chart for Tribunal de Justica do Para (TJPA) applications.
+description: A standardized, production-grade model Helm chart for Generic Organization applications.
 type: application
 version: %s
 appVersion: %q
@@ -234,7 +234,7 @@ func chartYAML(appName string, certManagerAsSubchart bool, certManagerVersion st
 	if certManagerAsSubchart {
 		chartFile += fmt.Sprintf(certManagerDependencies, certManagerVersion)
 	}
-	cv := strings.TrimSpace(roothelmify.ChartVersion)
+	cv := config.GlobalEnvConfig.ChartVersion
 	return []byte(fmt.Sprintf(chartFile, appName, cv, cv))
 }
 

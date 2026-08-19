@@ -1,0 +1,15 @@
+{{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if and $comp.vso $comp.vso.enabled }}
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-vault-auth
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+spec:
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: {{ .Values.vso.role | quote }}
+    serviceAccount: {{ include "chart-model-single.fullname" . }}-sa
+{{- end }}

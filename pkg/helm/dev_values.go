@@ -2,83 +2,56 @@ package helm
 
 import (
 	"bytes"
-	"fmt"
+	"strings"
 
+	"github.com/danilonicioka/helmify/pkg/helmify"
 	"gopkg.in/yaml.v3"
 )
 
-// generateDevValues extracts the global configuration, plus 'cm' blocks
-// for all component deployments, and packages them into a separate dev-friendly values-ca.yaml file.
-func generateDevValues(rootNode *yaml.Node, isMulti bool) ([]byte, error) {
-	var origMap *yaml.Node
-	if rootNode.Kind == yaml.DocumentNode && len(rootNode.Content) > 0 {
-		origMap = rootNode.Content[0]
-	} else if rootNode.Kind == yaml.MappingNode {
-		origMap = rootNode
+// mergeDevValues injects the 'cm' blocks from the dynamically generated values
+// into the static values-ca.yaml node tree to preserve comments and structure.
+func mergeDevValues(caData []byte, chartName string, values helmify.Values) ([]byte, error) {
+	caStr := string(caData)
+	caStr = strings.ReplaceAll(caStr, "chart-model-single", chartName)
+	caStr = strings.ReplaceAll(caStr, "chart-model-multi", chartName)
+
+	var node yaml.Node
+	if err := yaml.Unmarshal([]byte(caStr), &node); err != nil {
+		return nil, err
 	}
-	if origMap == nil || origMap.Kind != yaml.MappingNode {
-		return nil, fmt.Errorf("invalid root node")
-	}
 
-	var devRoot yaml.Node
-	devRoot.Kind = yaml.DocumentNode
-	devMap := yaml.Node{
-		Kind: yaml.MappingNode,
-	}
-	devRoot.Content = append(devRoot.Content, &devMap)
-
-	// No header comments requested by user
-
-	for i := 0; i < len(origMap.Content); i += 2 {
-		keyNode := origMap.Content[i]
-		valNode := origMap.Content[i+1]
-
-		if keyNode.Value == "global" {
-			if isMulti {
-				devMap.Content = append(devMap.Content, cloneYamlNode(keyNode), cloneYamlNode(valNode))
-			}
-			continue
-		}
-
-		// Check if it's a component map (contains other sub-keys)
-		if valNode.Kind == yaml.MappingNode {
-			compMap := yaml.Node{
-				Kind: yaml.MappingNode,
-			}
-			hasContent := false
-			for j := 0; j < len(valNode.Content); j += 2 {
-				subKey := valNode.Content[j]
-				subVal := valNode.Content[j+1]
-				if subKey.Value == "cm" {
-					compMap.Content = append(compMap.Content, cloneYamlNode(subKey), cloneYamlNode(subVal))
-					hasContent = true
+	for k, v := range values {
+		if valMap, ok := v.(map[string]interface{}); ok {
+			if cmVal, ok := valMap["cm"]; ok {
+				if cmMap, ok := cmVal.(map[string]interface{}); ok {
+					if len(cmMap) > 0 {
+						if err := mergeYamlNode(&node, cmMap, []string{k, "cm"}); err != nil {
+							return nil, err
+						}
+					}
 				}
 			}
-			if hasContent {
-				devMap.Content = append(devMap.Content, cloneYamlNode(keyNode), &compMap)
+			if filesVal, ok := valMap["files"]; ok {
+				if filesMap, ok := filesVal.(map[string]interface{}); ok {
+					if filesCmVal, ok := filesMap["cm"]; ok {
+						if filesCmMap, ok := filesCmVal.(map[string]interface{}); ok {
+							if len(filesCmMap) > 0 {
+								if err := mergeYamlNode(&node, filesCmMap, []string{k, "files", "cm"}); err != nil {
+									return nil, err
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
-
-	removeComments(&devRoot)
 
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
-	if err := enc.Encode(&devRoot); err != nil {
+	if err := enc.Encode(&node); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
-}
-
-func removeComments(node *yaml.Node) {
-	if node == nil {
-		return
-	}
-	node.HeadComment = ""
-	node.LineComment = ""
-	node.FootComment = ""
-	for _, child := range node.Content {
-		removeComments(child)
-	}
 }

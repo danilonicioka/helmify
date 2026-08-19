@@ -1,0 +1,9 @@
+{{- $comp := index .Values "backend" | default dict -}}
+{{- if and $comp.vso $comp.vso.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "chart-model-multi.fullname" . }}-backend-sa
+  labels:
+    {{- include "chart-model-multi.labels" . | nindent 4 }}
+{{- end }}

@@ -42,9 +42,14 @@ spec:
         {{- include "chart-model-single.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ include "chart-model-single.name" . }}
     spec:
-      {{- with $app.imagePullSecrets }}
+      {{- with $app.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if and $app.vso $app.vso.enabled }}
+      serviceAccountName: {{ include "chart-model-single.fullname" . }}-sa
+      {{- else if .Values.serviceAccount }}
+      serviceAccountName: {{ include "chart-model-single.serviceAccountName" . }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
@@ -76,6 +81,10 @@ spec:
             {{- if and $app.secret (not (empty $app.secret)) }}
             - secretRef:
                 name: {{ include "chart-model-single.fullname" . }}-secret
+            {{- end }}
+            {{- if and $app.vso $app.vso.enabled }}
+            - secretRef:
+                name: {{ include "chart-model-single.fullname" . }}-vso-secret
             {{- end }}
 
           # 2. Tiered "Fail-Fast" Health Probes
@@ -114,6 +123,13 @@ spec:
             {{- if and $app.files $app.files.secret }}
             {{- range $filename, $config := $app.files.secret }}
             - name: {{ $filename | replace "." "-" | lower }}-secret
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+            {{- if and $app.vso $app.vso.enabled $app.vso.files }}
+            {{- range $filename, $config := $app.vso.files }}
+            - name: {{ $filename | replace "." "-" | lower }}-vso
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
@@ -165,6 +181,19 @@ spec:
         - name: {{ $filename | replace "." "-" | lower }}-secret
           secret:
             secretName: {{ include "chart-model-single.fullname" $ }}-files-secret
+            items:
+              - key: {{ $filename }}
+                path: {{ $filename }}
+        {{- end }}
+        {{- end }}
+        {{- if and $app.vso $app.vso.enabled $app.vso.files }}
+        {{- range $filename, $config := $app.vso.files }}
+        - name: {{ $filename | replace "." "-" | lower }}-vso
+          secret:
+            secretName: {{ include "chart-model-single.fullname" $ }}-vso-secret
+            items:
+              - key: {{ $filename }}
+                path: {{ $filename }}
         {{- end }}
         {{- end }}
       {{- end }}

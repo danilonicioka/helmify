@@ -1,5 +1,5 @@
-{{- $app := index .Values .Chart.Name | default dict -}}
-{{- if and $app.persistence (and $app.persistence.enabled (not $app.persistence.ephemeral)) }}
+{{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if and $comp.persistence (and $comp.persistence.enabled (not $comp.persistence.ephemeral)) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -8,15 +8,15 @@ metadata:
     {{- include "chart-model-single.labels" . | nindent 4 }}
 spec:
   accessModes:
-    - ReadWriteOnce
-  {{- if $app.persistence.storageClass }}
-  {{- if (eq "-" $app.persistence.storageClass) }}
+    - {{ $comp.persistence.accessMode | default "ReadWriteMany" }}
+  {{- if $comp.persistence.storageClass }}
+  {{- if (eq "-" $comp.persistence.storageClass) }}
   storageClassName: ""
   {{- else }}
-  storageClassName: "{{ $app.persistence.storageClass }}"
+  storageClassName: "{{ $comp.persistence.storageClass }}"
   {{- end }}
   {{- end }}
   resources:
     requests:
-      storage: {{ $app.persistence.storageRequest | default "1Gi" }}
+      storage: {{ $comp.persistence.storageRequest | default "1Gi" }}
 {{- end }}

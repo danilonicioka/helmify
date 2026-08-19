@@ -1,6 +1,6 @@
 apiVersion: v2
 name: chart-model-multi
-description: A standardized, production-grade multi-deployment model Helm chart for TJPA applications.
+description: A standardized, production-grade multi-deployment model Helm chart for Organization applications.
 type: application
-version: 2.0.0
-appVersion: "2.0.0"
+sources:
+  - ""

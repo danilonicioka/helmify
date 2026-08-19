@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TJPA Helmify Portal</title>
+    <title>Helmify Portal</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -263,8 +263,8 @@
 </head>
 <body>
     <header>
-        <h1>TJPA Helmify Engine</h1>
-        <p>Scaffold and translate Tribunal de Justiça do Pará Helm charts using production-grade standards</p>
+        <h1>Helmify Engine</h1>
+        <p>Scaffold and translate {{ORG_NAME}} Helm charts using production-grade standards</p>
     </header>
 
     <main class="portal-container">
@@ -277,7 +277,7 @@
                 <div class="card-body">
                     <h2>Helm Chart Wizard</h2>
                     <span class="subtitle">Zero-Manifest Scaffold</span>
-                    <p>Scaffold Helm charts dynamically by declaring parameters inside a clean form UI. Generates routes, ConfigMaps, and secrets in-place, aligned with TJPA standard templates.</p>
+                    <p>Scaffold Helm charts dynamically by declaring parameters inside a clean form UI. Generates routes, ConfigMaps, and secrets in-place, aligned with {{ORG_NAME}} standard templates.</p>
                 </div>
             </div>
             <a href="/wizard" class="card-btn">
@@ -306,7 +306,7 @@
     </main>
 
     <footer>
-        <div>© 2026 Tribunal de Justiça do Pará — DevOps Team</div>
+        <div>© 2026 {{ORG_NAME}}</div>
         <div style="display: flex; gap: 1.5rem; align-items: center;">
             <div class="footer-status">
                 <div class="status-dot"></div>

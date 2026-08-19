@@ -1,4 +1,4 @@
-# Standardized TJPA Helm Chart values.yaml
+# Standardized Standardized Helm Chart values.yaml
 # Designed in compliance with OpenShift Security Context Constraints (SCC)
 # and the 6 Core Architectural Rules.
 
@@ -14,8 +14,7 @@ fullnameOverride: ""
 
 # -- Global configuration shared across all deployments in the chart.
 global:
-  cm:
-    TZ: "America/Belem"
+  cm: {}
   secret: {}
 
 # ==============================================================================
@@ -25,8 +24,16 @@ global:
 chart-model-single:
 
   # ----------------------------------------------------------------------------
-  # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
+  # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
+  image:
+    # -- Quay Registry is used to avoid Docker Hub rate limiting.
+    repository: registry.example.com/devops/chart-model-app
+    # -- Defaults to Chart.appVersion if not specified.
+    tag: "latest"
+    pullPolicy: IfNotPresent
+    pullSecrets: []
+
   # -- Number of replica pods.
   replicas: 1
 
@@ -38,24 +45,51 @@ chart-model-single:
   annotations: {}
     # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"my-db"}]'
 
-  image:
-    # -- Quay Registry is used to avoid Docker Hub rate limiting.
-    repository: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/chart-model-app
-    # -- Defaults to Chart.appVersion if not specified.
-    tag: "latest"
-    pullPolicy: IfNotPresent
-
   # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION (Variables & Credentials)
+  # 2. APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
   # ConfigMaps unique to this service container.
-  cm: {}
+  cm:
+    TZ: "America/Belem"
 
   # Sensitive variables unique to this service container (Secrets).
   secret: {}
 
+  vso:
+    enabled: false
+    role: "chart-model-single-role"
+    path: "kv/data/chart-model-single/app"
+    files: {}
+      # my_vault_key.p12:
+      #   mountPath: "/app/certs/my_vault_key.p12"
+
+  files:
+    cm: {}
+      # nginx.conf:
+      #   mountPath: "/etc/nginx/nginx.conf"
+      #   content: |
+      #     user nginx;
+      #     worker_processes auto;
+    secret: {}
+      # key.p12:
+      #   mountPath: "/app/certs/key.p12"
+      #   content: |
+      #     ...
+
   # ----------------------------------------------------------------------------
-  # 3. ROUTING & NETWORKING
+  # 3. RESOURCES
+  # ----------------------------------------------------------------------------
+  # Kept empty by default; the recommended configuration is commented below.
+  resources:
+    limits:
+      cpu: 100m
+      memory: 512Mi
+    requests:
+      cpu: 30m
+      memory: 256Mi
+
+  # ----------------------------------------------------------------------------
+  # 4. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
   route:
     # -- Shared annotations for routes.
@@ -75,17 +109,17 @@ chart-model-single:
     # -- Internal Route with self-signed certificate (to default OCP apps).
     default:
       enabled: true
-      host: chart-model-single.apps.ocp-dev.i.tj.pa.gov.br
+      host: chart-model-single.apps.example.com
 
-    # -- Internal Route with valid certificate (to intranet TJPA).
+    # -- Internal Route with valid certificate (to intranet Organization).
     internal:
       enabled: false
-      host: chart-model-single-i.tjpa.jus.br
+      host: chart-model-single-internal.example.com
 
-    # -- External Route with valid certificate (to internet TJPA).
+    # -- External Route with valid certificate (to internet Organization).
     external:
       enabled: false
-      host: chart-model.tjpa.jus.br
+      host: chart-model.example.com
 
   # -- Internal Kubernetes Service Configuration.
   service:
@@ -93,19 +127,18 @@ chart-model-single:
     ports: {}
 
   # ----------------------------------------------------------------------------
-  # 4. RESOURCES (Operational Overlay-Only)
+  # 5. PERSISTENCE
   # ----------------------------------------------------------------------------
-  # Kept empty by default; the recommended configuration is commented below.
-  resources:
-    limits:
-      cpu: 100m
-      memory: 512Mi
-    requests:
-      cpu: 30m
-      memory: 256Mi
+  persistence:
+    enabled: false
+    ephemeral: false
+    mountPath: "/var/lib/data"
+    storageRequest: 1Gi
+    accessMode: ReadWriteMany
+    storageClass: ""
 
   # ----------------------------------------------------------------------------
-  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
+  # 6. PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
   # Probes are empty by default; the recommended tcpSocket configuration is commented below.
   startupProbe:
@@ -132,9 +165,6 @@ chart-model-single:
     failureThreshold: 3
     successThreshold: 1
 
-  # ----------------------------------------------------------------------------
-  # 6. LIFECYCLE & HA STRATEGY
-  # ----------------------------------------------------------------------------
   # -- Deployment strategy. Use 'RollingUpdate' or 'Recreate' (e.g. for RWO volume claims).
   strategy:
     type: RollingUpdate
@@ -146,19 +176,8 @@ chart-model-single:
   terminationGracePeriodSeconds: 30
 
   # ----------------------------------------------------------------------------
-  # 7. PERSISTENCE
+  # 7. SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  persistence:
-    enabled: false
-    ephemeral: false
-    mountPath: "/var/lib/data"
-    storageRequest: 1Gi
-    storageClass: ""
-
-  # ----------------------------------------------------------------------------
-  # 8. SCHEDULING & NODE ASSIGNMENT
-  # ----------------------------------------------------------------------------
-  imagePullSecrets: []
   nodeSelector: {}
   tolerations: []
   affinity:
@@ -173,21 +192,3 @@ chart-model-single:
                   values:
                     - chart-model-single
             topologyKey: kubernetes.io/hostname
-
-  # ----------------------------------------------------------------------------
-  # 9. CUSTOM FILES
-  # ----------------------------------------------------------------------------
-  files:
-    cm: {}
-      # nginx.conf:
-      #   mountPath: "/etc/nginx/nginx.conf"
-      #   content: |
-      #     user nginx;
-      #     worker_processes auto;
-    secret: {}
-      # key.p12:
-      #   mountPath: "/app/certs/key.p12"
-      #   content: |
-      #     ...
-
-

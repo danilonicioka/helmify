@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/danilonicioka/helmify/pkg/config"
 	"github.com/danilonicioka/helmify/pkg/processor"
 )
 
@@ -33,8 +34,8 @@ func getRouteHostPrefix(chartName, compName, path string, isMulti bool) string {
 // computeRouteHosts returns the default, internal, and external hostnames.
 func computeRouteHosts(chartName, compName, path string, isMulti bool) (string, string, string) {
 	prefix := getRouteHostPrefix(chartName, compName, path, isMulti)
-	defaultHost := fmt.Sprintf("%s.apps.ocp-dev.i.tj.pa.gov.br", prefix)
-	internalHost := fmt.Sprintf("%s-i.tjpa.jus.br", prefix)
-	externalHost := fmt.Sprintf("%s.tjpa.jus.br", prefix)
+	defaultHost := fmt.Sprintf("%s.%s", prefix, config.GlobalEnvConfig.DefaultDomain)
+	internalHost := fmt.Sprintf("%s-internal.%s", prefix, config.GlobalEnvConfig.InternalDomain)
+	externalHost := fmt.Sprintf("%s.%s", prefix, config.GlobalEnvConfig.ExternalDomain)
 	return defaultHost, internalHost, externalHost
 }

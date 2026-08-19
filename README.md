@@ -18,6 +18,26 @@ Supports `Helm >=v3.6.0`
 
 Submit an issue if some features are missing for your use-case.
 
+## 🌍 Organization-Agnostic Environment Variables
+
+Helmify is designed to be fully generic and configurable via environment variables, completely decoupling the codebase from specific organizational infrastructure (such as registries, domains, and timezones).
+
+The following environment variables dynamically override the defaults in generated charts:
+
+- `HELMIFY_ORG_NAME`: The name of your organization (e.g., "Standardized Organization").
+- `HELMIFY_DEFAULT_TIMEZONE`: Default TZ for workloads (e.g., "America/Belem" or "UTC").
+- `HELMIFY_REGISTRY`: The base registry host (e.g., `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br`).
+- `HELMIFY_DEFAULT_DOMAIN`: The domain used for default routes (e.g., `apps.ocp-dev.i.tj.pa.gov.br`).
+- `HELMIFY_INTERNAL_DOMAIN`: The domain used for internal networking.
+- `HELMIFY_EXTERNAL_DOMAIN`: The domain used for external networking.
+- `HELMIFY_CHART_VERSION`: Defines the semantic version dynamically stamped onto generated charts.
+
+## 🔗 Multi-Component Pipeline Standards (`sources`)
+
+When deploying multi-component architectures (using images from multiple GitLab/GitHub repositories), Helmify relies on the official Helm `sources` array.
+
+**Pipeline Standard:** Helmify sets the **FIRST source** in the `Chart.yaml` `sources` list as the authoritative repository. This is the repository where your deployment configurations (like `values-env.yaml`) reside and is what CI/CD tools (like `quay-audit` or `quay-integration`) will use for git audits and tracking.
+
 ---
 
 ## 🏗️ Repository Architecture & Modules
@@ -52,7 +72,7 @@ graph TD
 	F --> G[Packaged Helm Chart Tarball]
 ```
 
-### 3. Recent Updates & TJPA Customizations
+### 3. Recent Updates & Organization Customizations
 This fork incorporates specific behaviors designed to meet organizational requirements:
 
 - **Universal Global Configurations (`cm-global.yaml` & `secret-global.yaml`):**
@@ -158,7 +178,7 @@ You can configure the chart generation by sending the following optional headers
 | `X-Add-Webhook-Option` | Adds an option to enable/disable webhook installation (default: `false`). |
 | `X-Optional-Crds` | Enable optional CRD installation through values (default: `false`). |
 | `X-Generate-All-Templates` | Generate all standard boilerplate templates (CM, Secret, Routes) for all components (default: `false`). |
-| `X-Dev-Repo-Url` | TJPA developer source repository URL annotation for Chart.yaml (default: `""`). |
+| `X-Dev-Repo-Url` | Organization developer source repository URL annotation for Chart.yaml (default: `""`). |
 
 ---
 
@@ -220,15 +240,15 @@ Usage:
 | -preserve-ns              | Allows users to use the object's original namespace instead of adding all the resources to a common namespace. (default "false")                                                                            | `helmify -preserve-ns`              |
 | -add-webhook-option | Adds an option to enable/disable webhook installation  | `helmify -add-webhook-option`|
 | -optional-crds | Enable optional CRD installation through values. | `helmify -optional-crds` |
-## Production Standards (TJPA compliant)
+## Production Standards (Organization compliant)
 
-Helmify is designed to generate production-ready charts that follow TJPA standards:
+Helmify is designed to generate production-ready charts that follow Organization standards:
 - **Zero-Default Architecture**: Unopinionated templates that only render resources explicitly defined in `values.yaml`.
 - **Fail-Fast Health Probes**: Automated 3-tier health probes (Startup, Liveness, Readiness) with default TCP fallback for exposed ports.
 - **Global Configuration**: Centralized environment settings via `cm-global.yaml` and automatic `envFrom` injection.
 - **Deterministic Rollouts**: Automatic SHA256 checksum annotations on PodSpecs to trigger restarts when configurations change.
 - **Deployment Strategy**: If a strategy is defined in the source manifest, it is preserved in the generated values. Otherwise, it defaults to a standardized `RollingUpdate` strategy (`maxUnavailable: 0`, `maxSurge: 25%`) to guarantee zero-downtime rolling updates.
-- **Standardized Labels**: Consistent application of `component` and `part-of` labels across all resources. The `app.kubernetes.io/component` label dynamically checks the deployment type: if it is a single-deployment chart (component name matches chart name), it renders simply as `{{ include "<chartName>.fullname" . }}` to avoid duplicate suffixes like `token-tjpa-token-tjpa`. Otherwise, it templates as `{{ include "<chartName>.fullname" . }}-<componentName>`.
+- **Standardized Labels**: Consistent application of `component` and `part-of` labels across all resources. The `app.kubernetes.io/component` label dynamically checks the deployment type: if it is a single-deployment chart (component name matches chart name), it renders simply as `{{ include "<chartName>.fullname" . }}` to avoid duplicate suffixes like `token-example-token-example`. Otherwise, it templates as `{{ include "<chartName>.fullname" . }}-<componentName>`.
 - **Dynamic Route Association**: Automatically associates OpenShift Routes with their target `Service` components by checking the target `spec.to.name`. If a Route targets a Service belonging to the same component, it maps to `.Values.<component>.route`. If it routes to a Service in a different component (additional routes), it is isolated under `.Values.<component>.routes.<routeName>` to prevent configuration overrides.
 - **Component Persistence**: PVCs that are mounted by a workload are now dynamically abstracted into `<component>.persistence` blocks positioned at the bottom of the component configuration, rather than top-level `.Values.pvc.<name>` configurations, ensuring cohesive configurations.
 - **Wizard Persistence Integration**: The Web UI Wizard now natively supports configuring Persistent Volume Claims (PVC). Enabling persistence in the wizard automatically generates standardized `pvc.yaml` templates and injects necessary `volumeMounts` and `volumes` into deployment manifests with configurable mount paths (defaulting to `/var/lib/data`).
@@ -404,12 +424,12 @@ When components end with numeric suffixes (like `pje-service-1g` or `pje-service
 - **Fix**: Adjusted priorities in `chart.go` to assign `global` a weight of `-1`, placing it after `fullnameOverride` (`-3`) and aligning it with the multi-deployment model layout.
 
 ### 🏷️ Fullname-Prefixed Component Labels (`app.kubernetes.io/component`)
-- **Symptom**: Generated templates copied static `app.kubernetes.io/component` values from raw manifests, whereas the TJPA Helm models require component labels to be dynamically prefixed with the chart fullname.
+- **Symptom**: Generated templates copied static `app.kubernetes.io/component` values from raw manifests, whereas the Organization Helm models require component labels to be dynamically prefixed with the chart fullname.
 - **Fix**: Updated `ProcessObjMeta` ([meta.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/meta.go)) and the Route processor ([route.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/route/route.go)) to template the label using the chart fullname helper:
   ```yaml
   app.kubernetes.io/component: {{ include "<chartName>.fullname" . }}-<componentName>
   ```
-    - **Problem**: For charts that represent a *single* deployment, the component name equals the chart name. The previous templating added a duplicate suffix (e.g. `{{ include "token-tjpa.fullname" . }}-token-tjpa-secrets` → `token-tjpa-token-tjpa-secrets`).
+    - **Problem**: For charts that represent a *single* deployment, the component name equals the chart name. The previous templating added a duplicate suffix (e.g. `{{ include "token-example.fullname" . }}-token-example-secrets` → `token-example-token-example-secrets`).
     - **Cause**: The label templating always appended `-{{ .Values.<component> }}` without checking if the component name already matches the chart name.
     - **Solution**: Helmify now checks `if normalizedComp == appMeta.ChartName()` (or equivalent in routes) and, for single‑deployment charts, renders the component label simply as `{{ include "<chartName>.fullname" . }}`. For multi‑deployment charts the suffix is kept, ensuring distinct component labels.
     - **Caution**: When a chart defines **multiple** components (e.g., `frontend`, `backend`), the component name will differ from the chart name, so the suffix **must** remain. The logic safely preserves the suffix only when the names match.
@@ -454,7 +474,7 @@ Helmify now supports a fully modular dynamic subcomponent architecture. Auxiliar
 To add a new subcomponent to the Helmify wizard, simply create a new directory inside `models/subcomponents/<name>` containing a `values-snippet.yaml` and a `templates/` folder. The engine automatically scans this directory and exposes them via the `/v1/subcomponents` endpoint, dynamically bundling them into your chart if requested.
 
 ## Migrating Legacy Helm Charts
-Helmify can now be used as a migration engine to modernize legacy Helm charts and convert them into the standardized TJPA architecture. 
+Helmify can now be used as a migration engine to modernize legacy Helm charts and convert them into the standardized Organization architecture. 
 
 **Workflow:**
 1. Render your legacy chart into raw Kubernetes manifests using Helm:

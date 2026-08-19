@@ -5,7 +5,7 @@ kind: ConfigMap
 metadata:
   name: {{ include "chart-model-multi.fullname" . }}-backend-files
   labels:
-    {{- include "chart-model-multi.backend.labels" . | nindent 4 }}
+    {{- include "chart-model-multi.labels" . | nindent 4 }}
 data:
 {{- range $filename, $config := $comp.files.cm }}
   {{ $filename }}: |

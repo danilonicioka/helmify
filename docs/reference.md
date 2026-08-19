@@ -33,7 +33,7 @@ Chart names must follow DNS-1123 label conventions:
 | Registry | Type | Usage |
 |----------|------|-------|
 | `registry.access.redhat.com` | Red Hat Official Registry | Base images for container builds (e.g. `ubi-minimal`) |
-| `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br` | Private Quay Registry | Mirror for any external Docker Hub images to bypass rate limiting |
+| `registry.example.com` | Private Quay Registry | Mirror for any external Docker Hub images to bypass rate limiting |
 
 ### Security Context Constraints (SCC)
 | SCC Name | Scope | Recommended Settings |
