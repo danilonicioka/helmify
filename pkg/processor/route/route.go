@@ -84,7 +84,7 @@ func (r route) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructur
 		}
 	}
 	if hostStr == "" {
-		hostStr = fmt.Sprintf("%s.apps.ocp-hub.i.tj.pa.gov.br", name)
+		hostStr = fmt.Sprintf("%s.%s", name, config.GlobalEnvConfig.DefaultDomain)
 	}
 
 	// Capture annotations

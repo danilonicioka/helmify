@@ -18,7 +18,7 @@ metadata:
   annotations:
     my-annotation: annotation-value
 spec:
-  host: my-app-api.apps.ocp-hub.i.tj.pa.gov.br
+  host: my-app-api.apps.example.com
   path: /api
   to:
     kind: Service

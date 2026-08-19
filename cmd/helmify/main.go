@@ -20,6 +20,7 @@ import (
 	"github.com/danilonicioka/helmify/pkg/helm"
 	"github.com/danilonicioka/helmify/web"
 	"github.com/sirupsen/logrus"
+	roothelmify "github.com/danilonicioka/helmify"
 )
 
 func init() {
@@ -42,6 +43,14 @@ func init() {
 
 func main() {
 	config.LoadEnvConfig()
+
+	// Load custom CI pipeline if provided
+	if ciContent, err := os.ReadFile(config.GlobalEnvConfig.GitlabCIPath); err == nil {
+		logrus.Infof("Loaded custom CI pipeline from %s", config.GlobalEnvConfig.GitlabCIPath)
+		roothelmify.GitLabCI = ciContent
+	} else if !os.IsNotExist(err) {
+		logrus.WithError(err).Warnf("Failed to read custom CI pipeline at %s", config.GlobalEnvConfig.GitlabCIPath)
+	}
 
 	port := os.Getenv("SERVER_PORT")
 	if port == "" {
@@ -90,6 +99,7 @@ func main() {
 	mux.HandleFunc("/converter", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		htmlStr := strings.ReplaceAll(string(web.ConverterHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
 		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/converter/", func(w http.ResponseWriter, r *http.Request) {
@@ -300,6 +310,7 @@ func handleHomeOrAssets(w http.ResponseWriter, r *http.Request) {
 		cv := config.GlobalEnvConfig.ChartVersion
 		htmlStr := strings.ReplaceAll(string(web.HomeHTML), "{{CHART_VERSION}}", cv)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
 		w.Write([]byte(htmlStr))
 		return
 	}

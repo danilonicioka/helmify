@@ -26,8 +26,8 @@ The following environment variables dynamically override the defaults in generat
 
 - `HELMIFY_ORG_NAME`: The name of your organization (e.g., "Standardized Organization").
 - `HELMIFY_DEFAULT_TIMEZONE`: Default TZ for workloads (e.g., "America/Belem" or "UTC").
-- `HELMIFY_REGISTRY`: The base registry host (e.g., `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br`).
-- `HELMIFY_DEFAULT_DOMAIN`: The domain used for default routes (e.g., `apps.ocp-dev.i.tj.pa.gov.br`).
+- `HELMIFY_REGISTRY`: The base registry host (e.g., `registry.example.com`).
+- `HELMIFY_DEFAULT_DOMAIN`: The domain used for default routes (e.g., `apps.example.com`).
 - `HELMIFY_INTERNAL_DOMAIN`: The domain used for internal networking.
 - `HELMIFY_EXTERNAL_DOMAIN`: The domain used for external networking.
 - `HELMIFY_CHART_VERSION`: Defines the semantic version dynamically stamped onto generated charts.
@@ -386,7 +386,7 @@ Check list before submitting PR:
 When generating charts via the remote Helmify service, you may observe duplicate template files (e.g., `cm-adm-estrutura.yaml` and `cm-admestrutura.yaml`, or `secret-adm-estrutura.yaml` and `secret-admestrutura.yaml`) and name resolution mismatches inside the `Deployment` env/envFrom references.
 
 ### Cause
-The remote Helmify instance running on OpenShift (`https://helmify.apps.ocp-dev.i.tj.pa.gov.br`) is currently running an **outdated version** built from the `gitlab/main` branch (last commit: June 12, `38ff265`).
+The remote Helmify instance running on OpenShift (`https://helmify.apps.example.com`) is currently running an **outdated version** built from the `gitlab/main` branch (last commit: June 12, `38ff265`).
 
 The local/upstream `main` branch contains **24 commits of bug fixes and feature additions** since then, including:
 1. **Commit `9bc1752`**: `fix: prevent premature stripping of common suffixes...`

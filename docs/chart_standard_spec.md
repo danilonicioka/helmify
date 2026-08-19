@@ -219,7 +219,7 @@ To accommodate the secure routing layers at Organization, every chart template m
 - **Router**: OpenShift default router (often self-signed certificates).
 - **Target**: Internal developers/tools.
 - **Default**: `enabled: true`
-- **Host Example**: `<app-name>.apps.ocp-dev.i.tj.pa.gov.br`
+- **Host Example**: `<app-name>.apps.example.com`
 
 ### B. Internal Route (`route-int.yaml`)
 - **Router**: Organization intranet router (trusted corporate wildcard certificate).

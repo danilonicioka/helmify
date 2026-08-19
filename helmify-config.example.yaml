@@ -12,7 +12,6 @@
 # HELMIFY_ORG_NAME: The name of the organization using the portal.
 # Used in the Web UI titles and headers.
 # Default: "Standardized Organization"
-# Example: "TJPA"
 
 # HELMIFY_DEFAULT_TIMEZONE: The timezone injected into the ConfigMap.
 # Default: "UTC"
@@ -20,14 +19,10 @@
 
 # HELMIFY_REGISTRY: The default container image registry for deployments.
 # Default: "registry.example.com/devops"
-# Example: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops"
 
 # HELMIFY_INTERNAL_DOMAIN: The domain used for internal Kubernetes routes.
 # Default: "internal.example.com"
-# Example: "i.tjpa.jus.br"
 
 # HELMIFY_EXTERNAL_DOMAIN: The domain used for external public routes.
 # Default: "example.com"
-# Example: "tjpa.jus.br"
 
-# Example: "tjpa.jus.br/dev-source-repo"
