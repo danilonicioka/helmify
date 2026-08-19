@@ -75,21 +75,25 @@ func main() {
 	mux.HandleFunc("/wizard", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		htmlStr := strings.ReplaceAll(string(web.WizardHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
 		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/wizard/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		htmlStr := strings.ReplaceAll(string(web.WizardHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
 		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/instructions", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		htmlStr := strings.ReplaceAll(string(web.InstructionsHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
 		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/instructions/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		htmlStr := strings.ReplaceAll(string(web.InstructionsHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
 		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -105,6 +109,7 @@ func main() {
 	mux.HandleFunc("/converter/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		htmlStr := strings.ReplaceAll(string(web.ConverterHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
 		w.Write([]byte(htmlStr))
 	})
 	// Serve the portal homepage or other assets on /
