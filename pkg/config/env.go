@@ -16,6 +16,7 @@ type EnvConfig struct {
 	ExternalDomain    string `json:"externalDomain"`
 	ChartVersion      string `json:"chartVersion"`
 	GitlabCIPath      string `json:"gitlabCIPath"`
+	DevRepo           string `json:"devRepo"`
 }
 
 var GlobalEnvConfig EnvConfig
@@ -30,6 +31,7 @@ func LoadEnvConfig() {
 		ExternalDomain:    getEnvOrDefault("HELMIFY_EXTERNAL_DOMAIN", "example.com"),
 		ChartVersion:      getEnvOrDefault("HELMIFY_CHART_VERSION", strings.TrimSpace(roothelmify.ChartVersion)),
 		GitlabCIPath:      getEnvOrDefault("HELMIFY_GITLAB_CI_PATH", "/app/files/.gitlab-ci.yml"),
+		DevRepo:           getEnvOrDefault("HELMIFY_DEV_REPO", "gitlab.example.com"),
 	}
 }
 

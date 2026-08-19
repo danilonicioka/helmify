@@ -27,7 +27,7 @@ backend:
   # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
   image:
-    repository: {{REGISTRY}}/chart-model-backend
+    repository: "{{REGISTRY}}/chart-model-backend"
     tag: "latest"
     pullPolicy: IfNotPresent
     pullSecrets: []
@@ -85,13 +85,13 @@ backend:
     path: "/"
     default:
       enabled: true
-      host: chart-model-multi-backend.{{DEFAULT_DOMAIN}}
+      host: chart-model-multi-backend{{DEFAULT_DOMAIN}}
     internal:
       enabled: false
-      host: chart-model-multi-backend-{{INTERNAL_DOMAIN}}
+      host: chart-model-multi-backend{{INTERNAL_DOMAIN}}
     external:
       enabled: false
-      host: chart-model-backend.{{EXTERNAL_DOMAIN}}
+      host: chart-model-backend{{EXTERNAL_DOMAIN}}
 
   service:
     type: ClusterIP
@@ -170,7 +170,7 @@ frontend:
   # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
   image:
-    repository: {{REGISTRY}}/chart-model-frontend
+    repository: "{{REGISTRY}}/chart-model-frontend"
     tag: "latest"
     pullPolicy: IfNotPresent
     pullSecrets: []
@@ -227,13 +227,13 @@ frontend:
     path: "/"
     default:
       enabled: true
-      host: chart-model-multi-frontend.{{DEFAULT_DOMAIN}}
+      host: chart-model-multi-frontend{{DEFAULT_DOMAIN}}
     internal:
       enabled: false
-      host: chart-model-multi-frontend-{{INTERNAL_DOMAIN}}
+      host: chart-model-multi-frontend{{INTERNAL_DOMAIN}}
     external:
       enabled: false
-      host: chart-model-frontend.{{EXTERNAL_DOMAIN}}
+      host: chart-model-frontend{{EXTERNAL_DOMAIN}}
 
   service:
     type: ClusterIP

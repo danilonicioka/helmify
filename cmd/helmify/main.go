@@ -79,6 +79,7 @@ func main() {
 		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
 		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/wizard/", func(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +89,7 @@ func main() {
 		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
 		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/instructions", func(w http.ResponseWriter, r *http.Request) {
@@ -97,6 +99,7 @@ func main() {
 		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
 		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/instructions/", func(w http.ResponseWriter, r *http.Request) {
@@ -106,6 +109,7 @@ func main() {
 		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
 		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -119,6 +123,7 @@ func main() {
 		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
 		w.Write([]byte(htmlStr))
 	})
 	mux.HandleFunc("/converter/", func(w http.ResponseWriter, r *http.Request) {
@@ -128,6 +133,7 @@ func main() {
 		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
 		w.Write([]byte(htmlStr))
 	})
 	// Serve the portal homepage or other assets on /
@@ -337,6 +343,7 @@ func handleHomeOrAssets(w http.ResponseWriter, r *http.Request) {
 		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
 		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
+		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
 		w.Write([]byte(htmlStr))
 		return
 	}

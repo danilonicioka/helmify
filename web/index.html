@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Standardized Helm Chart Generator Wizard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg-base: hsl(230, 25%, 8%);
@@ -137,7 +140,7 @@
         }
 
         /* Prevent children (like code blocks) from blowing up column widths */
-        main > * {
+        main>* {
             min-width: 0;
         }
 
@@ -145,6 +148,7 @@
             main {
                 flex-direction: column;
             }
+
             .settings-sidebar {
                 width: 100% !important;
             }
@@ -470,11 +474,11 @@
             border-radius: 50%;
         }
 
-        input:checked + .slider {
+        input:checked+.slider {
             background-color: var(--accent);
         }
 
-        input:checked + .slider:before {
+        input:checked+.slider:before {
             transform: translateX(20px);
         }
 
@@ -764,15 +768,22 @@
             border-left: 4px solid var(--accent);
             padding: 1rem 1.5rem;
             border-radius: var(--radius-sm);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
             display: none;
             animation: slideIn 0.3s ease;
             z-index: 1000;
         }
 
         @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         /* Custom Modal Styles */
@@ -880,14 +891,19 @@
             margin-top: 0.5rem;
             display: none;
         }
-
     </style>
 </head>
+
 <body>
     <header>
         <div class="logo-section" style="display: flex; align-items: center; gap: 1rem;">
             <button id="btn-toggle-sidebar" class="sidebar-toggle-btn" aria-label="Toggle settings">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+                    <path d="M9 3v18"></path>
+                    <path d="m16 15-3-3 3-3"></path>
+                </svg>
             </button>
             <div>
                 <h1>Helmify Wizard</h1>
@@ -896,11 +912,20 @@
         </div>
         <div style="display: flex; gap: 0.75rem; align-items: center;">
             <a href="/" class="header-nav-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
                 <span>Portal Home</span>
             </a>
             <button id="btn-generate-header" class="header-action-btn">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
                 <span>Download Chart</span>
             </button>
         </div>
@@ -910,234 +935,281 @@
         <!-- Settings Sidebar -->
         <aside class="settings-sidebar" id="settings-sidebar">
             <div class="settings-sidebar-inner">
-            <div class="card-title">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sliders"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="2" y1="14" x2="6" y2="14"></line><line x1="10" y1="8" x2="14" y2="8"></line><line x1="18" y1="16" x2="22" y2="16"></line></svg>
-                <span>Chart Settings</span>
-            </div>
-
-            <!-- Chart Base Config -->
-            <div class="form-group row">
-                <div>
-                    <label for="chartName">Chart Name</label>
-                    <input type="text" id="chartName" value="" placeholder="e.g. portal-certidao">
+                <div class="card-title">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round" class="feather feather-sliders">
+                        <line x1="4" y1="21" x2="4" y2="14"></line>
+                        <line x1="4" y1="10" x2="4" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12" y2="3"></line>
+                        <line x1="20" y1="21" x2="20" y2="16"></line>
+                        <line x1="20" y1="12" x2="20" y2="3"></line>
+                        <line x1="2" y1="14" x2="6" y2="14"></line>
+                        <line x1="10" y1="8" x2="14" y2="8"></line>
+                        <line x1="18" y1="16" x2="22" y2="16"></line>
+                    </svg>
+                    <span>Chart Settings</span>
                 </div>
-                <div>
-                    <label>Deployment Type</label>
-                    <div class="toggle-group">
-                        <button type="button" class="toggle-btn active" id="btn-type-single">Single</button>
-                        <button type="button" class="toggle-btn" id="btn-type-multi">Multi</button>
+
+                <!-- Chart Base Config -->
+                <div class="form-group row">
+                    <div>
+                        <label for="chartName">Chart Name</label>
+                        <input type="text" id="chartName" value="" placeholder="e.g. portal-certidao">
+                    </div>
+                    <div>
+                        <label>Deployment Type</label>
+                        <div class="toggle-group">
+                            <button type="button" class="toggle-btn active" id="btn-type-single">Single</button>
+                            <button type="button" class="toggle-btn" id="btn-type-multi">Multi</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Developer Source Repository URL -->
-            <div class="form-group">
-                <label for="devRepoUrl">Developer Source Repository URL (Argo CD GitOps)</label>
-                <input type="text" id="devRepoUrl" value="" placeholder="e.g. http://gitlab.{{INTERNAL_DOMAIN}}/squad/my-app.git">
-            </div>
-            <!-- Global Env Vars -->
-            <div id="global-config-section">
-                <div class="section-title" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>Global ConfigMap Env Variables</span>
-                    <button type="button" class="btn-add-item" onclick="toggleEnvVar('global-config')" id="btn-add-global-config">+ Add ConfigMap</button>
-                </div>
-                <div class="form-group" id="global-config-container" style="display: none;">
-                    <textarea id="global-config-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveGlobalConfig()"></textarea>
-                    <button type="button" class="btn-remove-item" onclick="removeEnvVar('global-config')" style="margin-top: 5px;">Remove</button>
-                </div>
-                
-                <div class="section-title" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                    <span>Global Secrets</span>
-                    <button type="button" class="btn-add-item" onclick="toggleEnvVar('global-secret')" id="btn-add-global-secret">+ Add Secret</button>
-                </div>
-                <div class="form-group" id="global-secret-container" style="display: none;">
-                    <textarea id="global-secret-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveGlobalConfig()"></textarea>
-                    <button type="button" class="btn-remove-item" onclick="removeEnvVar('global-secret')" style="margin-top: 5px;">Remove</button>
-                </div>
-            </div>
-
-            <!-- Deployments Config -->
-            <div class="components-header">
-                <div class="section-subtitle" style="margin: 0;">Deployments Config</div>
-                <button type="button" class="add-comp-btn" id="btn-add-comp" style="display: none;">+ Add Deployment</button>
-            </div>
-
-            <div class="components-tabs" id="components-tabs">
-                <!-- Tab buttons -->
-            </div>
-
-            <!-- Active Component Panel -->
-            <div id="component-config-panel" style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
-
-                <!-- 1. CORE WORKLOAD SETTINGS -->
+                <!-- Developer Source Repository URL -->
                 <div class="form-group">
-                    <label for="compRepo">Image Repository</label>
-                    <input type="text" id="compRepo" value="{{REGISTRY}}/chart-model-app" placeholder="image registry url">
+                    <label for="devRepoUrl">Developer Source Repository URL (Argo CD GitOps)</label>
+                    <input type="text" id="devRepoUrl" value="" placeholder="e.g. http://{{DEV_REPO}}/squad/my-app.git">
                 </div>
-
-                <div class="form-group row">
-                    <div>
-                        <label for="compTag">Image Tag (Defaults to appVersion)</label>
-                        <input type="text" id="compTag" placeholder="e.g. 1.0.0">
+                <!-- Global Env Vars -->
+                <div id="global-config-section">
+                    <div class="section-title"
+                        style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Global ConfigMap Env Variables</span>
+                        <button type="button" class="btn-add-item" onclick="toggleEnvVar('global-config')"
+                            id="btn-add-global-config">+ Add ConfigMap</button>
                     </div>
-                </div>
-
-                <div class="form-group row">
-                    <div id="connects-to-field">
-                        <label for="compConnectsTo">Connects To (Workloads/components that this deployment connects to in OpenShift Topology View)</label>
-                        <input type="text" id="compConnectsTo" placeholder="e.g. db, redis (comma-separated)">
+                    <div class="form-group" id="global-config-container" style="display: none;">
+                        <textarea id="global-config-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value"
+                            oninput="saveGlobalConfig()"></textarea>
+                        <button type="button" class="btn-remove-item" onclick="removeEnvVar('global-config')"
+                            style="margin-top: 5px;">Remove</button>
                     </div>
-                    <div>
-                        <label for="compRuntime">Technology Runtime (OpenShift Topology Icon)</label>
-                        <input type="text" id="compRuntime" placeholder="e.g. spring-boot, nodejs, python">
+
+                    <div class="section-title"
+                        style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span>Global Secrets</span>
+                        <button type="button" class="btn-add-item" onclick="toggleEnvVar('global-secret')"
+                            id="btn-add-global-secret">+ Add Secret</button>
                     </div>
-                </div>
-
-                <!-- 2. APPLICATION CONFIGURATION -->
-                <!-- ConfigMap variables -->
-                <div class="section-subtitle" style="display: flex; justify-content: space-between; align-items: center;">
-                    <span>Deployment ConfigMap (Env Vars)</span>
-                    <button type="button" class="btn-add-item" onclick="toggleEnvVar('comp-cm')" id="btn-add-comp-cm">+ Add ConfigMap</button>
-                </div>
-                <div class="form-group" id="comp-cm-container" style="display: none;">
-                    <textarea id="comp-cm-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveAndPreview()"></textarea>
-                    <button type="button" class="btn-remove-item" onclick="removeEnvVar('comp-cm')" style="margin-top: 5px;">Remove</button>
-                </div>
-
-                <!-- Secret variables -->
-                <div class="section-subtitle" style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                    <span>Deployment Secrets</span>
-                    <button type="button" class="btn-add-item" onclick="toggleEnvVar('comp-secret')" id="btn-add-comp-secret">+ Add Secret</button>
-                </div>
-                <div class="form-group" id="comp-secret-container" style="display: none;">
-                    <textarea id="comp-secret-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value" oninput="saveAndPreview()"></textarea>
-                    <button type="button" class="btn-remove-item" onclick="removeEnvVar('comp-secret')" style="margin-top: 5px;">Remove</button>
-                </div>
-
-
-                <!-- 3. ROUTING & NETWORKING -->
-                <div class="section-subtitle">Routing & Networking</div>
-                <div class="form-group row">
-                    <div>
-                        <label for="compPort">Service Port</label>
-                        <input type="number" id="compPort" value="8080">
-                    </div>
-                    <div>
-                        <label for="compRoutePath">Route Path Prefix</label>
-                        <input type="text" id="compRoutePath" placeholder="e.g. /api">
+                    <div class="form-group" id="global-secret-container" style="display: none;">
+                        <textarea id="global-secret-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value"
+                            oninput="saveGlobalConfig()"></textarea>
+                        <button type="button" class="btn-remove-item" onclick="removeEnvVar('global-secret')"
+                            style="margin-top: 5px;">Remove</button>
                     </div>
                 </div>
 
-                <!-- Default Route -->
-                <div class="route-card">
-                    <div class="route-card-header">
-                        <span>Default OpenShift Route (Self-Signed)</span>
-                        <label class="route-switch">
-                            <input type="checkbox" id="routeDefaultEnabled" checked onchange="toggleRouteUI(); saveAndPreview()">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="form-group" id="routeDefaultHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
-                        <label for="routeDefaultHost">Route Hostname</label>
-                        <input type="text" id="routeDefaultHost" placeholder="e.g. chart-model-single.{{DEFAULT_DOMAIN}}" oninput="saveAndPreview()">
-                    </div>
+                <!-- Deployments Config -->
+                <div class="components-header">
+                    <div class="section-subtitle" style="margin: 0;">Deployments Config</div>
+                    <button type="button" class="add-comp-btn" id="btn-add-comp" style="display: none;">+ Add
+                        Deployment</button>
                 </div>
 
-                <!-- Intranet Route -->
-                <div class="route-card">
-                    <div class="route-card-header">
-                        <span>Intranet Route (Valid TLS)</span>
-                        <label class="route-switch">
-                            <input type="checkbox" id="routeIntEnabled" onchange="toggleRouteUI(); saveAndPreview()">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="form-group" id="routeIntHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
-                        <label for="routeIntHost">Route Hostname</label>
-                        <input type="text" id="routeIntHost" placeholder="e.g. chart-model-single-int.{{INTERNAL_DOMAIN}}" oninput="saveAndPreview()">
-                    </div>
+                <div class="components-tabs" id="components-tabs">
+                    <!-- Tab buttons -->
                 </div>
 
-                <!-- Internet Route -->
-                <div class="route-card">
-                    <div class="route-card-header">
-                        <span>Internet Route (Valid TLS)</span>
-                        <label class="route-switch">
-                            <input type="checkbox" id="routeExtEnabled" onchange="toggleRouteUI(); saveAndPreview()">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-                    <div class="form-group" id="routeExtHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
-                        <label for="routeExtHost">Route Hostname</label>
-                        <input type="text" id="routeExtHost" placeholder="e.g. chart-model-single.{{EXTERNAL_DOMAIN}}" oninput="saveAndPreview()">
-                    </div>
-                </div>
+                <!-- Active Component Panel -->
+                <div id="component-config-panel"
+                    style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
 
-                <!-- 4. PERSISTENCE -->
-                <div class="section-subtitle" style="margin-top: 1.5rem;">Persistence (PVC/emptyDir)</div>
-                <div class="route-card">
-                    <div class="route-card-header">
-                        <span>Enable Storage / Persistence</span>
-                        <label class="route-switch">
-                            <input type="checkbox" id="persistenceEnabled" onchange="togglePersistenceUI(); saveAndPreview()">
-                            <span class="slider"></span>
-                        </label>
+                    <!-- 1. CORE WORKLOAD SETTINGS -->
+                    <div class="form-group">
+                        <label for="compRepo">Image Repository</label>
+                        <input type="text" id="compRepo" value="{{REGISTRY}}/chart-model-app"
+                            placeholder="image registry url">
                     </div>
-                </div>
-                
-                <div id="persistence-options" style="display: none; padding-left: 1rem; border-left: 2px solid rgba(255,255,255,0.1); margin-top: 0.5rem;">
+
+                    <div class="form-group row">
+                        <div>
+                            <label for="compTag">Image Tag (Defaults to appVersion)</label>
+                            <input type="text" id="compTag" placeholder="e.g. 1.0.0">
+                        </div>
+                    </div>
+
+                    <div class="form-group row">
+                        <div id="connects-to-field">
+                            <label for="compConnectsTo">Connects To (Workloads/components that this deployment connects
+                                to in OpenShift Topology View)</label>
+                            <input type="text" id="compConnectsTo" placeholder="e.g. db, redis (comma-separated)">
+                        </div>
+                        <div>
+                            <label for="compRuntime">Technology Runtime (OpenShift Topology Icon)</label>
+                            <input type="text" id="compRuntime" placeholder="e.g. spring-boot, nodejs, python">
+                        </div>
+                    </div>
+
+                    <!-- 2. APPLICATION CONFIGURATION -->
+                    <!-- ConfigMap variables -->
+                    <div class="section-subtitle"
+                        style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Deployment ConfigMap (Env Vars)</span>
+                        <button type="button" class="btn-add-item" onclick="toggleEnvVar('comp-cm')"
+                            id="btn-add-comp-cm">+ Add ConfigMap</button>
+                    </div>
+                    <div class="form-group" id="comp-cm-container" style="display: none;">
+                        <textarea id="comp-cm-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value"
+                            oninput="saveAndPreview()"></textarea>
+                        <button type="button" class="btn-remove-item" onclick="removeEnvVar('comp-cm')"
+                            style="margin-top: 5px;">Remove</button>
+                    </div>
+
+                    <!-- Secret variables -->
+                    <div class="section-subtitle"
+                        style="margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span>Deployment Secrets</span>
+                        <button type="button" class="btn-add-item" onclick="toggleEnvVar('comp-secret')"
+                            id="btn-add-comp-secret">+ Add Secret</button>
+                    </div>
+                    <div class="form-group" id="comp-secret-container" style="display: none;">
+                        <textarea id="comp-secret-text" rows="4" placeholder="KEY=value&#10;ANOTHER_KEY=value"
+                            oninput="saveAndPreview()"></textarea>
+                        <button type="button" class="btn-remove-item" onclick="removeEnvVar('comp-secret')"
+                            style="margin-top: 5px;">Remove</button>
+                    </div>
+
+
+                    <!-- 3. ROUTING & NETWORKING -->
+                    <div class="section-subtitle">Routing & Networking</div>
+                    <div class="form-group row">
+                        <div>
+                            <label for="compPort">Service Port</label>
+                            <input type="number" id="compPort" value="8080">
+                        </div>
+                        <div>
+                            <label for="compRoutePath">Route Path Prefix</label>
+                            <input type="text" id="compRoutePath" placeholder="e.g. /api">
+                        </div>
+                    </div>
+
+                    <!-- Default Route -->
                     <div class="route-card">
                         <div class="route-card-header">
-                            <span>Use Ephemeral Storage (emptyDir) instead of PVC</span>
+                            <span>Default OpenShift Route (Self-Signed)</span>
                             <label class="route-switch">
-                                <input type="checkbox" id="persistenceEphemeral" onchange="togglePersistenceUI(); saveAndPreview()">
+                                <input type="checkbox" id="routeDefaultEnabled" checked
+                                    onchange="toggleRouteUI(); saveAndPreview()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group" id="routeDefaultHostWrapper"
+                            style="margin-top: 1rem; margin-bottom: 0;">
+                            <label for="routeDefaultHost">Route Hostname</label>
+                            <input type="text" id="routeDefaultHost"
+                                placeholder="e.g. chart-model-single{{DEFAULT_DOMAIN}}" oninput="saveAndPreview()">
+                        </div>
+                    </div>
+
+                    <!-- Intranet Route -->
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Intranet Route (Valid TLS)</span>
+                            <label class="route-switch">
+                                <input type="checkbox" id="routeIntEnabled"
+                                    onchange="toggleRouteUI(); saveAndPreview()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group" id="routeIntHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
+                            <label for="routeIntHost">Route Hostname</label>
+                            <input type="text" id="routeIntHost"
+                                placeholder="e.g. chart-model-single{{INTERNAL_DOMAIN}}" oninput="saveAndPreview()">
+                        </div>
+                    </div>
+
+                    <!-- Internet Route -->
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Internet Route (Valid TLS)</span>
+                            <label class="route-switch">
+                                <input type="checkbox" id="routeExtEnabled"
+                                    onchange="toggleRouteUI(); saveAndPreview()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="form-group" id="routeExtHostWrapper" style="margin-top: 1rem; margin-bottom: 0;">
+                            <label for="routeExtHost">Route Hostname</label>
+                            <input type="text" id="routeExtHost"
+                                placeholder="e.g. chart-model-single{{EXTERNAL_DOMAIN}}" oninput="saveAndPreview()">
+                        </div>
+                    </div>
+
+                    <!-- 4. PERSISTENCE -->
+                    <div class="section-subtitle" style="margin-top: 1.5rem;">Persistence (PVC/emptyDir)</div>
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Enable Storage / Persistence</span>
+                            <label class="route-switch">
+                                <input type="checkbox" id="persistenceEnabled"
+                                    onchange="togglePersistenceUI(); saveAndPreview()">
                                 <span class="slider"></span>
                             </label>
                         </div>
                     </div>
-                    <div class="form-group row" style="margin-top: 1rem; margin-bottom: 0;">
-                        <div>
-                            <label for="persistenceMountPath">Mount Path</label>
-                            <input type="text" id="persistenceMountPath" placeholder="/var/lib/data" oninput="saveAndPreview()">
+
+                    <div id="persistence-options"
+                        style="display: none; padding-left: 1rem; border-left: 2px solid rgba(255,255,255,0.1); margin-top: 0.5rem;">
+                        <div class="route-card">
+                            <div class="route-card-header">
+                                <span>Use Ephemeral Storage (emptyDir) instead of PVC</span>
+                                <label class="route-switch">
+                                    <input type="checkbox" id="persistenceEphemeral"
+                                        onchange="togglePersistenceUI(); saveAndPreview()">
+                                    <span class="slider"></span>
+                                </label>
+                            </div>
                         </div>
-                        <div>
-                            <label for="persistenceStorage">Storage Size</label>
-                            <input type="text" id="persistenceStorage" placeholder="e.g. 1Gi, 5Gi" oninput="saveAndPreview()">
+                        <div class="form-group row" style="margin-top: 1rem; margin-bottom: 0;">
+                            <div>
+                                <label for="persistenceMountPath">Mount Path</label>
+                                <input type="text" id="persistenceMountPath" placeholder="/var/lib/data"
+                                    oninput="saveAndPreview()">
+                            </div>
+                            <div>
+                                <label for="persistenceStorage">Storage Size</label>
+                                <input type="text" id="persistenceStorage" placeholder="e.g. 1Gi, 5Gi"
+                                    oninput="saveAndPreview()">
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- 5. VAULT SECRETS OPERATOR (VSO) -->
-                <div class="section-subtitle" style="margin-top: 1.5rem;">Vault Secrets Operator (VSO)</div>
-                <div class="route-card">
-                    <div class="route-card-header">
-                        <span>Enable OpenBao VSO Integration</span>
-                        <label class="route-switch">
-                            <input type="checkbox" id="vsoEnabled" onchange="saveAndPreview()">
-                            <span class="slider"></span>
-                        </label>
+                    <!-- 5. VAULT SECRETS OPERATOR (VSO) -->
+                    <div class="section-subtitle" style="margin-top: 1.5rem;">Vault Secrets Operator (VSO)</div>
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Enable OpenBao VSO Integration</span>
+                            <label class="route-switch">
+                                <input type="checkbox" id="vsoEnabled" onchange="saveAndPreview()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Custom Files -->
+                    <div class="section-subtitle"
+                        style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span>Custom Files</span>
+                        <div>
+                            <button type="button" class="btn-add-item" onclick="addCustomFile('cm')">+ Add ConfigMap
+                                File</button>
+                            <button type="button" class="btn-add-item" onclick="addCustomFile('secret')">+ Add Secret
+                                File</button>
+                        </div>
+                    </div>
+                    <div id="custom-files-container" style="margin-bottom: 2rem;"></div>
+
+                </div> <!-- End component-config-panel -->
+
+                <!-- Global Subcomponents Config -->
+                <div id="subcomponents-section" style="margin-top: 2rem;">
+                    <h3 class="section-title">Optional Auxiliary Components</h3>
+                    <div id="subcomponentsContainer"
+                        style="display: flex; flex-direction: column; gap: 0.5rem; background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+                        <!-- Dynamically populated via JS -->
                     </div>
                 </div>
-
-                <!-- Custom Files -->
-                <div class="section-subtitle" style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
-                    <span>Custom Files</span>
-                    <div>
-                        <button type="button" class="btn-add-item" onclick="addCustomFile('cm')">+ Add ConfigMap File</button>
-                        <button type="button" class="btn-add-item" onclick="addCustomFile('secret')">+ Add Secret File</button>
-                    </div>
-                </div>
-                <div id="custom-files-container" style="margin-bottom: 2rem;"></div>
-
-            </div> <!-- End component-config-panel -->
-            
-            <!-- Global Subcomponents Config -->
-            <div id="subcomponents-section" style="margin-top: 2rem;">
-                <h3 class="section-title">Optional Auxiliary Components</h3>
-                <div id="subcomponentsContainer" style="display: flex; flex-direction: column; gap: 0.5rem; background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
-                    <!-- Dynamically populated via JS -->
-                </div>
-            </div>
 
         </aside>
 
@@ -1147,7 +1219,11 @@
                 <!-- Sidebar File Explorer -->
                 <div class="ide-sidebar">
                     <div class="ide-sidebar-title">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z">
+                            </path>
+                        </svg>
                         <span>EXPLORER</span>
                     </div>
                     <div class="ide-file-tree" id="ide-file-tree">
@@ -1158,13 +1234,25 @@
                 <!-- Editor Pane -->
                 <div class="ide-editor-container">
                     <div class="ide-editor-header" id="ide-editor-header">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
                         <span id="active-filename">Select a file</span>
                     </div>
                     <div class="ide-editor-body" id="ide-editor-body">
                         <!-- Default placeholder -->
                         <div class="ide-placeholder">
-                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                                <rect width="18" height="18" x="3" y="3" rx="2"></rect>
+                                <path d="M9 3v18"></path>
+                                <path d="m16 15-3-3 3-3"></path>
+                            </svg>
                             <p>Loading generated files...</p>
                         </div>
                     </div>
@@ -1373,8 +1461,10 @@
         }
 
         function createDefaultComponentConfig(name, type) {
+            const chartNameVal = document.getElementById('chartName').value.trim() || 'chart-model';
+            const hostPrefix = chartType === 'single' ? name : `${chartNameVal}-${name}`;
             const isFrontend = type === 'frontend' || type === 'web';
-            const suffix = isFrontend ? 'frontend' : 'backend';
+            const suffix = isFrontend ? 'frontend' : (type === 'app' ? 'app' : 'backend');
             return {
                 replicas: isFrontend ? 0 : 2,
                 image: {
@@ -1390,11 +1480,8 @@
                         }
                     }
                 },
-                cm: isFrontend ? { 'BACKEND_API_URL': 'http://chart-model-multi-backend:8080' } : {
-                    'SPRING_PROFILES_ACTIVE': 'prd',
-                    'JAVA_OPTS': '-XX:+UseG1GC -XX:+UseStringDeduplication'
-                },
-                secret: isFrontend ? {} : { 'DB_PASSWORD': 'vault-decrypted-secret-key-goes-here' },
+                cm: {},
+                secret: {},
                 connectsTo: isFrontend ? ['backend'] : [],
                 runtime: isFrontend ? 'nodejs' : 'spring-boot',
                 persistence: {
@@ -1406,9 +1493,9 @@
                 },
                 route: {
                     path: '',
-                    default: { enabled: true, host: `chart-model-${name}.{{DEFAULT_DOMAIN}}` },
-                    internal: { enabled: false, host: `chart-model-${name}-int.{{INTERNAL_DOMAIN}}` },
-                    external: { enabled: false, host: `chart-model-${name}.{{EXTERNAL_DOMAIN}}` }
+                    default: { enabled: true, host: `${hostPrefix}{{DEFAULT_DOMAIN}}` },
+                    internal: { enabled: false, host: `${hostPrefix}{{INTERNAL_DOMAIN}}` },
+                    external: { enabled: false, host: `${hostPrefix}{{EXTERNAL_DOMAIN}}` }
                 }
             };
         }
@@ -1461,7 +1548,7 @@
                 tab.type = 'button';
                 tab.className = `tab-btn ${activeComponent === name ? 'active' : ''}`;
                 tab.innerHTML = `<span>${name}</span>`;
-                
+
                 // Allow removing tabs in multi type
                 if (chartType === 'multi' && Object.keys(components).length > 1) {
                     const removeBtn = document.createElement('button');
@@ -1498,17 +1585,17 @@
         const modalError = document.getElementById('modal-comp-error');
         const modalConfirmBtn = document.getElementById('modal-btn-confirm');
         const modalCancelBtn = document.getElementById('modal-btn-cancel');
-        
+
         let modalPreset = 'backend';
         const presetBackendBtn = document.getElementById('modal-preset-backend');
         const presetFrontendBtn = document.getElementById('modal-preset-frontend');
-        
+
         presetBackendBtn.addEventListener('click', () => {
             modalPreset = 'backend';
             presetBackendBtn.classList.add('active');
             presetFrontendBtn.classList.remove('active');
         });
-        
+
         presetFrontendBtn.addEventListener('click', () => {
             modalPreset = 'frontend';
             presetFrontendBtn.classList.add('active');
@@ -1574,7 +1661,7 @@
             saveActiveComponentState();
             components[cleanName] = createDefaultComponentConfig(cleanName, modalPreset);
             activeComponent = cleanName;
-            
+
             renderTabs();
             renderActiveComponent();
             updatePreview();
@@ -1582,7 +1669,7 @@
         }
 
         modalConfirmBtn.addEventListener('click', handleModalConfirm);
-        
+
         modalInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -1605,7 +1692,7 @@
             config.image.repository = document.getElementById('compRepo').value;
             config.image.tag = document.getElementById('compTag').value;
             config.route.path = document.getElementById('compRoutePath').value;
-            
+
             const connectsToStr = document.getElementById('compConnectsTo').value.trim();
             config.connectsTo = connectsToStr ? connectsToStr.split(',').map(s => s.trim()).filter(Boolean) : [];
             config.runtime = document.getElementById('compRuntime').value.trim();
@@ -1705,7 +1792,7 @@
         function addCustomFile(type, filename = '', mountPath = '', content = '') {
             const container = document.getElementById('custom-files-container');
             const fileId = 'file-' + Date.now() + Math.floor(Math.random() * 1000);
-            
+
             const fileDiv = document.createElement('div');
             fileDiv.className = 'form-group';
             fileDiv.id = fileId;
@@ -1713,8 +1800,8 @@
             fileDiv.style.padding = '10px';
             fileDiv.style.borderRadius = 'var(--radius-md)';
             fileDiv.style.marginTop = '10px';
-            fileDiv.dataset.type = type; 
-            
+            fileDiv.dataset.type = type;
+
             fileDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
                     <strong style="color: ${type === 'secret' ? '#f43f5e' : '#3b82f6'};">${type === 'secret' ? 'Secret File' : 'ConfigMap File'}</strong>
@@ -1810,7 +1897,7 @@
                 }
             }
 
-			toggleRouteUI();
+            toggleRouteUI();
 
             // Render ConfigMaps
             const cmText = Object.entries(config.cm || {}).map(([k, v]) => `${k}=${v}`).join('\n');
@@ -1878,16 +1965,16 @@
         // Combine inputs and return JSON payload
         function buildPayload() {
             saveActiveComponentState();
-            
+
             const selectedSubcomponents = [];
             document.querySelectorAll('input[name="subcomponent"]:checked').forEach(cb => {
                 selectedSubcomponents.push(cb.value);
             });
-            
+
             const payload = {
                 chartName: document.getElementById('chartName').value || 'chart-model',
                 type: chartType,
-                devRepoUrl: document.getElementById('devRepoUrl').value || 'https://gitlab.{{INTERNAL_DOMAIN}}/devops/chart-model-backend.git',
+                devRepoUrl: document.getElementById('devRepoUrl').value || (chartType === 'single' ? 'https://{{DEV_REPO}}/devops/chart-model-app.git' : 'https://{{DEV_REPO}}/devops/chart-model-backend.git'),
                 globalConfig: globalConfig,
                 globalSecret: globalSecret,
                 deployments: components,
@@ -1904,7 +1991,7 @@
         // Update real-time preview
         async function updatePreview() {
             const payload = buildPayload();
-            
+
             try {
                 const response = await fetch('/v1/preview-wizard', {
                     method: 'POST',
@@ -1916,10 +2003,10 @@
 
                 if (response.ok) {
                     generatedFiles = await response.json();
-                    
+
                     // Render the file tree
                     renderFileTree();
-                    
+
                     // Render the currently selected file content
                     if (isFirstLoad) {
                         // Find first available file (prefer values.yaml)
@@ -1931,7 +2018,7 @@
                         }
                         isFirstLoad = false;
                     }
-                    
+
                     renderActiveFileContent();
                 } else {
                     const text = await response.text();
@@ -1977,7 +2064,7 @@
             if (templateFiles.length > 0) {
                 const folderEl = document.createElement('div');
                 folderEl.className = 'tree-folder';
-                
+
                 const headerEl = document.createElement('div');
                 headerEl.className = 'tree-folder-header';
                 headerEl.innerHTML = `<span class="arrow">${templatesFolderOpen ? '&#9662;' : '&#9656;'}</span> <span style="font-size: 0.95rem; margin-right: 0.2rem;">📁</span> <span>templates</span>`;
@@ -2005,7 +2092,7 @@
         function createFileNode(path, displayName) {
             const fileEl = document.createElement('div');
             fileEl.className = `tree-file ${activeFile === path ? 'active' : ''}`;
-            
+
             // Icon
             let icon = '📄';
             if (path.endsWith('.yaml') || path.endsWith('.yml')) icon = '📝';
@@ -2013,7 +2100,7 @@
             if (path === '.helmignore') icon = '🚫';
 
             fileEl.innerHTML = `<span style="font-size: 0.95rem; margin-right: 0.2rem;">${icon}</span> <span>${displayName}</span>`;
-            
+
             fileEl.addEventListener('click', () => {
                 activeFile = path;
                 // Highlight active item
@@ -2049,7 +2136,7 @@
 
             const code = generatedFiles[activeFile];
             const lineCount = code.split('\n').length;
-            
+
             // Generate line numbers column
             let lineNumsHTML = '';
             for (let i = 1; i <= lineCount; i++) {
@@ -2164,4 +2251,5 @@
         init();
     </script>
 </body>
+
 </html>

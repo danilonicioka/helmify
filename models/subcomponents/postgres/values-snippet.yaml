@@ -8,7 +8,7 @@ postgres:
   enabled: true
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
-    repository: {{REGISTRY}}/devops/postgres
+    repository: "{{REGISTRY}}/devops/postgres"
     # -- Defaults to Chart.appVersion if not specified.
     tag: "16-alpine"
     pullPolicy: IfNotPresent
