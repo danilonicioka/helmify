@@ -145,7 +145,10 @@ chart-model-single:
   # -- Internal Kubernetes Service Configuration.
   service:
     type: ClusterIP
-    ports: {}
+    ports:
+      http:
+        port: 80
+        targetPort: 8080
 
   # ----------------------------------------------------------------------------
   # 5. PERSISTENCE
