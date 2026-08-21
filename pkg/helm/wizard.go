@@ -189,9 +189,11 @@ type ImageParams struct {
 
 // ServiceParams configures the internal service port.
 type ServiceParams struct {
-	Port  int `json:"port"`
-	Ports map[string]struct {
-		Port int `json:"port"`
+	Port       int `json:"port"`
+	TargetPort int `json:"targetPort,omitempty"`
+	Ports      map[string]struct {
+		Port       int `json:"port"`
+		TargetPort int `json:"targetPort,omitempty"`
 	} `json:"ports"`
 }
 
@@ -346,17 +348,22 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, []string{appKey, "image", "tag"}, depConfig.Image.Tag)
 		}
 		svcPort := depConfig.Service.Port
+		svcTargetPort := depConfig.Service.TargetPort
 		if svcPort == 0 && depConfig.Service.Ports != nil {
 			if httpPort, ok := depConfig.Service.Ports["http"]; ok {
 				svcPort = httpPort.Port
+				svcTargetPort = httpPort.TargetPort
 			}
 		}
 		if svcPort > 0 {
+			if svcTargetPort == 0 {
+				svcTargetPort = 8080 // Standard convention fallback
+			}
 			_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "port"}, svcPort)
-			_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "targetPort"}, svcPort)
-			_ = setYamlPath(&rootNode, []string{appKey, "startupProbe", "tcpSocket", "port"}, svcPort)
-			_ = setYamlPath(&rootNode, []string{appKey, "livenessProbe", "tcpSocket", "port"}, svcPort)
-			_ = setYamlPath(&rootNode, []string{appKey, "readinessProbe", "tcpSocket", "port"}, svcPort)
+			_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "targetPort"}, svcTargetPort)
+			_ = setYamlPath(&rootNode, []string{appKey, "startupProbe", "tcpSocket", "port"}, svcTargetPort)
+			_ = setYamlPath(&rootNode, []string{appKey, "livenessProbe", "tcpSocket", "port"}, svcTargetPort)
+			_ = setYamlPath(&rootNode, []string{appKey, "readinessProbe", "tcpSocket", "port"}, svcTargetPort)
 		}
 		if depConfig.Cm != nil {
 			stripQuotesFromMap(depConfig.Cm)
@@ -591,17 +598,22 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, []string{compName, "image", "tag"}, depConfig.Image.Tag)
 			}
 			svcPort := depConfig.Service.Port
+			svcTargetPort := depConfig.Service.TargetPort
 			if svcPort == 0 && depConfig.Service.Ports != nil {
 				if httpPort, ok := depConfig.Service.Ports["http"]; ok {
 					svcPort = httpPort.Port
+					svcTargetPort = httpPort.TargetPort
 				}
 			}
 			if svcPort > 0 {
+				if svcTargetPort == 0 {
+					svcTargetPort = 8080 // Standard convention fallback
+				}
 				_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "port"}, svcPort)
-				_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "targetPort"}, svcPort)
-				_ = setYamlPath(&rootNode, []string{compName, "startupProbe", "tcpSocket", "port"}, svcPort)
-				_ = setYamlPath(&rootNode, []string{compName, "livenessProbe", "tcpSocket", "port"}, svcPort)
-				_ = setYamlPath(&rootNode, []string{compName, "readinessProbe", "tcpSocket", "port"}, svcPort)
+				_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "targetPort"}, svcTargetPort)
+				_ = setYamlPath(&rootNode, []string{compName, "startupProbe", "tcpSocket", "port"}, svcTargetPort)
+				_ = setYamlPath(&rootNode, []string{compName, "livenessProbe", "tcpSocket", "port"}, svcTargetPort)
+				_ = setYamlPath(&rootNode, []string{compName, "readinessProbe", "tcpSocket", "port"}, svcTargetPort)
 			}
 			if depConfig.Cm != nil {
 				stripQuotesFromMap(depConfig.Cm)
