@@ -165,14 +165,14 @@ type DeploymentParams struct {
 
 // CustomFiles holds cm and secret files
 type CustomFiles struct {
-	Cm     map[string]CustomFileParams `json:"cm"`
-	Secret map[string]CustomFileParams `json:"secret"`
+	Cm     map[string]CustomFileParams `json:"cm" yaml:"cm,omitempty"`
+	Secret map[string]CustomFileParams `json:"secret" yaml:"secret,omitempty"`
 }
 
 // CustomFileParams defines custom file injection.
 type CustomFileParams struct {
-	MountPath string `json:"mountPath"`
-	Content   string `json:"content"`
+	MountPath string `json:"mountPath" yaml:"mountPath"`
+	Content   string `json:"content" yaml:"content"`
 }
 
 // ResourceParams configures container resource requests and limits.
@@ -826,7 +826,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 func formatValues(valuesStr string) string {
 	blocks := []string{"imagePullSecrets:", "replicas:", "labels:", "annotations:", "cm:", "secret:", "vso:", "files:", "resources:", "route:", "service:", "persistence:", "startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "nodeSelector:", "tolerations:", "affinity:"}
 	for _, block := range blocks {
-		r := regexp.MustCompile(`(?m)^([^\n#]+[^:\n#])\n(\s+` + block + `)`)
+		r := regexp.MustCompile(`(?m)^([^\n#]+[^:\n#\s])\s*\n(\s+` + block + `)`)
 		valuesStr = r.ReplaceAllString(valuesStr, "$1\n\n$2")
 	}
 	return valuesStr
