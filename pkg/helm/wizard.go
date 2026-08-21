@@ -826,7 +826,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 func formatValues(valuesStr string) string {
 	blocks := []string{"imagePullSecrets:", "replicas:", "labels:", "annotations:", "cm:", "secret:", "vso:", "files:", "resources:", "route:", "service:", "persistence:", "startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "nodeSelector:", "tolerations:", "affinity:"}
 	for _, block := range blocks {
-		r := regexp.MustCompile(`(?m)^([^\n#]+)\n(\s+` + block + `)`)
+		r := regexp.MustCompile(`(?m)^([^\n#]+[^:\n#])\n(\s+` + block + `)`)
 		valuesStr = r.ReplaceAllString(valuesStr, "$1\n\n$2")
 	}
 	return valuesStr
