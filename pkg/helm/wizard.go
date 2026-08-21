@@ -147,11 +147,11 @@ type DeploymentParams struct {
 	Secret           map[string]string           `json:"secret"`
 	Resources        *ResourceParams             `json:"resources,omitempty"`
 	Persistence      PersistenceParams           `json:"persistence"`
-	Hpa              map[string]interface{}      `json:"hpa,omitempty"`
-	StartupProbe     map[string]interface{}      `json:"startupProbe,omitempty"`
-	LivenessProbe    map[string]interface{}      `json:"livenessProbe,omitempty"`
-	ReadinessProbe   map[string]interface{}      `json:"readinessProbe,omitempty"`
-	Affinity         map[string]interface{}      `json:"affinity,omitempty"`
+	Hpa              *HpaParams                  `json:"hpa,omitempty"`
+	StartupProbe     *ProbeParams                `json:"startupProbe,omitempty"`
+	LivenessProbe    *ProbeParams                `json:"livenessProbe,omitempty"`
+	ReadinessProbe   *ProbeParams                `json:"readinessProbe,omitempty"`
+	Affinity         *AffinityParams             `json:"affinity,omitempty"`
 	NodeSelector     map[string]interface{}      `json:"nodeSelector,omitempty"`
 	Tolerations      []interface{}               `json:"tolerations,omitempty"`
 	Route            RouteParams                 `json:"route"`
@@ -195,6 +195,34 @@ type ServiceParams struct {
 		Port       int `json:"port"`
 		TargetPort int `json:"targetPort,omitempty"`
 	} `json:"ports"`
+}
+
+// ProbeParams enforces a strict ordering of probe fields in the generated YAML
+type ProbeParams struct {
+	HTTPGet             interface{} `json:"httpGet,omitempty" yaml:"httpGet,omitempty"`
+	TCPSocket           interface{} `json:"tcpSocket,omitempty" yaml:"tcpSocket,omitempty"`
+	Exec                interface{} `json:"exec,omitempty" yaml:"exec,omitempty"`
+	InitialDelaySeconds interface{} `json:"initialDelaySeconds,omitempty" yaml:"initialDelaySeconds,omitempty"`
+	PeriodSeconds       interface{} `json:"periodSeconds,omitempty" yaml:"periodSeconds,omitempty"`
+	TimeoutSeconds      interface{} `json:"timeoutSeconds,omitempty" yaml:"timeoutSeconds,omitempty"`
+	SuccessThreshold    interface{} `json:"successThreshold,omitempty" yaml:"successThreshold,omitempty"`
+	FailureThreshold    interface{} `json:"failureThreshold,omitempty" yaml:"failureThreshold,omitempty"`
+}
+
+// HpaParams enforces a strict ordering of HPA fields
+type HpaParams struct {
+	Enabled     bool        `json:"enabled" yaml:"enabled"`
+	MinReplicas int         `json:"minReplicas,omitempty" yaml:"minReplicas,omitempty"`
+	MaxReplicas int         `json:"maxReplicas,omitempty" yaml:"maxReplicas,omitempty"`
+	Metrics     interface{} `json:"metrics,omitempty" yaml:"metrics,omitempty"`
+	Behavior    interface{} `json:"behavior,omitempty" yaml:"behavior,omitempty"`
+}
+
+// AffinityParams enforces strict ordering for Affinity fields
+type AffinityParams struct {
+	NodeAffinity    interface{} `json:"nodeAffinity,omitempty" yaml:"nodeAffinity,omitempty"`
+	PodAffinity     interface{} `json:"podAffinity,omitempty" yaml:"podAffinity,omitempty"`
+	PodAntiAffinity interface{} `json:"podAntiAffinity,omitempty" yaml:"podAntiAffinity,omitempty"`
 }
 
 // RouteParams configures routing options and paths.

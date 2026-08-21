@@ -82,13 +82,28 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 
 				// Extract Probes
 				if p, ok, _ := unstructured.NestedMap(container, "startupProbe"); ok && len(p) > 0 {
-					depParams.StartupProbe = p
+					if b, err := json.Marshal(p); err == nil {
+						var probe ProbeParams
+						if err := json.Unmarshal(b, &probe); err == nil {
+							depParams.StartupProbe = &probe
+						}
+					}
 				}
 				if p, ok, _ := unstructured.NestedMap(container, "livenessProbe"); ok && len(p) > 0 {
-					depParams.LivenessProbe = p
+					if b, err := json.Marshal(p); err == nil {
+						var probe ProbeParams
+						if err := json.Unmarshal(b, &probe); err == nil {
+							depParams.LivenessProbe = &probe
+						}
+					}
 				}
 				if p, ok, _ := unstructured.NestedMap(container, "readinessProbe"); ok && len(p) > 0 {
-					depParams.ReadinessProbe = p
+					if b, err := json.Marshal(p); err == nil {
+						var probe ProbeParams
+						if err := json.Unmarshal(b, &probe); err == nil {
+							depParams.ReadinessProbe = &probe
+						}
+					}
 				}
 
 				// Extract Persistence from volumeMounts
@@ -111,14 +126,10 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				// Seamlessly modernize legacy labels to our new standard component pattern
 				if b, err := json.Marshal(affinity); err == nil {
 					b = bytes.ReplaceAll(b, []byte("app.kubernetes.io/name"), []byte("app.kubernetes.io/component"))
-					var modernAffinity map[string]interface{}
+					var modernAffinity AffinityParams
 					if json.Unmarshal(b, &modernAffinity) == nil {
-						depParams.Affinity = modernAffinity
-					} else {
-						depParams.Affinity = affinity
+						depParams.Affinity = &modernAffinity
 					}
-				} else {
-					depParams.Affinity = affinity
 				}
 			}
 			if nodeSelector, ok, _ := unstructured.NestedMap(obj.Object, "spec", "template", "spec", "nodeSelector"); ok && len(nodeSelector) > 0 {
@@ -292,23 +303,22 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			}
 			depParams := params.Deployments[compName]
 			
-			hpaMap := make(map[string]interface{})
-			hpaMap["enabled"] = true
-			
-			if min, found, _ := unstructured.NestedInt64(obj.Object, "spec", "minReplicas"); found {
-				hpaMap["minReplicas"] = int(min)
+			hpaParams := &HpaParams{
+				Enabled: true,
 			}
-			if max, found, _ := unstructured.NestedInt64(obj.Object, "spec", "maxReplicas"); found {
-				hpaMap["maxReplicas"] = int(max)
+			if min, ok, _ := unstructured.NestedInt64(obj.Object, "spec", "minReplicas"); ok {
+				hpaParams.MinReplicas = int(min)
 			}
-			if metrics, found, _ := unstructured.NestedSlice(obj.Object, "spec", "metrics"); found {
-				hpaMap["metrics"] = metrics
+			if max, ok, _ := unstructured.NestedInt64(obj.Object, "spec", "maxReplicas"); ok {
+				hpaParams.MaxReplicas = int(max)
 			}
-			if behavior, found, _ := unstructured.NestedMap(obj.Object, "spec", "behavior"); found {
-				hpaMap["behavior"] = behavior
+			if metrics, ok, _ := unstructured.NestedSlice(obj.Object, "spec", "metrics"); ok && len(metrics) > 0 {
+				hpaParams.Metrics = metrics
 			}
-			
-			depParams.Hpa = hpaMap
+			if behavior, ok, _ := unstructured.NestedMap(obj.Object, "spec", "behavior"); ok && len(behavior) > 0 {
+				hpaParams.Behavior = behavior
+			}
+			depParams.Hpa = hpaParams
 			params.Deployments[compName] = depParams
 		}
 	}
