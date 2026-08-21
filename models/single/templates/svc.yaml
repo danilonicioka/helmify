@@ -1,4 +1,4 @@
-{{- $app := index .Values .Chart.Name | default dict -}}
+{{- $comp := index .Values .Chart.Name | default dict -}}
 apiVersion: v1
 kind: Service
 metadata:
@@ -6,9 +6,9 @@ metadata:
   labels:
     {{- include "chart-model-single.labels" . | nindent 4 }}
 spec:
-  type: {{ $app.service.type }}
+  type: {{ $comp.service.type }}
   ports:
-    {{- range $key, $val := $app.service.ports }}
+    {{- range $key, $val := $comp.service.ports }}
   - name: {{ $key }}
     port: {{ $val.port }}
     targetPort: {{ $val.targetPort }}

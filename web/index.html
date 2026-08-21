@@ -1456,6 +1456,36 @@
                         enabled: !!(compData.route && compData.route.external && compData.route.external.enabled),
                         host: (compData.route && compData.route.external && compData.route.external.host) || ''
                     }
+                },
+                hpa: compData.hpa || {
+                    enabled: false,
+                    minReplicas: 1,
+                    maxReplicas: 2,
+                    metrics: [
+                        {
+                            type: 'Resource',
+                            resource: {
+                                name: 'memory',
+                                target: {
+                                    type: 'Utilization',
+                                    averageUtilization: 180
+                                }
+                            }
+                        }
+                    ],
+                    behavior: {
+                        scaleDown: { stabilizationWindowSeconds: 120 },
+                        scaleUp: {
+                            stabilizationWindowSeconds: 0,
+                            policies: [
+                                {
+                                    type: 'Percent',
+                                    value: 100,
+                                    periodSeconds: 15
+                                }
+                            ]
+                        }
+                    }
                 }
             };
         }
@@ -1496,6 +1526,36 @@
                     default: { enabled: true, host: `${hostPrefix}{{DEFAULT_DOMAIN}}` },
                     internal: { enabled: false, host: `${hostPrefix}{{INTERNAL_DOMAIN}}` },
                     external: { enabled: false, host: `${hostPrefix}{{EXTERNAL_DOMAIN}}` }
+                },
+                hpa: {
+                    enabled: false,
+                    minReplicas: 1,
+                    maxReplicas: 2,
+                    metrics: [
+                        {
+                            type: 'Resource',
+                            resource: {
+                                name: 'memory',
+                                target: {
+                                    type: 'Utilization',
+                                    averageUtilization: 180
+                                }
+                            }
+                        }
+                    ],
+                    behavior: {
+                        scaleDown: { stabilizationWindowSeconds: 120 },
+                        scaleUp: {
+                            stabilizationWindowSeconds: 0,
+                            policies: [
+                                {
+                                    type: 'Percent',
+                                    value: 100,
+                                    periodSeconds: 15
+                                }
+                            ]
+                        }
+                    }
                 }
             };
         }

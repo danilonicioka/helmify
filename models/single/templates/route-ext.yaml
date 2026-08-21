@@ -1,31 +1,31 @@
-{{- $app := index .Values .Chart.Name | default dict -}}
-{{- if and $app $app.route $app.route.external $app.route.external.enabled -}}
+{{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if and $comp $comp.route $comp.route.external $comp.route.external.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   name: {{ include "chart-model-single.fullname" . }}-ext
   labels:
     {{- include "chart-model-single.labels" . | nindent 4 }}
-  {{- with $app.route.annotations }}
+  {{- with $comp.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if $app.route.external.host }}
-  host: {{ $app.route.external.host | quote }}
+  {{- if $comp.route.external.host }}
+  host: {{ $comp.route.external.host | quote }}
   {{- end }}
-  {{- if $app.route.path }}
-  path: {{ $app.route.path | quote }}
+  {{- if $comp.route.path }}
+  path: {{ $comp.route.path | quote }}
   {{- end }}
-  {{- if $app.route.tls }}
+  {{- if $comp.route.tls }}
   tls:
-    {{- toYaml $app.route.tls | nindent 4 }}
+    {{- toYaml $comp.route.tls | nindent 4 }}
   {{- end }}
   to:
     kind: Service
     name: {{ include "chart-model-single.fullname" . }}
     weight: 100
   port:
-    targetPort: {{ if and $app.service $app.service.ports }}{{ if hasKey $app.service.ports "http" }}http{{ else }}{{ keys $app.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
+    targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
   wildcardPolicy: None
 {{- end }}

@@ -1,4 +1,4 @@
-{{- $app := index .Values .Chart.Name | default dict -}}
+{{- $comp := index .Values .Chart.Name | default dict -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -11,12 +11,12 @@ metadata:
     {{- $annotations | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not (kindIs "nil" $app.replicas) }}
-  replicas: {{ $app.replicas }}
+  {{- if not (kindIs "nil" $comp.replicas) }}
+  replicas: {{ $comp.replicas }}
   {{- end }}
-  {{- if $app.strategy }}
+  {{- if $comp.strategy }}
   strategy:
-    {{- toYaml $app.strategy | nindent 4 }}
+    {{- toYaml $comp.strategy | nindent 4 }}
   {{- end }}
   selector:
     matchLabels:
@@ -32,31 +32,31 @@ spec:
         {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
         checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and $app.cm (not (empty $app.cm)) }}
+        {{- if and $comp.cm (not (empty $comp.cm)) }}
         checksum/cm-config: '{{ include (print $.Template.BasePath "/cm.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and $app.secret (not (empty $app.secret)) }}
+        {{- if and $comp.secret (not (empty $comp.secret)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}'
         {{- end }}
       labels:
         {{- include "chart-model-single.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ include "chart-model-single.name" . }}
     spec:
-      {{- with $app.image.pullSecrets }}
+      {{- with $comp.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if and $app.vso $app.vso.enabled }}
+      {{- if and $comp.vso $comp.vso.enabled }}
       serviceAccountName: {{ include "chart-model-single.fullname" . }}-sa
       {{- else if .Values.serviceAccount }}
       serviceAccountName: {{ include "chart-model-single.serviceAccountName" . }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ $app.image.repository }}:{{ $app.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ $app.image.pullPolicy }}
+          image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $comp.image.pullPolicy }}
           ports:
-            {{- range $key, $val := $app.service.ports }}
+            {{- range $key, $val := $comp.service.ports }}
             - name: {{ $key }}
               containerPort: {{ $val.targetPort }}
               {{- if $val.protocol }}
@@ -74,61 +74,61 @@ spec:
             - secretRef:
                 name: {{ include "chart-model-single.fullname" . }}-global-secret
             {{- end }}
-            {{- if and $app.cm (not (empty $app.cm)) }}
+            {{- if and $comp.cm (not (empty $comp.cm)) }}
             - configMapRef:
                 name: {{ include "chart-model-single.fullname" . }}-cm
             {{- end }}
-            {{- if and $app.secret (not (empty $app.secret)) }}
+            {{- if and $comp.secret (not (empty $comp.secret)) }}
             - secretRef:
                 name: {{ include "chart-model-single.fullname" . }}-secret
             {{- end }}
-            {{- if and $app.vso $app.vso.enabled }}
+            {{- if and $comp.vso $comp.vso.enabled }}
             - secretRef:
                 name: {{ include "chart-model-single.fullname" . }}-vso-secret
             {{- end }}
 
           # 2. Tiered "Fail-Fast" Health Probes
-          {{- if and $app.startupProbe (not (empty $app.startupProbe)) }}
+          {{- if and $comp.startupProbe (not (empty $comp.startupProbe)) }}
           startupProbe:
-            {{- toYaml $app.startupProbe | nindent 12 }}
+            {{- toYaml $comp.startupProbe | nindent 12 }}
           {{- end }}
-          {{- if and $app.livenessProbe (not (empty $app.livenessProbe)) }}
+          {{- if and $comp.livenessProbe (not (empty $comp.livenessProbe)) }}
           livenessProbe:
-            {{- toYaml $app.livenessProbe | nindent 12 }}
+            {{- toYaml $comp.livenessProbe | nindent 12 }}
           {{- end }}
-          {{- if and $app.readinessProbe (not (empty $app.readinessProbe)) }}
+          {{- if and $comp.readinessProbe (not (empty $comp.readinessProbe)) }}
           readinessProbe:
-            {{- toYaml $app.readinessProbe | nindent 12 }}
+            {{- toYaml $comp.readinessProbe | nindent 12 }}
           {{- end }}
 
           # 1. Resources (Operational Overlay-Only)
-          {{- if and $app.resources $app.resources.limits }}
+          {{- if and $comp.resources $comp.resources.limits }}
           resources:
-            {{- toYaml $app.resources | nindent 12 }}
+            {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
 
-          {{- if or (and $app.persistence $app.persistence.enabled) $app.files }}
+          {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files }}
           volumeMounts:
-            {{- if and $app.persistence $app.persistence.enabled }}
+            {{- if and $comp.persistence $comp.persistence.enabled }}
             - name: data
-              mountPath: {{ $app.persistence.mountPath | default "/var/lib/data" }}
+              mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
             {{- end }}
-            {{- if and $app.files $app.files.cm }}
-            {{- range $filename, $config := $app.files.cm }}
+            {{- if and $comp.files $comp.files.cm }}
+            {{- range $filename, $config := $comp.files.cm }}
             - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
-            {{- if and $app.files $app.files.secret }}
-            {{- range $filename, $config := $app.files.secret }}
+            {{- if and $comp.files $comp.files.secret }}
+            {{- range $filename, $config := $comp.files.secret }}
             - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
-            {{- if and $app.vso $app.vso.enabled $app.vso.files }}
-            {{- range $filename, $config := $app.vso.files }}
+            {{- if and $comp.vso $comp.vso.enabled $comp.vso.files }}
+            {{- range $filename, $config := $comp.vso.files }}
             - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
@@ -137,47 +137,47 @@ spec:
           {{- end }}
       
       # 5. Graceful connection draining lifecycle settings
-      {{- if $app.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ $app.terminationGracePeriodSeconds }}
+      {{- if $comp.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
       {{- end }}
 
-      {{- with $app.nodeSelector }}
+      {{- with $comp.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $app.affinity }}
+      {{- with $comp.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $app.tolerations }}
+      {{- with $comp.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if $app.topologySpreadConstraints }}
+      {{- if $comp.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml $app.topologySpreadConstraints | nindent 8 }}
+        {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {{- if or (and $app.persistence $app.persistence.enabled) $app.files }}
+      {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files }}
       volumes:
-        {{- if and $app.persistence $app.persistence.enabled }}
+        {{- if and $comp.persistence $comp.persistence.enabled }}
         - name: data
-          {{- if $app.persistence.ephemeral }}
+          {{- if $comp.persistence.ephemeral }}
           emptyDir: {}
           {{- else }}
           persistentVolumeClaim:
             claimName: {{ include "chart-model-single.fullname" . }}
           {{- end }}
         {{- end }}
-        {{- if and $app.files $app.files.cm }}
-        {{- range $filename, $config := $app.files.cm }}
+        {{- if and $comp.files $comp.files.cm }}
+        {{- range $filename, $config := $comp.files.cm }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
           configMap:
             name: {{ include "chart-model-single.fullname" $ }}-files
         {{- end }}
         {{- end }}
-        {{- if and $app.files $app.files.secret }}
-        {{- range $filename, $config := $app.files.secret }}
+        {{- if and $comp.files $comp.files.secret }}
+        {{- range $filename, $config := $comp.files.secret }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
           secret:
             secretName: {{ include "chart-model-single.fullname" $ }}-files-secret
@@ -186,8 +186,8 @@ spec:
                 path: {{ $filename }}
         {{- end }}
         {{- end }}
-        {{- if and $app.vso $app.vso.enabled $app.vso.files }}
-        {{- range $filename, $config := $app.vso.files }}
+        {{- if and $comp.vso $comp.vso.enabled $comp.vso.files }}
+        {{- range $filename, $config := $comp.vso.files }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
           secret:
             secretName: {{ include "chart-model-single.fullname" $ }}-vso-secret
