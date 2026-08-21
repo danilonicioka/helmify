@@ -73,6 +73,29 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				depParams.Replicas = &r
 			}
 
+			// First, extract volumes and populate volSources
+			volumes, vOk, _ := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "volumes")
+			volSources := make(map[string]struct{Type, Name string})
+			if vOk && len(volumes) > 0 {
+				for _, v := range volumes {
+					vol := v.(map[string]interface{})
+					name, _, _ := unstructured.NestedString(vol, "name")
+					if cm, ok, _ := unstructured.NestedMap(vol, "configMap"); ok {
+						cmName, _, _ := unstructured.NestedString(cm, "name")
+						volSources[name] = struct{Type, Name string}{"configMap", cmName}
+					} else if secret, ok, _ := unstructured.NestedMap(vol, "secret"); ok {
+						secName, _, _ := unstructured.NestedString(secret, "secretName")
+						volSources[name] = struct{Type, Name string}{"secret", secName}
+					} else if _, ok, _ := unstructured.NestedMap(vol, "emptyDir"); ok {
+						depParams.Persistence.Enabled = true
+						depParams.Persistence.Ephemeral = true
+					} else if _, ok, _ := unstructured.NestedMap(vol, "persistentVolumeClaim"); ok {
+						depParams.Persistence.Enabled = true
+						depParams.Persistence.Ephemeral = false
+					}
+				}
+			}
+
 			containers, found, err := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "containers")
 			if err == nil && found && len(containers) > 0 {
 				container := containers[0].(map[string]interface{})
@@ -128,13 +151,15 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					}
 				}
 
-				// Extract Persistence from volumeMounts
+				// Extract Persistence from volumeMounts (ignoring configMaps, secrets, and system tokens)
 				mounts, ok, _ := unstructured.NestedSlice(container, "volumeMounts")
 				if ok && len(mounts) > 0 {
 					for _, m := range mounts {
 						mount := m.(map[string]interface{})
 						name, _, _ := unstructured.NestedString(mount, "name")
-						if !strings.HasPrefix(name, "kube-api") && !strings.Contains(name, "default-token") {
+						
+						_, isConfigMapOrSecret := volSources[name]
+						if !strings.HasPrefix(name, "kube-api") && !strings.Contains(name, "default-token") && !isConfigMapOrSecret {
 							path, _, _ := unstructured.NestedString(mount, "mountPath")
 							depParams.Persistence.Enabled = true
 							depParams.Persistence.MountPath = path
@@ -161,39 +186,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				depParams.Tolerations = tolerations
 			}
 
-			// Extract Ephemeral Persistence (emptyDir)
-			volumes, vOk, _ := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "volumes")
-			if vOk && len(volumes) > 0 {
-				for _, v := range volumes {
-					vol := v.(map[string]interface{})
-					if _, ok, _ := unstructured.NestedMap(vol, "emptyDir"); ok {
-						depParams.Persistence.Enabled = true
-						depParams.Persistence.Ephemeral = true
-						break
-					}
-					if _, ok, _ := unstructured.NestedMap(vol, "persistentVolumeClaim"); ok {
-						depParams.Persistence.Enabled = true
-						depParams.Persistence.Ephemeral = false
-					}
-				}
-			}
-
 			// Track volume mappings for Pass 2 (Custom Files routing)
 			var currentVols []VolumeMapping
-			volSources := make(map[string]struct{Type, Name string})
-			if vOk {
-				for _, v := range volumes {
-					vol := v.(map[string]interface{})
-					name, _, _ := unstructured.NestedString(vol, "name")
-					if cm, ok, _ := unstructured.NestedMap(vol, "configMap"); ok {
-						cmName, _, _ := unstructured.NestedString(cm, "name")
-						volSources[name] = struct{Type, Name string}{"configMap", cmName}
-					} else if secret, ok, _ := unstructured.NestedMap(vol, "secret"); ok {
-						secName, _, _ := unstructured.NestedString(secret, "secretName")
-						volSources[name] = struct{Type, Name string}{"secret", secName}
-					}
-				}
-			}
 			if len(containers) > 0 {
 				container := containers[0].(map[string]interface{})
 				if mounts, mOk, _ := unstructured.NestedSlice(container, "volumeMounts"); mOk {
