@@ -40,8 +40,8 @@ helm.sh/chart: {{ include "chart-model-single.chart" . }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
-{{- $app := index .Values .Chart.Name | default dict -}}
-{{- with $app.labels }}
+{{- $comp := index .Values .Chart.Name | default dict -}}
+{{- with $comp.labels }}
 {{ toYaml . }}
 {{- end }}
 {{- end }}
@@ -72,8 +72,8 @@ Create the name of the service account to use
 Annotations helper for single model
 */}}
 {{- define "chart-model-single.annotations" -}}
-{{- $app := index .Values .Chart.Name | default dict -}}
-{{- with $app.annotations }}
+{{- $comp := index .Values .Chart.Name | default dict -}}
+{{- with $comp.annotations }}
 {{- toYaml . }}
 {{- end }}
 {{- end }}

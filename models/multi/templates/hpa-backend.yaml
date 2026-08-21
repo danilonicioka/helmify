@@ -1,0 +1,22 @@
+{{- $comp := index .Values "backend" | default dict -}}
+{{- if and $comp $comp.hpa $comp.hpa.enabled -}}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "chart-model-multi.fullname" . }}-backend
+  labels:
+    {{- include "chart-model-multi.backend.labels" . | nindent 4 }}
+spec:
+  {{- with $comp.hpa.behavior }}
+  behavior:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  maxReplicas: {{ $comp.hpa.maxReplicas }}
+  metrics:
+    {{- toYaml $comp.hpa.metrics | nindent 4 }}
+  minReplicas: {{ $comp.hpa.minReplicas }}
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "chart-model-multi.fullname" . }}-backend
+{{- end }}

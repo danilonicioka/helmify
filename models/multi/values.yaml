@@ -74,6 +74,27 @@ backend:
       cpu: 30m
       memory: 256Mi
 
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    metrics:
+      - type: Resource
+        resource:
+          name: memory
+          target:
+            type: Utilization
+            averageUtilization: 180
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 120
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
+
   # ----------------------------------------------------------------------------
   # 4. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -215,6 +236,27 @@ frontend:
     requests:
       cpu: 30m
       memory: 256Mi
+
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    metrics:
+      - type: Resource
+        resource:
+          name: memory
+          target:
+            type: Utilization
+            averageUtilization: 180
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 120
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
 
   # ----------------------------------------------------------------------------
   # 4. ROUTING & NETWORKING
