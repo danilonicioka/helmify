@@ -1,6 +1,6 @@
 apiVersion: v2
 name: chart-model-single
-description: A standardized, production-grade model Helm chart for Generic Organization applications.
+description: A standardized model Helm chart for Generic Organization applications.
 type: application
 sources:
   - ""
