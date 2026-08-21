@@ -21,6 +21,17 @@ type VolumeMapping struct {
 	SourceName string
 }
 
+func cleanMultilineString(s string) string {
+	if !strings.Contains(s, "\n") {
+		return s
+	}
+	lines := strings.Split(s, "\n")
+	for i, line := range lines {
+		lines[i] = strings.TrimRight(line, " \t\r")
+	}
+	return strings.Join(lines, "\n")
+}
+
 func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, error) {
 	stop := make(chan struct{})
 	defer close(stop)
@@ -293,7 +304,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 									}
 									depParams.Files.Cm[k] = CustomFileParams{
 										MountPath: mntPath,
-										Content:   fmt.Sprintf("%v", v),
+										Content:   cleanMultilineString(fmt.Sprintf("%v", v)),
 									}
 								}
 							}
@@ -306,12 +317,12 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					if compName != "" {
 						depParams := params.Deployments[compName]
 						for k, v := range data {
-							depParams.Cm[k] = fmt.Sprintf("%v", v)
+							depParams.Cm[k] = cleanMultilineString(fmt.Sprintf("%v", v))
 						}
 						params.Deployments[compName] = depParams
 					} else {
 						for k, v := range data {
-							params.GlobalConfig[k] = fmt.Sprintf("%v", v)
+							params.GlobalConfig[k] = cleanMultilineString(fmt.Sprintf("%v", v))
 						}
 					}
 				}
@@ -349,7 +360,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 									}
 									depParams.Files.Secret[k] = CustomFileParams{
 										MountPath: mntPath,
-										Content:   val,
+										Content:   cleanMultilineString(val),
 									}
 								}
 							}
@@ -371,16 +382,16 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				if compName == "" {
 					if foundStr {
 						for k, v := range stringData {
-							params.GlobalSecret[k] = fmt.Sprintf("%v", v)
+							params.GlobalSecret[k] = cleanMultilineString(fmt.Sprintf("%v", v))
 						}
 					}
 					if foundData {
 						for k, v := range data {
 							if strVal, ok := v.(string); ok {
 								if decoded, err := base64.StdEncoding.DecodeString(strVal); err == nil {
-									params.GlobalSecret[k] = string(decoded)
+									params.GlobalSecret[k] = cleanMultilineString(string(decoded))
 								} else {
-									params.GlobalSecret[k] = strVal
+									params.GlobalSecret[k] = cleanMultilineString(strVal)
 								}
 							}
 						}
