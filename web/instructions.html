@@ -501,7 +501,7 @@
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>kustomize build overlays/dev | curl -X POST "http://helmify{{DEFAULT_DOMAIN}}/v1/generate" \
+                    <pre><code>kustomize build overlays/dev | curl -k -X POST "https://helmify{{DEFAULT_DOMAIN}}/v1/generate" \
   -H "X-Chart-Name: chart" \
   -H "X-Generate-All-Templates: true" \
   -H "X-Dev-Repo-Url: https://gitlab-ca.example.com/group/project" \
@@ -525,7 +525,7 @@ tar -xvzf chart.tar.gz</code></pre>
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>helm template chart -f values-dev.yaml | curl -X POST "http://helmify{{DEFAULT_DOMAIN}}/v1/generate" \
+                    <pre><code>helm template chart -f values-dev.yaml | curl -k -X POST "https://helmify{{DEFAULT_DOMAIN}}/v1/generate" \
   -H "X-Chart-Name: chart" \
   -H "X-Generate-All-Templates: true" \
   -H "X-Dev-Repo-Url: https://gitlab-ca.example.com/group/project" \
@@ -549,7 +549,7 @@ tar -xvzf chart.tar.gz</code></pre>
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>kustomize build overlays/dev | curl -s -X POST "http://helmify{{DEFAULT_DOMAIN}}/v1/generate?values-only=true" \
+                    <pre><code>kustomize build overlays/dev | curl -k -s -X POST "https://helmify{{DEFAULT_DOMAIN}}/v1/generate?values-only=true" \
   -H "X-Chart-Name: chart" \
   -H "Content-Type: text/yaml" \
   --data-binary @- > values-dev.yaml</code></pre>
@@ -560,7 +560,7 @@ tar -xvzf chart.tar.gz</code></pre>
                         <span>cURL</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy</button>
                     </div>
-                    <pre><code>helm template chart -f values-env.yaml | curl -s -X POST "http://helmify{{DEFAULT_DOMAIN}}/v1/generate?values-only=true" \
+                    <pre><code>helm template chart -f values-prd.yaml | curl -k -s -X POST "https://helmify{{DEFAULT_DOMAIN}}/v1/generate?values-only=true" \
   -H "X-Chart-Name: chart" \
   -H "Content-Type: text/yaml" \
   --data-binary @- > values.tmp.yaml && mv values.tmp.yaml values-env.yaml</code></pre>
