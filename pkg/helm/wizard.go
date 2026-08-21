@@ -917,6 +917,9 @@ func setBlockStyle(node *yaml.Node) {
 	if node.Kind == yaml.MappingNode {
 		node.Style &= ^yaml.FlowStyle
 	}
+	if node.Kind == yaml.ScalarNode && strings.Contains(node.Value, "\n") {
+		node.Style = yaml.LiteralStyle
+	}
 	for _, child := range node.Content {
 		setBlockStyle(child)
 	}
