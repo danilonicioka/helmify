@@ -275,8 +275,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 	// Copy non-component files (Chart.yaml, helpers, global config, .helmignore)
 	for relPath, data := range embeddedFiles {
-
-		if !strings.Contains(relPath, "templates/") || relPath == "templates/_helpers.tpl" || relPath == "templates/cm-global.yaml" {
+		if !strings.Contains(relPath, "templates/") || relPath == "templates/_helpers.tpl" || relPath == "templates/cm-global.yaml" || relPath == "templates/secret-global.yaml" {
 			content := replaceChartName(string(data), oldChartName, params.ChartName)
 			outputFiles[relPath] = []byte(content)
 		}
@@ -315,7 +314,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 		// Copy templates as-is but replacing name/references
 		for relPath, data := range embeddedFiles {
-			if strings.Contains(relPath, "templates/") && relPath != "templates/_helpers.tpl" && relPath != "templates/cm-global.yaml" {
+			if strings.Contains(relPath, "templates/") && relPath != "templates/_helpers.tpl" && relPath != "templates/cm-global.yaml" && relPath != "templates/secret-global.yaml" {
 				base := filepath.Base(relPath)
 				if strings.HasSuffix(base, "-redis.yaml") || strings.HasSuffix(base, "-postgres.yaml") {
 					continue
