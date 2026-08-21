@@ -145,7 +145,15 @@ type DeploymentParams struct {
 	Service          ServiceParams               `json:"service"`
 	Cm               map[string]string           `json:"cm"`
 	Secret           map[string]string           `json:"secret"`
+	Resources        *ResourceParams             `json:"resources,omitempty"`
 	Persistence      PersistenceParams           `json:"persistence"`
+	Hpa              map[string]interface{}      `json:"hpa,omitempty"`
+	StartupProbe     map[string]interface{}      `json:"startupProbe,omitempty"`
+	LivenessProbe    map[string]interface{}      `json:"livenessProbe,omitempty"`
+	ReadinessProbe   map[string]interface{}      `json:"readinessProbe,omitempty"`
+	Affinity         map[string]interface{}      `json:"affinity,omitempty"`
+	NodeSelector     map[string]interface{}      `json:"nodeSelector,omitempty"`
+	Tolerations      []interface{}               `json:"tolerations,omitempty"`
 	Route            RouteParams                 `json:"route"`
 	ConnectsTo       []string                    `json:"connectsTo"`
 	Runtime          string                      `json:"runtime"`
@@ -165,6 +173,12 @@ type CustomFiles struct {
 type CustomFileParams struct {
 	MountPath string `json:"mountPath"`
 	Content   string `json:"content"`
+}
+
+// ResourceParams configures container resource requests and limits.
+type ResourceParams struct {
+	Limits   map[string]interface{} `json:"limits,omitempty"`
+	Requests map[string]interface{} `json:"requests,omitempty"`
 }
 
 // ImageParams configures the container image.
@@ -351,6 +365,30 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Secret != nil {
 			stripQuotesFromMap(depConfig.Secret)
 			_ = setYamlPath(&rootNode, []string{appKey, "secret"}, depConfig.Secret)
+		}
+		if depConfig.Resources != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "resources"}, depConfig.Resources)
+		}
+		if depConfig.Hpa != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "hpa"}, depConfig.Hpa)
+		}
+		if depConfig.StartupProbe != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "startupProbe"}, depConfig.StartupProbe)
+		}
+		if depConfig.LivenessProbe != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "livenessProbe"}, depConfig.LivenessProbe)
+		}
+		if depConfig.ReadinessProbe != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "readinessProbe"}, depConfig.ReadinessProbe)
+		}
+		if depConfig.Affinity != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "affinity"}, depConfig.Affinity)
+		}
+		if depConfig.NodeSelector != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "nodeSelector"}, depConfig.NodeSelector)
+		}
+		if depConfig.Tolerations != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "tolerations"}, depConfig.Tolerations)
 		}
 		if depConfig.Route.Path != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "route", "path"}, depConfig.Route.Path)
@@ -572,6 +610,30 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.Secret != nil {
 				stripQuotesFromMap(depConfig.Secret)
 				_ = setYamlPath(&rootNode, []string{compName, "secret"}, depConfig.Secret)
+			}
+			if depConfig.Resources != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "resources"}, depConfig.Resources)
+			}
+			if depConfig.Hpa != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "hpa"}, depConfig.Hpa)
+			}
+			if depConfig.StartupProbe != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "startupProbe"}, depConfig.StartupProbe)
+			}
+			if depConfig.LivenessProbe != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "livenessProbe"}, depConfig.LivenessProbe)
+			}
+			if depConfig.ReadinessProbe != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "readinessProbe"}, depConfig.ReadinessProbe)
+			}
+			if depConfig.Affinity != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "affinity"}, depConfig.Affinity)
+			}
+			if depConfig.NodeSelector != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "nodeSelector"}, depConfig.NodeSelector)
+			}
+			if depConfig.Tolerations != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "tolerations"}, depConfig.Tolerations)
 			}
 			if depConfig.Route.Path != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
