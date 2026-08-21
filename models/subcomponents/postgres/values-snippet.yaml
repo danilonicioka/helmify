@@ -49,7 +49,7 @@ postgres:
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
   # ----------------------------------------------------------------------------
-  # Kept empty by default; the recommended configuration is commented below.
+  # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
     limits:
       cpu: 500m

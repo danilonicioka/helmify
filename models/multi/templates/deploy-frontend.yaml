@@ -38,6 +38,12 @@ spec:
         {{- if and $comp.secret (not (empty $comp.secret)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret-frontend.yaml") . | sha256sum }}'
         {{- end }}
+        {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
+        checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-frontend-files.yaml") . | sha256sum }}'
+        {{- end }}
+        {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
+        checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-frontend-files.yaml") . | sha256sum }}'
+        {{- end }}
       labels:
         {{- include "chart-model-multi.frontend.selectorLabels" . | nindent 8 }}
     spec:

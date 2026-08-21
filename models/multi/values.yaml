@@ -66,6 +66,7 @@ backend:
   # ----------------------------------------------------------------------------
   # 3. RESOURCES
   # ----------------------------------------------------------------------------
+  # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
     limits:
       cpu: 100m
@@ -232,6 +233,7 @@ frontend:
   # ----------------------------------------------------------------------------
   # 3. RESOURCES
   # ----------------------------------------------------------------------------
+  # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
     limits:
       cpu: 100m

@@ -79,7 +79,7 @@ chart-model-single:
   # ----------------------------------------------------------------------------
   # 3. RESOURCES
   # ----------------------------------------------------------------------------
-  # Kept empty by default; the recommended configuration is commented below.
+  # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
     limits:
       cpu: 100m
