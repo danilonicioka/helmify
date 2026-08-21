@@ -6,12 +6,20 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 
 	"github.com/danilonicioka/helmify/pkg/config"
 	"github.com/danilonicioka/helmify/pkg/decoder"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
+
+type VolumeMapping struct {
+	MountPath  string
+	SubPath    string
+	SourceType string // "configMap" or "secret"
+	SourceName string
+}
 
 func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, error) {
 	stop := make(chan struct{})
@@ -24,12 +32,15 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 		DevRepoURL:   conf.DevRepoURL,
 		Deployments:  make(map[string]DeploymentParams),
 		GlobalConfig: make(map[string]string),
+		GlobalSecret: make(map[string]string),
 	}
 
 	var objects []*unstructured.Unstructured
 	for obj := range streamedObjects {
 		objects = append(objects, obj)
 	}
+
+	volMappings := make(map[string][]VolumeMapping)
 
 	// Pass 1: Discover all Deployments/StatefulSets/DaemonSets
 	var compNames []string
@@ -140,8 +151,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			}
 
 			// Extract Ephemeral Persistence (emptyDir)
-			volumes, ok, _ := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "volumes")
-			if ok && len(volumes) > 0 {
+			volumes, vOk, _ := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "volumes")
+			if vOk && len(volumes) > 0 {
 				for _, v := range volumes {
 					vol := v.(map[string]interface{})
 					if _, ok, _ := unstructured.NestedMap(vol, "emptyDir"); ok {
@@ -149,15 +160,49 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 						depParams.Persistence.Ephemeral = true
 						break
 					}
-					if pvc, ok, _ := unstructured.NestedMap(vol, "persistentVolumeClaim"); ok {
+					if _, ok, _ := unstructured.NestedMap(vol, "persistentVolumeClaim"); ok {
 						depParams.Persistence.Enabled = true
 						depParams.Persistence.Ephemeral = false
-						if claimName, _, _ := unstructured.NestedString(pvc, "claimName"); claimName != "" {
-							// Try to use claimName if possible, though standard wizard model doesn't explicitly pass it unless needed
+					}
+				}
+			}
+
+			// Track volume mappings for Pass 2 (Custom Files routing)
+			var currentVols []VolumeMapping
+			volSources := make(map[string]struct{Type, Name string})
+			if vOk {
+				for _, v := range volumes {
+					vol := v.(map[string]interface{})
+					name, _, _ := unstructured.NestedString(vol, "name")
+					if cm, ok, _ := unstructured.NestedMap(vol, "configMap"); ok {
+						cmName, _, _ := unstructured.NestedString(cm, "name")
+						volSources[name] = struct{Type, Name string}{"configMap", cmName}
+					} else if secret, ok, _ := unstructured.NestedMap(vol, "secret"); ok {
+						secName, _, _ := unstructured.NestedString(secret, "secretName")
+						volSources[name] = struct{Type, Name string}{"secret", secName}
+					}
+				}
+			}
+			if len(containers) > 0 {
+				container := containers[0].(map[string]interface{})
+				if mounts, mOk, _ := unstructured.NestedSlice(container, "volumeMounts"); mOk {
+					for _, m := range mounts {
+						mount := m.(map[string]interface{})
+						name, _, _ := unstructured.NestedString(mount, "name")
+						mountPath, _, _ := unstructured.NestedString(mount, "mountPath")
+						subPath, _, _ := unstructured.NestedString(mount, "subPath")
+						if src, found := volSources[name]; found {
+							currentVols = append(currentVols, VolumeMapping{
+								MountPath:  mountPath,
+								SubPath:    subPath,
+								SourceType: src.Type,
+								SourceName: src.Name,
+							})
 						}
 					}
 				}
 			}
+			volMappings[name] = currentVols
 
 			// Extract annotations/labels
 			labels := obj.GetLabels()
@@ -176,6 +221,9 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 
 	// Helper to find the closest matching component name
 	findComponent := func(objName string, labels map[string]string) string {
+		if strings.Contains(objName, "-global") {
+			return ""
+		}
 		if comp, ok := labels["app.kubernetes.io/component"]; ok {
 			if _, exists := params.Deployments[comp]; exists {
 				return comp
@@ -227,45 +275,138 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 		case "ConfigMap":
 			data, found, err := unstructured.NestedMap(obj.Object, "data")
 			if err == nil && found {
-				if compName != "" {
-					depParams := params.Deployments[compName]
-					for k, v := range data {
-						depParams.Cm[k] = fmt.Sprintf("%v", v)
+				objName := obj.GetName()
+				isMounted := false
+				for depName, mappings := range volMappings {
+					for _, m := range mappings {
+						if m.SourceType == "configMap" && m.SourceName == objName {
+							isMounted = true
+							depParams := params.Deployments[depName]
+							if depParams.Files.Cm == nil {
+								depParams.Files.Cm = make(map[string]CustomFileParams)
+							}
+							for k, v := range data {
+								if m.SubPath == "" || m.SubPath == k {
+									mntPath := m.MountPath
+									if m.SubPath == "" {
+										mntPath = filepath.Join(m.MountPath, k)
+									}
+									depParams.Files.Cm[k] = CustomFileParams{
+										MountPath: mntPath,
+										Content:   fmt.Sprintf("%v", v),
+									}
+								}
+							}
+							params.Deployments[depName] = depParams
+						}
 					}
-					params.Deployments[compName] = depParams
-				} else {
-					for k, v := range data {
-						params.GlobalConfig[k] = fmt.Sprintf("%v", v)
+				}
+
+				if !isMounted {
+					if compName != "" {
+						depParams := params.Deployments[compName]
+						for k, v := range data {
+							depParams.Cm[k] = fmt.Sprintf("%v", v)
+						}
+						params.Deployments[compName] = depParams
+					} else {
+						for k, v := range data {
+							params.GlobalConfig[k] = fmt.Sprintf("%v", v)
+						}
 					}
 				}
 			}
 
 		case "Secret":
-			if compName == "" {
-				continue // Global secrets aren't strongly supported by standard model yet
-			}
-			depParams := params.Deployments[compName]
-
 			stringData, foundStr, _ := unstructured.NestedMap(obj.Object, "stringData")
-			if foundStr {
-				for k, v := range stringData {
-					depParams.Secret[k] = fmt.Sprintf("%v", v)
-				}
-			}
-			data, found, _ := unstructured.NestedMap(obj.Object, "data")
-			if found {
-				for k, v := range data {
-					if strVal, ok := v.(string); ok {
-						decoded, err := base64.StdEncoding.DecodeString(strVal)
-						if err == nil {
-							depParams.Secret[k] = string(decoded)
-						} else {
-							depParams.Secret[k] = strVal
+			data, foundData, _ := unstructured.NestedMap(obj.Object, "data")
+			
+			objName := obj.GetName()
+			isMounted := false
+			for depName, mappings := range volMappings {
+				for _, m := range mappings {
+					if m.SourceType == "secret" && m.SourceName == objName {
+						isMounted = true
+						depParams := params.Deployments[depName]
+						if depParams.Files.Secret == nil {
+							depParams.Files.Secret = make(map[string]CustomFileParams)
 						}
+						
+						processSecretData := func(sourceData map[string]interface{}, decode bool) {
+							for k, v := range sourceData {
+								if m.SubPath == "" || m.SubPath == k {
+									mntPath := m.MountPath
+									if m.SubPath == "" {
+										mntPath = filepath.Join(m.MountPath, k)
+									}
+									val := fmt.Sprintf("%v", v)
+									if decode {
+										if strVal, ok := v.(string); ok {
+											if decoded, err := base64.StdEncoding.DecodeString(strVal); err == nil {
+												val = string(decoded)
+											}
+										}
+									}
+									depParams.Files.Secret[k] = CustomFileParams{
+										MountPath: mntPath,
+										Content:   val,
+									}
+								}
+							}
+						}
+						
+						if foundStr {
+							processSecretData(stringData, false)
+						}
+						if foundData {
+							processSecretData(data, true)
+						}
+						
+						params.Deployments[depName] = depParams
 					}
 				}
 			}
-			params.Deployments[compName] = depParams
+
+			if !isMounted {
+				if compName == "" {
+					if foundStr {
+						for k, v := range stringData {
+							params.GlobalSecret[k] = fmt.Sprintf("%v", v)
+						}
+					}
+					if foundData {
+						for k, v := range data {
+							if strVal, ok := v.(string); ok {
+								if decoded, err := base64.StdEncoding.DecodeString(strVal); err == nil {
+									params.GlobalSecret[k] = string(decoded)
+								} else {
+									params.GlobalSecret[k] = strVal
+								}
+							}
+						}
+					}
+					continue
+				}
+				depParams := params.Deployments[compName]
+				if foundStr {
+					for k, v := range stringData {
+						depParams.Secret[k] = fmt.Sprintf("%v", v)
+					}
+				}
+				if foundData {
+					for k, v := range data {
+						if strVal, ok := v.(string); ok {
+							decoded, err := base64.StdEncoding.DecodeString(strVal)
+							if err == nil {
+								depParams.Secret[k] = string(decoded)
+							} else {
+								depParams.Secret[k] = strVal
+							}
+						}
+					}
+				}
+				params.Deployments[compName] = depParams
+			}
 
 		case "Route":
 			if compName == "" {
