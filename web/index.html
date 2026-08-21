@@ -1175,6 +1175,38 @@
                         </div>
                     </div>
 
+                    <!-- Horizontal Pod Autoscaling (HPA) -->
+                    <div class="section-subtitle" style="margin-top: 1.5rem;">Horizontal Pod Autoscaling (HPA)</div>
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Enable HPA</span>
+                            <label class="route-switch">
+                                <input type="checkbox" id="hpaEnabled" onchange="toggleHpaUI(); saveAndPreview()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div id="hpa-options"
+                        style="display: none; padding-left: 1rem; border-left: 2px solid rgba(255,255,255,0.1); margin-top: 0.5rem;">
+                        <div class="form-group row" style="margin-top: 1rem; margin-bottom: 0;">
+                            <div>
+                                <label for="hpaMinReplicas">Min Replicas</label>
+                                <input type="number" id="hpaMinReplicas" placeholder="1" oninput="saveAndPreview()">
+                            </div>
+                            <div>
+                                <label for="hpaMaxReplicas">Max Replicas</label>
+                                <input type="number" id="hpaMaxReplicas" placeholder="2" oninput="saveAndPreview()">
+                            </div>
+                        </div>
+                        <div class="form-group row" style="margin-top: 1rem; margin-bottom: 0;">
+                            <div>
+                                <label for="hpaUtilization">Average Utilization (%)</label>
+                                <input type="number" id="hpaUtilization" placeholder="180" oninput="saveAndPreview()">
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- 5. VAULT SECRETS OPERATOR (VSO) -->
                     <div class="section-subtitle" style="margin-top: 1.5rem;">Vault Secrets Operator (VSO)</div>
                     <div class="route-card">
@@ -1763,6 +1795,14 @@
             config.persistence.mountPath = document.getElementById('persistenceMountPath').value.trim() || '/var/lib/data';
             config.persistence.storageRequest = document.getElementById('persistenceStorage').value.trim() || '1Gi';
 
+            if (!config.hpa) config.hpa = createDefaultComponentConfig('temp', 'app').hpa;
+            config.hpa.enabled = document.getElementById('hpaEnabled').checked;
+            config.hpa.minReplicas = parseInt(document.getElementById('hpaMinReplicas').value.trim()) || 1;
+            config.hpa.maxReplicas = parseInt(document.getElementById('hpaMaxReplicas').value.trim()) || 2;
+            if (config.hpa.metrics && config.hpa.metrics.length > 0 && config.hpa.metrics[0].resource && config.hpa.metrics[0].resource.target) {
+                config.hpa.metrics[0].resource.target.averageUtilization = parseInt(document.getElementById('hpaUtilization').value.trim()) || 180;
+            }
+
             if (!config.vso) config.vso = { enabled: false };
             config.vso.enabled = document.getElementById('vsoEnabled').checked;
 
@@ -1829,6 +1869,10 @@
             } else {
                 optionsDiv.style.display = 'none';
             }
+        }
+        function toggleHpaUI() {
+            const enabled = document.getElementById('hpaEnabled').checked;
+            document.getElementById('hpa-options').style.display = enabled ? 'block' : 'none';
         }
 
 
@@ -1925,6 +1969,18 @@
                 document.getElementById('persistenceStorage').value = '1Gi';
             }
 
+            if (config.hpa) {
+                document.getElementById('hpaEnabled').checked = config.hpa.enabled;
+                document.getElementById('hpaMinReplicas').value = config.hpa.minReplicas || 1;
+                document.getElementById('hpaMaxReplicas').value = config.hpa.maxReplicas || 2;
+                document.getElementById('hpaUtilization').value = (config.hpa.metrics && config.hpa.metrics.length > 0 && config.hpa.metrics[0].resource && config.hpa.metrics[0].resource.target) ? config.hpa.metrics[0].resource.target.averageUtilization : 180;
+            } else {
+                document.getElementById('hpaEnabled').checked = false;
+                document.getElementById('hpaMinReplicas').value = 1;
+                document.getElementById('hpaMaxReplicas').value = 2;
+                document.getElementById('hpaUtilization').value = 180;
+            }
+
             if (config.vso) {
                 document.getElementById('vsoEnabled').checked = config.vso.enabled;
             } else {
@@ -1932,6 +1988,7 @@
             }
 
             togglePersistenceUI();
+            toggleHpaUI();
 
             document.getElementById('routeDefaultEnabled').checked = config.route.default.enabled;
             document.getElementById('routeDefaultHost').value = config.route.default.host || '';

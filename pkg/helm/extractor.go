@@ -62,6 +62,78 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 						depParams.Image.Tag = "latest"
 					}
 				}
+				
+				// Extract Resources
+				resources, resFound, _ := unstructured.NestedMap(container, "resources")
+				if resFound {
+					resParams := &ResourceParams{}
+					if limits, ok, _ := unstructured.NestedMap(resources, "limits"); ok && len(limits) > 0 {
+						resParams.Limits = limits
+					}
+					if requests, ok, _ := unstructured.NestedMap(resources, "requests"); ok && len(requests) > 0 {
+						resParams.Requests = requests
+					}
+					if resParams.Limits != nil || resParams.Requests != nil {
+						depParams.Resources = resParams
+					}
+				}
+
+				// Extract Probes
+				if p, ok, _ := unstructured.NestedMap(container, "startupProbe"); ok && len(p) > 0 {
+					depParams.StartupProbe = p
+				}
+				if p, ok, _ := unstructured.NestedMap(container, "livenessProbe"); ok && len(p) > 0 {
+					depParams.LivenessProbe = p
+				}
+				if p, ok, _ := unstructured.NestedMap(container, "readinessProbe"); ok && len(p) > 0 {
+					depParams.ReadinessProbe = p
+				}
+
+				// Extract Persistence from volumeMounts
+				mounts, ok, _ := unstructured.NestedSlice(container, "volumeMounts")
+				if ok && len(mounts) > 0 {
+					for _, m := range mounts {
+						mount := m.(map[string]interface{})
+						name, _, _ := unstructured.NestedString(mount, "name")
+						if !strings.HasPrefix(name, "kube-api") && !strings.Contains(name, "default-token") {
+							path, _, _ := unstructured.NestedString(mount, "mountPath")
+							depParams.Persistence.Enabled = true
+							depParams.Persistence.MountPath = path
+							break // Take the first meaningful volume for the simple model
+						}
+					}
+				}
+			}
+
+			// Extract Affinity, NodeSelector, Tolerations
+			if affinity, ok, _ := unstructured.NestedMap(obj.Object, "spec", "template", "spec", "affinity"); ok && len(affinity) > 0 {
+				depParams.Affinity = affinity
+			}
+			if nodeSelector, ok, _ := unstructured.NestedMap(obj.Object, "spec", "template", "spec", "nodeSelector"); ok && len(nodeSelector) > 0 {
+				depParams.NodeSelector = nodeSelector
+			}
+			if tolerations, ok, _ := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "tolerations"); ok && len(tolerations) > 0 {
+				depParams.Tolerations = tolerations
+			}
+
+			// Extract Ephemeral Persistence (emptyDir)
+			volumes, ok, _ := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "volumes")
+			if ok && len(volumes) > 0 {
+				for _, v := range volumes {
+					vol := v.(map[string]interface{})
+					if _, ok, _ := unstructured.NestedMap(vol, "emptyDir"); ok {
+						depParams.Persistence.Enabled = true
+						depParams.Persistence.Ephemeral = true
+						break
+					}
+					if pvc, ok, _ := unstructured.NestedMap(vol, "persistentVolumeClaim"); ok {
+						depParams.Persistence.Enabled = true
+						depParams.Persistence.Ephemeral = false
+						if claimName, _, _ := unstructured.NestedString(pvc, "claimName"); claimName != "" {
+							// Try to use claimName if possible, though standard wizard model doesn't explicitly pass it unless needed
+						}
+					}
+				}
 			}
 
 			// Extract annotations/labels
@@ -172,21 +244,50 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			host, _, _ := unstructured.NestedString(obj.Object, "spec", "host")
 			path, _, _ := unstructured.NestedString(obj.Object, "spec", "path")
 
-			if strings.Contains(host, "ocp-dev") || host == "" {
+			if host == "" || strings.HasSuffix(host, config.GlobalEnvConfig.DefaultDomain) || strings.Contains(host, "apps.ocp-") {
 				depParams.Route.Default.Enabled = true
 				if host != "" {
 					depParams.Route.Default.Host = host
 				}
-			} else if strings.Contains(host, "int") {
+			} else if strings.HasSuffix(host, config.GlobalEnvConfig.InternalDomain) {
 				depParams.Route.Internal.Enabled = true
 				depParams.Route.Internal.Host = host
+			} else if strings.HasSuffix(host, config.GlobalEnvConfig.ExternalDomain) {
+				depParams.Route.External.Enabled = true
+				depParams.Route.External.Host = host
 			} else {
+				// Fallback to external if unknown
 				depParams.Route.External.Enabled = true
 				depParams.Route.External.Host = host
 			}
 			if path != "" {
 				depParams.Route.Path = path
 			}
+			params.Deployments[compName] = depParams
+
+		case "HorizontalPodAutoscaler":
+			if compName == "" {
+				continue
+			}
+			depParams := params.Deployments[compName]
+			
+			hpaMap := make(map[string]interface{})
+			hpaMap["enabled"] = true
+			
+			if min, found, _ := unstructured.NestedInt64(obj.Object, "spec", "minReplicas"); found {
+				hpaMap["minReplicas"] = int(min)
+			}
+			if max, found, _ := unstructured.NestedInt64(obj.Object, "spec", "maxReplicas"); found {
+				hpaMap["maxReplicas"] = int(max)
+			}
+			if metrics, found, _ := unstructured.NestedSlice(obj.Object, "spec", "metrics"); found {
+				hpaMap["metrics"] = metrics
+			}
+			if behavior, found, _ := unstructured.NestedMap(obj.Object, "spec", "behavior"); found {
+				hpaMap["behavior"] = behavior
+			}
+			
+			depParams.Hpa = hpaMap
 			params.Deployments[compName] = depParams
 		}
 	}
