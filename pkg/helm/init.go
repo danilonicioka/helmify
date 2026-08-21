@@ -147,7 +147,7 @@ data:
 `
 const defaultChartfile = `apiVersion: v2
 name: %s
-description: A standardized, production-grade model Helm chart for Generic Organization applications.
+description: A standardized model Helm chart for Generic Organization applications.
 type: application
 version: %s
 appVersion: %q

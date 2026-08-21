@@ -1,6 +1,6 @@
 # Standardized Standardized Helm Chart
 
-This Helm chart is a standardized, production-grade template designed for applications deployed at **Organization**, especially when targeting **Red Hat OpenShift**. It serves as a base blueprint for developers, incorporating container security best practices and strict compliance with core architectural rules.
+This Helm chart is a standardized template designed for applications deployed at **Organization**, especially when targeting **Red Hat OpenShift**. It serves as a base blueprint for developers, incorporating container security best practices and strict compliance with core architectural rules.
 
 ## Core Architectural Design Rules
 
