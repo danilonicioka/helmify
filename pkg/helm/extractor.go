@@ -1,7 +1,9 @@
 package helm
 
 import (
+	"bytes"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -105,9 +107,19 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				}
 			}
 
-			// Extract Affinity, NodeSelector, Tolerations
 			if affinity, ok, _ := unstructured.NestedMap(obj.Object, "spec", "template", "spec", "affinity"); ok && len(affinity) > 0 {
-				depParams.Affinity = affinity
+				// Seamlessly modernize legacy labels to our new standard component pattern
+				if b, err := json.Marshal(affinity); err == nil {
+					b = bytes.ReplaceAll(b, []byte("app.kubernetes.io/name"), []byte("app.kubernetes.io/component"))
+					var modernAffinity map[string]interface{}
+					if json.Unmarshal(b, &modernAffinity) == nil {
+						depParams.Affinity = modernAffinity
+					} else {
+						depParams.Affinity = affinity
+					}
+				} else {
+					depParams.Affinity = affinity
+				}
 			}
 			if nodeSelector, ok, _ := unstructured.NestedMap(obj.Object, "spec", "template", "spec", "nodeSelector"); ok && len(nodeSelector) > 0 {
 				depParams.NodeSelector = nodeSelector

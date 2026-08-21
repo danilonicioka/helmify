@@ -34,8 +34,25 @@ func getRouteHostPrefix(chartName, compName, path string, isMulti bool) string {
 // computeRouteHosts returns the default, internal, and external hostnames.
 func computeRouteHosts(chartName, compName, path string, isMulti bool) (string, string, string) {
 	prefix := getRouteHostPrefix(chartName, compName, path, isMulti)
-	defaultHost := fmt.Sprintf("%s.%s", prefix, config.GlobalEnvConfig.DefaultDomain)
-	internalHost := fmt.Sprintf("%s-internal.%s", prefix, config.GlobalEnvConfig.InternalDomain)
-	externalHost := fmt.Sprintf("%s.%s", prefix, config.GlobalEnvConfig.ExternalDomain)
+	defaultHost := fmt.Sprintf("%s.%s", prefix, strings.TrimPrefix(config.GlobalEnvConfig.DefaultDomain, "."))
+	
+	internalDomain := config.GlobalEnvConfig.InternalDomain
+	var internalHost string
+	if strings.HasPrefix(internalDomain, "-") {
+		internalHost = fmt.Sprintf("%s%s", prefix, internalDomain)
+	} else if strings.HasPrefix(internalDomain, ".") {
+		internalHost = fmt.Sprintf("%s%s", prefix, internalDomain)
+	} else {
+		internalHost = fmt.Sprintf("%s.%s", prefix, internalDomain)
+	}
+
+	externalDomain := config.GlobalEnvConfig.ExternalDomain
+	var externalHost string
+	if strings.HasPrefix(externalDomain, "-") || strings.HasPrefix(externalDomain, ".") {
+		externalHost = fmt.Sprintf("%s%s", prefix, externalDomain)
+	} else {
+		externalHost = fmt.Sprintf("%s.%s", prefix, externalDomain)
+	}
+	
 	return defaultHost, internalHost, externalHost
 }
