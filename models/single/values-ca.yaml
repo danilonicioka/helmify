@@ -1,3 +1,6 @@
-chart-model-single:
+global:
   cm:
     TZ: "America/Belem"
+
+chart-model-single:
+  cm: {}
