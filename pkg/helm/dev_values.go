@@ -3,6 +3,7 @@ package helm
 import (
 	"bytes"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/danilonicioka/helmify/pkg/helmify"
@@ -28,7 +29,7 @@ func toMapStringInterface(v interface{}) (map[string]interface{}, bool) {
 
 // mergeDevValues injects the 'cm' blocks from the dynamically generated values
 // into the static values-ca.yaml node tree to preserve comments and structure.
-func mergeDevValues(caData []byte, chartName string, values helmify.Values) ([]byte, error) {
+func mergeDevValues(caData []byte, chartName string, values helmify.Values, valuesYamlData []byte) ([]byte, error) {
 	caStr := string(caData)
 	caStr = strings.ReplaceAll(caStr, "chart-model-single", chartName)
 	caStr = strings.ReplaceAll(caStr, "chart-model-multi", chartName)
@@ -60,6 +61,49 @@ func mergeDevValues(caData []byte, chartName string, values helmify.Values) ([]b
 							}
 						}
 					}
+				}
+			}
+		}
+	}
+
+	// Sort the top-level keys of values-ca.yaml to match the exact order of values.yaml
+	var valuesYamlNode yaml.Node
+	if err := yaml.Unmarshal(valuesYamlData, &valuesYamlNode); err == nil && valuesYamlNode.Kind == yaml.DocumentNode && len(valuesYamlNode.Content) > 0 {
+		valuesRoot := valuesYamlNode.Content[0]
+		if valuesRoot.Kind == yaml.MappingNode {
+			orderMap := make(map[string]int)
+			for i := 0; i < len(valuesRoot.Content); i += 2 {
+				k := valuesRoot.Content[i]
+				orderMap[k.Value] = i
+			}
+
+			if node.Kind == yaml.DocumentNode && len(node.Content) > 0 {
+				root := node.Content[0]
+				if root.Kind == yaml.MappingNode {
+					type kv struct {
+						key *yaml.Node
+						val *yaml.Node
+						idx int
+					}
+					var kvs []kv
+					for i := 0; i < len(root.Content); i += 2 {
+						k := root.Content[i]
+						v := root.Content[i+1]
+						idx, ok := orderMap[k.Value]
+						if !ok {
+							idx = 999999 // Put unknown keys at the end
+						}
+						kvs = append(kvs, kv{key: k, val: v, idx: idx})
+					}
+					sort.SliceStable(kvs, func(i, j int) bool {
+						return kvs[i].idx < kvs[j].idx
+					})
+
+					var newContent []*yaml.Node
+					for _, kv := range kvs {
+						newContent = append(newContent, kv.key, kv.val)
+					}
+					root.Content = newContent
 				}
 			}
 		}

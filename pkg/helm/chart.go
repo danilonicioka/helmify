@@ -661,7 +661,7 @@ func overwriteValuesFile(chartDir string, res []byte, chartName string, isMulti 
 	}
 	caData, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values-ca.yaml"))
 	if err == nil {
-		mergedCa, err := mergeDevValues(caData, chartName, values)
+		mergedCa, err := mergeDevValues(caData, chartName, values, res)
 		if err == nil {
 			err = os.WriteFile(fileDev, mergedCa, 0600)
 		}
