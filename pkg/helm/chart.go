@@ -611,7 +611,13 @@ func mergeYamlNode(dest *yaml.Node, src interface{}, path []string) error {
 		if len(srcMap) == 0 {
 			return setYamlPath(dest, path, srcMap)
 		}
-		for k, v := range srcMap {
+		keys := make([]string, 0, len(srcMap))
+		for k := range srcMap {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			v := srcMap[k]
 			err := mergeYamlNode(dest, v, append(path, k))
 			if err != nil {
 				return err
@@ -623,7 +629,13 @@ func mergeYamlNode(dest *yaml.Node, src interface{}, path []string) error {
 		if len(srcValues) == 0 {
 			return setYamlPath(dest, path, map[string]interface{}{})
 		}
-		for k, v := range srcValues {
+		keys := make([]string, 0, len(srcValues))
+		for k := range srcValues {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			v := srcValues[k]
 			err := mergeYamlNode(dest, v, append(path, k))
 			if err != nil {
 				return err
