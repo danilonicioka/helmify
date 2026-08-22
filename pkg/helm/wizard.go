@@ -810,7 +810,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if valuesData, ok := outputFiles["values.yaml"]; ok {
 			var values helmify.Values
 			if err := yaml.Unmarshal(valuesData, &values); err == nil {
-				mergedCa, err := mergeDevValues(caData, params.ChartName, values)
+				mergedCa, err := mergeDevValues(caData, params.ChartName, values, valuesData)
 				if err == nil {
 					outputFiles["values-ca.yaml"] = mergedCa
 				}

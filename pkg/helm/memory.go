@@ -269,7 +269,7 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	}
 	caData, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values-ca.yaml"))
 	if err == nil {
-		mergedCa, err := mergeDevValues(caData, chartName, values)
+		mergedCa, err := mergeDevValues(caData, chartName, values, res)
 		if err == nil {
 			m.Files["values-ca.yaml"] = mergedCa
 		}
