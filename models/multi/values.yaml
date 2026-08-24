@@ -35,10 +35,8 @@ backend:
   replicas: 1
 
   labels: {}
-    # app.openshift.io/runtime: "quarkus"
   
   annotations: {}
-    # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"my-db"}]'
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION & SECRETS
@@ -52,15 +50,25 @@ backend:
     role: "chart-model-multi-backend-role"
     path: "kv/data/chart-model-multi/backend"
     files: {}
-      # my_vault_key.p12:
-      #   mountPath: "/app/certs/my_vault_key.p12"
+      #   my_vault_key.p12:
+      #     mountPath: "/app/certs/my_vault_key.p12"
+
+  truststore:
+    enabled: false
+    path: "/custom-truststore"
+    javaToolOptions: "-Djavax.net.ssl.trustStore=/custom-truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+    secretName: ""
+    certificate: ""
+    #   -----BEGIN CERTIFICATE-----
+    #   ...
+    #   -----END CERTIFICATE-----
 
   files:
     cm: {}
-      # application.properties:
-      #   mountPath: "/deployments/config/application.properties"
-      #   content: |
-      #     quarkus.http.port=8080
+      #   application.properties:
+      #     mountPath: "/deployments/config/application.properties"
+      #     content: |
+      #       quarkus.http.port=8080
     secret: {}
 
   # ----------------------------------------------------------------------------
@@ -108,19 +116,31 @@ backend:
     default:
       enabled: true
       host: chart-model-multi-backend{{DEFAULT_DOMAIN}}
+      annotations: {}
     internal:
       enabled: false
       host: chart-model-multi-backend{{INTERNAL_DOMAIN}}
+      annotations: {}
     external:
       enabled: false
       host: chart-model-backend{{EXTERNAL_DOMAIN}}
+      annotations: {}
+    additional: {}
+      #   custom-route:
+      #     enabled: true
+      #     host: custom-route.domain.com
+      #     path: "/custom"
+      #     annotations: {}
+      #     tls:
+      #       termination: edge
+      #       insecureEdgeTerminationPolicy: Redirect
 
   service:
     type: ClusterIP
     ports:
       http:
-        port: 80
-        targetPort: 8080
+        # Note: The 'port' defined here applies to BOTH the Kubernetes Service port and the underlying Container port.
+        port: 8080
 
   # ----------------------------------------------------------------------------
   # 5. PERSISTENCE
@@ -138,7 +158,7 @@ backend:
   # ----------------------------------------------------------------------------
   startupProbe:
     tcpSocket:
-      port: 8080
+      port: http
     initialDelaySeconds: 0
     periodSeconds: 5
     failureThreshold: 30
@@ -146,7 +166,7 @@ backend:
 
   livenessProbe:
     tcpSocket:
-      port: 8080
+      port: http
     initialDelaySeconds: 0
     periodSeconds: 10
     failureThreshold: 3
@@ -154,7 +174,7 @@ backend:
 
   readinessProbe:
     tcpSocket:
-      port: 8080
+      port: http
     initialDelaySeconds: 0
     periodSeconds: 10
     failureThreshold: 3
@@ -203,10 +223,8 @@ frontend:
   replicas: 1
 
   labels: {}
-    # app.openshift.io/runtime: "nginx"
   
   annotations: {}
-    # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"backend"}]'
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION & SECRETS
@@ -221,13 +239,23 @@ frontend:
     path: "kv/data/chart-model-multi/frontend"
     files: {}
 
+  truststore:
+    enabled: false
+    path: "/custom-truststore"
+    javaToolOptions: "-Djavax.net.ssl.trustStore=/custom-truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+    secretName: ""
+    certificate: ""
+    #   -----BEGIN CERTIFICATE-----
+    #   ...
+    #   -----END CERTIFICATE-----
+
   files:
     cm: {}
-      # nginx.conf:
-      #   mountPath: "/etc/nginx/nginx.conf"
-      #   content: |
-      #     user nginx;
-      #     worker_processes auto;
+      #   nginx.conf:
+      #     mountPath: "/etc/nginx/nginx.conf"
+      #     content: |
+      #       user nginx;
+      #       worker_processes auto;
     secret: {}
 
   # ----------------------------------------------------------------------------
@@ -275,19 +303,31 @@ frontend:
     default:
       enabled: true
       host: chart-model-multi-frontend{{DEFAULT_DOMAIN}}
+      annotations: {}
     internal:
       enabled: false
       host: chart-model-multi-frontend{{INTERNAL_DOMAIN}}
+      annotations: {}
     external:
       enabled: false
       host: chart-model-frontend{{EXTERNAL_DOMAIN}}
+      annotations: {}
+    additional: {}
+      #   custom-route:
+      #     enabled: true
+      #     host: custom-route.domain.com
+      #     path: "/custom"
+      #     annotations: {}
+      #     tls:
+      #       termination: edge
+      #       insecureEdgeTerminationPolicy: Redirect
 
   service:
     type: ClusterIP
     ports:
       http:
-        port: 80
-        targetPort: 8080
+        # Note: The 'port' defined here applies to BOTH the Kubernetes Service port and the underlying Container port.
+        port: 8080
 
   # ----------------------------------------------------------------------------
   # 5. PERSISTENCE
@@ -305,7 +345,7 @@ frontend:
   # ----------------------------------------------------------------------------
   startupProbe:
     tcpSocket:
-      port: 8080
+      port: http
     initialDelaySeconds: 0
     periodSeconds: 5
     failureThreshold: 30
@@ -313,7 +353,7 @@ frontend:
 
   livenessProbe:
     tcpSocket:
-      port: 8080
+      port: http
     initialDelaySeconds: 0
     periodSeconds: 10
     failureThreshold: 3
@@ -321,7 +361,7 @@ frontend:
 
   readinessProbe:
     tcpSocket:
-      port: 8080
+      port: http
     initialDelaySeconds: 0
     periodSeconds: 10
     failureThreshold: 3

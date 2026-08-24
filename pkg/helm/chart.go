@@ -56,9 +56,14 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     app.kubernetes.io/component: %[5]s
-  {{- with (index .Values "%[1]s").route.annotations }}
+  {{- if or (index .Values "%[1]s").route.annotations (index .Values "%[1]s").route.default.annotations }}
   annotations:
+    {{- with (index .Values "%[1]s").route.annotations }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (index .Values "%[1]s").route.default.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- end }}
 spec:
   {{- if (index .Values "%[1]s").route.default.host }}
@@ -89,9 +94,14 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     app.kubernetes.io/component: %[5]s
-  {{- with (index .Values "%[1]s").route.annotations }}
+  {{- if or (index .Values "%[1]s").route.annotations (index .Values "%[1]s").route.internal.annotations }}
   annotations:
+    {{- with (index .Values "%[1]s").route.annotations }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (index .Values "%[1]s").route.internal.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- end }}
 spec:
   {{- if (index .Values "%[1]s").route.internal.host }}
@@ -122,9 +132,14 @@ metadata:
   labels:
     {{- include "%[2]s.labels" . | nindent 4 }}
     app.kubernetes.io/component: %[5]s
-  {{- with (index .Values "%[1]s").route.annotations }}
+  {{- if or (index .Values "%[1]s").route.annotations (index .Values "%[1]s").route.external.annotations }}
   annotations:
+    {{- with (index .Values "%[1]s").route.annotations }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with (index .Values "%[1]s").route.external.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- end }}
 spec:
   {{- if (index .Values "%[1]s").route.external.host }}
@@ -144,6 +159,55 @@ spec:
   port:
     targetPort: {{ if and (index .Values "%[1]s").service (index .Values "%[1]s").service.ports }}{{ if hasKey (index .Values "%[1]s").service.ports "http" }}http{{ else }}{{ keys (index .Values "%[1]s").service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
   wildcardPolicy: None
+  wildcardPolicy: None
+{{- end }}
+`
+
+	compRouteAdditionalTemplate = `{{- if and (index .Values "%[1]s") (index .Values "%[1]s").route (index .Values "%[1]s").route.additional -}}
+{{- range $routeName, $routeConfig := (index .Values "%[1]s").route.additional }}
+{{- if $routeConfig.enabled }}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "%[2]s.fullname" $ }}%[4]s-{{ $routeName }}
+  labels:
+    {{- include "%[2]s.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: %[5]s
+  {{- if or (index $.Values "%[1]s").route.annotations $routeConfig.annotations }}
+  annotations:
+    {{- with (index $.Values "%[1]s").route.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with $routeConfig.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- end }}
+spec:
+  {{- if $routeConfig.host }}
+  host: {{ $routeConfig.host | quote }}
+  {{- end }}
+  {{- if $routeConfig.path }}
+  path: {{ $routeConfig.path | quote }}
+  {{- else if (index $.Values "%[1]s").route.path }}
+  path: {{ (index $.Values "%[1]s").route.path | quote }}
+  {{- end }}
+  {{- if $routeConfig.tls }}
+  tls:
+    {{- toYaml $routeConfig.tls | nindent 4 }}
+  {{- else if (index $.Values "%[1]s").route.tls }}
+  tls:
+    {{- toYaml (index $.Values "%[1]s").route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "%[2]s.fullname" $ }}%[4]s
+    weight: 100
+  port:
+    targetPort: {{ if and (index $.Values "%[1]s").service (index $.Values "%[1]s").service.ports }}{{ if hasKey (index $.Values "%[1]s").service.ports "http" }}http{{ else }}{{ keys (index $.Values "%[1]s").service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
+  wildcardPolicy: None
+---
+{{- end }}
+{{- end }}
 {{- end }}
 `
 )
@@ -268,17 +332,21 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 					},
 					"path": "/",
 					"default": map[string]interface{}{
-						"enabled": true,
-						"host":    defaultHost,
+						"enabled":     true,
+						"host":        defaultHost,
+						"annotations": map[string]interface{}{},
 					},
 					"internal": map[string]interface{}{
-						"enabled": false,
-						"host":    internalHost,
+						"enabled":     false,
+						"host":        internalHost,
+						"annotations": map[string]interface{}{},
 					},
 					"external": map[string]interface{}{
-						"enabled": false,
-						"host":    externalHost,
+						"enabled":     false,
+						"host":        externalHost,
+						"annotations": map[string]interface{}{},
 					},
+					"additional": map[string]interface{}{},
 				}
 			}
 		}
@@ -340,12 +408,14 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 				{filename: "route" + nameSuffix + "-default.yaml", template: compRouteDefaultTemplate},
 				{filename: "route" + nameSuffix + "-int.yaml", template: compRouteInternalTemplate},
 				{filename: "route" + nameSuffix + "-ext.yaml", template: compRouteExternalTemplate},
+				{filename: "route" + nameSuffix + "-additional.yaml", template: compRouteAdditionalTemplate},
 			}
 
 			if compKebab == chartName || !isMulti {
 				routes[0].filename = "route-default.yaml"
 				routes[1].filename = "route-int.yaml"
 				routes[2].filename = "route-ext.yaml"
+				routes[3].filename = "route-additional.yaml"
 			}
 
 			for _, r := range routes {
@@ -779,17 +849,21 @@ func injectFootComments(node *yaml.Node) {
 			keyNode := node.Content[i]
 			valNode := node.Content[i+1]
 
-			if valNode.Kind == yaml.MappingNode && len(valNode.Content) == 0 {
-				k := keyNode.Value
-				if keyNode.FootComment == "" {
-					switch k {
-					case "strategy":
-						keyNode.FootComment = "  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
-					case "labels":
-						keyNode.FootComment = "  app.openshift.io/runtime: openjdk"
-					case "annotations":
-						keyNode.FootComment = "  app.openshift.io/connects-to: '[{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"name\":\"db\"}]'"
+			if valNode.Kind == yaml.MappingNode {
+				if len(valNode.Content) == 0 {
+					k := keyNode.Value
+					if keyNode.FootComment == "" {
+						switch k {
+						case "strategy":
+							keyNode.FootComment = "  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
+						case "labels":
+							keyNode.FootComment = "  app.openshift.io/runtime: openjdk"
+						case "annotations":
+							keyNode.FootComment = "  app.openshift.io/connects-to: '[{\"apiVersion\":\"apps/v1\",\"kind\":\"Deployment\",\"name\":\"db\"}]'"
+						}
 					}
+				} else {
+					keyNode.FootComment = ""
 				}
 			}
 			injectFootComments(valNode)

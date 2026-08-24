@@ -37,6 +37,9 @@ spec:
         {{- if and $comp.secret (not (empty $comp.secret)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret-backend.yaml") . | sha256sum }}'
         {{- end }}
+        {{- if and $comp.truststore $comp.truststore.enabled $comp.truststore.certificate }}
+        checksum/secret-truststore: '{{ include (print $.Template.BasePath "/secret-truststore-backend.yaml") . | sha256sum }}'
+        {{- end }}
         {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
         checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-backend-files.yaml") . | sha256sum }}'
         {{- end }}
@@ -55,8 +58,9 @@ spec:
       {{- else if .Values.serviceAccount }}
       serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
       {{- end }}
-      {{- if and .Values.db .Values.db.enabled }}
+      {{- if or (and .Values.db .Values.db.enabled) (and $comp.truststore $comp.truststore.enabled) }}
       initContainers:
+        {{- if and .Values.db .Values.db.enabled }}
         - name: wait-for-db
           image: registry.access.redhat.com/ubi8/ubi-minimal:latest
           command:
@@ -69,6 +73,41 @@ spec:
                 sleep 2
               done
               echo "Database is up!"
+        {{- end }}
+        {{- if and $comp.truststore $comp.truststore.enabled }}
+        - name: build-truststore
+          image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ $comp.image.pullPolicy }}
+          command:
+            - sh
+            - '-c'
+            - |
+              DEFAULT_CACERTS=$(find / -name cacerts -type f 2>/dev/null | head -n 1)
+              if [ -z "$DEFAULT_CACERTS" ]; then
+                echo "Error: Could not find default cacerts file!"
+                exit 1
+              fi
+              
+              echo "Copying default cacerts from $DEFAULT_CACERTS to {{ $comp.truststore.path }}/cacerts"
+              cp "$DEFAULT_CACERTS" {{ $comp.truststore.path }}/cacerts
+              
+              chmod +w {{ $comp.truststore.path }}/cacerts
+    
+              for cert in /certs/*.pem; do
+                if [ -f "$cert" ]; then
+                  alias_name=$(basename "$cert" .pem)
+                  echo "Importing certificate $cert with alias $alias_name..."
+                  keytool -importcert -trustcacerts -keystore {{ $comp.truststore.path }}/cacerts \
+                    -storepass changeit -noprompt -alias "$alias_name" -file "$cert"
+                fi
+              done
+              echo "All certificates imported successfully!"
+          volumeMounts:
+            - name: custom-truststore
+              mountPath: {{ $comp.truststore.path }}
+            - name: ca-cert-volume
+              mountPath: /certs
+        {{- end }}
       {{- end }}
       containers:
         - name: backend
@@ -77,12 +116,18 @@ spec:
           ports:
             {{- range $key, $val := $comp.service.ports }}
             - name: {{ $key }}
-              containerPort: {{ $val.targetPort }}
+              containerPort: {{ $val.port }}
               {{- if $val.protocol }}
               protocol: {{ $val.protocol }}
               {{- end }}
             {{- end }}
           
+          {{- if and $comp.truststore $comp.truststore.enabled }}
+          env:
+            - name: JAVA_TOOL_OPTIONS
+              value: {{ $comp.truststore.javaToolOptions | quote }}
+          {{- end }}
+
           # Clean Configuration Management: Full Decoupling via envFrom
           {{- if or (and .Values.global (not (empty .Values.global))) (and $comp.cm (not (empty $comp.cm))) (and $comp.secret (not (empty $comp.secret))) }}
           envFrom:
@@ -128,8 +173,12 @@ spec:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
 
-          {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files }}
+          {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files (and $comp.truststore $comp.truststore.enabled) }}
           volumeMounts:
+            {{- if and $comp.truststore $comp.truststore.enabled }}
+            - name: custom-truststore
+              mountPath: {{ $comp.truststore.path }}
+            {{- end }}
             {{- if and $comp.persistence $comp.persistence.enabled }}
             - name: data
               mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
@@ -179,8 +228,16 @@ spec:
         {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files }}
+      {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files (and $comp.truststore $comp.truststore.enabled) }}
       volumes:
+        {{- if and $comp.truststore $comp.truststore.enabled }}
+        - name: custom-truststore
+          emptyDir: {}
+        - name: ca-cert-volume
+          secret:
+            defaultMode: 420
+            secretName: {{ if $comp.truststore.certificate }}{{ include "chart-model-multi.fullname" . }}-backend-secret-truststore{{ else }}{{ $comp.truststore.secretName | quote }}{{ end }}
+        {{- end }}
         {{- if and $comp.persistence $comp.persistence.enabled }}
         - name: data
           {{- if $comp.persistence.ephemeral }}

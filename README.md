@@ -495,3 +495,10 @@ Helmify can now be used as a migration engine to modernize legacy Helm charts an
   - **Editable Route Overrides**: The auto-generated domains for standard routes (Default, Intranet, Internet) are now fully exposed as text inputs inside the route cards, allowing users to safely override hostnames directly in the UI before generation.
   - **Persistence Types**: Persistence was expanded to include a new **Storage Size** input (mapping to `storageRequest`) as well as an **Ephemeral Storage (emptyDir)** toggle, organized neatly inside a collapsible sub-menu. When the main Persistence toggle is enabled, the sub-menu expands. If Ephemeral is then selected, the Storage Size input is disabled, and emptyDir configurations are injected natively, entirely avoiding PersistentVolumeClaims for cache/scratch workloads.
 
+
+### 🚀 Version 6 Chart Architecture (Recent Features)
+Helmify models have been upgraded to support Version 6 chart standards:
+- **Unified Service Ports:** The `service.ports.http.targetPort` parameter has been deprecated and unified. You now only need to define `port`, which seamlessly controls both the Service exposed port and the target container port.
+- **Named Port Probes Defaults:** Default health probes (`startupProbe`, `livenessProbe`, `readinessProbe`) now point to the named port `http` natively, removing the need to hardcode numeric ports (e.g., `8080` or `8081`).
+- **Java Truststore Injection:** A dedicated `truststore` block has been added to `.Values.<component>.truststore`. Enabling this block automatically mounts custom certificates via a `secretName` or inline `certificate` block, and natively configures the `JAVA_TOOL_OPTIONS` environment variable with `-Djavax.net.ssl.trustStore` for Java runtimes.
+- **Dynamic Additional Routes:** The `route.additional` dictionary allows you to dynamically expose the same component on multiple alternative OpenShift routes or custom DNS endpoints without cluttering the baseline configuration.

@@ -12,7 +12,6 @@ nameOverride: ""
 fullnameOverride: test-app
 # -- Global configuration shared across all deployments in the chart.
 global:
-
   cm: {}
 
   secret: {}
@@ -33,10 +32,9 @@ api:
 
   labels:
     k8s-app: fluentd-logging
-  # app.openshift.io/runtime: "quarkus"
 
   annotations: {}
-  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"my-db"}]'
+  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"my-db"}]'
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION & SECRETS
@@ -51,19 +49,28 @@ api:
     path: "kv/data/test-app/backend"
 
     files: {}
-    # my_vault_key.p12:
-    #   mountPath: "/app/certs/my_vault_key.p12"
+    #   my_vault_key.p12:
+    #     mountPath: "/app/certs/my_vault_key.p12"
+  truststore:
+    enabled: false
+    path: "/custom-truststore"
+    javaToolOptions: "-Djavax.net.ssl.trustStore=/custom-truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+    # secretName: "my-custom-cert-secret"
+    # certificate: |
+    #   -----BEGIN CERTIFICATE-----
+    #   ...
+    #   -----END CERTIFICATE-----
   files:
-
     cm: {}
-    # application.properties:
-    #   mountPath: "/deployments/config/application.properties"
-    #   content: |
-    #     quarkus.http.port=8080
+    #   application.properties:
+    #     mountPath: "/deployments/config/application.properties"
+    #     content: |
+    #       quarkus.http.port=8080
     secret: {}
   # ----------------------------------------------------------------------------
   # 3. RESOURCES
   # ----------------------------------------------------------------------------
+  # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
     limits:
       cpu: 100m
@@ -71,11 +78,30 @@ api:
     requests:
       cpu: 100m
       memory: 200Mi
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    metrics:
+      - type: Resource
+        resource:
+          name: memory
+          target:
+            type: Utilization
+            averageUtilization: 180
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 120
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
   # ----------------------------------------------------------------------------
   # 4. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
   route:
-
     annotations: {}
     #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
@@ -85,17 +111,37 @@ api:
     path: "/"
     default:
       enabled: true
-      host: test-app-backend.apps.example.com
+      host: test-app-backend{{DEFAULT_DOMAIN}}
+
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
     internal:
       enabled: false
-      host: test-app-backend-internal.example.com
+      host: test-app-backend{{INTERNAL_DOMAIN}}
+
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
     external:
       enabled: false
-      host: test-app-backend.example.com
+      host: test-app-backend{{EXTERNAL_DOMAIN}}
 
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+    additional: {}
+    #   custom-route:
+    #     enabled: true
+    #     host: custom-route.domain.com
+    #     path: "/custom"
+    #     annotations: {}
+    #     tls:
+    #       termination: edge
+    #       insecureEdgeTerminationPolicy: Redirect
   service:
     type: ClusterIP
-    ports: {}
+    ports:
+      http:
+        port: 80
+        targetPort: 8080
   # ----------------------------------------------------------------------------
   # 5. PERSISTENCE
   # ----------------------------------------------------------------------------
@@ -162,6 +208,7 @@ api:
                   values:
                     - test-app-backend
             topologyKey: kubernetes.io/hostname
+  backoffLimit: 4
   command:
     - perl
     - -Mbignum=bpi
@@ -171,9 +218,8 @@ api:
     - -c
     - date; echo Hello from the Kubernetes cluster
   imagePullPolicy: IfNotPresent
-  topologySpreadConstraints: []
-  backoffLimit: 4
   schedule: '* * * * *'
+  topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -190,10 +236,10 @@ app-emissor:
   replicas: 2
 
   labels: {}
-  # app.openshift.io/runtime: "nginx"
+  #   app.openshift.io/runtime: "nginx"
 
   annotations: {}
-  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"backend"}]'
+  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"backend"}]'
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION & SECRETS
@@ -208,18 +254,27 @@ app-emissor:
     path: "kv/data/test-app/frontend"
 
     files: {}
+  truststore:
+    enabled: false
+    path: "/custom-truststore"
+    javaToolOptions: "-Djavax.net.ssl.trustStore=/custom-truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+    # secretName: "my-custom-cert-secret"
+    # certificate: |
+    #   -----BEGIN CERTIFICATE-----
+    #   ...
+    #   -----END CERTIFICATE-----
   files:
-
     cm: {}
-    # nginx.conf:
-    #   mountPath: "/etc/nginx/nginx.conf"
-    #   content: |
-    #     user nginx;
-    #     worker_processes auto;
+    #   nginx.conf:
+    #     mountPath: "/etc/nginx/nginx.conf"
+    #     content: |
+    #       user nginx;
+    #       worker_processes auto;
     secret: {}
   # ----------------------------------------------------------------------------
   # 3. RESOURCES
   # ----------------------------------------------------------------------------
+  # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
     limits:
       cpu: 100m
@@ -227,11 +282,30 @@ app-emissor:
     requests:
       cpu: 30m
       memory: 256Mi
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    metrics:
+      - type: Resource
+        resource:
+          name: memory
+          target:
+            type: Utilization
+            averageUtilization: 180
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 120
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
   # ----------------------------------------------------------------------------
   # 4. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
   route:
-
     annotations: {}
     #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
@@ -241,17 +315,37 @@ app-emissor:
     path: "/"
     default:
       enabled: true
-      host: test-app-frontend.apps.example.com
+      host: test-app-frontend{{DEFAULT_DOMAIN}}
+
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
     internal:
       enabled: false
-      host: test-app-frontend-internal.example.com
+      host: test-app-frontend{{INTERNAL_DOMAIN}}
+
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
     external:
       enabled: false
-      host: test-app-frontend.example.com
+      host: test-app-frontend{{EXTERNAL_DOMAIN}}
 
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+    additional: {}
+    #   custom-route:
+    #     enabled: true
+    #     host: custom-route.domain.com
+    #     path: "/custom"
+    #     annotations: {}
+    #     tls:
+    #       termination: edge
+    #       insecureEdgeTerminationPolicy: Redirect
   service:
     type: ClusterIP
-    ports: {}
+    ports:
+      http:
+        port: 80
+        targetPort: 8080
   # ----------------------------------------------------------------------------
   # 5. PERSISTENCE
   # ----------------------------------------------------------------------------
@@ -315,11 +409,11 @@ app-emissor:
                   values:
                     - test-app-frontend
             topologyKey: kubernetes.io/hostname
+  topologySpreadConstraints: []
   volumeClaims:
     www:
       requests:
         storage: 1Gi
-  topologySpreadConstraints: []
 # ==============================================================================
 # III. FRONTEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -328,7 +422,7 @@ myapp:
   # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
   image:
-    repository: registry.example.com/devops/test-app-frontend
+    repository: "{{REGISTRY}}/test-app-frontend"
     tag: "latest"
     pullPolicy: IfNotPresent
     pullSecrets: []
@@ -336,16 +430,19 @@ myapp:
   replicas: 3
 
   labels: {}
-  # app.openshift.io/runtime: "nginx"
+  #   app.openshift.io/runtime: "nginx"
 
   annotations: {}
-  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"backend"}]'
+  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"backend"}]'
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
   cm:
     dummyconfigmapkey: dummyconfigmapvalue
+    my.prop1: "1"
+    my.prop2: val 1
+    my.prop3: "true"
     my_config.properties: |
       health.healthProbeBindAddress=8081
       metrics.bindAddress=127.0.0.1:8080
@@ -359,18 +456,15 @@ myapp:
           podTemplates:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
-    my.prop1: "1"
-    my.prop2: val 1
-    my.prop3: "true"
 
   secret:
+    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
+    VAR1: my_secret_var_1
+    VAR2: my_secret_var_2
     ca.crt: |-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
       superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
-    ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
-    VAR1: my_secret_var_1
-    VAR2: my_secret_var_2
     str: |
       some big not so secret string with
       multiple lines
@@ -381,18 +475,27 @@ myapp:
     path: "kv/data/test-app/frontend"
 
     files: {}
+  truststore:
+    enabled: false
+    path: "/custom-truststore"
+    javaToolOptions: "-Djavax.net.ssl.trustStore=/custom-truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+    # secretName: "my-custom-cert-secret"
+    # certificate: |
+    #   -----BEGIN CERTIFICATE-----
+    #   ...
+    #   -----END CERTIFICATE-----
   files:
-
     cm: {}
-    # nginx.conf:
-    #   mountPath: "/etc/nginx/nginx.conf"
-    #   content: |
-    #     user nginx;
-    #     worker_processes auto;
+    #   nginx.conf:
+    #     mountPath: "/etc/nginx/nginx.conf"
+    #     content: |
+    #       user nginx;
+    #       worker_processes auto;
     secret: {}
   # ----------------------------------------------------------------------------
   # 3. RESOURCES
   # ----------------------------------------------------------------------------
+  # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
     limits:
       cpu: 100m
@@ -400,11 +503,30 @@ myapp:
     requests:
       cpu: 30m
       memory: 256Mi
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    metrics:
+      - type: Resource
+        resource:
+          name: memory
+          target:
+            type: Utilization
+            averageUtilization: 180
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 120
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
   # ----------------------------------------------------------------------------
   # 4. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
   route:
-
     annotations: {}
     #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
@@ -414,25 +536,45 @@ myapp:
     path: "/"
     default:
       enabled: true
-      host: test-app-frontend.apps.example.com
+      host: test-app-frontend{{DEFAULT_DOMAIN}}
+
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
     internal:
       enabled: false
-      host: test-app-frontend-internal.example.com
+      host: test-app-frontend{{INTERNAL_DOMAIN}}
+
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
     external:
       enabled: false
-      host: test-app-frontend.example.com
+      host: test-app-frontend{{EXTERNAL_DOMAIN}}
 
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+    additional: {}
+    #   custom-route:
+    #     enabled: true
+    #     host: custom-route.domain.com
+    #     path: "/custom"
+    #     annotations: {}
+    #     tls:
+    #       termination: edge
+    #       insecureEdgeTerminationPolicy: Redirect
   service:
     type: ClusterIP
     ports:
+      http:
+        port: 80
+        targetPort: 8080
       https:
-        targetPort: https
         port: 8443
-    loadBalancerSourceRanges:
-      - 10.0.0.0/8
-    ipFamilyPolicy: SingleStack
+        targetPort: https
     ipFamilies:
       - IPv4
+    ipFamilyPolicy: SingleStack
+    loadBalancerSourceRanges:
+      - 10.0.0.0/8
   # ----------------------------------------------------------------------------
   # 5. PERSISTENCE
   # ----------------------------------------------------------------------------
@@ -482,8 +624,8 @@ myapp:
   # 7. SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
   nodeSelector:
-    type: user-node
     region: east
+    type: user-node
 
   tolerations: []
 
@@ -500,28 +642,6 @@ myapp:
                     - test-app-frontend
             topologyKey: kubernetes.io/hostname
   app:
-
-    resources:
-      limits:
-        cpu: 100m
-        memory: 30Mi
-      requests:
-        cpu: 100m
-        memory: 20Mi
-
-    livenessProbe:
-      periodSeconds: 20
-      httpGet:
-        path: /healthz
-        port: 8081
-      initialDelaySeconds: 15
-
-    readinessProbe:
-      httpGet:
-        path: /readyz
-        port: 8081
-      initialDelaySeconds: 5
-      periodSeconds: 10
     args:
       - --health-probe-bind-address=:8081
       - --metrics-bind-address=127.0.0.1:8080
@@ -532,10 +652,40 @@ myapp:
     image:
       repository: controller
       tag: latest
+
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8081
+      initialDelaySeconds: 15
+      periodSeconds: 20
+
+    readinessProbe:
+      httpGet:
+        path: /readyz
+        port: 8081
+      initialDelaySeconds: 5
+      periodSeconds: 10
+
+    resources:
+      limits:
+        cpu: 100m
+        memory: 30Mi
+      requests:
+        cpu: 100m
+        memory: 20Mi
+  command:
+    - /bin/sh
+    - -c
+    - echo 'Initializing container...'
   initContainer:
     image:
       repository: bash
       tag: latest
+  podSecurityContext:
+    fsGroup: 20000
+    runAsNonRoot: true
+    runAsUser: 65532
   proxySidecar:
     args:
       - --secure-listen-address=0.0.0.0:8443
@@ -543,16 +693,8 @@ myapp:
     image:
       repository: gcr.io/kubebuilder/kube-rbac-proxy
       tag: v0.8.0
-  podSecurityContext:
-    runAsUser: 65532
-    runAsNonRoot: true
-    fsGroup: 20000
-  topologySpreadConstraints: []
   revisionHistoryLimit: 5
-  command:
-    - /bin/sh
-    - -c
-    - echo 'Initializing container...'
+  topologySpreadConstraints: []
 # ==============================================================================
 # II. BACKEND COMPONENT CONFIGURATION
 # ==============================================================================
@@ -561,7 +703,7 @@ nginx:
   # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
   image:
-    repository: registry.example.com/devops/test-app-backend
+    repository: "{{REGISTRY}}/test-app-backend"
     tag: "latest"
     pullPolicy: IfNotPresent
     pullSecrets: []
@@ -569,10 +711,10 @@ nginx:
   replicas: 1
 
   labels: {}
-  # app.openshift.io/runtime: "quarkus"
+  #   app.openshift.io/runtime: "quarkus"
 
   annotations: {}
-  # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"my-db"}]'
+  #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"my-db"}]'
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION & SECRETS
@@ -587,19 +729,28 @@ nginx:
     path: "kv/data/test-app/backend"
 
     files: {}
-    # my_vault_key.p12:
-    #   mountPath: "/app/certs/my_vault_key.p12"
+    #   my_vault_key.p12:
+    #     mountPath: "/app/certs/my_vault_key.p12"
+  truststore:
+    enabled: false
+    path: "/custom-truststore"
+    javaToolOptions: "-Djavax.net.ssl.trustStore=/custom-truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
+    # secretName: "my-custom-cert-secret"
+    # certificate: |
+    #   -----BEGIN CERTIFICATE-----
+    #   ...
+    #   -----END CERTIFICATE-----
   files:
-
     cm: {}
-    # application.properties:
-    #   mountPath: "/deployments/config/application.properties"
-    #   content: |
-    #     quarkus.http.port=8080
+    #   application.properties:
+    #     mountPath: "/deployments/config/application.properties"
+    #     content: |
+    #       quarkus.http.port=8080
     secret: {}
   # ----------------------------------------------------------------------------
   # 3. RESOURCES
   # ----------------------------------------------------------------------------
+  # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
     limits:
       cpu: 100m
@@ -607,11 +758,30 @@ nginx:
     requests:
       cpu: 30m
       memory: 256Mi
+  hpa:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 2
+    metrics:
+      - type: Resource
+        resource:
+          name: memory
+          target:
+            type: Utilization
+            averageUtilization: 180
+    behavior:
+      scaleDown:
+        stabilizationWindowSeconds: 120
+      scaleUp:
+        stabilizationWindowSeconds: 0
+        policies:
+          - type: Percent
+            value: 100
+            periodSeconds: 15
   # ----------------------------------------------------------------------------
   # 4. ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
   route:
-
     annotations: {}
     #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
 
@@ -621,17 +791,37 @@ nginx:
     path: "/"
     default:
       enabled: true
-      host: test-app-backend.apps.example.com
+      host: test-app-backend{{DEFAULT_DOMAIN}}
+
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
     internal:
       enabled: false
-      host: test-app-backend-internal.example.com
+      host: test-app-backend{{INTERNAL_DOMAIN}}
+
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
     external:
       enabled: false
-      host: test-app-backend.example.com
+      host: test-app-backend{{EXTERNAL_DOMAIN}}
 
+      annotations: {}
+      #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
+    additional: {}
+    #   custom-route:
+    #     enabled: true
+    #     host: custom-route.domain.com
+    #     path: "/custom"
+    #     annotations: {}
+    #     tls:
+    #       termination: edge
+    #       insecureEdgeTerminationPolicy: Redirect
   service:
     type: ClusterIP
     ports:
+      http:
+        port: 80
+        targetPort: 8080
       web:
         port: 80
   # ----------------------------------------------------------------------------

@@ -11,7 +11,7 @@ spec:
     {{- range $key, $val := $comp.service.ports }}
   - name: {{ $key }}
     port: {{ $val.port }}
-    targetPort: {{ $val.targetPort }}
+    targetPort: {{ $key }}
     {{- if $val.protocol }}
     protocol: {{ $val.protocol }}
     {{- end }}

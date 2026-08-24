@@ -173,17 +173,21 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 					},
 					"path": "/",
 					"default": map[string]interface{}{
-						"enabled": true,
-						"host":    defaultHost,
+						"enabled":     true,
+						"host":        defaultHost,
+						"annotations": map[string]interface{}{},
 					},
 					"internal": map[string]interface{}{
-						"enabled": false,
-						"host":    internalHost,
+						"enabled":     false,
+						"host":        internalHost,
+						"annotations": map[string]interface{}{},
 					},
 					"external": map[string]interface{}{
-						"enabled": false,
-						"host":    externalHost,
+						"enabled":     false,
+						"host":        externalHost,
+						"annotations": map[string]interface{}{},
 					},
+					"additional": map[string]interface{}{},
 				}
 			}
 		}
@@ -239,12 +243,14 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 				{filename: "route" + nameSuffix + "-default.yaml", template: compRouteDefaultTemplate},
 				{filename: "route" + nameSuffix + "-int.yaml", template: compRouteInternalTemplate},
 				{filename: "route" + nameSuffix + "-ext.yaml", template: compRouteExternalTemplate},
+				{filename: "route" + nameSuffix + "-additional.yaml", template: compRouteAdditionalTemplate},
 			}
 
 			if compKebab == chartName || !isMulti {
 				routes[0].filename = "route-default.yaml"
 				routes[1].filename = "route-int.yaml"
 				routes[2].filename = "route-ext.yaml"
+				routes[3].filename = "route-additional.yaml"
 			}
 
 			for _, r := range routes {

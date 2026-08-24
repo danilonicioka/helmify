@@ -161,6 +161,7 @@ type DeploymentParams struct {
 	RuntimeVersion   string                      `json:"runtimeVersion"`
 	OverviewAppRoute string                      `json:"overviewAppRoute"`
 	Files            CustomFiles                 `json:"files"`
+	Truststore       *TruststoreParams           `json:"truststore,omitempty"`
 }
 
 // CustomFiles holds cm and secret files
@@ -190,10 +191,8 @@ type ImageParams struct {
 // ServiceParams configures the internal service port.
 type ServiceParams struct {
 	Port       int `json:"port"`
-	TargetPort int `json:"targetPort,omitempty"`
 	Ports      map[string]struct {
 		Port       int `json:"port"`
-		TargetPort int `json:"targetPort,omitempty"`
 	} `json:"ports"`
 }
 
@@ -245,6 +244,14 @@ type PersistenceParams struct {
 	Ephemeral      bool   `json:"ephemeral"`
 	MountPath      string `json:"mountPath"`
 	StorageRequest string `json:"storageRequest"`
+}
+
+// TruststoreParams configures Java Truststore injection.
+type TruststoreParams struct {
+	Enabled     bool   `json:"enabled"`
+	Path        string `json:"path"`
+	SecretName  string `json:"secretName,omitempty"`
+	Certificate string `json:"certificate,omitempty"`
 }
 
 // GenerateWizardChart reads single or multi chart templates from the embedded ModelsFS,
@@ -375,22 +382,13 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, []string{appKey, "image", "tag"}, depConfig.Image.Tag)
 		}
 		svcPort := depConfig.Service.Port
-		svcTargetPort := depConfig.Service.TargetPort
 		if svcPort == 0 && depConfig.Service.Ports != nil {
 			if httpPort, ok := depConfig.Service.Ports["http"]; ok {
 				svcPort = httpPort.Port
-				svcTargetPort = httpPort.TargetPort
 			}
 		}
 		if svcPort > 0 {
-			if svcTargetPort == 0 {
-				svcTargetPort = 8080 // Standard convention fallback
-			}
 			_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "port"}, svcPort)
-			_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "targetPort"}, svcTargetPort)
-			_ = setYamlPath(&rootNode, []string{appKey, "startupProbe", "tcpSocket", "port"}, svcTargetPort)
-			_ = setYamlPath(&rootNode, []string{appKey, "livenessProbe", "tcpSocket", "port"}, svcTargetPort)
-			_ = setYamlPath(&rootNode, []string{appKey, "readinessProbe", "tcpSocket", "port"}, svcTargetPort)
 		}
 		if depConfig.Cm != nil {
 			stripQuotesFromMap(depConfig.Cm)
@@ -465,6 +463,19 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 					_ = setYamlPath(&rootNode, []string{appKey, "persistence", "storageRequest"}, depConfig.Persistence.StorageRequest)
 				}
 				_ = setYamlPath(&rootNode, []string{appKey, "strategy"}, map[string]string{"type": "Recreate"})
+			}
+		}
+
+		if depConfig.Truststore != nil && depConfig.Truststore.Enabled {
+			_ = setYamlPath(&rootNode, []string{appKey, "truststore", "enabled"}, true)
+			if depConfig.Truststore.Path != "" {
+				_ = setYamlPath(&rootNode, []string{appKey, "truststore", "path"}, depConfig.Truststore.Path)
+			}
+			if depConfig.Truststore.SecretName != "" {
+				_ = setYamlPath(&rootNode, []string{appKey, "truststore", "secretName"}, depConfig.Truststore.SecretName)
+			}
+			if depConfig.Truststore.Certificate != "" {
+				_ = setYamlPath(&rootNode, []string{appKey, "truststore", "certificate"}, depConfig.Truststore.Certificate)
 			}
 		}
 
@@ -625,22 +636,13 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, []string{compName, "image", "tag"}, depConfig.Image.Tag)
 			}
 			svcPort := depConfig.Service.Port
-			svcTargetPort := depConfig.Service.TargetPort
 			if svcPort == 0 && depConfig.Service.Ports != nil {
 				if httpPort, ok := depConfig.Service.Ports["http"]; ok {
 					svcPort = httpPort.Port
-					svcTargetPort = httpPort.TargetPort
 				}
 			}
 			if svcPort > 0 {
-				if svcTargetPort == 0 {
-					svcTargetPort = 8080 // Standard convention fallback
-				}
 				_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "port"}, svcPort)
-				_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "targetPort"}, svcTargetPort)
-				_ = setYamlPath(&rootNode, []string{compName, "startupProbe", "tcpSocket", "port"}, svcTargetPort)
-				_ = setYamlPath(&rootNode, []string{compName, "livenessProbe", "tcpSocket", "port"}, svcTargetPort)
-				_ = setYamlPath(&rootNode, []string{compName, "readinessProbe", "tcpSocket", "port"}, svcTargetPort)
 			}
 			if depConfig.Cm != nil {
 				stripQuotesFromMap(depConfig.Cm)
@@ -721,6 +723,19 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 					_ = setYamlPath(&rootNode, []string{compName, "strategy"}, map[string]string{"type": "Recreate"})
 				}
 			
+			}
+
+			if depConfig.Truststore != nil && depConfig.Truststore.Enabled {
+				_ = setYamlPath(&rootNode, []string{compName, "truststore", "enabled"}, true)
+				if depConfig.Truststore.Path != "" {
+					_ = setYamlPath(&rootNode, []string{compName, "truststore", "path"}, depConfig.Truststore.Path)
+				}
+				if depConfig.Truststore.SecretName != "" {
+					_ = setYamlPath(&rootNode, []string{compName, "truststore", "secretName"}, depConfig.Truststore.SecretName)
+				}
+				if depConfig.Truststore.Certificate != "" {
+					_ = setYamlPath(&rootNode, []string{compName, "truststore", "certificate"}, depConfig.Truststore.Certificate)
+				}
 			}
 
 			_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
