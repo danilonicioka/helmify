@@ -265,15 +265,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				} else if portFloat, ok := portMap["port"].(float64); ok {
 					depParams.Service.Port = int(portFloat)
 				}
-				if targetPortInt, ok := portMap["targetPort"].(int64); ok {
-					depParams.Service.TargetPort = int(targetPortInt)
-				} else if targetPortFloat, ok := portMap["targetPort"].(float64); ok {
-					depParams.Service.TargetPort = int(targetPortFloat)
-				} else if targetPortStr, ok := portMap["targetPort"].(string); ok {
-					// In some legacy K8s manifests, targetPort is occasionally an IANA string (e.g. "http")
-					// The simplest standard fallback for the wizard is to leave it 0 which triggers the 8080 default
-					_ = targetPortStr
-				}
+
 			}
 			params.Deployments[compName] = depParams
 
