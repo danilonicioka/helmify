@@ -42,6 +42,8 @@ chart-model-single:
   
   # -- Custom annotations to add to the deployment 
   annotations: {}
+    # Example for OpenShift Topology View integration:
+    # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"other-component-name"}]'
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION & SECRETS

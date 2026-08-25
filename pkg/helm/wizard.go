@@ -432,7 +432,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if len(depConfig.ConnectsTo) > 0 {
 			var connects []string
 			for _, c := range depConfig.ConnectsTo {
-				connects = append(connects, fmt.Sprintf(`{"apiVersion":"apps/v1","kind":"Deployment","name":"%s"}`, c))
+				cName := c
+				if !strings.HasPrefix(cName, params.ChartName+"-") && cName != params.ChartName {
+					cName = params.ChartName + "-" + cName
+				}
+				connects = append(connects, fmt.Sprintf(`{"apiVersion":"apps/v1","kind":"Deployment","name":"%s"}`, cName))
 			}
 			_ = setYamlPath(&rootNode, []string{appKey, "annotations", "app.openshift.io/connects-to"}, "["+strings.Join(connects, ",")+"]")
 		}
@@ -687,7 +691,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if len(depConfig.ConnectsTo) > 0 {
 				var connects []string
 				for _, c := range depConfig.ConnectsTo {
-					connects = append(connects, fmt.Sprintf(`{"apiVersion":"apps/v1","kind":"Deployment","name":"%s"}`, c))
+					cName := c
+					if !strings.HasPrefix(cName, params.ChartName+"-") && cName != params.ChartName {
+						cName = params.ChartName + "-" + cName
+					}
+					connects = append(connects, fmt.Sprintf(`{"apiVersion":"apps/v1","kind":"Deployment","name":"%s"}`, cName))
 				}
 				_ = setYamlPath(&rootNode, []string{compName, "annotations", "app.openshift.io/connects-to"}, "["+strings.Join(connects, ",")+"]")
 			}
@@ -853,6 +861,12 @@ func formatValues(valuesStr string) string {
 		r := regexp.MustCompile(`(?m)^([^\n#]+[^:\n#\s])\s*\n(\s+` + block + `)`)
 		valuesStr = r.ReplaceAllString(valuesStr, "$1\n\n$2")
 	}
+
+	// Clean up commented connects-to example if the user explicitly provided one
+	if regexp.MustCompile(`(?m)^\s+app\.openshift\.io/connects-to:\s`).MatchString(valuesStr) {
+		valuesStr = regexp.MustCompile(`(?m)^\s*# Example for OpenShift Topology View integration:\s*\n\s*# app\.openshift\.io/connects-to:.*\n`).ReplaceAllString(valuesStr, "")
+	}
+
 	return valuesStr
 }
 

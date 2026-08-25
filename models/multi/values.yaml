@@ -37,6 +37,8 @@ api:
   labels: {}
   
   annotations: {}
+    # Example for OpenShift Topology View integration:
+    # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"chart-model-multi-app"}]'
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION & SECRETS
@@ -225,6 +227,8 @@ app:
   labels: {}
   
   annotations: {}
+    # Example for OpenShift Topology View integration:
+    # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"chart-model-multi-api"}]'
 
   # ----------------------------------------------------------------------------
   # 2. APPLICATION CONFIGURATION & SECRETS
