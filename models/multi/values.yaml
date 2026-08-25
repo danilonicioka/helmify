@@ -67,6 +67,10 @@ api:
       #     content: |
       #       quarkus.http.port=8080
     secret: {}
+      #   sistema.p12:
+      #     mountPath: "/app/keystore/sistema.p12"
+      #     b64enc: true
+      #     content: "MIIKrAIB..."
 
   # ----------------------------------------------------------------------------
   # 3. RESOURCES
@@ -251,6 +255,10 @@ app:
       #       user nginx;
       #       worker_processes auto;
     secret: {}
+      #   sistema.p12:
+      #     mountPath: "/app/keystore/sistema.p12"
+      #     b64enc: true
+      #     content: "MIIKrAIB..."
 
   # ----------------------------------------------------------------------------
   # 3. RESOURCES
