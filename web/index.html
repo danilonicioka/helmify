@@ -1134,7 +1134,15 @@
                             <input type="text" id="routeExtHost"
                                 placeholder="e.g. chart-model-single{{EXTERNAL_DOMAIN}}" oninput="saveAndPreview()">
                         </div>
+                        </div>
                     </div>
+
+                    <!-- Additional Routes -->
+                    <div class="section-subtitle" style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+                        Additional Routes
+                        <button class="btn btn-secondary" onclick="addAdditionalRoute()">+ Add Route</button>
+                    </div>
+                    <div id="additional-routes-container"></div>
 
                     <!-- 4. PERSISTENCE -->
                     <div class="section-subtitle" style="margin-top: 1.5rem;">Persistence (PVC/emptyDir)</div>
@@ -1337,8 +1345,8 @@
                 <div class="form-group" style="margin-bottom: 0;">
                     <label>Base Template Preset</label>
                     <div class="toggle-group" style="margin-top: 0.5rem;">
-                        <button type="button" class="toggle-btn active" id="modal-preset-backend">Backend</button>
-                        <button type="button" class="toggle-btn" id="modal-preset-frontend">Frontend</button>
+                        <button type="button" class="toggle-btn active" id="modal-preset-api">API</button>
+                        <button type="button" class="toggle-btn" id="modal-preset-app">App</button>
                     </div>
                 </div>
             </div>
@@ -1427,7 +1435,7 @@
                     activeComponent = currentName;
                     document.getElementById('btn-add-comp').style.display = 'none';
                 } else {
-                    activeComponent = compKeys.includes('backend') ? 'backend' : (compKeys[0] || 'backend');
+                    activeComponent = compKeys.includes('api') ? 'api' : (compKeys[0] || 'api');
                     document.getElementById('btn-add-comp').style.display = 'block';
                 }
 
@@ -1468,10 +1476,10 @@
                     document.getElementById('chartName').value = 'chart-model-multi';
                 }
                 components = {
-                    'backend': createDefaultComponentConfig('backend', 'backend'),
-                    'frontend': createDefaultComponentConfig('frontend', 'frontend')
+                    'api': createDefaultComponentConfig('api', 'api'),
+                    'app': createDefaultComponentConfig('app', 'app')
                 };
-                activeComponent = 'backend';
+                activeComponent = 'api';
                 document.getElementById('btn-add-comp').style.display = 'block';
             }
         }
@@ -1521,7 +1529,8 @@
                     external: {
                         enabled: !!(compData.route && compData.route.external && compData.route.external.enabled),
                         host: (compData.route && compData.route.external && compData.route.external.host) || ''
-                    }
+                    },
+                    additional: (compData.route && compData.route.additional) || {}
                 },
                 hpa: compData.hpa || {
                     enabled: false,
@@ -1559,8 +1568,8 @@
         function createDefaultComponentConfig(name, type) {
             const chartNameVal = document.getElementById('chartName').value.trim() || 'chart-model';
             const hostPrefix = chartType === 'single' ? name : `${chartNameVal}-${name}`;
-            const isFrontend = type === 'frontend' || type === 'web';
-            const suffix = isFrontend ? 'frontend' : (type === 'app' ? 'app' : 'backend');
+            const isFrontend = type === 'app' || type === 'frontend' || type === 'web';
+            const suffix = isFrontend ? 'app' : 'api';
             return {
                 replicas: isFrontend ? 0 : 2,
                 image: {
@@ -1577,7 +1586,7 @@
                 },
                 cm: {},
                 secret: {},
-                connectsTo: isFrontend ? ['backend'] : [],
+                connectsTo: isFrontend ? ['api'] : [],
                 runtime: isFrontend ? 'nodejs' : 'spring-boot',
                 persistence: {
                     enabled: false,
@@ -1596,7 +1605,8 @@
                     path: '',
                     default: { enabled: true, host: `${hostPrefix}{{DEFAULT_DOMAIN}}` },
                     internal: { enabled: false, host: `${hostPrefix}{{INTERNAL_DOMAIN}}` },
-                    external: { enabled: false, host: `${hostPrefix}{{EXTERNAL_DOMAIN}}` }
+                    external: { enabled: false, host: `${hostPrefix}{{EXTERNAL_DOMAIN}}` },
+                    additional: {}
                 },
                 hpa: {
                     enabled: false,
@@ -1717,18 +1727,18 @@
         const modalConfirmBtn = document.getElementById('modal-btn-confirm');
         const modalCancelBtn = document.getElementById('modal-btn-cancel');
 
-        let modalPreset = 'backend';
-        const presetBackendBtn = document.getElementById('modal-preset-backend');
-        const presetFrontendBtn = document.getElementById('modal-preset-frontend');
+        let modalPreset = 'api';
+        const presetBackendBtn = document.getElementById('modal-preset-api');
+        const presetFrontendBtn = document.getElementById('modal-preset-app');
 
         presetBackendBtn.addEventListener('click', () => {
-            modalPreset = 'backend';
+            modalPreset = 'api';
             presetBackendBtn.classList.add('active');
             presetFrontendBtn.classList.remove('active');
         });
 
         presetFrontendBtn.addEventListener('click', () => {
-            modalPreset = 'frontend';
+            modalPreset = 'app';
             presetFrontendBtn.classList.add('active');
             presetBackendBtn.classList.remove('active');
         });
@@ -1737,7 +1747,7 @@
             modalInput.value = '';
             modalError.style.display = 'none';
             modalError.textContent = '';
-            modalPreset = 'backend';
+            modalPreset = 'api';
             presetBackendBtn.classList.add('active');
             presetFrontendBtn.classList.remove('active');
             addModal.classList.add('show');
@@ -1859,6 +1869,17 @@
             config.route.external.enabled = document.getElementById('routeExtEnabled').checked;
             config.route.external.host = document.getElementById('routeExtHost').value.trim();
 
+            config.route.additional = {};
+            const additionalRouteDivs = document.getElementById('additional-routes-container').children;
+            for (let i = 0; i < additionalRouteDivs.length; i++) {
+                const name = additionalRouteDivs[i].querySelector('.additional-route-name').value.trim();
+                const host = additionalRouteDivs[i].querySelector('.additional-route-host').value.trim();
+                const enabled = additionalRouteDivs[i].querySelector('.additional-route-enabled').checked;
+                if (name && host) {
+                    config.route.additional[name] = { enabled: enabled, host: host };
+                }
+            }
+
             config.files = { cm: {}, secret: {} };
             const fileDivs = document.getElementById('custom-files-container').children;
             for (let i = 0; i < fileDivs.length; i++) {
@@ -1945,6 +1966,36 @@
             } else {
                 saveAndPreview();
             }
+        }
+
+        function addAdditionalRoute(name = '', host = '', enabled = true) {
+            const container = document.getElementById('additional-routes-container');
+            const routeId = 'route-' + Date.now() + Math.floor(Math.random() * 1000);
+
+            const routeDiv = document.createElement('div');
+            routeDiv.className = 'route-card';
+            routeDiv.id = routeId;
+            routeDiv.style.marginTop = '1rem';
+
+            routeDiv.innerHTML = `
+                <div class="route-card-header">
+                    <div style="display: flex; gap: 0.5rem; align-items: center; width: 60%;">
+                        <input type="text" class="additional-route-name" placeholder="Route Key (e.g. custom-api)" value="${name}" oninput="saveAndPreview()" style="margin: 0; padding: 0.2rem 0.5rem; font-size: 0.9rem;" />
+                    </div>
+                    <div style="display: flex; gap: 1rem; align-items: center;">
+                        <button type="button" class="btn-remove-item" onclick="document.getElementById('${routeId}').remove(); saveAndPreview()">Remove</button>
+                        <label class="route-switch">
+                            <input type="checkbox" class="additional-route-enabled" onchange="saveAndPreview()" ${enabled ? 'checked' : ''}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
+                    <label>Route Hostname</label>
+                    <input type="text" class="additional-route-host" placeholder="e.g. custom-api.domain.com" value="${host}" oninput="saveAndPreview()">
+                </div>
+            `;
+            container.appendChild(routeDiv);
         }
 
         function addCustomFile(type, filename = '', mountPath = '', content = '') {
@@ -2066,6 +2117,14 @@
             document.getElementById('routeExtEnabled').checked = config.route.external.enabled;
             document.getElementById('routeExtHost').value = config.route.external.host || '';
 
+            const additionalRoutesContainer = document.getElementById('additional-routes-container');
+            additionalRoutesContainer.innerHTML = '';
+            if (config.route.additional) {
+                for (const [name, routeConfig] of Object.entries(config.route.additional)) {
+                    addAdditionalRoute(name, routeConfig.host, routeConfig.enabled);
+                }
+            }
+
             const filesContainer = document.getElementById('custom-files-container');
             filesContainer.innerHTML = '';
             if (config.files) {
@@ -2158,7 +2217,7 @@
             const payload = {
                 chartName: document.getElementById('chartName').value || 'chart-model',
                 type: chartType,
-                devRepoUrl: document.getElementById('devRepoUrl').value || (chartType === 'single' ? 'https://{{DEV_REPO}}/devops/chart-model-app.git' : 'https://{{DEV_REPO}}/devops/chart-model-backend.git'),
+                devRepoUrl: document.getElementById('devRepoUrl').value || (chartType === 'single' ? 'https://{{DEV_REPO}}/devops/chart-model-app.git' : 'https://{{DEV_REPO}}/devops/chart-model-api.git'),
                 globalConfig: globalConfig,
                 globalSecret: globalSecret,
                 deployments: components,

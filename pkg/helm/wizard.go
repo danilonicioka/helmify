@@ -226,16 +226,17 @@ type AffinityParams struct {
 
 // RouteParams configures routing options and paths.
 type RouteParams struct {
-	Path     string         `json:"path"`
-	Default  SubRouteParams `json:"default"`
-	Internal SubRouteParams `json:"internal"`
-	External SubRouteParams `json:"external"`
+	Path       string                    `json:"path"`
+	Default    SubRouteParams            `json:"default"`
+	Internal   SubRouteParams            `json:"internal"`
+	External   SubRouteParams            `json:"external"`
+	Additional map[string]SubRouteParams `json:"additional,omitempty" yaml:"additional,omitempty"`
 }
 
 // SubRouteParams configures route state and hostname.
 type SubRouteParams struct {
-	Enabled bool   `json:"enabled"`
-	Host    string `json:"host"`
+	Enabled bool   `json:"enabled" yaml:"enabled"`
+	Host    string `json:"host" yaml:"host"`
 }
 
 // PersistenceParams configures PVC persistence.
@@ -498,6 +499,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		_ = setYamlPath(&rootNode, []string{appKey, "route", "external", "host"}, externalHost)
 
+		if len(depConfig.Route.Additional) > 0 {
+			_ = setYamlPath(&rootNode, []string{appKey, "route", "additional"}, depConfig.Route.Additional)
+		}
+
 		if len(depConfig.Files.Cm) > 0 {
 			_ = setYamlPath(&rootNode, []string{appKey, "files", "cm"}, depConfig.Files.Cm)
 		}
@@ -750,6 +755,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 			_ = setYamlPath(&rootNode, []string{compName, "route", "external", "host"}, externalHost)
 
+			if len(depConfig.Route.Additional) > 0 {
+				_ = setYamlPath(&rootNode, []string{compName, "route", "additional"}, depConfig.Route.Additional)
+			}
+
 			if len(depConfig.Files.Cm) > 0 {
 				_ = setYamlPath(&rootNode, []string{compName, "files", "cm"}, depConfig.Files.Cm)
 			}
@@ -839,7 +848,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 }
 
 func formatValues(valuesStr string) string {
-	blocks := []string{"imagePullSecrets:", "replicas:", "labels:", "annotations:", "cm:", "secret:", "vso:", "files:", "resources:", "route:", "service:", "persistence:", "startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "nodeSelector:", "tolerations:", "affinity:"}
+	blocks := []string{"imagePullSecrets:", "replicas:", "labels:", "cm:", "secret:", "vso:", "resources:", "route:", "service:", "persistence:", "startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "nodeSelector:", "tolerations:", "affinity:"}
 	for _, block := range blocks {
 		r := regexp.MustCompile(`(?m)^([^\n#]+[^:\n#\s])\s*\n(\s+` + block + `)`)
 		valuesStr = r.ReplaceAllString(valuesStr, "$1\n\n$2")
