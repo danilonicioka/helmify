@@ -61,13 +61,16 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			name := obj.GetName()
 
 			// Strip chart name prefix to cleanly determine component names (e.g. 'entremanas-api' -> 'api')
-			if conf.ChartName != "" && strings.HasPrefix(name, conf.ChartName+"-") {
-				name = strings.TrimPrefix(name, conf.ChartName+"-")
-			} else if conf.ChartName != "" && strings.HasPrefix(name, conf.ChartName) {
-				name = strings.TrimPrefix(name, conf.ChartName)
-				name = strings.TrimPrefix(name, "-")
+			cleanName := name
+			if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName+"-") {
+				cleanName = strings.TrimPrefix(cleanName, conf.ChartName+"-")
+			} else if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName) {
+				cleanName = strings.TrimPrefix(cleanName, conf.ChartName)
+				cleanName = strings.TrimPrefix(cleanName, "-")
 			}
-
+			if cleanName != "" {
+				name = cleanName
+			}
 			compNames = append(compNames, name)
 
 			depParams := DeploymentParams{
@@ -326,8 +329,40 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 		case "Secret":
 			stringData, foundStr, _ := unstructured.NestedMap(obj.Object, "stringData")
 			data, foundData, _ := unstructured.NestedMap(obj.Object, "data")
-			
+
 			objName := obj.GetName()
+			compName := findComponent(objName, obj.GetLabels())
+
+			// Intercept Truststore Secrets
+			if strings.Contains(objName, "truststore") {
+				if compName != "" {
+					depParams := params.Deployments[compName]
+					if depParams.Truststore == nil {
+						depParams.Truststore = &TruststoreParams{}
+					}
+					depParams.Truststore.Enabled = true
+					
+					var certContent string
+					if foundStr && stringData["certificate.pem"] != nil {
+						certContent = fmt.Sprintf("%v", stringData["certificate.pem"])
+					} else if foundData && data["certificate.pem"] != nil {
+						if strVal, ok := data["certificate.pem"].(string); ok {
+							if decoded, err := base64.StdEncoding.DecodeString(strVal); err == nil {
+								certContent = string(decoded)
+							} else {
+								certContent = strVal
+							}
+						}
+					}
+					
+					if certContent != "" {
+						depParams.Truststore.Certificate = cleanMultilineString(certContent)
+					}
+					params.Deployments[compName] = depParams
+				}
+				continue // Skip normal secret processing
+			}
+
 			isMounted := false
 			for depName, mappings := range volMappings {
 				for _, m := range mappings {
