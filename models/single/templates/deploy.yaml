@@ -111,7 +111,7 @@ spec:
           {{- if and $comp.truststore $comp.truststore.enabled }}
           env:
             - name: JAVA_TOOL_OPTIONS
-              value: {{ $comp.truststore.javaToolOptions | quote }}
+              value: {{ if hasKey (default dict $comp.cm) "JAVA_TOOL_OPTIONS" }}{{ printf "%v %s" (index $comp.cm "JAVA_TOOL_OPTIONS") $comp.truststore.javaToolOptions | quote }}{{ else }}{{ $comp.truststore.javaToolOptions | quote }}{{ end }}
           {{- end }}
 
           # 4. Clean Configuration Management: Full Decoupling via envFrom
