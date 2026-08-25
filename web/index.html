@@ -1198,16 +1198,12 @@
                     <div id="truststore-options" style="display: none; padding-left: 1rem; border-left: 2px solid rgba(255,255,255,0.1); margin-top: 0.5rem;">
                         <div class="form-group row" style="margin-top: 1rem; margin-bottom: 0;">
                             <div>
-                                <label for="truststorePath">Truststore Mount Path</label>
+                                <label for="truststorePath">Truststore Path (in container)</label>
                                 <input type="text" id="truststorePath" placeholder="/custom-truststore" oninput="saveAndPreview()">
-                            </div>
-                            <div>
-                                <label for="truststoreSecret">External Secret Name (Optional)</label>
-                                <input type="text" id="truststoreSecret" placeholder="my-custom-certs" oninput="saveAndPreview()">
                             </div>
                         </div>
                         <div class="form-group" style="margin-top: 1rem; margin-bottom: 0;">
-                            <label for="truststoreCert">Raw Certificate PEM (Optional, if no Secret Name)</label>
+                            <label for="truststoreCert">Raw Certificate PEM</label>
                             <textarea id="truststoreCert" rows="4" placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----" oninput="saveAndPreview()"></textarea>
                         </div>
                     </div>
@@ -1510,7 +1506,6 @@
                 truststore: {
                     enabled: !!(compData.truststore && compData.truststore.enabled),
                     path: (compData.truststore && compData.truststore.path) || '/custom-truststore',
-                    secretName: (compData.truststore && compData.truststore.secretName) || '',
                     certificate: (compData.truststore && compData.truststore.certificate) || ''
                 },
                 vso: {
@@ -1595,7 +1590,6 @@
                 truststore: {
                     enabled: false,
                     path: '/custom-truststore',
-                    secretName: '',
                     certificate: ''
                 },
                 vso: {
@@ -1843,10 +1837,9 @@
             config.persistence.mountPath = document.getElementById('persistenceMountPath').value.trim() || '/var/lib/data';
             config.persistence.storageRequest = document.getElementById('persistenceStorage').value.trim() || '1Gi';
 
-            if (!config.truststore) config.truststore = { enabled: false, path: '/custom-truststore', secretName: '', certificate: '' };
+            if (!config.truststore) config.truststore = { enabled: false, path: '/custom-truststore', certificate: '' };
             config.truststore.enabled = document.getElementById('truststoreEnabled').checked;
-            config.truststore.path = document.getElementById('truststorePath').value.trim() || '/custom-truststore';
-            config.truststore.secretName = document.getElementById('truststoreSecret').value.trim();
+            config.truststore.path = document.getElementById('truststorePath').value.trim();
             config.truststore.certificate = document.getElementById('truststoreCert').value.trim();
 
             if (!config.hpa) config.hpa = createDefaultComponentConfig('temp', 'app').hpa;
@@ -2076,13 +2069,11 @@
 
             if (config.truststore) {
                 document.getElementById('truststoreEnabled').checked = config.truststore.enabled;
-                document.getElementById('truststorePath').value = config.truststore.path || '/custom-truststore';
-                document.getElementById('truststoreSecret').value = config.truststore.secretName || '';
+                document.getElementById('truststorePath').value = config.truststore.path || '';
                 document.getElementById('truststoreCert').value = config.truststore.certificate || '';
             } else {
                 document.getElementById('truststoreEnabled').checked = false;
                 document.getElementById('truststorePath').value = '/custom-truststore';
-                document.getElementById('truststoreSecret').value = '';
                 document.getElementById('truststoreCert').value = '';
             }
 

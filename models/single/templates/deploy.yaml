@@ -220,7 +220,7 @@ spec:
         - name: ca-cert-volume
           secret:
             defaultMode: 420
-            secretName: {{ if $comp.truststore.certificate }}{{ include "chart-model-single.fullname" . }}-secret-truststore{{ else }}{{ $comp.truststore.secretName | quote }}{{ end }}
+            secretName: {{ include "chart-model-single.fullname" . }}-secret-truststore
         {{- end }}
         {{- if and $comp.persistence $comp.persistence.enabled }}
         - name: data
