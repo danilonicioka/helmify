@@ -59,6 +59,15 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 		kind := obj.GetKind()
 		if kind == "Deployment" || kind == "StatefulSet" || kind == "DaemonSet" {
 			name := obj.GetName()
+
+			// Strip chart name prefix to cleanly determine component names (e.g. 'entremanas-api' -> 'api')
+			if conf.ChartName != "" && strings.HasPrefix(name, conf.ChartName+"-") {
+				name = strings.TrimPrefix(name, conf.ChartName+"-")
+			} else if conf.ChartName != "" && strings.HasPrefix(name, conf.ChartName) {
+				name = strings.TrimPrefix(name, conf.ChartName)
+				name = strings.TrimPrefix(name, "-")
+			}
+
 			compNames = append(compNames, name)
 
 			depParams := DeploymentParams{

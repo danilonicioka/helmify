@@ -558,7 +558,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		// Process each user component
 		for compName, depConfig := range params.Deployments {
 			baseComp := "api"
-			if compName == "app" || compName == "web" {
+			if compName == "app" || compName == "web" || strings.HasSuffix(compName, "-app") || strings.HasSuffix(compName, "-web") || strings.Contains(compName, "frontend") {
 				baseComp = "app"
 			}
 
@@ -874,6 +874,10 @@ func replaceComponent(content string, oldComp, newComp string) string {
 		{"name: " + oldComp, "name: " + newCompKebab},
 		{"cm-" + oldComp + ".yaml", "cm-" + newCompKebab + ".yaml"},
 		{"secret-" + oldComp + ".yaml", "secret-" + newCompKebab + ".yaml"},
+		{"secret-truststore-" + oldComp + ".yaml", "secret-truststore-" + newCompKebab + ".yaml"},
+		{"." + oldComp + ".selectorLabels", "." + newCompKebab + ".selectorLabels"},
+		{"." + oldComp + ".labels", "." + newCompKebab + ".labels"},
+		{"." + oldComp + ".annotations", "." + newCompKebab + ".annotations"},
 		{".Values." + oldComp, ".Values." + newComp},
 	}
 	res := content
