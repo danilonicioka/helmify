@@ -6,10 +6,9 @@ metadata:
   labels:
     {{- include "chart-model-multi.app.labels" . | nindent 4 }}
   {{- $annotations := include "chart-model-multi.app.annotations" . }}
+  {{- if $annotations }}
   annotations:
-    {{- if $annotations }}
     {{- $annotations | nindent 4 }}
-    {{- end }}
   {{- end }}
 spec:
   {{- if not (kindIs "nil" $comp.replicas) }}
@@ -158,11 +157,6 @@ spec:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
       
-      # Graceful connection draining lifecycle settings
-      {{- if $comp.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
-      {{- end }}
-
           {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files (and $comp.truststore $comp.truststore.enabled) }}
           volumeMounts:
             {{- if and $comp.truststore $comp.truststore.enabled }}
@@ -195,6 +189,11 @@ spec:
             {{- end }}
             {{- end }}
           {{- end }}
+      # Graceful connection draining lifecycle settings
+      {{- if $comp.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
+      {{- end }}
+
       {{- with $comp.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
