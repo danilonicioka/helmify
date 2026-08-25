@@ -1,6 +1,0 @@
-{{- $comp := dict "cm" (dict "JAVA_TOOL_OPTIONS" "-Xmx512m") "truststore" (dict "enabled" true "javaToolOptions" "-Djavax...") -}}
-          {{- if and $comp.truststore $comp.truststore.enabled }}
-          env:
-            - name: JAVA_TOOL_OPTIONS
-              value: {{ if hasKey (default dict $comp.cm) "JAVA_TOOL_OPTIONS" }}{{ printf "%v %s" (index $comp.cm "JAVA_TOOL_OPTIONS") $comp.truststore.javaToolOptions | quote }}{{ else }}{{ $comp.truststore.javaToolOptions | quote }}{{ end }}
-          {{- end }}
