@@ -109,6 +109,8 @@ func mergeDevValues(caData []byte, chartName string, values helmify.Values, valu
 		}
 	}
 
+	setBlockStyle(&node)
+
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
