@@ -1,15 +1,14 @@
-{{- $comp := index .Values "frontend" | default dict -}}
+{{- $comp := index .Values "api" | default dict -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-frontend
+  name: {{ include "chart-model-multi.fullname" . }}-api
   labels:
-    {{- include "chart-model-multi.frontend.labels" . | nindent 4 }}
-  {{- $annotations := include "chart-model-multi.frontend.annotations" . }}
+    {{- include "chart-model-multi.api.labels" . | nindent 4 }}
+  {{- $annotations := include "chart-model-multi.api.annotations" . }}
+  {{- if $annotations }}
   annotations:
-    {{- if $annotations }}
     {{- $annotations | nindent 4 }}
-    {{- end }}
   {{- end }}
 spec:
   {{- if not (kindIs "nil" $comp.replicas) }}
@@ -21,7 +20,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "chart-model-multi.frontend.selectorLabels" . | nindent 6 }}
+      {{- include "chart-model-multi.api.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -33,34 +32,49 @@ spec:
         checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and $comp.cm (not (empty $comp.cm)) }}
-        checksum/cm-config: '{{ include (print $.Template.BasePath "/cm-frontend.yaml") . | sha256sum }}'
+        checksum/cm-config: '{{ include (print $.Template.BasePath "/cm-api.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and $comp.secret (not (empty $comp.secret)) }}
-        checksum/secret: '{{ include (print $.Template.BasePath "/secret-frontend.yaml") . | sha256sum }}'
+        checksum/secret: '{{ include (print $.Template.BasePath "/secret-api.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and $comp.truststore $comp.truststore.enabled $comp.truststore.certificate }}
-        checksum/secret-truststore: '{{ include (print $.Template.BasePath "/secret-truststore-frontend.yaml") . | sha256sum }}'
+        checksum/secret-truststore: '{{ include (print $.Template.BasePath "/secret-truststore-api.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
-        checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-frontend-files.yaml") . | sha256sum }}'
+        checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-api-files.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
-        checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-frontend-files.yaml") . | sha256sum }}'
+        checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-api-files.yaml") . | sha256sum }}'
         {{- end }}
       labels:
-        {{- include "chart-model-multi.frontend.selectorLabels" . | nindent 8 }}
+        {{- include "chart-model-multi.api.selectorLabels" . | nindent 8 }}
     spec:
       {{- with $comp.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- if and $comp.vso $comp.vso.enabled }}
-      serviceAccountName: {{ include "chart-model-multi.fullname" . }}-frontend-sa
+      serviceAccountName: {{ include "chart-model-multi.fullname" . }}-api-sa
       {{- else if .Values.serviceAccount }}
       serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
       {{- end }}
-      {{- if and $comp.truststore $comp.truststore.enabled }}
+      {{- if or (and .Values.db .Values.db.enabled) (and $comp.truststore $comp.truststore.enabled) }}
       initContainers:
+        {{- if and .Values.db .Values.db.enabled }}
+        - name: wait-for-db
+          image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+          command:
+            - "/bin/bash"
+            - "-c"
+            - |
+              echo "Waiting for database service {{ include "chart-model-multi.fullname" . }}-db to be ready..."
+              until curl -s -S --connect-timeout 2 {{ include "chart-model-multi.fullname" . }}-db:5432 2>&1 | grep -q 'Empty reply\|5432'; do
+                echo "Database is not yet reachable. Sleeping..."
+                sleep 2
+              done
+              echo "Database is up!"
+        {{- end }}
+        {{- if and $comp.truststore $comp.truststore.enabled }}
         - name: build-truststore
           image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $comp.image.pullPolicy }}
@@ -93,9 +107,10 @@ spec:
               mountPath: {{ $comp.truststore.path }}
             - name: ca-cert-volume
               mountPath: /certs
+        {{- end }}
       {{- end }}
       containers:
-        - name: frontend
+        - name: api
           image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ $comp.image.pullPolicy }}
           ports:
@@ -126,15 +141,15 @@ spec:
             {{- end }}
             {{- if and $comp.cm (not (empty $comp.cm)) }}
             - configMapRef:
-                name: {{ include "chart-model-multi.fullname" . }}-frontend-cm
+                name: {{ include "chart-model-multi.fullname" . }}-api-cm
             {{- end }}
             {{- if and $comp.secret (not (empty $comp.secret)) }}
             - secretRef:
-                name: {{ include "chart-model-multi.fullname" . }}-frontend-secret
+                name: {{ include "chart-model-multi.fullname" . }}-api-secret
             {{- end }}
             {{- if and $comp.vso $comp.vso.enabled }}
             - secretRef:
-                name: {{ include "chart-model-multi.fullname" . }}-frontend-vso-secret
+                name: {{ include "chart-model-multi.fullname" . }}-api-vso-secret
             {{- end }}
           {{- end }}
 
@@ -157,11 +172,6 @@ spec:
           resources:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
-      
-      # Graceful connection draining lifecycle settings
-      {{- if $comp.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
-      {{- end }}
 
           {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files (and $comp.truststore $comp.truststore.enabled) }}
           volumeMounts:
@@ -195,6 +205,12 @@ spec:
             {{- end }}
             {{- end }}
           {{- end }}
+      
+      # Graceful connection draining lifecycle settings
+      {{- if $comp.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
+      {{- end }}
+
       {{- with $comp.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -220,7 +236,7 @@ spec:
         - name: ca-cert-volume
           secret:
             defaultMode: 420
-            secretName: {{ if $comp.truststore.certificate }}{{ include "chart-model-multi.fullname" . }}-frontend-secret-truststore{{ else }}{{ $comp.truststore.secretName | quote }}{{ end }}
+            secretName: {{ if $comp.truststore.certificate }}{{ include "chart-model-multi.fullname" . }}-api-secret-truststore{{ else }}{{ $comp.truststore.secretName | quote }}{{ end }}
         {{- end }}
         {{- if and $comp.persistence $comp.persistence.enabled }}
         - name: data
@@ -228,21 +244,21 @@ spec:
           emptyDir: {}
           {{- else }}
           persistentVolumeClaim:
-            claimName: {{ include "chart-model-multi.fullname" . }}-frontend
+            claimName: {{ include "chart-model-multi.fullname" . }}-api
           {{- end }}
         {{- end }}
         {{- if and $comp.files $comp.files.cm }}
         {{- range $filename, $config := $comp.files.cm }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
           configMap:
-            name: {{ include "chart-model-multi.fullname" $ }}-frontend-files
+            name: {{ include "chart-model-multi.fullname" $ }}-api-files
         {{- end }}
         {{- end }}
         {{- if and $comp.files $comp.files.secret }}
         {{- range $filename, $config := $comp.files.secret }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
           secret:
-            secretName: {{ include "chart-model-multi.fullname" $ }}-frontend-files-secret
+            secretName: {{ include "chart-model-multi.fullname" $ }}-api-files-secret
             items:
               - key: {{ $filename }}
                 path: {{ $filename }}
@@ -252,7 +268,7 @@ spec:
         {{- range $filename, $config := $comp.vso.files }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
           secret:
-            secretName: {{ include "chart-model-multi.fullname" $ }}-frontend-vso-secret
+            secretName: {{ include "chart-model-multi.fullname" $ }}-api-vso-secret
             items:
               - key: {{ $filename }}
                 path: {{ $filename }}

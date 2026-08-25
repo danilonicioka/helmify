@@ -1,18 +1,18 @@
-{{- $comp := index .Values "frontend" | default dict -}}
-{{- if and $comp $comp.route $comp.route.internal.enabled -}}
+{{- $comp := index .Values "api" | default dict -}}
+{{- if and $comp $comp.route $comp.route.external.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-frontend-int
+  name: {{ include "chart-model-multi.fullname" . }}-api-ext
   labels:
-    {{- include "chart-model-multi.frontend.labels" . | nindent 4 }}
+    {{- include "chart-model-multi.api.labels" . | nindent 4 }}
   {{- with $comp.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if $comp.route.internal.host }}
-  host: {{ $comp.route.internal.host | quote }}
+  {{- if $comp.route.external.host }}
+  host: {{ $comp.route.external.host | quote }}
   {{- end }}
   {{- if $comp.route.path }}
   path: {{ $comp.route.path | quote }}
@@ -23,7 +23,7 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "chart-model-multi.fullname" . }}-frontend
+    name: {{ include "chart-model-multi.fullname" . }}-api
     weight: 100
   port:
     targetPort: http

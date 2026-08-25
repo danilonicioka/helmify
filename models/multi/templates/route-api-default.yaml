@@ -1,11 +1,11 @@
-{{- $comp := index .Values "frontend" | default dict -}}
+{{- $comp := index .Values "api" | default dict -}}
 {{- if and $comp $comp.route $comp.route.default.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-frontend
+  name: {{ include "chart-model-multi.fullname" . }}-api
   labels:
-    {{- include "chart-model-multi.frontend.labels" . | nindent 4 }}
+    {{- include "chart-model-multi.api.labels" . | nindent 4 }}
   {{- with $comp.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -23,7 +23,7 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "chart-model-multi.fullname" . }}-frontend
+    name: {{ include "chart-model-multi.fullname" . }}-api
     weight: 100
   port:
     targetPort: http

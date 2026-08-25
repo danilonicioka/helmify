@@ -1,11 +1,11 @@
-{{- $comp := index .Values "backend" | default dict -}}
+{{- $comp := index .Values "app" | default dict -}}
 {{- if and $comp $comp.route $comp.route.internal.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-backend-int
+  name: {{ include "chart-model-multi.fullname" . }}-app-int
   labels:
-    {{- include "chart-model-multi.backend.labels" . | nindent 4 }}
+    {{- include "chart-model-multi.app.labels" . | nindent 4 }}
   {{- with $comp.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -23,7 +23,7 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "chart-model-multi.fullname" . }}-backend
+    name: {{ include "chart-model-multi.fullname" . }}-app
     weight: 100
   port:
     targetPort: http

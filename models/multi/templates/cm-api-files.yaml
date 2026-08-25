@@ -1,9 +1,9 @@
-{{- $comp := index .Values "frontend" | default dict -}}
+{{- $comp := index .Values "api" | default dict -}}
 {{- if and $comp.files $comp.files.cm -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-frontend-files
+  name: {{ include "chart-model-multi.fullname" . }}-api-files
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
 data:

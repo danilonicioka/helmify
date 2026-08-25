@@ -2,8 +2,8 @@ global:
   cm:
     TZ: "America/Belem"
 
-backend:
+api:
   cm: {}
 
-frontend:
+app:
   cm: {}

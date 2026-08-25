@@ -1,10 +1,10 @@
-{{- $comp := index .Values "frontend" | default dict -}}
+{{- $comp := index .Values "api" | default dict -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-frontend
+  name: {{ include "chart-model-multi.fullname" . }}-api
   labels:
-    {{- include "chart-model-multi.frontend.labels" . | nindent 4 }}
+    {{- include "chart-model-multi.api.labels" . | nindent 4 }}
 spec:
   type: {{ $comp.service.type }}
   ports:
@@ -17,4 +17,4 @@ spec:
     {{- end }}
   {{- end }}
   selector:
-    {{- include "chart-model-multi.frontend.selectorLabels" . | nindent 4 }}
+    {{- include "chart-model-multi.api.selectorLabels" . | nindent 4 }}

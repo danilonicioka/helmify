@@ -19,15 +19,15 @@ global:
   secret: {}
 
 # ==============================================================================
-# II. BACKEND COMPONENT CONFIGURATION
+# II. API COMPONENT CONFIGURATION
 # ==============================================================================
-backend:
+api:
 
   # ----------------------------------------------------------------------------
   # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
   image:
-    repository: "{{REGISTRY}}/chart-model-backend"
+    repository: "{{REGISTRY}}/chart-model-api"
     tag: "latest"
     pullPolicy: IfNotPresent
     pullSecrets: []
@@ -47,8 +47,8 @@ backend:
 
   vso:
     enabled: false
-    role: "chart-model-multi-backend-role"
-    path: "kv/data/chart-model-multi/backend"
+    role: "chart-model-multi-api-role"
+    path: "kv/data/chart-model-multi/api"
     files: {}
       #   my_vault_key.p12:
       #     mountPath: "/app/certs/my_vault_key.p12"
@@ -115,15 +115,15 @@ backend:
     path: "/"
     default:
       enabled: true
-      host: chart-model-multi-backend{{DEFAULT_DOMAIN}}
+      host: chart-model-multi-api{{DEFAULT_DOMAIN}}
       annotations: {}
     internal:
       enabled: false
-      host: chart-model-multi-backend{{INTERNAL_DOMAIN}}
+      host: chart-model-multi-api{{INTERNAL_DOMAIN}}
       annotations: {}
     external:
       enabled: false
-      host: chart-model-backend{{EXTERNAL_DOMAIN}}
+      host: chart-model-api{{EXTERNAL_DOMAIN}}
       annotations: {}
     additional: {}
       #   custom-route:
@@ -203,19 +203,19 @@ backend:
                 - key: app.kubernetes.io/component
                   operator: In
                   values:
-                    - chart-model-multi-backend
+                    - chart-model-multi-api
             topologyKey: kubernetes.io/hostname
 
 # ==============================================================================
-# III. FRONTEND COMPONENT CONFIGURATION
+# III. APP COMPONENT CONFIGURATION
 # ==============================================================================
-frontend:
+app:
 
   # ----------------------------------------------------------------------------
   # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
   image:
-    repository: "{{REGISTRY}}/chart-model-frontend"
+    repository: "{{REGISTRY}}/chart-model-app"
     tag: "latest"
     pullPolicy: IfNotPresent
     pullSecrets: []
@@ -235,8 +235,8 @@ frontend:
 
   vso:
     enabled: false
-    role: "chart-model-multi-frontend-role"
-    path: "kv/data/chart-model-multi/frontend"
+    role: "chart-model-multi-app-role"
+    path: "kv/data/chart-model-multi/app"
     files: {}
 
   truststore:
@@ -302,15 +302,15 @@ frontend:
     path: "/"
     default:
       enabled: true
-      host: chart-model-multi-frontend{{DEFAULT_DOMAIN}}
+      host: chart-model-multi-app{{DEFAULT_DOMAIN}}
       annotations: {}
     internal:
       enabled: false
-      host: chart-model-multi-frontend{{INTERNAL_DOMAIN}}
+      host: chart-model-multi-app{{INTERNAL_DOMAIN}}
       annotations: {}
     external:
       enabled: false
-      host: chart-model-frontend{{EXTERNAL_DOMAIN}}
+      host: chart-model-app{{EXTERNAL_DOMAIN}}
       annotations: {}
     additional: {}
       #   custom-route:
@@ -390,5 +390,5 @@ frontend:
                 - key: app.kubernetes.io/component
                   operator: In
                   values:
-                    - chart-model-multi-frontend
+                    - chart-model-multi-app
             topologyKey: kubernetes.io/hostname
