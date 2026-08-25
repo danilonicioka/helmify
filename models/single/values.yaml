@@ -67,9 +67,6 @@ chart-model-single:
     javaToolOptions: "-Djavax.net.ssl.trustStore=/custom-truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
     secretName: ""
     certificate: ""
-    #   -----BEGIN CERTIFICATE-----
-    #   ...
-    #   -----END CERTIFICATE-----
 
   files:
     cm: {}

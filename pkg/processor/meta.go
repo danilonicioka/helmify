@@ -465,11 +465,7 @@ func NormalizeComponentName(comp string) string {
 	comp = strings.TrimLeft(comp, "-./_ ")
 	comp = strings.TrimRight(comp, "-./_ ")
 
-	// Strip known application prefix
-	if idx := strings.Index(comp, "portal-certidao"); idx != -1 {
-		comp = comp[idx+len("portal-certidao"):]
-		comp = strings.TrimLeft(comp, "-./_ ")
-	}
+
 	if idx := strings.LastIndex(comp, "."); idx != -1 {
 		comp = comp[idx+1:]
 	}
@@ -479,20 +475,6 @@ func NormalizeComponentName(comp string) string {
 	comp = strings.TrimLeft(comp, "- ")
 	comp = strings.TrimRight(comp, "- ")
 
-	switch comp {
-	case "api", "api-emissor", "apiemissor", "emissor", "api-secrets":
-		return "api-emissor"
-	case "app", "app-emissor", "appemissor", "app-conf":
-		return "app-emissor"
-	case "bff", "bff-emissor", "bffemissor", "bff-certidao", "bffcertidao":
-		return "bff-emissor"
-	case "libra", "libra-service", "libraservice", "libra-service-2":
-		return "libra-service-2"
-	case "pje-service-1g", "pjeservice1g", "pje-service.1g", "pje-service1g", "pje1g", "pje-1g", "1g", "1-g", "pje-service-1-g", "service-1g":
-		return "pje-service-1g"
-	case "pje-service-2g", "pjeservice2g", "pje-service.2g", "pje-service2g", "pje2g", "pje-2g", "2g", "2-g", "pje-service-2-g", "service-2g":
-		return "pje-service-2g"
-	}
 	return comp
 }
 
