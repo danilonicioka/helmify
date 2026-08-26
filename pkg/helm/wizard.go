@@ -893,6 +893,7 @@ func replaceComponent(content string, oldComp, newComp string) string {
 		{"." + oldComp + ".labels", "." + newCompKebab + ".labels"},
 		{"." + oldComp + ".annotations", "." + newCompKebab + ".annotations"},
 		{".Values." + oldComp, ".Values." + newComp},
+		{"index .Values \"" + oldComp + "\"", "index .Values \"" + newComp + "\""},
 	}
 	res := content
 	for _, r := range repls {
