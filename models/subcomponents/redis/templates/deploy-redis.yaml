@@ -84,6 +84,15 @@ spec:
             {{- toYaml .Values.redis.readinessProbe | nindent 12 }}
           {{- end }}
 
+          {{- with .Values.redis.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.redis.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
           {{- if and .Values.redis.resources .Values.redis.resources.limits }}
           resources:
             {{- toYaml .Values.redis.resources | nindent 12 }}

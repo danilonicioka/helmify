@@ -50,8 +50,11 @@ spec:
         {{- end }}
     spec:
       containers:
-      - args: {{- toYaml (index .Values "myapp").app.args | nindent 8 }}
-        command: {{- toYaml (index .Values "myapp").app.command | nindent 8 }}
+      - args: '[HELMIFY_WITH:myapp.app.args:10]'
+{{- with (index .Values "myapp").app.command }}
+        command:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         env:
         - name: APP_NAME
           valueFrom:
@@ -113,7 +116,11 @@ spec:
         - mountPath: /usr/share/nginx/html
           name: sample-pv-storage
         {{- end }}
-      - args: {{- toYaml (index .Values "myapp").proxySidecar.args | nindent 8 }}
+      - args: '[HELMIFY_WITH:myapp.proxySidecar.args:10]'
+{{- with (index .Values "myapp").proxySidecar.command }}
+        command:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         envFrom:
         {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
         - configMapRef:
@@ -154,7 +161,11 @@ spec:
           {{- toYaml . | nindent 10 }}
         {{- end }}
       initContainers:
-      - command: {{- toYaml (index .Values "myapp").command | nindent 8 }}
+      - args: '[HELMIFY_WITH:myapp.args:10]'
+{{- with (index .Values "myapp").command }}
+        command:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
         envFrom:
         {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
         - configMapRef:

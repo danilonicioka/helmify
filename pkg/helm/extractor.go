@@ -121,6 +121,13 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 						depParams.Image.Tag = "latest"
 					}
 				}
+				if command, found, _ := unstructured.NestedStringSlice(container, "command"); found && len(command) > 0 {
+					depParams.Command = command
+				}
+
+				if args, found, _ := unstructured.NestedStringSlice(container, "args"); found && len(args) > 0 {
+					depParams.Args = args
+				}
 				
 				// Extract Resources
 				resources, resFound, _ := unstructured.NestedMap(container, "resources")

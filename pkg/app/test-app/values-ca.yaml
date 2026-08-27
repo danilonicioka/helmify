@@ -1,6 +1,10 @@
 global:
   cm:
     TZ: "America/Belem"
+api:
+  cm: {}
+app:
+  cm: {}
 myapp:
   cm:
     dummyconfigmapkey: dummyconfigmapvalue
@@ -20,7 +24,3 @@ myapp:
           podTemplates:
             - name: default-oneperhost-pod-template
               distribution: "OnePerHost"
-backend:
-  cm: {}
-frontend:
-  cm: {}

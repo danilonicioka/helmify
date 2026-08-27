@@ -151,6 +151,15 @@ spec:
             {{- toYaml $comp.readinessProbe | nindent 12 }}
           {{- end }}
 
+          {{- with $comp.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $comp.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
           # Resources (Operational Overlay-Only)
           {{- if and $comp.resources $comp.resources.limits }}
           resources:

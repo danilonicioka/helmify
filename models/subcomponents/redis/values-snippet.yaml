@@ -14,6 +14,9 @@ redis:
     pullPolicy: IfNotPresent
     pullSecrets: []
 
+  command: []
+  args: []
+
   # -- Number of replica pods.
   replicas: 1
 

@@ -84,6 +84,15 @@ spec:
             {{- toYaml .Values.postgres.readinessProbe | nindent 12 }}
           {{- end }}
 
+          {{- with .Values.postgres.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.postgres.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
           {{- if and .Values.postgres.resources .Values.postgres.resources.limits }}
           resources:
             {{- toYaml .Values.postgres.resources | nindent 12 }}

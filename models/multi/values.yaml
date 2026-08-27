@@ -31,6 +31,9 @@ api:
     tag: "latest"
     pullPolicy: IfNotPresent
     pullSecrets: []
+  
+  command: []
+  args: []
 
   replicas: 1
 
@@ -221,6 +224,9 @@ app:
     tag: "latest"
     pullPolicy: IfNotPresent
     pullSecrets: []
+
+  command: []
+  args: []
 
   replicas: 1
 

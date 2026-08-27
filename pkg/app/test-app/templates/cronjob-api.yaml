@@ -15,7 +15,11 @@ spec:
       template:
         spec:
           containers:
-          - command: '{{- toYaml (index .Values "api").command | nindent 12 }}'
+          - args: '[HELMIFY_WITH:api.args:14]'
+{{- with (index .Values "api").command }}
+            command:
+              {{- toYaml . | nindent 14 }}
+            {{- end }}
             envFrom:
             {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
             - configMapRef:
@@ -27,11 +31,11 @@ spec:
             {{- end }}
             {{- if (index .Values "api").cm }}
             - configMapRef:
-                name: {{ include "test-app.fullname" . }}-api-emissor-cm
+                name: {{ include "test-app.fullname" . }}-api-cm
             {{- end }}
             {{- if (index .Values "api").secret }}
             - secretRef:
-                name: {{ include "test-app.fullname" . }}-api-emissor-secret
+                name: {{ include "test-app.fullname" . }}-api-secret
             {{- end }}
             image: '{{ (index .Values "api").image.repository }}:{{ (index .Values
               "api").image.tag | default .Chart.AppVersion }}'

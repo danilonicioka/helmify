@@ -142,6 +142,8 @@ type WizardParams struct {
 type DeploymentParams struct {
 	Replicas         *int                        `json:"replicas"`
 	Image            ImageParams                 `json:"image"`
+	Command          []string                    `json:"command,omitempty"`
+	Args             []string                    `json:"args,omitempty"`
 	Service          ServiceParams               `json:"service"`
 	Cm               map[string]string           `json:"cm"`
 	Secret           map[string]string           `json:"secret"`
@@ -381,6 +383,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		if depConfig.Image.Tag != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "image", "tag"}, depConfig.Image.Tag)
+		}
+		if depConfig.Command != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "command"}, depConfig.Command)
+		}
+		if depConfig.Args != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "args"}, depConfig.Args)
 		}
 		svcPort := depConfig.Service.Port
 		if svcPort == 0 && depConfig.Service.Ports != nil {
@@ -643,6 +651,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 			if depConfig.Image.Tag != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "image", "tag"}, depConfig.Image.Tag)
+			}
+			if depConfig.Command != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "command"}, depConfig.Command)
+			}
+			if depConfig.Args != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "args"}, depConfig.Args)
 			}
 			svcPort := depConfig.Service.Port
 			if svcPort == 0 && depConfig.Service.Ports != nil {

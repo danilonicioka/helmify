@@ -233,12 +233,7 @@ func processContainers(objName string, values helmify.Values, containerType stri
 			valuePath = []string{objName, containerName}
 		}
 		valuePathStr := strings.Join(valuePath, ".")
-		var valPath string
-		if len(valuePath) == 1 {
-			valPath = fmt.Sprintf(`(index .Values "%s")`, valuePath[0])
-		} else {
-			valPath = fmt.Sprintf(`(index .Values "%s").%s`, valuePath[0], valuePath[1])
-		}
+
 
 		_, exists := (containers[i].(map[string]interface{}))["resources"]
 		if exists {
@@ -253,15 +248,14 @@ func processContainers(objName string, values helmify.Values, containerType stri
 			return nil, nil, err
 		}
 		if exists && len(args) > 0 {
-			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf(`{{- toYaml %s.args | nindent %d }}`, valPath, nindent), "args")
-			if err != nil {
-				return nil, nil, err
-			}
-
 			err = unstructured.SetNestedStringSlice(values, args, append(valuePath, "args")...)
 			if err != nil {
 				return nil, nil, fmt.Errorf("%w: unable to set deployment value field", err)
 			}
+		}
+		err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf("[HELMIFY_WITH:%s.args:%d]", valuePathStr, nindent+2), "args")
+		if err != nil {
+			return nil, nil, err
 		}
 
 		command, exists, err := unstructured.NestedStringSlice(containers[i].(map[string]interface{}), "command")
@@ -269,15 +263,14 @@ func processContainers(objName string, values helmify.Values, containerType stri
 			return nil, nil, err
 		}
 		if exists && len(command) > 0 {
-			err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf(`{{- toYaml %s.command | nindent %d }}`, valPath, nindent), "command")
-			if err != nil {
-				return nil, nil, err
-			}
-
 			err = unstructured.SetNestedStringSlice(values, command, append(valuePath, "command")...)
 			if err != nil {
 				return nil, nil, fmt.Errorf("%w: unable to set deployment value field", err)
 			}
+		}
+		err = unstructured.SetNestedField(containers[i].(map[string]interface{}), fmt.Sprintf("[HELMIFY_WITH:%s.command:%d]", valuePathStr, nindent+2), "command")
+		if err != nil {
+			return nil, nil, err
 		}
 
 		// Inject 3-Tier Probes templates using placeholders

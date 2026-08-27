@@ -152,10 +152,11 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"args":    "{{- toYaml (index .Values \"nginx\").args | nindent 8 }}",
-					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image":   "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
-					"name":    "nginx", "ports": []interface{}{
+					"args":           "[HELMIFY_WITH:nginx.args:10]",
+					"command":        "[HELMIFY_WITH:nginx.command:10]",
+					"envFrom":        "[HELMIFY_ENV_FROM:nginx:nginx:8]",
+					"image":          "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
+					"name":           "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
@@ -199,9 +200,11 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image":   "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
-					"name":    "nginx", "ports": []interface{}{
+					"args":           "[HELMIFY_WITH:nginx.args:10]",
+					"command":        "[HELMIFY_WITH:nginx.command:10]",
+					"envFrom":        "[HELMIFY_ENV_FROM:nginx:nginx:8]",
+					"image":          "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
+					"name":           "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
@@ -241,9 +244,11 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image":   "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
-					"name":    "nginx", "ports": []interface{}{
+					"args":           "[HELMIFY_WITH:nginx.args:10]",
+					"command":        "[HELMIFY_WITH:nginx.command:10]",
+					"envFrom":        "[HELMIFY_ENV_FROM:nginx:nginx:8]",
+					"image":          "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
+					"name":           "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
@@ -283,9 +288,11 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
-					"envFrom": "[HELMIFY_ENV_FROM:nginx:nginx:8]",
-					"image":   "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
-					"name":    "nginx", "ports": []interface{}{
+					"args":           "[HELMIFY_WITH:nginx.args:10]",
+					"command":        "[HELMIFY_WITH:nginx.command:10]",
+					"envFrom":        "[HELMIFY_ENV_FROM:nginx:nginx:8]",
+					"image":          "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
+					"name":           "nginx", "ports": []interface{}{
 						map[string]interface{}{
 							"containerPort": int64(80),
 						},
@@ -323,6 +330,8 @@ func Test_pod_Process(t *testing.T) {
 		assert.Equal(t, map[string]interface{}{
 			"containers": []interface{}{
 				map[string]interface{}{
+					"args":           "[HELMIFY_WITH:nginx.args:10]",
+					"command":        "[HELMIFY_WITH:nginx.command:10]",
 					"envFrom":        "[HELMIFY_ENV_FROM:nginx:nginx:8]",
 					"image":          "{{ (index .Values \"nginx\").image.repository }}:{{ (index .Values \"nginx\").image.tag | default .Chart.AppVersion }}",
 					"name":           "nginx",

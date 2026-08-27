@@ -21,7 +21,7 @@ spec:
       {{- include "test-app.api.selectorLabels" . | nindent 8 }}
       annotations:
         {{- if and (index .Values "api") (index .Values "api" "cm") }}
-        checksum/cm-config: {{ include (print $.Template.BasePath "/cm-api-emissor.yaml") . | sha256sum }}
+        checksum/cm-config: {{ include (print $.Template.BasePath "/cm-api.yaml") . | sha256sum }}
         {{- end }}
         {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
         checksum/global-config: {{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}
@@ -30,11 +30,16 @@ spec:
         checksum/global-secret: {{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}
         {{- end }}
         {{- if and (index .Values "api") (index .Values "api" "secret") }}
-        checksum/secret: {{ include (print $.Template.BasePath "/secret-api-emissor.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret-api.yaml") . | sha256sum }}
         {{- end }}
     spec:
       containers:
-      - envFrom:
+      - args: '[HELMIFY_WITH:api.args:10]'
+{{- with (index .Values "api").command }}
+        command:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+        envFrom:
         {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
         - configMapRef:
             name: {{ include "test-app.fullname" . }}-global-cm
@@ -45,11 +50,11 @@ spec:
         {{- end }}
         {{- if (index .Values "api").cm }}
         - configMapRef:
-            name: {{ include "test-app.fullname" . }}-api-emissor-cm
+            name: {{ include "test-app.fullname" . }}-api-cm
         {{- end }}
         {{- if (index .Values "api").secret }}
         - secretRef:
-            name: {{ include "test-app.fullname" . }}-api-emissor-secret
+            name: {{ include "test-app.fullname" . }}-api-secret
         {{- end }}
         image: '{{ (index .Values "api").image.repository }}:{{ (index .Values "api").image.tag
           | default .Chart.AppVersion }}'
