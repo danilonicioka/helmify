@@ -96,10 +96,4 @@ Component-specific annotations
 {{- end }}
 {{- end }}
 
-{{/*
-Api-specific selector labels
-*/}}
 
-{{/*
-App-specific selector labels
-*/}}
