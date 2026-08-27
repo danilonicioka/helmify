@@ -51,6 +51,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
+Component-specific selector labels
+*/}}
+{{- define "chart-model-multi.component.selectorLabels" -}}
+{{ include "chart-model-multi.selectorLabels" .context }}
+app.kubernetes.io/component: {{ include "chart-model-multi.fullname" .context }}-{{ .component }}
+{{- end }}
+
+{{/*
 Create the name of the service account to use
 */}}
 {{- define "chart-model-multi.serviceAccountName" -}}
@@ -65,57 +73,33 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Api-specific labels
+Component-specific labels
 */}}
-{{- define "chart-model-multi.api.labels" -}}
-{{ include "chart-model-multi.labels" . }}
-app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-api
-{{- with .Values.api.labels }}
+{{- define "chart-model-multi.component.labels" -}}
+{{ include "chart-model-multi.labels" .context }}
+app.kubernetes.io/component: {{ include "chart-model-multi.fullname" .context }}-{{ .component }}
+{{- if hasKey .context.Values .component }}
+{{- with (index .context.Values .component).labels }}
 {{ toYaml . }}
 {{- end }}
 {{- end }}
-
-{{/*
-Api-specific annotations
-*/}}
-{{- define "chart-model-multi.api.annotations" -}}
-{{- with .Values.api.annotations }}
-{{- toYaml . }}
-{{- end }}
 {{- end }}
 
 {{/*
-App-specific labels
+Component-specific annotations
 */}}
-{{- define "chart-model-multi.app.labels" -}}
-{{ include "chart-model-multi.labels" . }}
-app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-app
-{{- with .Values.app.labels }}
+{{- define "chart-model-multi.component.annotations" -}}
+{{- if hasKey .context.Values .component }}
+{{- with (index .context.Values .component).annotations }}
 {{ toYaml . }}
 {{- end }}
-{{- end }}
-
-{{/*
-App-specific annotations
-*/}}
-{{- define "chart-model-multi.app.annotations" -}}
-{{- with .Values.app.annotations }}
-{{- toYaml . }}
 {{- end }}
 {{- end }}
 
 {{/*
 Api-specific selector labels
 */}}
-{{- define "chart-model-multi.api.selectorLabels" -}}
-{{ include "chart-model-multi.selectorLabels" . }}
-app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-api
-{{- end }}
 
 {{/*
 App-specific selector labels
 */}}
-{{- define "chart-model-multi.app.selectorLabels" -}}
-{{ include "chart-model-multi.selectorLabels" . }}
-app.kubernetes.io/component: {{ include "chart-model-multi.fullname" . }}-app
-{{- end }}

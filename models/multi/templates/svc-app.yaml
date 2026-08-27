@@ -4,7 +4,7 @@ kind: Service
 metadata:
   name: {{ include "chart-model-multi.fullname" . }}-app
   labels:
-    {{- include "chart-model-multi.app.labels" . | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" . "component" "app") | nindent 4 }}
 spec:
   type: {{ $comp.service.type }}
   ports:
@@ -17,4 +17,4 @@ spec:
     {{- end }}
   {{- end }}
   selector:
-    {{- include "chart-model-multi.app.selectorLabels" . | nindent 4 }}
+    {{- include "chart-model-multi.component.selectorLabels" (dict "context" . "component" "app") | nindent 4 }}

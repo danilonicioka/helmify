@@ -1,0 +1,1 @@
+{"error":"Failed to extract data: no valid Kubernetes Deployments found in input (ensure your manifests are correct and contain at least one Deployment)","status":500}

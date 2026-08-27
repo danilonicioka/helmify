@@ -5,7 +5,7 @@ kind: Route
 metadata:
   name: {{ include "chart-model-multi.fullname" . }}-app-int
   labels:
-    {{- include "chart-model-multi.app.labels" . | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" . "component" "app") | nindent 4 }}
   {{- with $comp.route.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
