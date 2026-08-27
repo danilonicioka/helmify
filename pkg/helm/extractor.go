@@ -113,12 +113,17 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				container := containers[0].(map[string]interface{})
 				image, _, _ := unstructured.NestedString(container, "image")
 				if image != "" {
-					parts := strings.SplitN(image, ":", 2)
-					depParams.Image.Repository = parts[0]
-					if len(parts) > 1 {
-						depParams.Image.Tag = parts[1]
-					} else {
+					index := strings.LastIndex(image, ":")
+					if strings.Contains(image, "@") && strings.Count(image, ":") >= 2 {
+						last := strings.LastIndex(image, ":")
+						index = strings.LastIndex(image[:last], ":")
+					}
+					if index < 0 {
+						depParams.Image.Repository = image
 						depParams.Image.Tag = "latest"
+					} else {
+						depParams.Image.Repository = image[:index]
+						depParams.Image.Tag = image[index+1:]
 					}
 				}
 				if command, found, _ := unstructured.NestedStringSlice(container, "command"); found && len(command) > 0 {

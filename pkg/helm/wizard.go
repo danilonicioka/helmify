@@ -608,20 +608,21 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 
 			if !exists && mapping != nil && mapping.Kind == yaml.MappingNode {
-				// Find and clone baseComp node
+				// Find and clone baseComp node from original un-mutated values.yaml
+				// We MUST parse valuesData again to ensure we don't clone a node that has already been mutated by previous iterations.
 				var baseNode *yaml.Node
-				for i := 0; i < len(mapping.Content); i += 2 {
-					if mapping.Content[i].Value == baseComp {
-						baseNode = mapping.Content[i+1]
-						break
-					}
-				}
-				// If baseComp node wasn't found in current mapping, find it in original values.yaml
-				if baseNode == nil {
-					var origRoot yaml.Node
-					if err := yaml.Unmarshal(valuesData, &origRoot); err == nil && origRoot.Kind == yaml.DocumentNode && len(origRoot.Content) > 0 {
-						origMapping := origRoot.Content[0]
-						if origMapping.Kind == yaml.MappingNode {
+				var origRoot yaml.Node
+				if err := yaml.Unmarshal(valuesData, &origRoot); err == nil && origRoot.Kind == yaml.DocumentNode && len(origRoot.Content) > 0 {
+					origMapping := origRoot.Content[0]
+					if origMapping.Kind == yaml.MappingNode {
+						for i := 0; i < len(origMapping.Content); i += 2 {
+							if origMapping.Content[i].Value == baseComp {
+								baseNode = origMapping.Content[i+1]
+								break
+							}
+						}
+						// Fallback to "api" if baseComp wasn't found
+						if baseNode == nil {
 							for i := 0; i < len(origMapping.Content); i += 2 {
 								if origMapping.Content[i].Value == "api" {
 									baseNode = origMapping.Content[i+1]
