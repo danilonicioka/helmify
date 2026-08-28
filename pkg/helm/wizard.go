@@ -611,24 +611,22 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				// Find and clone baseComp node from original un-mutated values.yaml
 				// We MUST parse valuesData again to ensure we don't clone a node that has already been mutated by previous iterations.
 				var baseNode *yaml.Node
+				var baseKeyNode *yaml.Node
 				var origRoot yaml.Node
 				if err := yaml.Unmarshal(valuesData, &origRoot); err == nil && origRoot.Kind == yaml.DocumentNode && len(origRoot.Content) > 0 {
 					origMapping := origRoot.Content[0]
 					if origMapping.Kind == yaml.MappingNode {
 						for i := 0; i < len(origMapping.Content); i += 2 {
 							if origMapping.Content[i].Value == baseComp {
+								baseKeyNode = origMapping.Content[i]
 								baseNode = origMapping.Content[i+1]
 								break
 							}
 						}
-						// Fallback to "api" if baseComp wasn't found
-						if baseNode == nil {
-							for i := 0; i < len(origMapping.Content); i += 2 {
-								if origMapping.Content[i].Value == "api" {
-									baseNode = origMapping.Content[i+1]
-									break
-								}
-							}
+						// Fallback to the first available component if baseComp wasn't found
+						if baseNode == nil && len(origMapping.Content) >= 2 {
+							baseKeyNode = origMapping.Content[0]
+							baseNode = origMapping.Content[1]
 						}
 					}
 				}
@@ -638,6 +636,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 					keyNode := &yaml.Node{
 						Kind:  yaml.ScalarNode,
 						Value: compName,
+					}
+					if baseKeyNode != nil {
+						keyNode.HeadComment = baseKeyNode.HeadComment
+						keyNode.LineComment = baseKeyNode.LineComment
+						keyNode.FootComment = baseKeyNode.FootComment
 					}
 					mapping.Content = append(mapping.Content, keyNode, cloned)
 				}
