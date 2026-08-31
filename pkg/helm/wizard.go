@@ -617,11 +617,15 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		// Process each user component
 		for _, compName := range compKeys {
 			depConfig := params.Deployments[compName]
-			baseComp := "api"
+			templateBaseComp := "api"
+			valuesBaseComp := "api"
+			
 			if depConfig.WorkloadType == "CronJob" {
-				baseComp = "cronjob"
+				valuesBaseComp = "cronjob"
+				templateBaseComp = "api"
 			} else if compName == "app" || compName == "web" || strings.HasSuffix(compName, "-app") || strings.HasSuffix(compName, "-web") || strings.Contains(compName, "frontend") {
-				baseComp = "app"
+				templateBaseComp = "app"
+				valuesBaseComp = "app"
 			}
 
 			// 1. Copy/rename templates
@@ -648,14 +652,14 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 					}
 				}
 
-				if strings.Contains(filename, "-"+baseComp) || strings.Contains(filename, baseComp+"-") || strings.Contains(filename, baseComp+".") {
+				if strings.Contains(filename, "-"+templateBaseComp) || strings.Contains(filename, templateBaseComp+"-") || strings.Contains(filename, templateBaseComp+".") {
 					compKebab := processor.NormalizeComponentName(compName)
-					newFilename := strings.Replace(filename, baseComp, compKebab, 1)
+					newFilename := strings.Replace(filename, templateBaseComp, compKebab, 1)
 					newRelPath := filepath.Join("templates", newFilename)
 
 					contentStr := string(data)
-					if compName != baseComp {
-						contentStr = replaceComponent(contentStr, baseComp, compName)
+					if compName != templateBaseComp {
+						contentStr = replaceComponent(contentStr, templateBaseComp, compName)
 					}
 					contentStr = replaceChartName(contentStr, oldChartName, params.ChartName)
 					outputFiles[newRelPath] = []byte(contentStr)
@@ -684,7 +688,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 					origMapping := origRoot.Content[0]
 					if origMapping.Kind == yaml.MappingNode {
 						for i := 0; i < len(origMapping.Content); i += 2 {
-							if origMapping.Content[i].Value == baseComp {
+							if origMapping.Content[i].Value == valuesBaseComp {
 								baseKeyNode = origMapping.Content[i]
 								baseNode = origMapping.Content[i+1]
 								break
