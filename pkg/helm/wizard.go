@@ -379,17 +379,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		appKey := params.ChartName
 		if depConfig.WorkloadType != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "workloadType"}, depConfig.WorkloadType)
-			if depConfig.WorkloadType == "CronJob" {
-				deleteYamlPath(&rootNode, []string{appKey, "replicas"})
-				deleteYamlPath(&rootNode, []string{appKey, "hpa"})
-				deleteYamlPath(&rootNode, []string{appKey, "route"})
-				deleteYamlPath(&rootNode, []string{appKey, "service"})
-				deleteYamlPath(&rootNode, []string{appKey, "startupProbe"})
-				deleteYamlPath(&rootNode, []string{appKey, "livenessProbe"})
-				deleteYamlPath(&rootNode, []string{appKey, "readinessProbe"})
-				deleteYamlPath(&rootNode, []string{appKey, "strategy"})
-				deleteYamlPath(&rootNode, []string{appKey, "terminationGracePeriodSeconds"})
-			}
 		}
 		if depConfig.Schedule != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "schedule"}, depConfig.Schedule)
@@ -541,6 +530,18 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, []string{appKey, "files", "secret"}, depConfig.Files.Secret)
 		}
 
+		if depConfig.WorkloadType == "CronJob" {
+			deleteYamlPath(&rootNode, []string{appKey, "replicas"})
+			deleteYamlPath(&rootNode, []string{appKey, "hpa"})
+			deleteYamlPath(&rootNode, []string{appKey, "route"})
+			deleteYamlPath(&rootNode, []string{appKey, "service"})
+			deleteYamlPath(&rootNode, []string{appKey, "startupProbe"})
+			deleteYamlPath(&rootNode, []string{appKey, "livenessProbe"})
+			deleteYamlPath(&rootNode, []string{appKey, "readinessProbe"})
+			deleteYamlPath(&rootNode, []string{appKey, "strategy"})
+			deleteYamlPath(&rootNode, []string{appKey, "terminationGracePeriodSeconds"})
+		}
+
 		if len(params.GlobalConfig) > 0 {
 			stripQuotesFromMap(params.GlobalConfig)
 			_ = setYamlPath(&rootNode, []string{"global", "cm"}, params.GlobalConfig)
@@ -586,8 +587,32 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
+		// Collect and sort component keys to ensure deterministic order (Deployments first, then CronJobs, then alphabetical)
+		var compKeys []string
+		for k := range params.Deployments {
+			compKeys = append(compKeys, k)
+		}
+		sort.Slice(compKeys, func(i, j int) bool {
+			compI := params.Deployments[compKeys[i]]
+			compJ := params.Deployments[compKeys[j]]
+			
+			typeI := compI.WorkloadType
+			if typeI == "" { typeI = "Deployment" }
+			typeJ := compJ.WorkloadType
+			if typeJ == "" { typeJ = "Deployment" }
+			
+			if typeI != typeJ {
+				// Deployments before CronJobs
+				if typeI == "Deployment" { return true }
+				if typeJ == "Deployment" { return false }
+				return typeI < typeJ
+			}
+			return compKeys[i] < compKeys[j]
+		})
+
 		// Process each user component
-		for compName, depConfig := range params.Deployments {
+		for _, compName := range compKeys {
+			depConfig := params.Deployments[compName]
 			baseComp := "api"
 			if compName == "app" || compName == "web" || strings.HasSuffix(compName, "-app") || strings.HasSuffix(compName, "-web") || strings.Contains(compName, "frontend") {
 				baseComp = "app"
@@ -685,17 +710,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			// Apply overrides to compName in values.yaml
 			if depConfig.WorkloadType != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "workloadType"}, depConfig.WorkloadType)
-				if depConfig.WorkloadType == "CronJob" {
-					deleteYamlPath(&rootNode, []string{compName, "replicas"})
-					deleteYamlPath(&rootNode, []string{compName, "hpa"})
-					deleteYamlPath(&rootNode, []string{compName, "route"})
-					deleteYamlPath(&rootNode, []string{compName, "service"})
-					deleteYamlPath(&rootNode, []string{compName, "startupProbe"})
-					deleteYamlPath(&rootNode, []string{compName, "livenessProbe"})
-					deleteYamlPath(&rootNode, []string{compName, "readinessProbe"})
-					deleteYamlPath(&rootNode, []string{compName, "strategy"})
-					deleteYamlPath(&rootNode, []string{compName, "terminationGracePeriodSeconds"})
-				}
 			}
 			if depConfig.Schedule != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "schedule"}, depConfig.Schedule)
@@ -845,6 +859,18 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				
 				_ = setYamlPath(&rootNode, []string{compName, "files", "secret"}, depConfig.Files.Secret)
 			}
+			
+			if depConfig.WorkloadType == "CronJob" {
+				deleteYamlPath(&rootNode, []string{compName, "replicas"})
+				deleteYamlPath(&rootNode, []string{compName, "hpa"})
+				deleteYamlPath(&rootNode, []string{compName, "route"})
+				deleteYamlPath(&rootNode, []string{compName, "service"})
+				deleteYamlPath(&rootNode, []string{compName, "startupProbe"})
+				deleteYamlPath(&rootNode, []string{compName, "livenessProbe"})
+				deleteYamlPath(&rootNode, []string{compName, "readinessProbe"})
+				deleteYamlPath(&rootNode, []string{compName, "strategy"})
+				deleteYamlPath(&rootNode, []string{compName, "terminationGracePeriodSeconds"})
+			}
 		}
 
 		if len(params.GlobalConfig) > 0 {
@@ -958,7 +984,9 @@ func replaceComponent(content string, oldComp, newComp string) string {
 		{"component: " + oldComp, "component: " + newCompKebab},
 		{"name: " + oldComp, "name: " + newCompKebab},
 		{"cm-" + oldComp + ".yaml", "cm-" + newCompKebab + ".yaml"},
+		{"cm-" + oldComp + "-files.yaml", "cm-" + newCompKebab + "-files.yaml"},
 		{"secret-" + oldComp + ".yaml", "secret-" + newCompKebab + ".yaml"},
+		{"secret-" + oldComp + "-files.yaml", "secret-" + newCompKebab + "-files.yaml"},
 		{"secret-truststore-" + oldComp + ".yaml", "secret-truststore-" + newCompKebab + ".yaml"},
 		{"\"component\" \"" + oldComp + "\"", "\"component\" \"" + newComp + "\""},
 		{".Values." + oldComp, ".Values." + newComp},

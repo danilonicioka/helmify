@@ -1,10 +1,10 @@
-{{- "api" := .component -}}
+
 {{- $comp := index .Values "api" | default dict -}}
 {{- if eq $comp.workloadType "CronJob" }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-{{ "api" }}
+  name: {{ include "chart-model-multi.fullname" . }}-api
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" . "component" "api") | nindent 4 }}
   {{- $annotations := include "chart-model-multi.component.annotations" (dict "context" . "component" "api") }}
@@ -26,13 +26,13 @@ spec:
         metadata:
           annotations:
             {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
-            checksum/cm-files: '{{ include (print $..Template.BasePath "/cm-" "api" "-files.yaml") . | sha256sum }}'
+            checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-api-files.yaml") . | sha256sum }}'
             {{- end }}
             {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
-            checksum/secret-files: '{{ include (print $..Template.BasePath "/secret-" "api" "-files.yaml") . | sha256sum }}'
+            checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-api-files.yaml") . | sha256sum }}'
             {{- end }}
             {{- if and $comp.secret (not (empty $comp.secret)) }}
-            checksum/secret: '{{ include (print $..Template.BasePath "/secret-" "api" ".yaml") . | sha256sum }}'
+            checksum/secret: '{{ include (print $.Template.BasePath "/secret-api.yaml") . | sha256sum }}'
             {{- end }}
           labels:
             {{- include "chart-model-multi.component.selectorLabels" (dict "context" . "component" "api") | nindent 12 }}
@@ -42,13 +42,13 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- if and $comp.vso $comp.vso.enabled }}
-          serviceAccountName: {{ include "chart-model-multi.fullname" . }}-{{ "api" }}-sa
-          {{- else if ..Values.serviceAccount }}
+          serviceAccountName: {{ include "chart-model-multi.fullname" . }}-api-sa
+          {{- else if .Values.serviceAccount }}
           serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
           {{- end }}
           containers:
-            - name: {{ "api" }}
-              image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default ..Chart.AppVersion }}"
+            - name: api
+              image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
               imagePullPolicy: {{ $comp.image.pullPolicy }}
               {{- if $comp.command }}
               command:
@@ -65,15 +65,15 @@ spec:
                     name: {{ include "chart-model-multi.fullname" . }}-global-secret
                 {{- if and $comp.cm (not (empty $comp.cm)) }}
                 - configMapRef:
-                    name: {{ include "chart-model-multi.fullname" . }}-{{ "api" }}-cm
+                    name: {{ include "chart-model-multi.fullname" . }}-api-cm
                 {{- end }}
                 {{- if and $comp.secret (not (empty $comp.secret)) }}
                 - secretRef:
-                    name: {{ include "chart-model-multi.fullname" . }}-{{ "api" }}-secret
+                    name: {{ include "chart-model-multi.fullname" . }}-api-secret
                 {{- end }}
                 {{- if and $comp.vso $comp.vso.enabled }}
                 - secretRef:
-                    name: {{ include "chart-model-multi.fullname" . }}-{{ "api" }}-vso-secret
+                    name: {{ include "chart-model-multi.fullname" . }}-api-vso-secret
                 {{- end }}
               {{- if $comp.resources }}
               resources:
@@ -87,7 +87,7 @@ spec:
                   readOnly: true
                 {{- end }}
                 {{- if and $comp.persistence $comp.persistence.enabled }}
-                - name: {{ "api" }}-data
+                - name: api-data
                   mountPath: {{ $comp.persistence.mountPath | default "/data" }}
                   {{- if $comp.persistence.subPath }}
                   subPath: {{ $comp.persistence.subPath }}
@@ -95,7 +95,7 @@ spec:
                 {{- end }}
                 {{- if and $comp.files $comp.files.cm }}
                 {{- range $key, $val := $comp.files.cm }}
-                - name: {{ "api" }}-files
+                - name: api-files
                   mountPath: {{ $val.path }}
                   subPath: {{ $key | replace "." "-" }}
                   readOnly: true
@@ -103,7 +103,7 @@ spec:
                 {{- end }}
                 {{- if and $comp.files $comp.files.secret }}
                 {{- range $key, $val := $comp.files.secret }}
-                - name: {{ "api" }}-files-secret
+                - name: api-files-secret
                   mountPath: {{ $val.path }}
                   subPath: {{ $key | replace "." "-" }}
                   readOnly: true
@@ -111,7 +111,7 @@ spec:
                 {{- end }}
                 {{- if and $comp.vso $comp.vso.enabled $comp.vso.secretFiles }}
                 {{- range $key, $val := $comp.vso.secretFiles }}
-                - name: {{ "api" }}-vso-files-secret
+                - name: api-vso-files-secret
                   mountPath: {{ $val.path }}
                   subPath: {{ $key | replace "." "-" }}
                   readOnly: true
@@ -121,31 +121,31 @@ spec:
                         {{- if and $comp.truststore $comp.truststore.enabled }}
             - name: truststore
               secret:
-                secretName: {{ include "chart-model-multi.fullname" . }}-{{ "api" }}-secret-truststore
+                secretName: {{ include "chart-model-multi.fullname" . }}-api-secret-truststore
             {{- end }}
             {{- if and $comp.persistence $comp.persistence.enabled }}
-            - name: {{ "api" }}-data
+            - name: api-data
               {{- if $comp.persistence.ephemeral }}
               emptyDir: {}
               {{- else }}
               persistentVolumeClaim:
-                claimName: {{ include "chart-model-multi.fullname" . }}-{{ "api" }}
+                claimName: {{ include "chart-model-multi.fullname" . }}-api
               {{- end }}
             {{- end }}
             {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
-            - name: {{ "api" }}-files
+            - name: api-files
               configMap:
-                name: {{ include "chart-model-multi.fullname" . }}-{{ "api" }}-files
+                name: {{ include "chart-model-multi.fullname" . }}-api-files
             {{- end }}
             {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
-            - name: {{ "api" }}-files-secret
+            - name: api-files-secret
               secret:
-                secretName: {{ include "chart-model-multi.fullname" . }}-{{ "api" }}-files-secret
+                secretName: {{ include "chart-model-multi.fullname" . }}-api-files-secret
             {{- end }}
             {{- if and $comp.vso $comp.vso.enabled $comp.vso.secretFiles }}
-            - name: {{ "api" }}-vso-files-secret
+            - name: api-vso-files-secret
               secret:
-                secretName: {{ include "chart-model-multi.fullname" . }}-{{ "api" }}-vso-secret
+                secretName: {{ include "chart-model-multi.fullname" . }}-api-vso-secret
             {{- end }}
           restartPolicy: {{ default "OnFailure" $comp.restartPolicy }}
           {{- with $comp.nodeSelector }}
