@@ -581,6 +581,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if _, ok := params.Deployments["cronjob"]; !ok {
 			deleteYamlPath(&rootNode, []string{"cronjob"})
 		}
+		if _, ok := params.Deployments["cronjob"]; !ok {
+			deleteYamlPath(&rootNode, []string{"cronjob"})
+		}
 		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
 		// Collect and sort component keys to ensure deterministic order (Deployments first, then CronJobs, then alphabetical)

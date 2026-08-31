@@ -24,8 +24,6 @@ global:
 api:
   # -- Enable or disable this component
   enabled: true
-  # -- Defines the type of workload. Defaults to Deployment if omitted. Options: Deployment, CronJob
-  # -- Schedule for the CronJob (only applicable if workloadType is CronJob).
 
   # ----------------------------------------------------------------------------
   # 1. IMAGE & WORKLOAD
@@ -221,8 +219,6 @@ api:
 app:
   # -- Enable or disable this component
   enabled: true
-  # -- Defines the type of workload. Defaults to Deployment if omitted. Options: Deployment, CronJob
-  # -- Schedule for the CronJob (only applicable if workloadType is CronJob).
 
   # ----------------------------------------------------------------------------
   # 1. IMAGE & WORKLOAD
