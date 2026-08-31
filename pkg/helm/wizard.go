@@ -540,6 +540,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			deleteYamlPath(&rootNode, []string{appKey, "readinessProbe"})
 			deleteYamlPath(&rootNode, []string{appKey, "strategy"})
 			deleteYamlPath(&rootNode, []string{appKey, "terminationGracePeriodSeconds"})
+		} else {
+			// Delete CronJob specific fields for normal Deployments
+			deleteYamlPath(&rootNode, []string{appKey, "workloadType"})
+			deleteYamlPath(&rootNode, []string{appKey, "schedule"})
 		}
 
 		if len(params.GlobalConfig) > 0 {
@@ -870,6 +874,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				deleteYamlPath(&rootNode, []string{compName, "readinessProbe"})
 				deleteYamlPath(&rootNode, []string{compName, "strategy"})
 				deleteYamlPath(&rootNode, []string{compName, "terminationGracePeriodSeconds"})
+			} else {
+				// Delete CronJob specific fields for normal Deployments
+				deleteYamlPath(&rootNode, []string{compName, "workloadType"})
+				deleteYamlPath(&rootNode, []string{compName, "schedule"})
 			}
 		}
 
