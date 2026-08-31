@@ -140,6 +140,8 @@ type WizardParams struct {
 
 // DeploymentParams represents configuration for a component deployment.
 type DeploymentParams struct {
+	WorkloadType     string                      `json:"workloadType,omitempty"`
+	Schedule         string                      `json:"schedule,omitempty"`
 	Replicas         *int                        `json:"replicas"`
 	Image            ImageParams                 `json:"image"`
 	Command          []string                    `json:"command,omitempty"`
@@ -375,6 +377,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 		// Set overrides
 		appKey := params.ChartName
+		if depConfig.WorkloadType != "" {
+			_ = setYamlPath(&rootNode, []string{appKey, "workloadType"}, depConfig.WorkloadType)
+		}
+		if depConfig.Schedule != "" {
+			_ = setYamlPath(&rootNode, []string{appKey, "schedule"}, depConfig.Schedule)
+		}
 		if depConfig.Replicas != nil {
 			_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, *depConfig.Replicas)
 		}
@@ -581,6 +589,23 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				}
 
 				filename := filepath.Base(relPath)
+
+				// Filter out incompatible templates based on workload type
+				isCronJob := depConfig.WorkloadType == "CronJob"
+				if isCronJob {
+					if strings.HasPrefix(filename, "deploy-") || strings.HasPrefix(filename, "svc-") || strings.HasPrefix(filename, "route-") || strings.HasPrefix(filename, "hpa-") || strings.HasPrefix(filename, "pvc-") {
+						continue
+					}
+					// Allow cronjob-, cm-, secret-, vso-
+					if !strings.HasPrefix(filename, "cronjob-") && !strings.HasPrefix(filename, "cm-") && !strings.HasPrefix(filename, "secret-") && !strings.HasPrefix(filename, "vso-") {
+						continue
+					}
+				} else {
+					if strings.HasPrefix(filename, "cronjob-") {
+						continue
+					}
+				}
+
 				if strings.Contains(filename, "-"+baseComp) || strings.Contains(filename, baseComp+"-") || strings.Contains(filename, baseComp+".") {
 					compKebab := processor.NormalizeComponentName(compName)
 					newFilename := strings.Replace(filename, baseComp, compKebab, 1)
@@ -647,6 +672,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 
 			// Apply overrides to compName in values.yaml
+			if depConfig.WorkloadType != "" {
+				_ = setYamlPath(&rootNode, []string{compName, "workloadType"}, depConfig.WorkloadType)
+			}
+			if depConfig.Schedule != "" {
+				_ = setYamlPath(&rootNode, []string{compName, "schedule"}, depConfig.Schedule)
+			}
 			if depConfig.Replicas != nil {
 				_ = setYamlPath(&rootNode, []string{compName, "replicas"}, *depConfig.Replicas)
 			}

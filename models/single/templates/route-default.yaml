@@ -1,4 +1,6 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if ne $comp.workloadType "CronJob" }}
+{{- $comp := index .Values .Chart.Name | default dict -}}
 {{- if and $comp $comp.route $comp.route.default $comp.route.default.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route
@@ -28,4 +30,5 @@ spec:
   port:
     targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
   wildcardPolicy: None
+{{- end }}
 {{- end }}

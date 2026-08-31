@@ -26,6 +26,7 @@ chart-model-single:
   # ----------------------------------------------------------------------------
   # 1. IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
+
   image:
     # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: "{{REGISTRY}}/chart-model-app"

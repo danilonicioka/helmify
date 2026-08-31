@@ -57,7 +57,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 	var compNames []string
 	for _, obj := range objects {
 		kind := obj.GetKind()
-		if kind == "Deployment" || kind == "StatefulSet" || kind == "DaemonSet" {
+		if kind == "Deployment" || kind == "StatefulSet" || kind == "DaemonSet" || kind == "CronJob" {
 			name := obj.GetName()
 
 			// Strip chart name prefix to cleanly determine component names (e.g. 'entremanas-api' -> 'api')
@@ -73,20 +73,39 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			}
 			compNames = append(compNames, name)
 
-			depParams := DeploymentParams{
-				Cm:     make(map[string]string),
-				Secret: make(map[string]string),
+			var depParams DeploymentParams
+			if kind == "CronJob" {
+				depParams = DeploymentParams{
+					WorkloadType: "CronJob",
+					Cm:           make(map[string]string),
+					Secret:       make(map[string]string),
+				}
+				if schedule, found, _ := unstructured.NestedString(obj.Object, "spec", "schedule"); found {
+					depParams.Schedule = schedule
+				}
+			} else {
+				depParams = DeploymentParams{
+					WorkloadType: kind,
+					Cm:           make(map[string]string),
+					Secret:       make(map[string]string),
+				}
+				// Extract Replicas for non-CronJobs
+				replicas, found, err := unstructured.NestedInt64(obj.Object, "spec", "replicas")
+				if err == nil && found {
+					r := int(replicas)
+					depParams.Replicas = &r
+				}
 			}
 
-			// Extract Image, Replicas
-			replicas, found, err := unstructured.NestedInt64(obj.Object, "spec", "replicas")
-			if err == nil && found {
-				r := int(replicas)
-				depParams.Replicas = &r
+			// Pod spec path differs for CronJobs
+			podSpecPath := []string{"spec", "template", "spec"}
+			if kind == "CronJob" {
+				podSpecPath = []string{"spec", "jobTemplate", "spec", "template", "spec"}
 			}
 
 			// First, extract volumes and populate volSources
-			volumes, vOk, _ := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "volumes")
+			volumesPath := append(podSpecPath, "volumes")
+			volumes, vOk, _ := unstructured.NestedSlice(obj.Object, volumesPath...)
 			volSources := make(map[string]struct{Type, Name string})
 			if vOk && len(volumes) > 0 {
 				for _, v := range volumes {
@@ -108,7 +127,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				}
 			}
 
-			containers, found, err := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "containers")
+			containersPath := append(podSpecPath, "containers")
+			containers, found, err := unstructured.NestedSlice(obj.Object, containersPath...)
 			if err == nil && found && len(containers) > 0 {
 				container := containers[0].(map[string]interface{})
 				image, _, _ := unstructured.NestedString(container, "image")
@@ -193,7 +213,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				}
 			}
 
-			if affinity, ok, _ := unstructured.NestedMap(obj.Object, "spec", "template", "spec", "affinity"); ok && len(affinity) > 0 {
+			affinityPath := append(podSpecPath, "affinity")
+			if affinity, ok, _ := unstructured.NestedMap(obj.Object, affinityPath...); ok && len(affinity) > 0 {
 				// Seamlessly modernize legacy labels to our new standard component pattern
 				if b, err := json.Marshal(affinity); err == nil {
 					b = bytes.ReplaceAll(b, []byte("app.kubernetes.io/name"), []byte("app.kubernetes.io/component"))
@@ -203,10 +224,12 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					}
 				}
 			}
-			if nodeSelector, ok, _ := unstructured.NestedMap(obj.Object, "spec", "template", "spec", "nodeSelector"); ok && len(nodeSelector) > 0 {
+			nodeSelectorPath := append(podSpecPath, "nodeSelector")
+			if nodeSelector, ok, _ := unstructured.NestedMap(obj.Object, nodeSelectorPath...); ok && len(nodeSelector) > 0 {
 				depParams.NodeSelector = nodeSelector
 			}
-			if tolerations, ok, _ := unstructured.NestedSlice(obj.Object, "spec", "template", "spec", "tolerations"); ok && len(tolerations) > 0 {
+			tolerationsPath := append(podSpecPath, "tolerations")
+			if tolerations, ok, _ := unstructured.NestedSlice(obj.Object, tolerationsPath...); ok && len(tolerations) > 0 {
 				depParams.Tolerations = tolerations
 			}
 

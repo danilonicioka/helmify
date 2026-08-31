@@ -1,4 +1,5 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if ne $comp.workloadType "CronJob" }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -268,3 +269,4 @@ spec:
         {{- end }}
         {{- end }}
       {{- end }}
+{{- end }}

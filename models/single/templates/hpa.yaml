@@ -1,4 +1,6 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if ne $comp.workloadType "CronJob" }}
+{{- $comp := index .Values .Chart.Name | default dict -}}
 {{- if and $comp $comp.hpa $comp.hpa.enabled -}}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
@@ -19,4 +21,5 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "chart-model-single.fullname" . }}
+{{- end }}
 {{- end }}

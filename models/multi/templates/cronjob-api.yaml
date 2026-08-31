@@ -1,0 +1,172 @@
+{{- $compName := .component -}}
+{{- $comp := index .Values $compName | default dict -}}
+{{- if eq $comp.workloadType "CronJob" }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "chart-model-multi.fullname" .context }}-{{ $compName }}
+  labels:
+    {{- include "chart-model-multi.component.labels" (dict "context" .context "component" $compName) | nindent 4 }}
+  {{- $annotations := include "chart-model-multi.component.annotations" (dict "context" .context "component" $compName) }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ $comp.schedule | quote }}
+  concurrencyPolicy: {{ default "Allow" $comp.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ default 3 $comp.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ default 1 $comp.failedJobsHistoryLimit }}
+  jobTemplate:
+    metadata:
+      labels:
+        {{- include "chart-model-multi.component.selectorLabels" (dict "context" .context "component" $compName) | nindent 8 }}
+    spec:
+      template:
+        metadata:
+          annotations:
+            {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
+            checksum/cm-files: '{{ include (print $.context.Template.BasePath "/cm-" $compName "-files.yaml") .context | sha256sum }}'
+            {{- end }}
+            {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
+            checksum/secret-files: '{{ include (print $.context.Template.BasePath "/secret-" $compName "-files.yaml") .context | sha256sum }}'
+            {{- end }}
+            {{- if and $comp.secret (not (empty $comp.secret)) }}
+            checksum/secret: '{{ include (print $.context.Template.BasePath "/secret-" $compName ".yaml") .context | sha256sum }}'
+            {{- end }}
+          labels:
+            {{- include "chart-model-multi.component.selectorLabels" (dict "context" .context "component" $compName) | nindent 12 }}
+        spec:
+          {{- with $comp.image.pullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if and $comp.vso $comp.vso.enabled }}
+          serviceAccountName: {{ include "chart-model-multi.fullname" .context }}-{{ $compName }}-sa
+          {{- else if .context.Values.serviceAccount }}
+          serviceAccountName: {{ include "chart-model-multi.serviceAccountName" .context }}
+          {{- end }}
+          containers:
+            - name: {{ $compName }}
+              image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .context.Chart.AppVersion }}"
+              imagePullPolicy: {{ $comp.image.pullPolicy }}
+              {{- if $comp.command }}
+              command:
+                {{- toYaml $comp.command | nindent 16 }}
+              {{- end }}
+              {{- if $comp.args }}
+              args:
+                {{- toYaml $comp.args | nindent 16 }}
+              {{- end }}
+              envFrom:
+                - configMapRef:
+                    name: {{ include "chart-model-multi.fullname" .context }}-global-cm
+                - secretRef:
+                    name: {{ include "chart-model-multi.fullname" .context }}-global-secret
+                {{- if and $comp.cm (not (empty $comp.cm)) }}
+                - configMapRef:
+                    name: {{ include "chart-model-multi.fullname" .context }}-{{ $compName }}-cm
+                {{- end }}
+                {{- if and $comp.secret (not (empty $comp.secret)) }}
+                - secretRef:
+                    name: {{ include "chart-model-multi.fullname" .context }}-{{ $compName }}-secret
+                {{- end }}
+                {{- if and $comp.vso $comp.vso.enabled }}
+                - secretRef:
+                    name: {{ include "chart-model-multi.fullname" .context }}-{{ $compName }}-vso-secret
+                {{- end }}
+              {{- if $comp.resources }}
+              resources:
+                {{- toYaml $comp.resources | nindent 16 }}
+              {{- end }}
+              volumeMounts:
+                {{- if and .context.Values.global .context.Values.global.cm .context.Values.global.cm.TZ }}
+                - name: tz-config
+                  mountPath: /etc/localtime
+                {{- end }}
+                {{- if and $comp.truststore $comp.truststore.enabled }}
+                - name: truststore
+                  mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+                  subPath: tls-ca-bundle.pem
+                  readOnly: true
+                {{- end }}
+                {{- if and $comp.persistence $comp.persistence.enabled }}
+                - name: {{ $compName }}-data
+                  mountPath: {{ $comp.persistence.mountPath | default "/data" }}
+                  {{- if $comp.persistence.subPath }}
+                  subPath: {{ $comp.persistence.subPath }}
+                  {{- end }}
+                {{- end }}
+                {{- if and $comp.files $comp.files.cm }}
+                {{- range $key, $val := $comp.files.cm }}
+                - name: {{ $compName }}-files
+                  mountPath: {{ $val.path }}
+                  subPath: {{ $key | replace "." "-" }}
+                  readOnly: true
+                {{- end }}
+                {{- end }}
+                {{- if and $comp.files $comp.files.secret }}
+                {{- range $key, $val := $comp.files.secret }}
+                - name: {{ $compName }}-files-secret
+                  mountPath: {{ $val.path }}
+                  subPath: {{ $key | replace "." "-" }}
+                  readOnly: true
+                {{- end }}
+                {{- end }}
+                {{- if and $comp.vso $comp.vso.enabled $comp.vso.secretFiles }}
+                {{- range $key, $val := $comp.vso.secretFiles }}
+                - name: {{ $compName }}-vso-files-secret
+                  mountPath: {{ $val.path }}
+                  subPath: {{ $key | replace "." "-" }}
+                  readOnly: true
+                {{- end }}
+                {{- end }}
+          volumes:
+            {{- if and .context.Values.global .context.Values.global.cm .context.Values.global.cm.TZ }}
+            - name: tz-config
+              hostPath:
+                path: /usr/share/zoneinfo/{{ .context.Values.global.cm.TZ }}
+            {{- end }}
+            {{- if and $comp.truststore $comp.truststore.enabled }}
+            - name: truststore
+              secret:
+                secretName: {{ include "chart-model-multi.fullname" .context }}-{{ $compName }}-secret-truststore
+            {{- end }}
+            {{- if and $comp.persistence $comp.persistence.enabled }}
+            - name: {{ $compName }}-data
+              {{- if $comp.persistence.ephemeral }}
+              emptyDir: {}
+              {{- else }}
+              persistentVolumeClaim:
+                claimName: {{ include "chart-model-multi.fullname" .context }}-{{ $compName }}
+              {{- end }}
+            {{- end }}
+            {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
+            - name: {{ $compName }}-files
+              configMap:
+                name: {{ include "chart-model-multi.fullname" .context }}-{{ $compName }}-files
+            {{- end }}
+            {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
+            - name: {{ $compName }}-files-secret
+              secret:
+                secretName: {{ include "chart-model-multi.fullname" .context }}-{{ $compName }}-files-secret
+            {{- end }}
+            {{- if and $comp.vso $comp.vso.enabled $comp.vso.secretFiles }}
+            - name: {{ $compName }}-vso-files-secret
+              secret:
+                secretName: {{ include "chart-model-multi.fullname" .context }}-{{ $compName }}-vso-secret
+            {{- end }}
+          restartPolicy: {{ default "OnFailure" $comp.restartPolicy }}
+          {{- with $comp.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $comp.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $comp.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end }}
