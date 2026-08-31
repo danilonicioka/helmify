@@ -1016,6 +1016,19 @@
                     style="background: rgba(255,255,255,0.02); padding: 1.5rem; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
 
                     <!-- 1. CORE WORKLOAD SETTINGS -->
+                    <div class="form-group row">
+                        <div>
+                            <label for="compWorkloadType">Workload Type</label>
+                            <select id="compWorkloadType" onchange="toggleWorkloadTypeFields(); saveAndPreview()">
+                                <option value="Deployment">Deployment</option>
+                                <option value="CronJob">CronJob</option>
+                            </select>
+                        </div>
+                        <div id="scheduleField" style="display: none;">
+                            <label for="compSchedule">CronJob Schedule</label>
+                            <input type="text" id="compSchedule" placeholder="e.g. 0 0 * * *" oninput="saveAndPreview()">
+                        </div>
+                    </div>
                     <div class="form-group">
                         <label for="compRepo">Image Repository</label>
                         <input type="text" id="compRepo" value="{{REGISTRY}}/chart-model-app"
@@ -1480,8 +1493,20 @@
             }
         }
 
+        function toggleWorkloadTypeFields() {
+            const workloadType = document.getElementById('compWorkloadType').value;
+            const scheduleField = document.getElementById('scheduleField');
+            if (workloadType === 'CronJob') {
+                scheduleField.style.display = 'block';
+            } else {
+                scheduleField.style.display = 'none';
+            }
+        }
+
         function parseComponentConfig(compData) {
             return {
+                workloadType: compData.workloadType || 'Deployment',
+                schedule: compData.schedule || '',
                 replicas: compData.replicas !== undefined ? compData.replicas : 1,
                 image: {
                     repository: (compData.image && compData.image.repository) || '',
@@ -1566,6 +1591,8 @@
             const isFrontend = type === 'app' || type === 'frontend' || type === 'web';
             const suffix = isFrontend ? 'app' : 'api';
             return {
+                workloadType: 'Deployment',
+                schedule: '',
                 replicas: isFrontend ? 0 : 2,
                 image: {
                     repository: `{{REGISTRY}}/chart-model-${suffix}`,
@@ -1817,6 +1844,8 @@
             if (!activeComponent || !components[activeComponent]) return;
 
             const config = components[activeComponent];
+            config.workloadType = document.getElementById('compWorkloadType').value;
+            config.schedule = document.getElementById('compSchedule').value;
             config.replicas = 1;
             let svcPort = parseInt(document.getElementById('compPort').value, 10) || 8080;
             if (!config.service.ports) config.service.ports = { http: { protocol: 'TCP' } };
@@ -2041,6 +2070,10 @@
             if (!activeComponent || !components[activeComponent]) return;
 
             const config = components[activeComponent];
+            
+            document.getElementById('compWorkloadType').value = config.workloadType || 'Deployment';
+            document.getElementById('compSchedule').value = config.schedule || '';
+            toggleWorkloadTypeFields();
 
             let displayPort = 8080;
             if (config.service.ports && config.service.ports.http && config.service.ports.http.port) {
