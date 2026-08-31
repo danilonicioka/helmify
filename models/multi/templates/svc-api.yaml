@@ -1,4 +1,5 @@
 {{- $comp := index .Values "api" | default dict -}}
+{{- if ne (default true $comp.enabled) false }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -18,3 +19,5 @@ spec:
   {{- end }}
   selector:
     {{- include "chart-model-multi.component.selectorLabels" (dict "context" . "component" "api") | nindent 4 }}
+
+{{- end }}

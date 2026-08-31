@@ -371,8 +371,13 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			return nil, fmt.Errorf("failed to parse values.yaml: %w", err)
 		}
 
-		// Rename root key chart-model-single to params.ChartName
-		renameRootKey(&rootNode, oldChartName, params.ChartName)
+		if depConfig.WorkloadType == "CronJob" {
+			deleteYamlPath(&rootNode, []string{oldChartName})
+			renameRootKey(&rootNode, "cronjob-single", params.ChartName)
+		} else {
+			deleteYamlPath(&rootNode, []string{"cronjob-single"})
+			renameRootKey(&rootNode, oldChartName, params.ChartName)
+		}
 		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
 		// Set overrides
@@ -530,22 +535,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, []string{appKey, "files", "secret"}, depConfig.Files.Secret)
 		}
 
-		if depConfig.WorkloadType == "CronJob" {
-			deleteYamlPath(&rootNode, []string{appKey, "replicas"})
-			deleteYamlPath(&rootNode, []string{appKey, "hpa"})
-			deleteYamlPath(&rootNode, []string{appKey, "route"})
-			deleteYamlPath(&rootNode, []string{appKey, "service"})
-			deleteYamlPath(&rootNode, []string{appKey, "startupProbe"})
-			deleteYamlPath(&rootNode, []string{appKey, "livenessProbe"})
-			deleteYamlPath(&rootNode, []string{appKey, "readinessProbe"})
-			deleteYamlPath(&rootNode, []string{appKey, "strategy"})
-			deleteYamlPath(&rootNode, []string{appKey, "terminationGracePeriodSeconds"})
-		} else {
-			// Delete CronJob specific fields for normal Deployments
-			deleteYamlPath(&rootNode, []string{appKey, "workloadType"})
-			deleteYamlPath(&rootNode, []string{appKey, "schedule"})
-		}
-
 		if len(params.GlobalConfig) > 0 {
 			stripQuotesFromMap(params.GlobalConfig)
 			_ = setYamlPath(&rootNode, []string{"global", "cm"}, params.GlobalConfig)
@@ -589,6 +578,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if _, ok := params.Deployments["app"]; !ok {
 			deleteYamlPath(&rootNode, []string{"app"})
 		}
+		if _, ok := params.Deployments["cronjob"]; !ok {
+			deleteYamlPath(&rootNode, []string{"cronjob"})
+		}
 		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
 		// Collect and sort component keys to ensure deterministic order (Deployments first, then CronJobs, then alphabetical)
@@ -618,7 +610,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		for _, compName := range compKeys {
 			depConfig := params.Deployments[compName]
 			baseComp := "api"
-			if compName == "app" || compName == "web" || strings.HasSuffix(compName, "-app") || strings.HasSuffix(compName, "-web") || strings.Contains(compName, "frontend") {
+			if depConfig.WorkloadType == "CronJob" {
+				baseComp = "cronjob"
+			} else if compName == "app" || compName == "web" || strings.HasSuffix(compName, "-app") || strings.HasSuffix(compName, "-web") || strings.Contains(compName, "frontend") {
 				baseComp = "app"
 			}
 
@@ -862,22 +856,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if len(depConfig.Files.Secret) > 0 {
 				
 				_ = setYamlPath(&rootNode, []string{compName, "files", "secret"}, depConfig.Files.Secret)
-			}
-			
-			if depConfig.WorkloadType == "CronJob" {
-				deleteYamlPath(&rootNode, []string{compName, "replicas"})
-				deleteYamlPath(&rootNode, []string{compName, "hpa"})
-				deleteYamlPath(&rootNode, []string{compName, "route"})
-				deleteYamlPath(&rootNode, []string{compName, "service"})
-				deleteYamlPath(&rootNode, []string{compName, "startupProbe"})
-				deleteYamlPath(&rootNode, []string{compName, "livenessProbe"})
-				deleteYamlPath(&rootNode, []string{compName, "readinessProbe"})
-				deleteYamlPath(&rootNode, []string{compName, "strategy"})
-				deleteYamlPath(&rootNode, []string{compName, "terminationGracePeriodSeconds"})
-			} else {
-				// Delete CronJob specific fields for normal Deployments
-				deleteYamlPath(&rootNode, []string{compName, "workloadType"})
-				deleteYamlPath(&rootNode, []string{compName, "schedule"})
 			}
 		}
 

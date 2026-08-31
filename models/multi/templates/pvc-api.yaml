@@ -1,4 +1,5 @@
 {{- $comp := index .Values "api" | default dict -}}
+{{- if ne (default true $comp.enabled) false }}
 {{- if and $comp.persistence (and $comp.persistence.enabled (not $comp.persistence.ephemeral)) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -19,4 +20,6 @@ spec:
   resources:
     requests:
       storage: {{ $comp.persistence.storageRequest | default "1Gi" }}
+{{- end }}
+
 {{- end }}

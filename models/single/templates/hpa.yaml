@@ -1,4 +1,5 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if ne (default true $comp.enabled) false }}
 {{- if ne $comp.workloadType "CronJob" }}
 {{- $comp := index .Values .Chart.Name | default dict -}}
 {{- if and $comp $comp.hpa $comp.hpa.enabled -}}
@@ -22,4 +23,6 @@ spec:
     kind: Deployment
     name: {{ include "chart-model-single.fullname" . }}
 {{- end }}
+{{- end }}
+
 {{- end }}

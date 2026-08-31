@@ -1,4 +1,5 @@
 {{- $comp := index .Values "api" | default dict -}}
+{{- if ne (default true $comp.enabled) false }}
 {{- if and $comp.files $comp.files.cm -}}
 apiVersion: v1
 kind: ConfigMap
@@ -11,4 +12,6 @@ data:
   {{ $filename }}: |
     {{- $config.content | nindent 4 }}
 {{- end }}
+{{- end }}
+
 {{- end }}

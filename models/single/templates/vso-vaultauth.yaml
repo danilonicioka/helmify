@@ -1,4 +1,5 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if ne (default true $comp.enabled) false }}
 {{- if and $comp.vso $comp.vso.enabled }}
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultAuth
@@ -12,4 +13,6 @@ spec:
   kubernetes:
     role: {{ .Values.vso.role | quote }}
     serviceAccount: {{ include "chart-model-single.fullname" . }}-sa
+{{- end }}
+
 {{- end }}

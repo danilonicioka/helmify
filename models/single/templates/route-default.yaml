@@ -1,4 +1,5 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if ne (default true $comp.enabled) false }}
 {{- if ne $comp.workloadType "CronJob" }}
 {{- $comp := index .Values .Chart.Name | default dict -}}
 {{- if and $comp $comp.route $comp.route.default $comp.route.default.enabled -}}
@@ -31,4 +32,6 @@ spec:
     targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
   wildcardPolicy: None
 {{- end }}
+{{- end }}
+
 {{- end }}
