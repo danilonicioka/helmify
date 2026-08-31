@@ -3,7 +3,7 @@
 # and the 6 Core Architectural Rules.
 
 # ==============================================================================
-# I. CHART-WIDE OPTIONS
+# CHART-WIDE OPTIONS
 # ==============================================================================
 # -- Domain of the Kubernetes cluster.
 kubernetesClusterDomain: cluster.local
@@ -26,7 +26,7 @@ api:
   enabled: true
 
   # ----------------------------------------------------------------------------
-  # 1. IMAGE & WORKLOAD
+  # IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
   image:
     repository: "{{REGISTRY}}/chart-model-api"
@@ -46,7 +46,7 @@ api:
     # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"chart-model-multi-app"}]'
 
   # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION & SECRETS
+  # APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
   cm: {}
 
@@ -79,7 +79,7 @@ api:
       #     content: "MIIKrAIB..."
 
   # ----------------------------------------------------------------------------
-  # 3. RESOURCES
+  # RESOURCES
   # ----------------------------------------------------------------------------
   # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
@@ -112,7 +112,7 @@ api:
             periodSeconds: 15
 
   # ----------------------------------------------------------------------------
-  # 4. ROUTING & NETWORKING
+  # ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
   route:
     annotations: {}
@@ -150,7 +150,7 @@ api:
         port: 8080
 
   # ----------------------------------------------------------------------------
-  # 5. PERSISTENCE
+  # PERSISTENCE
   # ----------------------------------------------------------------------------
   persistence:
     enabled: false
@@ -161,7 +161,7 @@ api:
     storageClass: ""
 
   # ----------------------------------------------------------------------------
-  # 6. PROBES & LIFECYCLE
+  # PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
   startupProbe:
     tcpSocket:
@@ -196,7 +196,7 @@ api:
   terminationGracePeriodSeconds: 30
 
   # ----------------------------------------------------------------------------
-  # 7. SCHEDULING & NODE ASSIGNMENT
+  # SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
   nodeSelector: {}
   tolerations: []
@@ -221,7 +221,7 @@ app:
   enabled: true
 
   # ----------------------------------------------------------------------------
-  # 1. IMAGE & WORKLOAD
+  # IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
   image:
     repository: "{{REGISTRY}}/chart-model-app"
@@ -241,7 +241,7 @@ app:
     # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"chart-model-multi-api"}]'
 
   # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION & SECRETS
+  # APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
   cm: {}
 
@@ -273,7 +273,7 @@ app:
       #     content: "MIIKrAIB..."
 
   # ----------------------------------------------------------------------------
-  # 3. RESOURCES
+  # RESOURCES
   # ----------------------------------------------------------------------------
   # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
@@ -306,7 +306,7 @@ app:
             periodSeconds: 15
 
   # ----------------------------------------------------------------------------
-  # 4. ROUTING & NETWORKING
+  # ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
   route:
     annotations: {}
@@ -344,7 +344,7 @@ app:
         port: 8080
 
   # ----------------------------------------------------------------------------
-  # 5. PERSISTENCE
+  # PERSISTENCE
   # ----------------------------------------------------------------------------
   persistence:
     enabled: false
@@ -355,7 +355,7 @@ app:
     storageClass: ""
 
   # ----------------------------------------------------------------------------
-  # 6. PROBES & LIFECYCLE
+  # PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
   startupProbe:
     tcpSocket:
@@ -390,7 +390,7 @@ app:
   terminationGracePeriodSeconds: 30
 
   # ----------------------------------------------------------------------------
-  # 7. SCHEDULING & NODE ASSIGNMENT
+  # SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
   nodeSelector: {}
   tolerations: []
@@ -417,7 +417,7 @@ cronjob:
   schedule: "0 0 * * *"
 
   # ----------------------------------------------------------------------------
-  # 1. IMAGE & WORKLOAD
+  # IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
   image:
     repository: ""
@@ -433,7 +433,7 @@ cronjob:
   annotations: {}
 
   # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION & SECRETS
+  # APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
   cm: {}
 
@@ -464,7 +464,7 @@ cronjob:
     #     content: "MIIKrAIB..."
 
   # ----------------------------------------------------------------------------
-  # 3. RESOURCES
+  # RESOURCES
   # ----------------------------------------------------------------------------
   # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
@@ -476,7 +476,7 @@ cronjob:
       memory: 64Mi
 
   # ----------------------------------------------------------------------------
-  # 5. PERSISTENCE
+  # PERSISTENCE
   # ----------------------------------------------------------------------------
   persistence:
     enabled: false
@@ -487,7 +487,7 @@ cronjob:
     storageClass: ""
 
   # ----------------------------------------------------------------------------
-  # 7. SCHEDULING & NODE ASSIGNMENT
+  # SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
   nodeSelector: {}
   tolerations: []

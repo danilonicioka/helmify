@@ -3,7 +3,7 @@
 # and the 6 Core Architectural Rules.
 
 # ==============================================================================
-# I. CHART-WIDE OPTIONS
+# CHART-WIDE OPTIONS
 # ==============================================================================
 # -- Domain of the Kubernetes cluster.
 kubernetesClusterDomain: cluster.local
@@ -18,7 +18,7 @@ global:
   secret: {}
 
 # ==============================================================================
-# II. APPLICATION DEPLOYMENT CONFIGURATION (chart-model-single)
+# APPLICATION DEPLOYMENT CONFIGURATION (chart-model-single)
 # ==============================================================================
 # For a single deployment, the key is the exact name of the application (chart name).
 chart-model-single:
@@ -26,7 +26,7 @@ chart-model-single:
   enabled: true
 
   # ----------------------------------------------------------------------------
-  # 1. IMAGE & WORKLOAD
+  # IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
 
   image:
@@ -52,7 +52,7 @@ chart-model-single:
     # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"other-component-name"}]'
 
   # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION & SECRETS
+  # APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
   # ConfigMaps unique to this service container.
   cm:
@@ -88,7 +88,7 @@ chart-model-single:
       #     b64enc: true
       #     content: "MIIKrAIB..."
   # ----------------------------------------------------------------------------
-  # 3. RESOURCES
+  # RESOURCES
   # ----------------------------------------------------------------------------
   # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
@@ -121,7 +121,7 @@ chart-model-single:
             periodSeconds: 15
 
   # ----------------------------------------------------------------------------
-  # 4. ROUTING & NETWORKING
+  # ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
   route:
     # -- Shared annotations for routes.
@@ -176,7 +176,7 @@ chart-model-single:
         port: 8080
 
   # ----------------------------------------------------------------------------
-  # 5. PERSISTENCE
+  # PERSISTENCE
   # ----------------------------------------------------------------------------
   persistence:
     enabled: false
@@ -187,7 +187,7 @@ chart-model-single:
     storageClass: ""
 
   # ----------------------------------------------------------------------------
-  # 6. PROBES & LIFECYCLE
+  # PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
   # Probes are empty by default; the recommended tcpSocket configuration is commented below.
   startupProbe:
@@ -225,7 +225,7 @@ chart-model-single:
   terminationGracePeriodSeconds: 30
 
   # ----------------------------------------------------------------------------
-  # 7. SCHEDULING & NODE ASSIGNMENT
+  # SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
   nodeSelector: {}
   tolerations: []
@@ -252,7 +252,7 @@ cronjob-single:
   schedule: "0 0 * * *"
 
   # ----------------------------------------------------------------------------
-  # 1. IMAGE & WORKLOAD
+  # IMAGE & WORKLOAD
   # ----------------------------------------------------------------------------
   image:
     repository: ""
@@ -268,7 +268,7 @@ cronjob-single:
   annotations: {}
 
   # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION & SECRETS
+  # APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
   cm: {}
 
@@ -299,7 +299,7 @@ cronjob-single:
     #     content: "MIIKrAIB..."
 
   # ----------------------------------------------------------------------------
-  # 3. RESOURCES
+  # RESOURCES
   # ----------------------------------------------------------------------------
   # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
@@ -311,7 +311,7 @@ cronjob-single:
       memory: 64Mi
 
   # ----------------------------------------------------------------------------
-  # 5. PERSISTENCE
+  # PERSISTENCE
   # ----------------------------------------------------------------------------
   persistence:
     enabled: false
@@ -322,7 +322,7 @@ cronjob-single:
     storageClass: ""
 
   # ----------------------------------------------------------------------------
-  # 7. SCHEDULING & NODE ASSIGNMENT
+  # SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
   nodeSelector: {}
   tolerations: []
