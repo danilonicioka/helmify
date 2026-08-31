@@ -379,6 +379,17 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		appKey := params.ChartName
 		if depConfig.WorkloadType != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "workloadType"}, depConfig.WorkloadType)
+			if depConfig.WorkloadType == "CronJob" {
+				deleteYamlPath(&rootNode, []string{appKey, "replicas"})
+				deleteYamlPath(&rootNode, []string{appKey, "hpa"})
+				deleteYamlPath(&rootNode, []string{appKey, "route"})
+				deleteYamlPath(&rootNode, []string{appKey, "service"})
+				deleteYamlPath(&rootNode, []string{appKey, "startupProbe"})
+				deleteYamlPath(&rootNode, []string{appKey, "livenessProbe"})
+				deleteYamlPath(&rootNode, []string{appKey, "readinessProbe"})
+				deleteYamlPath(&rootNode, []string{appKey, "strategy"})
+				deleteYamlPath(&rootNode, []string{appKey, "terminationGracePeriodSeconds"})
+			}
 		}
 		if depConfig.Schedule != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "schedule"}, depConfig.Schedule)
@@ -674,6 +685,17 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			// Apply overrides to compName in values.yaml
 			if depConfig.WorkloadType != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "workloadType"}, depConfig.WorkloadType)
+				if depConfig.WorkloadType == "CronJob" {
+					deleteYamlPath(&rootNode, []string{compName, "replicas"})
+					deleteYamlPath(&rootNode, []string{compName, "hpa"})
+					deleteYamlPath(&rootNode, []string{compName, "route"})
+					deleteYamlPath(&rootNode, []string{compName, "service"})
+					deleteYamlPath(&rootNode, []string{compName, "startupProbe"})
+					deleteYamlPath(&rootNode, []string{compName, "livenessProbe"})
+					deleteYamlPath(&rootNode, []string{compName, "readinessProbe"})
+					deleteYamlPath(&rootNode, []string{compName, "strategy"})
+					deleteYamlPath(&rootNode, []string{compName, "terminationGracePeriodSeconds"})
+				}
 			}
 			if depConfig.Schedule != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "schedule"}, depConfig.Schedule)
