@@ -34,4 +34,5 @@ testbin/*
 # Build artifacts
 dist/
 vendor/
-example-binarios/
+example-binarios/test.yaml
+test-result-values.yaml
