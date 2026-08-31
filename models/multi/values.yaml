@@ -22,6 +22,10 @@ global:
 # COMPONENT CONFIGURATION
 # ==============================================================================
 api:
+  # -- Defines the type of workload. Defaults to Deployment if omitted. Options: Deployment, CronJob
+  workloadType: Deployment
+  # -- Schedule for the CronJob (only applicable if workloadType is CronJob).
+  schedule: ""
 
   # ----------------------------------------------------------------------------
   # 1. IMAGE & WORKLOAD
@@ -215,6 +219,10 @@ api:
 # COMPONENT CONFIGURATION
 # ==============================================================================
 app:
+  # -- Defines the type of workload. Defaults to Deployment if omitted. Options: Deployment, CronJob
+  workloadType: Deployment
+  # -- Schedule for the CronJob (only applicable if workloadType is CronJob).
+  schedule: ""
 
   # ----------------------------------------------------------------------------
   # 1. IMAGE & WORKLOAD
