@@ -36,3 +36,4 @@ dist/
 vendor/
 example-binarios/test.yaml
 test-result-values.yaml
+test.yaml
