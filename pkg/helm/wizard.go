@@ -382,14 +382,15 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 		// Set overrides
 		appKey := params.ChartName
-		if depConfig.WorkloadType != "" {
+		if depConfig.WorkloadType == "CronJob" {
 			_ = setYamlPath(&rootNode, []string{appKey, "workloadType"}, depConfig.WorkloadType)
-		}
-		if depConfig.Schedule != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "schedule"}, depConfig.Schedule)
-		}
-		if depConfig.Replicas != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, *depConfig.Replicas)
+			if depConfig.Schedule != "" {
+				_ = setYamlPath(&rootNode, []string{appKey, "schedule"}, depConfig.Schedule)
+			}
+		} else {
+			if depConfig.Replicas != nil {
+				_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, *depConfig.Replicas)
+			}
 		}
 		if depConfig.Image.Repository != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "image", "repository"}, depConfig.Image.Repository)
@@ -584,6 +585,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if _, ok := params.Deployments["cronjob"]; !ok {
 			deleteYamlPath(&rootNode, []string{"cronjob"})
 		}
+		if _, ok := params.Deployments["cronjob"]; !ok {
+			deleteYamlPath(&rootNode, []string{"cronjob"})
+		}
 		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
 		// Collect and sort component keys to ensure deterministic order (Deployments first, then CronJobs, then alphabetical)
@@ -709,14 +713,15 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 
 			// Apply overrides to compName in values.yaml
-			if depConfig.WorkloadType != "" {
+			if depConfig.WorkloadType == "CronJob" {
 				_ = setYamlPath(&rootNode, []string{compName, "workloadType"}, depConfig.WorkloadType)
-			}
-			if depConfig.Schedule != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "schedule"}, depConfig.Schedule)
-			}
-			if depConfig.Replicas != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "replicas"}, *depConfig.Replicas)
+				if depConfig.Schedule != "" {
+					_ = setYamlPath(&rootNode, []string{compName, "schedule"}, depConfig.Schedule)
+				}
+			} else {
+				if depConfig.Replicas != nil {
+					_ = setYamlPath(&rootNode, []string{compName, "replicas"}, *depConfig.Replicas)
+				}
 			}
 			if depConfig.Image.Repository != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "image", "repository"}, depConfig.Image.Repository)
