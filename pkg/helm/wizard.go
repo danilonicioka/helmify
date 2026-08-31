@@ -388,8 +388,34 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, []string{appKey, "schedule"}, depConfig.Schedule)
 			}
 		} else {
-			if depConfig.Replicas != nil {
-				_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, *depConfig.Replicas)
+			if depConfig.WorkloadType != "CronJob" {
+				if depConfig.Replicas != nil {
+					_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, *depConfig.Replicas)
+				}
+				svcPort := depConfig.Service.Port
+				if svcPort == 0 && depConfig.Service.Ports != nil {
+					if httpPort, ok := depConfig.Service.Ports["http"]; ok {
+						svcPort = httpPort.Port
+					}
+				}
+				if svcPort > 0 {
+					_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "port"}, svcPort)
+				}
+				if depConfig.Hpa != nil {
+					_ = setYamlPath(&rootNode, []string{appKey, "hpa"}, depConfig.Hpa)
+				}
+				if depConfig.StartupProbe != nil {
+					_ = setYamlPath(&rootNode, []string{appKey, "startupProbe"}, depConfig.StartupProbe)
+				}
+				if depConfig.LivenessProbe != nil {
+					_ = setYamlPath(&rootNode, []string{appKey, "livenessProbe"}, depConfig.LivenessProbe)
+				}
+				if depConfig.ReadinessProbe != nil {
+					_ = setYamlPath(&rootNode, []string{appKey, "readinessProbe"}, depConfig.ReadinessProbe)
+				}
+				if depConfig.Route.Path != "" {
+					_ = setYamlPath(&rootNode, []string{appKey, "route", "path"}, depConfig.Route.Path)
+				}
 			}
 		}
 		if depConfig.Image.Repository != "" {
@@ -404,15 +430,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Args != nil {
 			_ = setYamlPath(&rootNode, []string{appKey, "args"}, depConfig.Args)
 		}
-		svcPort := depConfig.Service.Port
-		if svcPort == 0 && depConfig.Service.Ports != nil {
-			if httpPort, ok := depConfig.Service.Ports["http"]; ok {
-				svcPort = httpPort.Port
-			}
-		}
-		if svcPort > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "port"}, svcPort)
-		}
 		if depConfig.Cm != nil {
 			stripQuotesFromMap(depConfig.Cm)
 			_ = setYamlPath(&rootNode, []string{appKey, "cm"}, depConfig.Cm)
@@ -424,18 +441,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Resources != nil {
 			_ = setYamlPath(&rootNode, []string{appKey, "resources"}, depConfig.Resources)
 		}
-		if depConfig.Hpa != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "hpa"}, depConfig.Hpa)
-		}
-		if depConfig.StartupProbe != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "startupProbe"}, depConfig.StartupProbe)
-		}
-		if depConfig.LivenessProbe != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "livenessProbe"}, depConfig.LivenessProbe)
-		}
-		if depConfig.ReadinessProbe != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "readinessProbe"}, depConfig.ReadinessProbe)
-		}
 		if depConfig.Affinity != nil {
 			_ = setYamlPath(&rootNode, []string{appKey, "affinity"}, depConfig.Affinity)
 		}
@@ -444,9 +449,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		if depConfig.Tolerations != nil {
 			_ = setYamlPath(&rootNode, []string{appKey, "tolerations"}, depConfig.Tolerations)
-		}
-		if depConfig.Route.Path != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "route", "path"}, depConfig.Route.Path)
 		}
 		for _, sub := range params.Subcomponents {
 			depConfig.ConnectsTo = append(depConfig.ConnectsTo, params.ChartName+"-"+sub)
@@ -719,8 +721,34 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 					_ = setYamlPath(&rootNode, []string{compName, "schedule"}, depConfig.Schedule)
 				}
 			} else {
-				if depConfig.Replicas != nil {
-					_ = setYamlPath(&rootNode, []string{compName, "replicas"}, *depConfig.Replicas)
+				if depConfig.WorkloadType != "CronJob" {
+					if depConfig.Replicas != nil {
+						_ = setYamlPath(&rootNode, []string{compName, "replicas"}, *depConfig.Replicas)
+					}
+					svcPort := depConfig.Service.Port
+					if svcPort == 0 && depConfig.Service.Ports != nil {
+						if httpPort, ok := depConfig.Service.Ports["http"]; ok {
+							svcPort = httpPort.Port
+						}
+					}
+					if svcPort > 0 {
+						_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "port"}, svcPort)
+					}
+					if depConfig.Hpa != nil {
+						_ = setYamlPath(&rootNode, []string{compName, "hpa"}, depConfig.Hpa)
+					}
+					if depConfig.StartupProbe != nil {
+						_ = setYamlPath(&rootNode, []string{compName, "startupProbe"}, depConfig.StartupProbe)
+					}
+					if depConfig.LivenessProbe != nil {
+						_ = setYamlPath(&rootNode, []string{compName, "livenessProbe"}, depConfig.LivenessProbe)
+					}
+					if depConfig.ReadinessProbe != nil {
+						_ = setYamlPath(&rootNode, []string{compName, "readinessProbe"}, depConfig.ReadinessProbe)
+					}
+					if depConfig.Route.Path != "" {
+						_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
+					}
 				}
 			}
 			if depConfig.Image.Repository != "" {
@@ -735,15 +763,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.Args != nil {
 				_ = setYamlPath(&rootNode, []string{compName, "args"}, depConfig.Args)
 			}
-			svcPort := depConfig.Service.Port
-			if svcPort == 0 && depConfig.Service.Ports != nil {
-				if httpPort, ok := depConfig.Service.Ports["http"]; ok {
-					svcPort = httpPort.Port
-				}
-			}
-			if svcPort > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "port"}, svcPort)
-			}
 			if depConfig.Cm != nil {
 				stripQuotesFromMap(depConfig.Cm)
 				_ = setYamlPath(&rootNode, []string{compName, "cm"}, depConfig.Cm)
@@ -755,18 +774,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.Resources != nil {
 				_ = setYamlPath(&rootNode, []string{compName, "resources"}, depConfig.Resources)
 			}
-			if depConfig.Hpa != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "hpa"}, depConfig.Hpa)
-			}
-			if depConfig.StartupProbe != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "startupProbe"}, depConfig.StartupProbe)
-			}
-			if depConfig.LivenessProbe != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "livenessProbe"}, depConfig.LivenessProbe)
-			}
-			if depConfig.ReadinessProbe != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "readinessProbe"}, depConfig.ReadinessProbe)
-			}
 			if depConfig.Affinity != nil {
 				_ = setYamlPath(&rootNode, []string{compName, "affinity"}, depConfig.Affinity)
 			}
@@ -775,9 +782,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 			if depConfig.Tolerations != nil {
 				_ = setYamlPath(&rootNode, []string{compName, "tolerations"}, depConfig.Tolerations)
-			}
-			if depConfig.Route.Path != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
 			}
 			if len(depConfig.ConnectsTo) > 0 {
 				var connects []string
@@ -791,11 +795,13 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, []string{compName, "annotations", "app.openshift.io/connects-to"}, "["+strings.Join(connects, ",")+"]")
 			}
 			defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, compName, depConfig.Route.Path, true)
-			_ = setYamlPath(&rootNode, []string{compName, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
-			if depConfig.Route.Default.Host != "" {
-				defaultHost = depConfig.Route.Default.Host
+			if depConfig.WorkloadType != "CronJob" {
+				_ = setYamlPath(&rootNode, []string{compName, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
+				if depConfig.Route.Default.Host != "" {
+					defaultHost = depConfig.Route.Default.Host
+				}
+				_ = setYamlPath(&rootNode, []string{compName, "route", "default", "host"}, defaultHost)
 			}
-			_ = setYamlPath(&rootNode, []string{compName, "route", "default", "host"}, defaultHost)
 
 			// Set runtime properties directly under the standard labels map
 			if depConfig.Runtime != "" {
@@ -842,20 +848,22 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				}
 			}
 
-			_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
-			if depConfig.Route.Internal.Host != "" {
-				internalHost = depConfig.Route.Internal.Host
-			}
-			_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "host"}, internalHost)
+			if depConfig.WorkloadType != "CronJob" {
+				_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
+				if depConfig.Route.Internal.Host != "" {
+					internalHost = depConfig.Route.Internal.Host
+				}
+				_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "host"}, internalHost)
 
-			_ = setYamlPath(&rootNode, []string{compName, "route", "external", "enabled"}, depConfig.Route.External.Enabled)
-			if depConfig.Route.External.Host != "" {
-				externalHost = depConfig.Route.External.Host
-			}
-			_ = setYamlPath(&rootNode, []string{compName, "route", "external", "host"}, externalHost)
+				_ = setYamlPath(&rootNode, []string{compName, "route", "external", "enabled"}, depConfig.Route.External.Enabled)
+				if depConfig.Route.External.Host != "" {
+					externalHost = depConfig.Route.External.Host
+				}
+				_ = setYamlPath(&rootNode, []string{compName, "route", "external", "host"}, externalHost)
 
-			if len(depConfig.Route.Additional) > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "route", "additional"}, depConfig.Route.Additional)
+				if len(depConfig.Route.Additional) > 0 {
+					_ = setYamlPath(&rootNode, []string{compName, "route", "additional"}, depConfig.Route.Additional)
+				}
 			}
 
 			if len(depConfig.Files.Cm) > 0 {
