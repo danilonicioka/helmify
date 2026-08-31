@@ -22,6 +22,10 @@ global:
 # ==============================================================================
 # For a single deployment, the key is the exact name of the application (chart name).
 chart-model-single:
+  # -- Defines the type of workload. Defaults to Deployment if omitted. Options: Deployment, CronJob
+  workloadType: Deployment
+  # -- Schedule for the CronJob (only applicable if workloadType is CronJob).
+  schedule: ""
 
   # ----------------------------------------------------------------------------
   # 1. IMAGE & WORKLOAD
