@@ -407,6 +407,9 @@ app:
                     - chart-model-multi-app
             topologyKey: kubernetes.io/hostname
 
+# ==============================================================================
+# CRONJOB CONFIGURATION
+# ==============================================================================
 cronjob:
   # -- Enable or disable this component
   enabled: true

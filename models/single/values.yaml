@@ -242,6 +242,9 @@ chart-model-single:
                     - chart-model-single
             topologyKey: kubernetes.io/hostname
 
+# ==============================================================================
+# CRONJOB CONFIGURATION
+# ==============================================================================
 cronjob-single:
   # -- Enable or disable this component
   enabled: true
