@@ -84,11 +84,7 @@ spec:
                 {{- toYaml $comp.resources | nindent 16 }}
               {{- end }}
               volumeMounts:
-                {{- if and .Values.global .Values.global.cm .Values.global.cm.TZ }}
-                - name: tz-config
-                  mountPath: /etc/localtime
-                {{- end }}
-                {{- if and $comp.truststore $comp.truststore.enabled }}
+                                {{- if and $comp.truststore $comp.truststore.enabled }}
                 - name: truststore
                   mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
                   subPath: tls-ca-bundle.pem
@@ -126,12 +122,7 @@ spec:
                 {{- end }}
                 {{- end }}
           volumes:
-            {{- if and .Values.global .Values.global.cm .Values.global.cm.TZ }}
-            - name: tz-config
-              hostPath:
-                path: /usr/share/zoneinfo/{{ .Values.global.cm.TZ }}
-            {{- end }}
-            {{- if and $comp.truststore $comp.truststore.enabled }}
+                        {{- if and $comp.truststore $comp.truststore.enabled }}
             - name: truststore
               secret:
                 secretName: {{ include "chart-model-single.fullname" . }}-secret-truststore
