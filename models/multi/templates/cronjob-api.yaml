@@ -1,6 +1,6 @@
 
 {{- $comp := index .Values "api" | default dict -}}
-{{- if and (eq $comp.workloadType "CronJob") (ne (default true $comp.enabled) false) }}
+{{- if ne (default true $comp.enabled) false }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:

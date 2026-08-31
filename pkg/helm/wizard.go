@@ -383,7 +383,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		// Set overrides
 		appKey := params.ChartName
 		if depConfig.WorkloadType == "CronJob" {
-			_ = setYamlPath(&rootNode, []string{appKey, "workloadType"}, depConfig.WorkloadType)
 			if depConfig.Schedule != "" {
 				_ = setYamlPath(&rootNode, []string{appKey, "schedule"}, depConfig.Schedule)
 			}
@@ -716,7 +715,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 			// Apply overrides to compName in values.yaml
 			if depConfig.WorkloadType == "CronJob" {
-				_ = setYamlPath(&rootNode, []string{compName, "workloadType"}, depConfig.WorkloadType)
 				if depConfig.Schedule != "" {
 					_ = setYamlPath(&rootNode, []string{compName, "schedule"}, depConfig.Schedule)
 				}

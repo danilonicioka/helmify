@@ -245,9 +245,7 @@ chart-model-single:
 cronjob-single:
   # -- Enable or disable this component
   enabled: true
-  # -- Defines the type of workload. Defaults to Deployment if omitted. Options: Deployment, CronJob
-  workloadType: CronJob
-  # -- Schedule for the CronJob (only applicable if workloadType is CronJob).
+  # -- Schedule for the CronJob.
   schedule: "0 0 * * *"
 
   # ----------------------------------------------------------------------------
