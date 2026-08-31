@@ -452,11 +452,20 @@ cronjob:
 
   files:
     cm: {}
+    #   application.properties:
+    #     mountPath: "/deployments/config/application.properties"
+    #     content: |
+    #       quarkus.http.port=8080
     secret: {}
+    #   sistema.p12:
+    #     mountPath: "/app/keystore/sistema.p12"
+    #     b64enc: true
+    #     content: "MIIKrAIB..."
 
   # ----------------------------------------------------------------------------
   # 3. RESOURCES
   # ----------------------------------------------------------------------------
+  # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
     limits:
       cpu: 100m
@@ -481,4 +490,15 @@ cronjob:
   # ----------------------------------------------------------------------------
   nodeSelector: {}
   tolerations: []
-  affinity: {}
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app.kubernetes.io/component
+                  operator: In
+                  values:
+                    - chart-model-multi-cronjob
+            topologyKey: kubernetes.io/hostname
