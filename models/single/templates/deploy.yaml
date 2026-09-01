@@ -1,5 +1,5 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
-{{- if and (ne $comp.workloadType "CronJob") (ne (default true $comp.enabled) false) }}
+{{- if and (ne $comp.workloadType "CronJob") (ne $comp.enabled false) }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
