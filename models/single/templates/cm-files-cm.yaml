@@ -1,12 +1,12 @@
-{{- $comp := index .Values "api" | default dict -}}
+{{- $comp := index .Values .Chart.Name | default dict -}}
 {{- if ne $comp.enabled false }}
 {{- if and $comp.files $comp.files.cm -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-api-files
+  name: {{ include "chart-model-single.fullname" . }}-files-cm
   labels:
-    {{- include "chart-model-multi.labels" . | nindent 4 }}
+    {{- include "chart-model-single.labels" . | nindent 4 }}
 data:
 {{- range $filename, $config := $comp.files.cm }}
   {{ $filename }}: |

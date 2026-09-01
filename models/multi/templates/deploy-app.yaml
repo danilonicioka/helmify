@@ -42,7 +42,7 @@ spec:
         checksum/secret-truststore: '{{ include (print $.Template.BasePath "/secret-truststore-app.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
-        checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-app-files.yaml") . | sha256sum }}'
+        checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-app-files-cm.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
         checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-app-files.yaml") . | sha256sum }}'
@@ -244,7 +244,7 @@ spec:
         {{- range $filename, $config := $comp.files.cm }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
           configMap:
-            name: {{ include "chart-model-multi.fullname" $ }}-app-files
+            name: {{ include "chart-model-multi.fullname" $ }}-app-files-cm
         {{- end }}
         {{- end }}
         {{- if and $comp.files $comp.files.secret }}

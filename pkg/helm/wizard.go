@@ -987,7 +987,7 @@ func replaceComponent(content string, oldComp, newComp string) string {
 		{"component: " + oldComp, "component: " + newCompKebab},
 		{"name: " + oldComp, "name: " + newCompKebab},
 		{"cm-" + oldComp + ".yaml", "cm-" + newCompKebab + ".yaml"},
-		{"cm-" + oldComp + "-files.yaml", "cm-" + newCompKebab + "-files.yaml"},
+		{"cm-" + oldComp + "-files-cm.yaml", "cm-" + newCompKebab + "-files-cm.yaml"},
 		{"secret-" + oldComp + ".yaml", "secret-" + newCompKebab + ".yaml"},
 		{"secret-" + oldComp + "-files.yaml", "secret-" + newCompKebab + "-files.yaml"},
 		{"secret-truststore-" + oldComp + ".yaml", "secret-truststore-" + newCompKebab + ".yaml"},

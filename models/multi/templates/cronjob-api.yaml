@@ -26,7 +26,7 @@ spec:
         metadata:
           annotations:
             {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
-            checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-api-files.yaml") . | sha256sum }}'
+            checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-api-files-cm.yaml") . | sha256sum }}'
             {{- end }}
             {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
             checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-api-files.yaml") . | sha256sum }}'
@@ -135,7 +135,7 @@ spec:
             {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
             - name: api-files
               configMap:
-                name: {{ include "chart-model-multi.fullname" . }}-api-files
+                name: {{ include "chart-model-multi.fullname" . }}-api-files-cm
             {{- end }}
             {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
             - name: api-files-secret
