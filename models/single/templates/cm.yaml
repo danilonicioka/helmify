@@ -1,5 +1,5 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
-{{- if ne (default true $comp.enabled) false }}
+{{- if ne $comp.enabled false }}
 {{- if and $comp $comp.cm (not (empty $comp.cm)) -}}
 apiVersion: v1
 kind: ConfigMap

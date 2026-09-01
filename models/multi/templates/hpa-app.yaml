@@ -1,5 +1,5 @@
 {{- $comp := index .Values "app" | default dict -}}
-{{- if ne (default true $comp.enabled) false }}
+{{- if ne $comp.enabled false }}
 {{- if and $comp $comp.hpa $comp.hpa.enabled -}}
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler

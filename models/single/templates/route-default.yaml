@@ -1,5 +1,5 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
-{{- if ne (default true $comp.enabled) false }}
+{{- if ne $comp.enabled false }}
 {{- if ne $comp.workloadType "CronJob" }}
 {{- $comp := index .Values .Chart.Name | default dict -}}
 {{- if and $comp $comp.route $comp.route.default $comp.route.default.enabled -}}

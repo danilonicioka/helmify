@@ -1,5 +1,5 @@
 {{- $comp := index .Values "app" | default dict -}}
-{{- if ne (default true $comp.enabled) false }}
+{{- if ne $comp.enabled false }}
 {{- if and $comp $comp.route $comp.route.external.enabled -}}
 apiVersion: route.openshift.io/v1
 kind: Route

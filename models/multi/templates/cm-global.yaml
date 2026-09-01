@@ -1,5 +1,5 @@
 {{- $comp := index .Values "global" | default dict -}}
-{{- if ne (default true $comp.enabled) false }}
+{{- if ne $comp.enabled false }}
 {{- if and $comp (not (empty $comp)) -}}
 apiVersion: v1
 kind: ConfigMap

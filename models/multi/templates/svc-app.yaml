@@ -1,5 +1,5 @@
 {{- $comp := index .Values "app" | default dict -}}
-{{- if ne (default true $comp.enabled) false }}
+{{- if ne $comp.enabled false }}
 apiVersion: v1
 kind: Service
 metadata:

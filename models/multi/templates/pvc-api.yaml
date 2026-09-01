@@ -1,5 +1,5 @@
 {{- $comp := index .Values "api" | default dict -}}
-{{- if ne (default true $comp.enabled) false }}
+{{- if ne $comp.enabled false }}
 {{- if and $comp.persistence (and $comp.persistence.enabled (not $comp.persistence.ephemeral)) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
