@@ -91,7 +91,7 @@ func mergeDevValues(caData []byte, chartName string, values helmify.Values, valu
 						v := root.Content[i+1]
 						idx, ok := orderMap[k.Value]
 						if !ok {
-							idx = 999999 // Put unknown keys at the end
+							continue // Drop keys that do not exist in values.yaml
 						}
 						kvs = append(kvs, kv{key: k, val: v, idx: idx})
 					}

@@ -167,7 +167,7 @@ spec:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
       
-          {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files (and $comp.truststore $comp.truststore.enabled) }}
+          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.files.cm)) (not (empty $comp.files.secret)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) (and $comp.truststore $comp.truststore.enabled) }}
           volumeMounts:
             {{- if and $comp.truststore $comp.truststore.enabled }}
             - name: custom-truststore
@@ -221,7 +221,7 @@ spec:
         {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {{- if or (and $comp.persistence $comp.persistence.enabled) $comp.files (and $comp.truststore $comp.truststore.enabled) }}
+      {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.files.cm)) (not (empty $comp.files.secret)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) (and $comp.truststore $comp.truststore.enabled) }}
       volumes:
         {{- if and $comp.truststore $comp.truststore.enabled }}
         - name: custom-truststore
