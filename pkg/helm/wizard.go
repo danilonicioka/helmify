@@ -983,8 +983,7 @@ func replaceComponent(content string, oldComp, newComp string) string {
 	newCompKebab := processor.NormalizeComponentName(newComp)
 	repls := []struct{ old, new string }{
 		{"chart-model-multi.fullname\" . }}-" + oldComp, "chart-model-multi.fullname\" . }}-" + newCompKebab},
-		{"-" + oldComp + "-cm", "-" + newCompKebab + "-cm"},
-		{"-" + oldComp + "-secret", "-" + newCompKebab + "-secret"},
+		{"chart-model-multi.fullname\" $ }}-" + oldComp, "chart-model-multi.fullname\" $ }}-" + newCompKebab},
 		{"component: " + oldComp, "component: " + newCompKebab},
 		{"name: " + oldComp, "name: " + newCompKebab},
 		{"cm-" + oldComp + ".yaml", "cm-" + newCompKebab + ".yaml"},
