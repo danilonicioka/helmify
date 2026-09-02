@@ -31,7 +31,8 @@ postgres:
   # 2. APPLICATION CONFIGURATION (Variables & Credentials)
   # ----------------------------------------------------------------------------
   # ConfigMaps unique to this service container.
-  cm: {}
+  cm:
+    PGDATA: /var/lib/postgresql/data/pgdata
 
   # Sensitive variables unique to this service container (Secrets).
   secret:
