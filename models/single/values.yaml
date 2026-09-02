@@ -183,7 +183,7 @@ chart-model-single:
     ephemeral: false
     mountPath: "/var/lib/data"
     storageRequest: 1Gi
-    accessMode: ReadWriteMany
+    accessMode: ReadWriteOnce
     storageClass: ""
 
   # ----------------------------------------------------------------------------
@@ -318,7 +318,7 @@ cronjob-single:
     ephemeral: false
     mountPath: "/var/lib/data"
     storageRequest: 1Gi
-    accessMode: ReadWriteMany
+    accessMode: ReadWriteOnce
     storageClass: ""
 
   # ----------------------------------------------------------------------------

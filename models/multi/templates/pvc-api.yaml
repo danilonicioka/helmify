@@ -9,7 +9,7 @@ metadata:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
 spec:
   accessModes:
-    - {{ $comp.persistence.accessMode | default "ReadWriteMany" }}
+    - {{ $comp.persistence.accessMode | default "ReadWriteOnce" }}
   {{- if $comp.persistence.storageClass }}
   {{- if (eq "-" $comp.persistence.storageClass) }}
   storageClassName: ""

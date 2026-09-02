@@ -95,10 +95,7 @@ postgres:
   # ----------------------------------------------------------------------------
   # -- Deployment strategy. Use 'RollingUpdate' or 'Recreate' (e.g. for RWO volume claims).
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 0
+    type: Recreate
   # -- Connection draining grace period for graceful shutdowns.
   terminationGracePeriodSeconds: 30
 
@@ -110,7 +107,7 @@ postgres:
     ephemeral: false
     mountPath: "/var/lib/postgresql/data"
     storageRequest: 1Gi
-    accessMode: ReadWriteMany
+    accessMode: ReadWriteOnce
     storageClass: ""
 
   # ----------------------------------------------------------------------------

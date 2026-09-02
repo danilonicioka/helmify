@@ -146,7 +146,7 @@ api:
     ephemeral: false
     mountPath: "/var/lib/data"
     storageRequest: 1Gi
-    accessMode: ReadWriteMany
+    accessMode: ReadWriteOnce
     storageClass: ""
   # ----------------------------------------------------------------------------
   # 6. PROBES & LIFECYCLE
@@ -347,7 +347,7 @@ app:
     ephemeral: false
     mountPath: "/var/lib/data"
     storageRequest: 1Gi
-    accessMode: ReadWriteMany
+    accessMode: ReadWriteOnce
     storageClass: ""
   # ----------------------------------------------------------------------------
   # 6. PROBES & LIFECYCLE
