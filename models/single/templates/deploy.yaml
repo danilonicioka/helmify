@@ -43,7 +43,7 @@ spec:
         checksum/secret-truststore: '{{ include (print $.Template.BasePath "/secret-truststore.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
-        checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-files-cm.yaml") . | sha256sum }}'
+        checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-files.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
         checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-files.yaml") . | sha256sum }}'

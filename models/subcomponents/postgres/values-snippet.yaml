@@ -31,12 +31,13 @@ postgres:
   # 2. APPLICATION CONFIGURATION (Variables & Credentials)
   # ----------------------------------------------------------------------------
   # ConfigMaps unique to this service container.
-  cm:
-    POSTGRES_DB: app_db
+  cm: {}
+
   # Sensitive variables unique to this service container (Secrets).
   secret:
-    POSTGRES_USER: app_user
+    POSTGRES_DB: app_db
     POSTGRES_PASSWORD: app_password
+    POSTGRES_USER: app_user
 
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
