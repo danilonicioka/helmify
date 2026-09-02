@@ -4,8 +4,8 @@ kind: Deployment
 metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-postgres
   labels:
-    {{- include "<CHART_NAME>.postgres.labels" . | nindent 4 }}
-  {{- $annotations := include "<CHART_NAME>.postgres.annotations" . }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+  {{- $annotations := include "<CHART_NAME>.component.annotations" (dict "context" . "component" "postgres") }}
   {{- if $annotations }}
   annotations:
     {{- $annotations | nindent 4 }}
@@ -20,7 +20,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "<CHART_NAME>.postgres.selectorLabels" . | nindent 6 }}
+      {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "postgres") | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -37,7 +37,7 @@ spec:
         checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
         {{- end }}
       labels:
-        {{- include "<CHART_NAME>.postgres.selectorLabels" . | nindent 8 }}
+        {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "postgres") | nindent 8 }}
     spec:
       {{- with .Values.postgres.image.pullSecrets }}
       imagePullSecrets:
@@ -48,8 +48,13 @@ spec:
           image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
           imagePullPolicy: {{ .Values.postgres.image.pullPolicy | default "IfNotPresent" }}
           ports:
-            - name: postgres
-              containerPort: 5432
+            {{- range $key, $val := .Values.postgres.service.ports }}
+            - name: {{ $key }}
+              containerPort: {{ $val.port }}
+              {{- if $val.protocol }}
+              protocol: {{ $val.protocol }}
+              {{- end }}
+            {{- end }}
           
           {{- if or (and .Values.postgres.cm (not (empty .Values.postgres.cm))) (and .Values.postgres.secret (not (empty .Values.postgres.secret))) (and .Values.global (not (empty .Values.global))) }}
           envFrom:

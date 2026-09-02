@@ -47,7 +47,6 @@ postgres:
     ports:
       postgres:
         port: 5432
-        targetPort: 5432
 
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
@@ -67,7 +66,7 @@ postgres:
   # Probes are empty by default; the recommended tcpSocket configuration is commented below.
   startupProbe:
     tcpSocket:
-      port: 5432
+      port: postgres
     initialDelaySeconds: 0
     periodSeconds: 5
     failureThreshold: 30
@@ -75,7 +74,7 @@ postgres:
     
   livenessProbe:
     tcpSocket:
-      port: 5432
+      port: postgres
     initialDelaySeconds: 0
     periodSeconds: 10
     failureThreshold: 3
@@ -83,7 +82,7 @@ postgres:
 
   readinessProbe:
     tcpSocket:
-      port: 5432
+      port: postgres
     initialDelaySeconds: 0
     periodSeconds: 10
     failureThreshold: 3

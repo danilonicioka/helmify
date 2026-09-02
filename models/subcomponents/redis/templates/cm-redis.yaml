@@ -4,7 +4,7 @@ kind: ConfigMap
 metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-redis-cm
   labels:
-    {{- include "<CHART_NAME>.redis.labels" . | nindent 4 }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
 data:
   {{- range $key, $val := .Values.redis.cm }}
   {{ $key }}: {{ $val | quote }}

@@ -77,3 +77,34 @@ Annotations helper for single model
 {{- toYaml . }}
 {{- end }}
 {{- end }}
+{{/*
+Component-specific selector labels
+*/}}
+{{- define "chart-model-single.component.selectorLabels" -}}
+{{ include "chart-model-single.selectorLabels" .context }}
+app.kubernetes.io/component: {{ include "chart-model-single.fullname" .context }}-{{ .component }}
+{{- end }}
+
+{{/*
+Component-specific labels
+*/}}
+{{- define "chart-model-single.component.labels" -}}
+{{ include "chart-model-single.labels" .context }}
+app.kubernetes.io/component: {{ include "chart-model-single.fullname" .context }}-{{ .component }}
+{{- if hasKey .context.Values .component }}
+{{- with (index .context.Values .component).labels }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
+Component-specific annotations
+*/}}
+{{- define "chart-model-single.component.annotations" -}}
+{{- if hasKey .context.Values .component }}
+{{- with (index .context.Values .component).annotations }}
+{{ toYaml . }}
+{{- end }}
+{{- end }}
+{{- end }}

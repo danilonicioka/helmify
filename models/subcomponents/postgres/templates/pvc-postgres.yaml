@@ -4,7 +4,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-postgres
   labels:
-    {{- include "<CHART_NAME>.postgres.labels" . | nindent 4 }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
 spec:
   accessModes:
     - {{ .Values.postgres.persistence.accessMode | default "ReadWriteMany" }}

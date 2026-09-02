@@ -4,7 +4,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-redis
   labels:
-    {{- include "<CHART_NAME>.redis.labels" . | nindent 4 }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
 spec:
   accessModes:
     - {{ .Values.redis.persistence.accessMode | default "ReadWriteMany" }}

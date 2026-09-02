@@ -4,8 +4,8 @@ kind: Deployment
 metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-redis
   labels:
-    {{- include "<CHART_NAME>.redis.labels" . | nindent 4 }}
-  {{- $annotations := include "<CHART_NAME>.redis.annotations" . }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+  {{- $annotations := include "<CHART_NAME>.component.annotations" (dict "context" . "component" "redis") }}
   {{- if $annotations }}
   annotations:
     {{- $annotations | nindent 4 }}
@@ -20,7 +20,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "<CHART_NAME>.redis.selectorLabels" . | nindent 6 }}
+      {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "redis") | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -37,7 +37,7 @@ spec:
         checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
         {{- end }}
       labels:
-        {{- include "<CHART_NAME>.redis.selectorLabels" . | nindent 8 }}
+        {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "redis") | nindent 8 }}
     spec:
       {{- with .Values.redis.image.pullSecrets }}
       imagePullSecrets:
@@ -48,8 +48,13 @@ spec:
           image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
           imagePullPolicy: {{ .Values.redis.image.pullPolicy | default "IfNotPresent" }}
           ports:
-            - name: redis
-              containerPort: 6379
+            {{- range $key, $val := .Values.redis.service.ports }}
+            - name: {{ $key }}
+              containerPort: {{ $val.port }}
+              {{- if $val.protocol }}
+              protocol: {{ $val.protocol }}
+              {{- end }}
+            {{- end }}
           
           {{- if or (and .Values.redis.cm (not (empty .Values.redis.cm))) (and .Values.redis.secret (not (empty .Values.redis.secret))) (and .Values.global (not (empty .Values.global))) }}
           envFrom:

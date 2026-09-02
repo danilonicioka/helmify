@@ -44,7 +44,6 @@ redis:
     ports:
       redis:
         port: 6379
-        targetPort: 6379
 
   # ----------------------------------------------------------------------------
   # 4. RESOURCES (Operational Overlay-Only)
@@ -64,7 +63,7 @@ redis:
   # Probes are empty by default; the recommended tcpSocket configuration is commented below.
   startupProbe:
     tcpSocket:
-      port: 6379
+      port: redis
     initialDelaySeconds: 0
     periodSeconds: 5
     failureThreshold: 30
@@ -72,7 +71,7 @@ redis:
 
   livenessProbe:
     tcpSocket:
-      port: 6379
+      port: redis
     initialDelaySeconds: 0
     periodSeconds: 10
     failureThreshold: 3
@@ -80,7 +79,7 @@ redis:
 
   readinessProbe:
     tcpSocket:
-      port: 6379
+      port: redis
     initialDelaySeconds: 0
     periodSeconds: 10
     failureThreshold: 3

@@ -4,18 +4,18 @@ kind: Service
 metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-redis
   labels:
-    {{- include "<CHART_NAME>.redis.labels" . | nindent 4 }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
 spec:
   type: {{ .Values.redis.service.type | default "ClusterIP" }}
   ports:
     {{- range $key, $val := .Values.redis.service.ports }}
   - name: {{ $key }}
     port: {{ $val.port }}
-    targetPort: {{ $val.targetPort | default $val.port }}
+    targetPort: {{ $key }}
     {{- if $val.protocol }}
     protocol: {{ $val.protocol }}
     {{- end }}
   {{- end }}
   selector:
-    {{- include "<CHART_NAME>.redis.selectorLabels" . | nindent 4 }}
+    {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "redis") | nindent 4 }}
 {{- end -}}
