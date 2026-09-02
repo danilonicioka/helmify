@@ -83,14 +83,6 @@ spec:
               resources:
                 {{- toYaml $comp.resources | nindent 16 }}
               {{- end }}
-              {{- if $comp.env }}
-              env:
-                {{- toYaml $comp.env | nindent 16 }}
-              {{- end }}
-              {{- if $comp.lifecycle }}
-              lifecycle:
-                {{- toYaml $comp.lifecycle | nindent 16 }}
-              {{- end }}
               volumeMounts:
                                 {{- if and $comp.truststore $comp.truststore.enabled }}
                 - name: truststore

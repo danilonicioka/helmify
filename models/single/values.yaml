@@ -99,20 +99,6 @@ chart-model-single:
       cpu: 30m
       memory: 256Mi
 
-  # ----------------------------------------------------------------------------
-  # Native Kubernetes environment variables list.
-  # Supports Downward API and dependent variable interpolation.
-  # Example:
-  # - name: MY_POD_NAME
-  #   valueFrom:
-  #     fieldRef:
-  #       fieldPath: metadata.name
-  env: []
-
-  # ----------------------------------------------------------------------------
-  # Lifecycle hooks for the container.
-  lifecycle: {}
-
   hpa:
     enabled: false
     minReplicas: 1
@@ -323,20 +309,6 @@ cronjob-single:
     requests:
       cpu: 10m
       memory: 64Mi
-
-  # ----------------------------------------------------------------------------
-  # Native Kubernetes environment variables list.
-  # Supports Downward API and dependent variable interpolation.
-  # Example:
-  # - name: MY_POD_NAME
-  #   valueFrom:
-  #     fieldRef:
-  #       fieldPath: metadata.name
-  env: []
-
-  # ----------------------------------------------------------------------------
-  # Lifecycle hooks for the container.
-  lifecycle: {}
 
   # ----------------------------------------------------------------------------
   # PERSISTENCE
