@@ -1,0 +1,16 @@
+{{- if and .Values.cronjob.enabled .Values.cronjob.vso .Values.cronjob.vso.enabled -}}
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-vaultauth
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "cronjob") | nindent 4 }}
+spec:
+  method: kubernetes
+  mount: {{ .Values.cronjob.vso.mount | default "kubernetes" }}
+  kubernetes:
+    role: {{ .Values.cronjob.vso.role }}
+    serviceAccount: {{ include "<CHART_NAME>.fullname" . }}-cronjob-sa
+    audiences:
+      - vault
+{{- end }}

@@ -540,6 +540,104 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 		}
 	}
 
+
+	// Intercept CronJob components and map them to subcomponents
+	for compName, depParams := range params.Deployments {
+		if depParams.WorkloadType == "CronJob" {
+			if params.Subcomponents == nil {
+				params.Subcomponents = []string{}
+			}
+			found := false
+			for _, s := range params.Subcomponents {
+				if s == "cronjob" {
+					found = true
+				}
+			}
+			if !found {
+				params.Subcomponents = append(params.Subcomponents, "cronjob")
+			}
+			
+			if params.SubcomponentsData == nil {
+				params.SubcomponentsData = make(map[string]interface{})
+			}
+			
+			cronjobData := map[string]interface{}{
+				"enabled": true,
+				"schedule": depParams.Schedule,
+				"image": map[string]interface{}{
+					"repository": depParams.Image.Repository,
+					"tag": depParams.Image.Tag,
+					"pullPolicy": "IfNotPresent",
+				},
+				"concurrencyPolicy": "Allow",
+				"successfulJobsHistoryLimit": 3,
+				"failedJobsHistoryLimit": 1,
+				"restartPolicy": "OnFailure",
+			}
+			
+			if len(depParams.Command) > 0 {
+				cronjobData["command"] = depParams.Command
+			}
+			if len(depParams.Args) > 0 {
+				cronjobData["args"] = depParams.Args
+			}
+			if depParams.Cm != nil && len(depParams.Cm) > 0 {
+				cronjobData["cm"] = depParams.Cm
+			}
+			if depParams.Secret != nil && len(depParams.Secret) > 0 {
+				cronjobData["secret"] = depParams.Secret
+			}
+			if depParams.Resources != nil {
+				cronjobData["resources"] = depParams.Resources
+			}
+			if depParams.Affinity != nil {
+				cronjobData["affinity"] = depParams.Affinity
+			}
+			if depParams.NodeSelector != nil && len(depParams.NodeSelector) > 0 {
+				cronjobData["nodeSelector"] = depParams.NodeSelector
+			}
+			if depParams.Tolerations != nil && len(depParams.Tolerations) > 0 {
+				cronjobData["tolerations"] = depParams.Tolerations
+			}
+			if depParams.Persistence.Enabled {
+				cronjobData["persistence"] = map[string]interface{}{
+					"enabled": true,
+					"mountPath": depParams.Persistence.MountPath,
+					"size": "1Gi",
+					"accessMode": "ReadWriteOnce",
+				}
+			}
+			// Map configMap and Secret files
+			if len(depParams.Files.Cm) > 0 || len(depParams.Files.Secret) > 0 {
+				filesMap := make(map[string]interface{})
+				if len(depParams.Files.Cm) > 0 {
+					cmMap := make(map[string]interface{})
+					for k, v := range depParams.Files.Cm {
+						cmMap[k] = map[string]interface{}{
+							"path": v.MountPath,
+							"content": v.Content,
+						}
+					}
+					filesMap["cm"] = cmMap
+				}
+				if len(depParams.Files.Secret) > 0 {
+					secMap := make(map[string]interface{})
+					for k, v := range depParams.Files.Secret {
+						secMap[k] = map[string]interface{}{
+							"path": v.MountPath,
+							"content": v.Content,
+						}
+					}
+					filesMap["secret"] = secMap
+				}
+				cronjobData["files"] = filesMap
+			}
+
+			// Assign to SubcomponentsData and remove from Deployments
+			params.SubcomponentsData["cronjob"] = cronjobData
+			delete(params.Deployments, compName)
+		}
+	}
 	// Auto-detect type and normalize naming if single
 	if len(params.Deployments) == 1 {
 		params.Type = "single"

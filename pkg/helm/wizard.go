@@ -136,6 +136,7 @@ type WizardParams struct {
 	GlobalSecret  map[string]string           `json:"globalSecret"`
 	Deployments   map[string]DeploymentParams `json:"deployments"`
 	Subcomponents []string                    `json:"subcomponents"`
+	SubcomponentsData map[string]interface{}          `json:"subcomponentsData,omitempty"`
 }
 
 // DeploymentParams represents configuration for a component deployment.
@@ -371,51 +372,37 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			return nil, fmt.Errorf("failed to parse values.yaml: %w", err)
 		}
 
-		if depConfig.WorkloadType == "CronJob" {
-			deleteYamlPath(&rootNode, []string{oldChartName})
-			renameRootKey(&rootNode, "cronjob-single", params.ChartName)
-		} else {
-			deleteYamlPath(&rootNode, []string{"cronjob-single"})
-			renameRootKey(&rootNode, oldChartName, params.ChartName)
-		}
+		renameRootKey(&rootNode, oldChartName, params.ChartName)
 		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
 		// Set overrides
 		appKey := params.ChartName
-		if depConfig.WorkloadType == "CronJob" {
-			if depConfig.Schedule != "" {
-				_ = setYamlPath(&rootNode, []string{appKey, "schedule"}, depConfig.Schedule)
+		if depConfig.Replicas != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, *depConfig.Replicas)
+		}
+		svcPort := depConfig.Service.Port
+		if svcPort == 0 && depConfig.Service.Ports != nil {
+			if httpPort, ok := depConfig.Service.Ports["http"]; ok {
+				svcPort = httpPort.Port
 			}
-		} else {
-			if depConfig.WorkloadType != "CronJob" {
-				if depConfig.Replicas != nil {
-					_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, *depConfig.Replicas)
-				}
-				svcPort := depConfig.Service.Port
-				if svcPort == 0 && depConfig.Service.Ports != nil {
-					if httpPort, ok := depConfig.Service.Ports["http"]; ok {
-						svcPort = httpPort.Port
-					}
-				}
-				if svcPort > 0 {
-					_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "port"}, svcPort)
-				}
-				if depConfig.Hpa != nil {
-					_ = setYamlPath(&rootNode, []string{appKey, "hpa"}, depConfig.Hpa)
-				}
-				if depConfig.StartupProbe != nil {
-					_ = setYamlPath(&rootNode, []string{appKey, "startupProbe"}, depConfig.StartupProbe)
-				}
-				if depConfig.LivenessProbe != nil {
-					_ = setYamlPath(&rootNode, []string{appKey, "livenessProbe"}, depConfig.LivenessProbe)
-				}
-				if depConfig.ReadinessProbe != nil {
-					_ = setYamlPath(&rootNode, []string{appKey, "readinessProbe"}, depConfig.ReadinessProbe)
-				}
-				if depConfig.Route.Path != "" {
-					_ = setYamlPath(&rootNode, []string{appKey, "route", "path"}, depConfig.Route.Path)
-				}
-			}
+		}
+		if svcPort > 0 {
+			_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "port"}, svcPort)
+		}
+		if depConfig.Hpa != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "hpa"}, depConfig.Hpa)
+		}
+		if depConfig.StartupProbe != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "startupProbe"}, depConfig.StartupProbe)
+		}
+		if depConfig.LivenessProbe != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "livenessProbe"}, depConfig.LivenessProbe)
+		}
+		if depConfig.ReadinessProbe != nil {
+			_ = setYamlPath(&rootNode, []string{appKey, "readinessProbe"}, depConfig.ReadinessProbe)
+		}
+		if depConfig.Route.Path != "" {
+			_ = setYamlPath(&rootNode, []string{appKey, "route", "path"}, depConfig.Route.Path)
 		}
 		if depConfig.Image.Repository != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "image", "repository"}, depConfig.Image.Repository)
@@ -580,15 +567,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if _, ok := params.Deployments["app"]; !ok {
 			deleteYamlPath(&rootNode, []string{"app"})
 		}
-		if _, ok := params.Deployments["cronjob"]; !ok {
-			deleteYamlPath(&rootNode, []string{"cronjob"})
-		}
-		if _, ok := params.Deployments["cronjob"]; !ok {
-			deleteYamlPath(&rootNode, []string{"cronjob"})
-		}
-		if _, ok := params.Deployments["cronjob"]; !ok {
-			deleteYamlPath(&rootNode, []string{"cronjob"})
-		}
+
 		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
 		// Collect and sort component keys to ensure deterministic order (Deployments first, then CronJobs, then alphabetical)
@@ -597,20 +576,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			compKeys = append(compKeys, k)
 		}
 		sort.Slice(compKeys, func(i, j int) bool {
-			compI := params.Deployments[compKeys[i]]
-			compJ := params.Deployments[compKeys[j]]
-			
-			typeI := compI.WorkloadType
-			if typeI == "" { typeI = "Deployment" }
-			typeJ := compJ.WorkloadType
-			if typeJ == "" { typeJ = "Deployment" }
-			
-			if typeI != typeJ {
-				// Deployments before CronJobs
-				if typeI == "Deployment" { return true }
-				if typeJ == "Deployment" { return false }
-				return typeI < typeJ
-			}
 			return compKeys[i] < compKeys[j]
 		})
 
@@ -620,10 +585,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			templateBaseComp := "api"
 			valuesBaseComp := "api"
 			
-			if depConfig.WorkloadType == "CronJob" {
-				valuesBaseComp = "cronjob"
-				templateBaseComp = "api"
-			} else if compName == "app" || compName == "web" || strings.HasSuffix(compName, "-app") || strings.HasSuffix(compName, "-web") || strings.Contains(compName, "frontend") {
+			if compName == "app" || compName == "web" || strings.HasSuffix(compName, "-app") || strings.HasSuffix(compName, "-web") || strings.Contains(compName, "frontend") {
 				templateBaseComp = "app"
 				valuesBaseComp = "app"
 			}
@@ -636,21 +598,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 				filename := filepath.Base(relPath)
 
-				// Filter out incompatible templates based on workload type
-				isCronJob := depConfig.WorkloadType == "CronJob"
-				if isCronJob {
-					if strings.HasPrefix(filename, "deploy-") || strings.HasPrefix(filename, "svc-") || strings.HasPrefix(filename, "route-") || strings.HasPrefix(filename, "hpa-") || strings.HasPrefix(filename, "pvc-") {
-						continue
-					}
-					// Allow cronjob-, cm-, secret-, vso-
-					if !strings.HasPrefix(filename, "cronjob-") && !strings.HasPrefix(filename, "cm-") && !strings.HasPrefix(filename, "secret-") && !strings.HasPrefix(filename, "vso-") {
-						continue
-					}
-				} else {
-					if strings.HasPrefix(filename, "cronjob-") {
-						continue
-					}
-				}
 
 				if strings.Contains(filename, "-"+templateBaseComp) || strings.Contains(filename, templateBaseComp+"-") || strings.Contains(filename, templateBaseComp+".") {
 					compKebab := processor.NormalizeComponentName(compName)
@@ -718,40 +665,32 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 
 			// Apply overrides to compName in values.yaml
-			if depConfig.WorkloadType == "CronJob" {
-				if depConfig.Schedule != "" {
-					_ = setYamlPath(&rootNode, []string{compName, "schedule"}, depConfig.Schedule)
+			if depConfig.Replicas != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "replicas"}, *depConfig.Replicas)
+			}
+			svcPort := depConfig.Service.Port
+			if svcPort == 0 && depConfig.Service.Ports != nil {
+				if httpPort, ok := depConfig.Service.Ports["http"]; ok {
+					svcPort = httpPort.Port
 				}
-			} else {
-				if depConfig.WorkloadType != "CronJob" {
-					if depConfig.Replicas != nil {
-						_ = setYamlPath(&rootNode, []string{compName, "replicas"}, *depConfig.Replicas)
-					}
-					svcPort := depConfig.Service.Port
-					if svcPort == 0 && depConfig.Service.Ports != nil {
-						if httpPort, ok := depConfig.Service.Ports["http"]; ok {
-							svcPort = httpPort.Port
-						}
-					}
-					if svcPort > 0 {
-						_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "port"}, svcPort)
-					}
-					if depConfig.Hpa != nil {
-						_ = setYamlPath(&rootNode, []string{compName, "hpa"}, depConfig.Hpa)
-					}
-					if depConfig.StartupProbe != nil {
-						_ = setYamlPath(&rootNode, []string{compName, "startupProbe"}, depConfig.StartupProbe)
-					}
-					if depConfig.LivenessProbe != nil {
-						_ = setYamlPath(&rootNode, []string{compName, "livenessProbe"}, depConfig.LivenessProbe)
-					}
-					if depConfig.ReadinessProbe != nil {
-						_ = setYamlPath(&rootNode, []string{compName, "readinessProbe"}, depConfig.ReadinessProbe)
-					}
-					if depConfig.Route.Path != "" {
-						_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
-					}
-				}
+			}
+			if svcPort > 0 {
+				_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "port"}, svcPort)
+			}
+			if depConfig.Hpa != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "hpa"}, depConfig.Hpa)
+			}
+			if depConfig.StartupProbe != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "startupProbe"}, depConfig.StartupProbe)
+			}
+			if depConfig.LivenessProbe != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "livenessProbe"}, depConfig.LivenessProbe)
+			}
+			if depConfig.ReadinessProbe != nil {
+				_ = setYamlPath(&rootNode, []string{compName, "readinessProbe"}, depConfig.ReadinessProbe)
+			}
+			if depConfig.Route.Path != "" {
+				_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
 			}
 			if depConfig.Image.Repository != "" {
 				_ = setYamlPath(&rootNode, []string{compName, "image", "repository"}, depConfig.Image.Repository)
@@ -907,6 +846,19 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		subPath := fmt.Sprintf("models/subcomponents/%s/values-snippet.yaml", sub)
 		if data, err := roothelmify.ModelsFS.ReadFile(subPath); err == nil {
 			subValuesStr += "\n\n" + strings.ReplaceAll(string(data), "<CHART_NAME>", params.ChartName)
+		}
+		
+		// Apply dynamic user overrides for this subcomponent if present
+		if params.SubcomponentsData != nil {
+			if overrideData, ok := params.SubcomponentsData[sub]; ok {
+				// Wrap it in the subcomponent key
+				wrapped := map[string]interface{}{
+					sub: overrideData,
+				}
+				if overrideYAML, err := yaml.Marshal(wrapped); err == nil {
+					subValuesStr += "\n# Auto-mapped from user input\n" + string(overrideYAML)
+				}
+			}
 		}
 	}
 	if len(subValuesStr) > 0 {

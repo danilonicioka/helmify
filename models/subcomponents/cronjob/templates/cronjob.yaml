@@ -1,0 +1,164 @@
+{{- if .Values.cronjob.enabled -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-cronjob
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "cronjob") | nindent 4 }}
+  {{- $annotations := include "<CHART_NAME>.component.annotations" (dict "context" . "component" "cronjob") }}
+  {{- if $annotations }}
+  annotations:
+    {{- $annotations | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ .Values.cronjob.schedule | quote }}
+  concurrencyPolicy: {{ default "Allow" .Values.cronjob.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ default 3 .Values.cronjob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ default 1 .Values.cronjob.failedJobsHistoryLimit }}
+  jobTemplate:
+    metadata:
+      labels:
+        {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "cronjob") | nindent 8 }}
+    spec:
+      template:
+        metadata:
+          annotations:
+            {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+            checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
+            {{- end }}
+            {{- if and .Values.cronjob.files .Values.cronjob.files.cm (not (empty .Values.cronjob.files.cm)) }}
+            checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-cronjob-files.yaml") . | sha256sum }}'
+            {{- end }}
+            {{- if and .Values.cronjob.files .Values.cronjob.files.secret (not (empty .Values.cronjob.files.secret)) }}
+            checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-cronjob-files.yaml") . | sha256sum }}'
+            {{- end }}
+            {{- if and .Values.cronjob.secret (not (empty .Values.cronjob.secret)) }}
+            checksum/secret: '{{ include (print $.Template.BasePath "/secret-cronjob.yaml") . | sha256sum }}'
+            {{- end }}
+          labels:
+            {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "cronjob") | nindent 12 }}
+        spec:
+          {{- with .Values.cronjob.image.pullSecrets }}
+          imagePullSecrets:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- if and .Values.cronjob.vso .Values.cronjob.vso.enabled }}
+          serviceAccountName: {{ include "<CHART_NAME>.fullname" . }}-cronjob-sa
+          {{- else if .Values.serviceAccount }}
+          serviceAccountName: {{ include "<CHART_NAME>.serviceAccountName" . }}
+          {{- end }}
+          containers:
+            - name: cronjob
+              image: "{{ .Values.cronjob.image.repository }}:{{ .Values.cronjob.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ .Values.cronjob.image.pullPolicy }}
+              {{- if .Values.cronjob.command }}
+              command:
+                {{- toYaml .Values.cronjob.command | nindent 16 }}
+              {{- end }}
+              {{- if .Values.cronjob.args }}
+              args:
+                {{- toYaml .Values.cronjob.args | nindent 16 }}
+              {{- end }}
+              envFrom:
+                - configMapRef:
+                    name: {{ include "<CHART_NAME>.fullname" . }}-global-cm
+                - secretRef:
+                    name: {{ include "<CHART_NAME>.fullname" . }}-global-secret
+                {{- if and .Values.cronjob.cm (not (empty .Values.cronjob.cm)) }}
+                - configMapRef:
+                    name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-cm
+                {{- end }}
+                {{- if and .Values.cronjob.secret (not (empty .Values.cronjob.secret)) }}
+                - secretRef:
+                    name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-secret
+                {{- end }}
+                {{- if and .Values.cronjob.vso .Values.cronjob.vso.enabled }}
+                - secretRef:
+                    name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-vso-secret
+                {{- end }}
+              {{- if .Values.cronjob.resources }}
+              resources:
+                {{- toYaml .Values.cronjob.resources | nindent 16 }}
+              {{- end }}
+              volumeMounts:
+                {{- if and .Values.cronjob.truststore .Values.cronjob.truststore.enabled }}
+                - name: truststore
+                  mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
+                  subPath: tls-ca-bundle.pem
+                  readOnly: true
+                {{- end }}
+                {{- if and .Values.cronjob.persistence .Values.cronjob.persistence.enabled }}
+                - name: cronjob-data
+                  mountPath: {{ .Values.cronjob.persistence.mountPath | default "/data" }}
+                  {{- if .Values.cronjob.persistence.subPath }}
+                  subPath: {{ .Values.cronjob.persistence.subPath }}
+                  {{- end }}
+                {{- end }}
+                {{- if and .Values.cronjob.files .Values.cronjob.files.cm }}
+                {{- range $key, $val := .Values.cronjob.files.cm }}
+                - name: files
+                  mountPath: {{ $val.path }}
+                  subPath: {{ $key | replace "." "-" }}
+                  readOnly: true
+                {{- end }}
+                {{- end }}
+                {{- if and .Values.cronjob.files .Values.cronjob.files.secret }}
+                {{- range $key, $val := .Values.cronjob.files.secret }}
+                - name: files-secret
+                  mountPath: {{ $val.path }}
+                  subPath: {{ $key | replace "." "-" }}
+                  readOnly: true
+                {{- end }}
+                {{- end }}
+                {{- if and .Values.cronjob.vso .Values.cronjob.vso.enabled .Values.cronjob.vso.secretFiles }}
+                {{- range $key, $val := .Values.cronjob.vso.secretFiles }}
+                - name: vso-files-secret
+                  mountPath: {{ $val.path }}
+                  subPath: {{ $key | replace "." "-" }}
+                  readOnly: true
+                {{- end }}
+                {{- end }}
+          volumes:
+            {{- if and .Values.cronjob.truststore .Values.cronjob.truststore.enabled }}
+            - name: truststore
+              secret:
+                secretName: {{ include "<CHART_NAME>.fullname" . }}-cronjob-secret-truststore
+            {{- end }}
+            {{- if and .Values.cronjob.persistence .Values.cronjob.persistence.enabled }}
+            - name: cronjob-data
+              {{- if .Values.cronjob.persistence.ephemeral }}
+              emptyDir: {}
+              {{- else }}
+              persistentVolumeClaim:
+                claimName: {{ include "<CHART_NAME>.fullname" . }}-cronjob
+              {{- end }}
+            {{- end }}
+            {{- if and .Values.cronjob.files .Values.cronjob.files.cm (not (empty .Values.cronjob.files.cm)) }}
+            - name: files
+              configMap:
+                name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-files-cm
+            {{- end }}
+            {{- if and .Values.cronjob.files .Values.cronjob.files.secret (not (empty .Values.cronjob.files.secret)) }}
+            - name: files-secret
+              secret:
+                secretName: {{ include "<CHART_NAME>.fullname" . }}-cronjob-files-secret
+            {{- end }}
+            {{- if and .Values.cronjob.vso .Values.cronjob.vso.enabled .Values.cronjob.vso.secretFiles }}
+            - name: vso-files-secret
+              secret:
+                secretName: {{ include "<CHART_NAME>.fullname" . }}-cronjob-vso-secret
+            {{- end }}
+          restartPolicy: {{ default "OnFailure" .Values.cronjob.restartPolicy }}
+          {{- with .Values.cronjob.nodeSelector }}
+          nodeSelector:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.cronjob.affinity }}
+          affinity:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.cronjob.tolerations }}
+          tolerations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+{{- end -}}

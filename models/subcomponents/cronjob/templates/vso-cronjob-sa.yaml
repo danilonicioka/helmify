@@ -1,0 +1,8 @@
+{{- if and .Values.cronjob.enabled .Values.cronjob.vso .Values.cronjob.vso.enabled -}}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-sa
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "cronjob") | nindent 4 }}
+{{- end }}

@@ -1,0 +1,12 @@
+{{- if and .Values.cronjob.enabled .Values.cronjob.cm (not (empty .Values.cronjob.cm)) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-cm
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "cronjob") | nindent 4 }}
+data:
+  {{- range $key, $val := .Values.cronjob.cm }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
