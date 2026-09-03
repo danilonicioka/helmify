@@ -38,3 +38,7 @@ example-binarios/test.yaml
 test-result-values.yaml
 test.yaml
 test_chart/
+generated-chart.zip
+test-helm-merge.yaml
+test.zip
+test-output/

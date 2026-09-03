@@ -201,6 +201,18 @@ type ServiceParams struct {
 	} `json:"ports"`
 }
 
+func flattenMap(m map[string]interface{}, prefix []string, result map[string]interface{}) {
+	for k, v := range m {
+		fullPath := append(append([]string(nil), prefix...), k)
+		if nested, ok := v.(map[string]interface{}); ok {
+			flattenMap(nested, fullPath, result)
+		} else {
+			result[strings.Join(fullPath, ".")] = v
+		}
+	}
+}
+
+// setYamlPath updates or creates a value at the given path in a YAML AST.
 // ProbeParams enforces a strict ordering of probe fields in the generated YAML
 type ProbeParams struct {
 	HTTPGet             interface{} `json:"httpGet,omitempty" yaml:"httpGet,omitempty"`
@@ -844,22 +856,31 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	var subValuesStr string
 	for _, sub := range params.Subcomponents {
 		subPath := fmt.Sprintf("models/subcomponents/%s/values-snippet.yaml", sub)
+		var snippetNode yaml.Node
 		if data, err := roothelmify.ModelsFS.ReadFile(subPath); err == nil {
-			subValuesStr += "\n\n" + strings.ReplaceAll(string(data), "<CHART_NAME>", params.ChartName)
+			yaml.Unmarshal(data, &snippetNode)
 		}
-		
-		// Apply dynamic user overrides for this subcomponent if present
+
+		// Apply dynamic user overrides for this subcomponent if present using AST to preserve comments
 		if params.SubcomponentsData != nil {
 			if overrideData, ok := params.SubcomponentsData[sub]; ok {
-				// Wrap it in the subcomponent key
-				wrapped := map[string]interface{}{
-					sub: overrideData,
-				}
-				if overrideYAML, err := yaml.Marshal(wrapped); err == nil {
-					subValuesStr += "\n# Auto-mapped from user input\n" + string(overrideYAML)
+				if overrideMap, ok := overrideData.(map[string]interface{}); ok {
+					flat := make(map[string]interface{})
+					flattenMap(overrideMap, []string{sub}, flat)
+					for k, v := range flat {
+						_ = setYamlPath(&snippetNode, strings.Split(k, "."), v)
+					}
 				}
 			}
 		}
+
+		// Marshal the node back to a string
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		enc.SetIndent(2)
+		_ = enc.Encode(&snippetNode)
+		
+		subValuesStr += "\n\n" + strings.ReplaceAll(buf.String(), "<CHART_NAME>", params.ChartName)
 	}
 	if len(subValuesStr) > 0 {
 		if valuesData, ok := outputFiles["values.yaml"]; ok {
