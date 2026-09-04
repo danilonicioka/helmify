@@ -24,6 +24,9 @@ spec:
   template:
     metadata:
       annotations:
+        {{- if $annotations }}
+        {{- $annotations | nindent 8 }}
+        {{- end }}
         {{- if and .Values.postgres .Values.postgres.cm (not (empty .Values.postgres.cm)) }}
         checksum/config: '{{ include (print $.Template.BasePath "/cm-postgres.yaml") . | sha256sum }}'
         {{- end }}

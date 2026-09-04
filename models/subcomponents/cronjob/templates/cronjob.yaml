@@ -23,6 +23,9 @@ spec:
       template:
         metadata:
           annotations:
+            {{- if $annotations }}
+            {{- $annotations | nindent 12 }}
+            {{- end }}
             {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
             checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
             {{- end }}
