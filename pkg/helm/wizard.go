@@ -167,6 +167,7 @@ type DeploymentParams struct {
 	OverviewAppRoute string                      `json:"overviewAppRoute"`
 	Files            CustomFiles                 `json:"files"`
 	Truststore       *TruststoreParams           `json:"truststore,omitempty"`
+	ExtraContainers  []map[string]interface{}    `json:"extraContainers,omitempty"`
 }
 
 // CustomFiles holds cm and secret files
@@ -421,6 +422,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		if depConfig.Image.Tag != "" {
 			_ = setYamlPath(&rootNode, []string{appKey, "image", "tag"}, depConfig.Image.Tag)
+		}
+		if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
+			_ = setYamlPath(&rootNode, []string{appKey, "extraContainers"}, depConfig.ExtraContainers)
 		}
 		if depConfig.Command != nil {
 			_ = setYamlPath(&rootNode, []string{appKey, "command"}, depConfig.Command)
@@ -736,6 +740,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 			if depConfig.Tolerations != nil {
 				_ = setYamlPath(&rootNode, []string{compName, "tolerations"}, depConfig.Tolerations)
+			}
+			if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
+				_ = setYamlPath(&rootNode, []string{compName, "extraContainers"}, depConfig.ExtraContainers)
 			}
 			if len(depConfig.ConnectsTo) > 0 {
 				var connects []string

@@ -38,6 +38,7 @@ chart-model-single:
     pullSecrets: []
 
   command: []
+  extraContainers: []
   args: []
 
   # -- Number of replica pods.

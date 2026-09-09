@@ -121,6 +121,9 @@ spec:
                   readOnly: true
                 {{- end }}
                 {{- end }}
+          {{- if .Values.cronjob.extraContainers }}
+          {{- toYaml .Values.cronjob.extraContainers | nindent 12 }}
+          {{- end }}
           volumes:
             {{- if and .Values.cronjob.truststore .Values.cronjob.truststore.enabled }}
             - name: truststore

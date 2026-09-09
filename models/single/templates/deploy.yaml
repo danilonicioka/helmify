@@ -203,6 +203,9 @@ spec:
             {{- end }}
           {{- end }}
       
+        {{- if $comp.extraContainers }}
+        {{- toYaml $comp.extraContainers | nindent 8 }}
+        {{- end }}
       # 5. Graceful connection draining lifecycle settings
       {{- if $comp.terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}

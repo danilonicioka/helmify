@@ -35,6 +35,7 @@ api:
     pullSecrets: []
   
   command: []
+  extraContainers: []
   args: []
 
   replicas: 1
@@ -230,6 +231,7 @@ app:
     pullSecrets: []
 
   command: []
+  extraContainers: []
   args: []
 
   replicas: 1

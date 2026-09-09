@@ -211,6 +211,14 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 						}
 					}
 				}
+
+				if len(containers) > 1 {
+					for i := 1; i < len(containers); i++ {
+						if containerMap, ok := containers[i].(map[string]interface{}); ok {
+							depParams.ExtraContainers = append(depParams.ExtraContainers, containerMap)
+						}
+					}
+				}
 			}
 
 			affinityPath := append(podSpecPath, "affinity")
