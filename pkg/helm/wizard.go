@@ -663,6 +663,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 				if baseNode != nil {
 					cloned := cloneYamlNode(baseNode)
+					replaceNodeComponent(cloned, valuesBaseComp, compName)
 					keyNode := &yaml.Node{
 						Kind:  yaml.ScalarNode,
 						Value: compName,
@@ -973,6 +974,22 @@ func replaceComponent(content string, oldComp, newComp string) string {
 		res = strings.ReplaceAll(res, r.old, r.new)
 	}
 	return res
+}
+
+func replaceNodeComponent(node *yaml.Node, oldComp, newComp string) {
+	if node == nil {
+		return
+	}
+	if node.Kind == yaml.ScalarNode {
+		newCompKebab := processor.NormalizeComponentName(newComp)
+		val := node.Value
+		val = strings.ReplaceAll(val, "-"+oldComp, "-"+newCompKebab)
+		val = strings.ReplaceAll(val, "/"+oldComp, "/"+newCompKebab)
+		node.Value = val
+	}
+	for _, child := range node.Content {
+		replaceNodeComponent(child, oldComp, newComp)
+	}
 }
 
 func cloneYamlNode(node *yaml.Node) *yaml.Node {
