@@ -6,7 +6,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/iancoleman/strcase"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 
@@ -460,7 +459,6 @@ func TemplatedConfigMapName(appMeta helmify.AppMetadata, cmName string) string {
 
 // NormalizeComponentName maps variations of component names to their canonical kebab-case representation.
 func NormalizeComponentName(comp string) string {
-	comp = strcase.ToKebab(comp)
 	comp = strings.ToLower(comp)
 	comp = strings.TrimLeft(comp, "-./_ ")
 	comp = strings.TrimRight(comp, "-./_ ")
