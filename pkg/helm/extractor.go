@@ -32,6 +32,13 @@ func cleanMultilineString(s string) string {
 	return strings.Join(lines, "\n")
 }
 
+type EnvTarget struct {
+	CompName string
+	SidecarName string
+	IsMain bool
+	RefCount int
+}
+
 func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, error) {
 	stop := make(chan struct{})
 	defer close(stop)
@@ -50,6 +57,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 	for obj := range streamedObjects {
 		objects = append(objects, obj)
 	}
+	envTracker := make(map[string]*EnvTarget)
 
 	volMappings := make(map[string][]VolumeMapping)
 
@@ -131,92 +139,47 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			containers, found, err := unstructured.NestedSlice(obj.Object, containersPath...)
 			if err == nil && found && len(containers) > 0 {
 				container := containers[0].(map[string]interface{})
-				image, _, _ := unstructured.NestedString(container, "image")
-				if image != "" {
-					index := strings.LastIndex(image, ":")
-					if strings.Contains(image, "@") && strings.Count(image, ":") >= 2 {
-						last := strings.LastIndex(image, ":")
-						index = strings.LastIndex(image[:last], ":")
-					}
-					if index < 0 {
-						depParams.Image.Repository = image
-						depParams.Image.Tag = "latest"
-					} else {
-						depParams.Image.Repository = image[:index]
-						depParams.Image.Tag = image[index+1:]
-					}
-				}
-				if command, found, _ := unstructured.NestedStringSlice(container, "command"); found && len(command) > 0 {
-					depParams.Command = command
-				}
-
-				if args, found, _ := unstructured.NestedStringSlice(container, "args"); found && len(args) > 0 {
-					depParams.Args = args
-				}
-				
-				// Extract Resources
-				resources, resFound, _ := unstructured.NestedMap(container, "resources")
-				if resFound {
-					resParams := &ResourceParams{}
-					if limits, ok, _ := unstructured.NestedMap(resources, "limits"); ok && len(limits) > 0 {
-						resParams.Limits = limits
-					}
-					if requests, ok, _ := unstructured.NestedMap(resources, "requests"); ok && len(requests) > 0 {
-						resParams.Requests = requests
-					}
-					if resParams.Limits != nil || resParams.Requests != nil {
-						depParams.Resources = resParams
-					}
-				}
-
-				// Extract Probes
-				if p, ok, _ := unstructured.NestedMap(container, "startupProbe"); ok && len(p) > 0 {
-					if b, err := json.Marshal(p); err == nil {
-						var probe ProbeParams
-						if err := json.Unmarshal(b, &probe); err == nil {
-							depParams.StartupProbe = &probe
-						}
-					}
-				}
-				if p, ok, _ := unstructured.NestedMap(container, "livenessProbe"); ok && len(p) > 0 {
-					if b, err := json.Marshal(p); err == nil {
-						var probe ProbeParams
-						if err := json.Unmarshal(b, &probe); err == nil {
-							depParams.LivenessProbe = &probe
-						}
-					}
-				}
-				if p, ok, _ := unstructured.NestedMap(container, "readinessProbe"); ok && len(p) > 0 {
-					if b, err := json.Marshal(p); err == nil {
-						var probe ProbeParams
-						if err := json.Unmarshal(b, &probe); err == nil {
-							depParams.ReadinessProbe = &probe
-						}
-					}
-				}
-
-				// Extract Persistence from volumeMounts (ignoring configMaps, secrets, and system tokens)
-				mounts, ok, _ := unstructured.NestedSlice(container, "volumeMounts")
-				if ok && len(mounts) > 0 {
-					for _, m := range mounts {
-						mount := m.(map[string]interface{})
-						name, _, _ := unstructured.NestedString(mount, "name")
-						
-						_, isConfigMapOrSecret := volSources[name]
-						if !strings.HasPrefix(name, "kube-api") && !strings.Contains(name, "default-token") && !isConfigMapOrSecret {
-							path, _, _ := unstructured.NestedString(mount, "mountPath")
-							depParams.Persistence.Enabled = true
-							depParams.Persistence.MountPath = path
-							break // Take the first meaningful volume for the simple model
-						}
-					}
-				}
+				populateContainerParams(&depParams, container, volSources, envTracker, obj.GetName())
 
 				if len(containers) > 1 {
+					if depParams.ExtraContainers == nil {
+						depParams.ExtraContainers = make(map[string]*SidecarParams)
+					}
 					for i := 1; i < len(containers); i++ {
 						if containerMap, ok := containers[i].(map[string]interface{}); ok {
-							depParams.ExtraContainers = append(depParams.ExtraContainers, containerMap)
+							name, _, _ := unstructured.NestedString(containerMap, "name")
+							if name == "" {
+								name = fmt.Sprintf("sidecar-%d", i)
+							}
+							sidecarParams := &SidecarParams{
+								Cm:     make(map[string]string),
+								Secret: make(map[string]string),
+							}
+							populateSidecarParams(sidecarParams, containerMap, volSources, envTracker, obj.GetName(), name)
+							depParams.ExtraContainers[name] = sidecarParams
 						}
+					}
+				}
+			}
+
+			initContainersPath := append(podSpecPath, "initContainers")
+			initContainers, found, err := unstructured.NestedSlice(obj.Object, initContainersPath...)
+			if err == nil && found && len(initContainers) > 0 {
+				if depParams.InitContainers == nil {
+					depParams.InitContainers = make(map[string]*SidecarParams)
+				}
+				for i := 0; i < len(initContainers); i++ {
+					if containerMap, ok := initContainers[i].(map[string]interface{}); ok {
+						name, _, _ := unstructured.NestedString(containerMap, "name")
+						if name == "" {
+							name = fmt.Sprintf("init-%d", i)
+						}
+						sidecarParams := &SidecarParams{
+							Cm:     make(map[string]string),
+							Secret: make(map[string]string),
+						}
+						populateSidecarParams(sidecarParams, containerMap, volSources, envTracker, obj.GetName(), name)
+						depParams.InitContainers[name] = sidecarParams
 					}
 				}
 			}
@@ -355,7 +318,15 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				}
 
 				if !isMounted {
-					if compName != "" {
+					if target, ok := envTracker[objName]; ok && !target.IsMain && target.RefCount == 1 {
+						depParams := params.Deployments[target.CompName]
+						if sidecar, ok := depParams.ExtraContainers[target.SidecarName]; ok {
+							for k, v := range data {
+								sidecar.Cm[k] = cleanMultilineString(fmt.Sprintf("%v", v))
+							}
+							params.Deployments[target.CompName] = depParams
+						}
+					} else if compName != "" {
 						depParams := params.Deployments[compName]
 						for k, v := range data {
 							depParams.Cm[k] = cleanMultilineString(fmt.Sprintf("%v", v))
@@ -375,36 +346,6 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 
 			objName := obj.GetName()
 			compName := findComponent(objName, obj.GetLabels())
-
-			// Intercept Truststore Secrets
-			if strings.Contains(objName, "truststore") {
-				if compName != "" {
-					depParams := params.Deployments[compName]
-					if depParams.Truststore == nil {
-						depParams.Truststore = &TruststoreParams{}
-					}
-					depParams.Truststore.Enabled = true
-					
-					var certContent string
-					if foundStr && stringData["certificate.pem"] != nil {
-						certContent = fmt.Sprintf("%v", stringData["certificate.pem"])
-					} else if foundData && data["certificate.pem"] != nil {
-						if strVal, ok := data["certificate.pem"].(string); ok {
-							if decoded, err := base64.StdEncoding.DecodeString(strVal); err == nil {
-								certContent = string(decoded)
-							} else {
-								certContent = strVal
-							}
-						}
-					}
-					
-					if certContent != "" {
-						depParams.Truststore.Certificate = cleanMultilineString(certContent)
-					}
-					params.Deployments[compName] = depParams
-				}
-				continue // Skip normal secret processing
-			}
 
 			isMounted := false
 			for depName, mappings := range volMappings {
@@ -452,7 +393,28 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			}
 
 			if !isMounted {
-				if compName == "" {
+				if target, ok := envTracker[objName]; ok && !target.IsMain && target.RefCount == 1 {
+					depParams := params.Deployments[target.CompName]
+					if sidecar, ok := depParams.ExtraContainers[target.SidecarName]; ok {
+						if foundStr {
+							for k, v := range stringData {
+								sidecar.Secret[k] = cleanMultilineString(fmt.Sprintf("%v", v))
+							}
+						}
+						if foundData {
+							for k, v := range data {
+								if strVal, ok := v.(string); ok {
+									if decoded, err := base64.StdEncoding.DecodeString(strVal); err == nil {
+										sidecar.Secret[k] = cleanMultilineString(string(decoded))
+									} else {
+										sidecar.Secret[k] = cleanMultilineString(strVal)
+									}
+								}
+							}
+						}
+						params.Deployments[target.CompName] = depParams
+					}
+				} else if compName == "" {
 					if foundStr {
 						for k, v := range stringData {
 							params.GlobalSecret[k] = cleanMultilineString(fmt.Sprintf("%v", v))
@@ -469,27 +431,26 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 							}
 						}
 					}
-					continue
-				}
-				depParams := params.Deployments[compName]
-				if foundStr {
-					for k, v := range stringData {
-						depParams.Secret[k] = fmt.Sprintf("%v", v)
+				} else {
+					depParams := params.Deployments[compName]
+					if foundStr {
+						for k, v := range stringData {
+							depParams.Secret[k] = cleanMultilineString(fmt.Sprintf("%v", v))
+						}
 					}
-				}
-				if foundData {
-					for k, v := range data {
-						if strVal, ok := v.(string); ok {
-							decoded, err := base64.StdEncoding.DecodeString(strVal)
-							if err == nil {
-								depParams.Secret[k] = string(decoded)
-							} else {
-								depParams.Secret[k] = strVal
+					if foundData {
+						for k, v := range data {
+							if strVal, ok := v.(string); ok {
+								if decoded, err := base64.StdEncoding.DecodeString(strVal); err == nil {
+									depParams.Secret[k] = cleanMultilineString(string(decoded))
+								} else {
+									depParams.Secret[k] = cleanMultilineString(strVal)
+								}
 							}
 						}
 					}
+					params.Deployments[compName] = depParams
 				}
-				params.Deployments[compName] = depParams
 			}
 
 		case "Route":
@@ -552,16 +513,14 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 	// Intercept CronJob components and map them to subcomponents
 	for compName, depParams := range params.Deployments {
 		if depParams.WorkloadType == "CronJob" {
-			if params.Subcomponents == nil {
-				params.Subcomponents = []string{}
-			}
-			found := false
-			for _, s := range params.Subcomponents {
-				if s == "cronjob" {
-					found = true
+			foundSub := false
+			for _, sub := range params.Subcomponents {
+				if sub == "cronjob" {
+					foundSub = true
+					break
 				}
 			}
-			if !found {
+			if !foundSub {
 				params.Subcomponents = append(params.Subcomponents, "cronjob")
 			}
 			
@@ -642,7 +601,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			}
 
 			// Assign to SubcomponentsData and remove from Deployments
-			params.SubcomponentsData["cronjob"] = cronjobData
+			params.SubcomponentsData[compName] = cronjobData
 			delete(params.Deployments, compName)
 		}
 	}
@@ -667,3 +626,263 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 
 	return params, nil
 }
+
+
+func populateContainerParams(depParams *DeploymentParams, container map[string]interface{}, volSources map[string]struct{Type string; Name string}, envTracker map[string]*EnvTarget, compName string) {
+	image, _, _ := unstructured.NestedString(container, "image")
+	if image != "" {
+		index := strings.LastIndex(image, ":")
+		if strings.Contains(image, "@") && strings.Count(image, ":") >= 2 {
+			last := strings.LastIndex(image, ":")
+			index = strings.LastIndex(image[:last], ":")
+		}
+		if index < 0 {
+			depParams.Image.Repository = image
+			depParams.Image.Tag = "latest"
+		} else {
+			depParams.Image.Repository = image[:index]
+			depParams.Image.Tag = image[index+1:]
+		}
+	}
+	if command, found, _ := unstructured.NestedStringSlice(container, "command"); found && len(command) > 0 {
+		depParams.Command = command
+	}
+
+	if args, found, _ := unstructured.NestedStringSlice(container, "args"); found && len(args) > 0 {
+		depParams.Args = args
+	}
+
+	if ports, found, _ := unstructured.NestedSlice(container, "ports"); found && len(ports) > 0 {
+		if depParams.Service.Ports == nil {
+			depParams.Service.Ports = make(map[string]struct{Port int `json:"port" yaml:"port"`})
+		}
+		for _, p := range ports {
+			portMap := p.(map[string]interface{})
+			name, _, _ := unstructured.NestedString(portMap, "name")
+			containerPort, _, _ := unstructured.NestedInt64(portMap, "containerPort")
+			
+			if name == "" {
+				name = fmt.Sprintf("%d-tcp", containerPort)
+			}
+			depParams.Service.Ports[name] = struct{Port int `json:"port" yaml:"port"`}{
+				Port:     int(containerPort),
+			}
+		}
+	}
+
+	// Extract Resources
+	resources, resFound, _ := unstructured.NestedMap(container, "resources")
+	if resFound {
+		resParams := &ResourceParams{}
+		if limits, ok, _ := unstructured.NestedMap(resources, "limits"); ok && len(limits) > 0 {
+			resParams.Limits = limits
+		}
+		if requests, ok, _ := unstructured.NestedMap(resources, "requests"); ok && len(requests) > 0 {
+			resParams.Requests = requests
+		}
+		if resParams.Limits != nil || resParams.Requests != nil {
+			depParams.Resources = resParams
+		}
+	}
+
+	// Extract Probes
+	if p, ok, _ := unstructured.NestedMap(container, "startupProbe"); ok && len(p) > 0 {
+		if b, err := json.Marshal(p); err == nil {
+			var probe ProbeParams
+			if err := json.Unmarshal(b, &probe); err == nil {
+				depParams.StartupProbe = &probe
+			}
+		}
+	}
+	if p, ok, _ := unstructured.NestedMap(container, "livenessProbe"); ok && len(p) > 0 {
+		if b, err := json.Marshal(p); err == nil {
+			var probe ProbeParams
+			if err := json.Unmarshal(b, &probe); err == nil {
+				depParams.LivenessProbe = &probe
+			}
+		}
+	}
+	if p, ok, _ := unstructured.NestedMap(container, "readinessProbe"); ok && len(p) > 0 {
+		if b, err := json.Marshal(p); err == nil {
+			var probe ProbeParams
+			if err := json.Unmarshal(b, &probe); err == nil {
+				depParams.ReadinessProbe = &probe
+			}
+		}
+	}
+
+	// Extract Persistence from volumeMounts
+	mounts, ok, _ := unstructured.NestedSlice(container, "volumeMounts")
+	if ok && len(mounts) > 0 {
+		for _, m := range mounts {
+			mount := m.(map[string]interface{})
+			name, _, _ := unstructured.NestedString(mount, "name")
+
+			_, isConfigMapOrSecret := volSources[name]
+			if !strings.HasPrefix(name, "kube-api") && !strings.Contains(name, "default-token") && !isConfigMapOrSecret {
+				path, _, _ := unstructured.NestedString(mount, "mountPath")
+				depParams.Persistence.Enabled = true
+				depParams.Persistence.MountPath = path
+				break // Take the first meaningful volume for the simple model
+			}
+		}
+	}
+
+	// Extract envFrom for main container
+	envFrom, ok, _ := unstructured.NestedSlice(container, "envFrom")
+	if ok && len(envFrom) > 0 {
+		for _, e := range envFrom {
+			if envMap, ok := e.(map[string]interface{}); ok {
+				if cmRef, ok, _ := unstructured.NestedMap(envMap, "configMapRef"); ok {
+					if cmName, _, _ := unstructured.NestedString(cmRef, "name"); cmName != "" {
+						if target, exists := envTracker[cmName]; exists {
+							target.IsMain = true
+						} else {
+							envTracker[cmName] = &EnvTarget{IsMain: true}
+						}
+					}
+				}
+				if secRef, ok, _ := unstructured.NestedMap(envMap, "secretRef"); ok {
+					if secName, _, _ := unstructured.NestedString(secRef, "name"); secName != "" {
+						if target, exists := envTracker[secName]; exists {
+							target.IsMain = true
+						} else {
+							envTracker[secName] = &EnvTarget{IsMain: true}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+
+func populateSidecarParams(depParams *SidecarParams, container map[string]interface{}, volSources map[string]struct{Type string; Name string}, envTracker map[string]*EnvTarget, compName string, sidecarName string) {
+	image, _, _ := unstructured.NestedString(container, "image")
+	if image != "" {
+		index := strings.LastIndex(image, ":")
+		if strings.Contains(image, "@") && strings.Count(image, ":") >= 2 {
+			last := strings.LastIndex(image, ":")
+			index = strings.LastIndex(image[:last], ":")
+		}
+		if index < 0 {
+			depParams.Image.Repository = image
+			depParams.Image.Tag = "latest"
+		} else {
+			depParams.Image.Repository = image[:index]
+			depParams.Image.Tag = image[index+1:]
+		}
+	}
+	if command, found, _ := unstructured.NestedStringSlice(container, "command"); found && len(command) > 0 {
+		depParams.Command = command
+	}
+
+	if args, found, _ := unstructured.NestedStringSlice(container, "args"); found && len(args) > 0 {
+		depParams.Args = args
+	}
+
+	if ports, found, _ := unstructured.NestedSlice(container, "ports"); found && len(ports) > 0 {
+		if depParams.Service.Ports == nil {
+			depParams.Service.Ports = make(map[string]struct{Port int `json:"port" yaml:"port"`})
+		}
+		for _, p := range ports {
+			portMap := p.(map[string]interface{})
+			name, _, _ := unstructured.NestedString(portMap, "name")
+			containerPort, _, _ := unstructured.NestedInt64(portMap, "containerPort")
+			
+			if name == "" {
+				name = fmt.Sprintf("%d-tcp", containerPort)
+			}
+			depParams.Service.Ports[name] = struct{Port int `json:"port" yaml:"port"`}{
+				Port:     int(containerPort),
+			}
+		}
+	}
+
+	// Extract Resources
+	resources, resFound, _ := unstructured.NestedMap(container, "resources")
+	if resFound {
+		resParams := &ResourceParams{}
+		if limits, ok, _ := unstructured.NestedMap(resources, "limits"); ok && len(limits) > 0 {
+			resParams.Limits = limits
+		}
+		if requests, ok, _ := unstructured.NestedMap(resources, "requests"); ok && len(requests) > 0 {
+			resParams.Requests = requests
+		}
+		if resParams.Limits != nil || resParams.Requests != nil {
+			depParams.Resources = resParams
+		}
+	}
+
+	// Extract Probes
+	if p, ok, _ := unstructured.NestedMap(container, "startupProbe"); ok && len(p) > 0 {
+		if b, err := json.Marshal(p); err == nil {
+			var probe ProbeParams
+			if err := json.Unmarshal(b, &probe); err == nil {
+				depParams.StartupProbe = &probe
+			}
+		}
+	}
+	if p, ok, _ := unstructured.NestedMap(container, "livenessProbe"); ok && len(p) > 0 {
+		if b, err := json.Marshal(p); err == nil {
+			var probe ProbeParams
+			if err := json.Unmarshal(b, &probe); err == nil {
+				depParams.LivenessProbe = &probe
+			}
+		}
+	}
+	if p, ok, _ := unstructured.NestedMap(container, "readinessProbe"); ok && len(p) > 0 {
+		if b, err := json.Marshal(p); err == nil {
+			var probe ProbeParams
+			if err := json.Unmarshal(b, &probe); err == nil {
+				depParams.ReadinessProbe = &probe
+			}
+		}
+	}
+
+	// Extract Persistence from volumeMounts
+	mounts, ok, _ := unstructured.NestedSlice(container, "volumeMounts")
+	if ok && len(mounts) > 0 {
+		for _, m := range mounts {
+			mount := m.(map[string]interface{})
+			name, _, _ := unstructured.NestedString(mount, "name")
+
+			_, isConfigMapOrSecret := volSources[name]
+			if !strings.HasPrefix(name, "kube-api") && !strings.Contains(name, "default-token") && !isConfigMapOrSecret {
+				path, _, _ := unstructured.NestedString(mount, "mountPath")
+				depParams.Persistence.Enabled = true
+				depParams.Persistence.MountPath = path
+				break // Take the first meaningful volume for the simple model
+			}
+		}
+	}
+
+	// Extract envFrom for sidecar
+	envFrom, ok, _ := unstructured.NestedSlice(container, "envFrom")
+	if ok && len(envFrom) > 0 {
+		for _, e := range envFrom {
+			if envMap, ok := e.(map[string]interface{}); ok {
+				if cmRef, ok, _ := unstructured.NestedMap(envMap, "configMapRef"); ok {
+					if cmName, _, _ := unstructured.NestedString(cmRef, "name"); cmName != "" {
+						if target, exists := envTracker[cmName]; exists {
+							target.RefCount++
+						} else {
+							envTracker[cmName] = &EnvTarget{CompName: compName, SidecarName: sidecarName, RefCount: 1}
+						}
+					}
+				}
+				if secRef, ok, _ := unstructured.NestedMap(envMap, "secretRef"); ok {
+					if secName, _, _ := unstructured.NestedString(secRef, "name"); secName != "" {
+						if target, exists := envTracker[secName]; exists {
+							target.RefCount++
+						} else {
+							envTracker[secName] = &EnvTarget{CompName: compName, SidecarName: sidecarName, RefCount: 1}
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+

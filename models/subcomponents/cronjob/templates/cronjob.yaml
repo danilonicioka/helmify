@@ -84,12 +84,6 @@ spec:
                 {{- toYaml .Values.cronjob.resources | nindent 16 }}
               {{- end }}
               volumeMounts:
-                {{- if and .Values.cronjob.truststore .Values.cronjob.truststore.enabled }}
-                - name: truststore
-                  mountPath: /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
-                  subPath: tls-ca-bundle.pem
-                  readOnly: true
-                {{- end }}
                 {{- if and .Values.cronjob.persistence .Values.cronjob.persistence.enabled }}
                 - name: cronjob-data
                   mountPath: {{ .Values.cronjob.persistence.mountPath | default "/data" }}
@@ -125,11 +119,6 @@ spec:
           {{- toYaml .Values.cronjob.extraContainers | nindent 12 }}
           {{- end }}
           volumes:
-            {{- if and .Values.cronjob.truststore .Values.cronjob.truststore.enabled }}
-            - name: truststore
-              secret:
-                secretName: {{ include "<CHART_NAME>.fullname" . }}-cronjob-secret-truststore
-            {{- end }}
             {{- if and .Values.cronjob.persistence .Values.cronjob.persistence.enabled }}
             - name: cronjob-data
               {{- if .Values.cronjob.persistence.ephemeral }}
@@ -148,11 +137,6 @@ spec:
             - name: files-secret
               secret:
                 secretName: {{ include "<CHART_NAME>.fullname" . }}-cronjob-files-secret
-            {{- end }}
-            {{- if and .Values.cronjob.vso .Values.cronjob.vso.enabled .Values.cronjob.vso.secretFiles }}
-            - name: vso-files-secret
-              secret:
-                secretName: {{ include "<CHART_NAME>.fullname" . }}-cronjob-vso-secret
             {{- end }}
           restartPolicy: {{ default "OnFailure" .Values.cronjob.restartPolicy }}
           {{- with .Values.cronjob.nodeSelector }}

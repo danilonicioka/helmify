@@ -41,9 +41,6 @@ spec:
         {{- if and $comp.secret (not (empty $comp.secret)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret-app.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and $comp.truststore $comp.truststore.enabled $comp.truststore.certificate }}
-        checksum/secret-truststore: '{{ include (print $.Template.BasePath "/secret-truststore-app.yaml") . | sha256sum }}'
-        {{- end }}
         {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
         checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-app-files.yaml") . | sha256sum }}'
         {{- end }}
@@ -62,41 +59,50 @@ spec:
       {{- else if .Values.serviceAccount }}
       serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
       {{- end }}
-      {{- if and $comp.truststore $comp.truststore.enabled }}
+      {{- if and $comp.initContainers (not (empty $comp.initContainers)) }}
       initContainers:
-        - name: build-truststore
-          image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ $comp.image.pullPolicy }}
+        {{- range $name, $config := $comp.initContainers }}
+        - name: {{ $name }}
+          image: "{{ $config.image.repository }}:{{ $config.image.tag }}"
+          imagePullPolicy: {{ $config.image.pullPolicy | default "IfNotPresent" }}
+          {{- if $config.command }}
           command:
-            - sh
-            - '-c'
-            - |
-              DEFAULT_CACERTS=$(find / -name cacerts -type f 2>/dev/null | head -n 1)
-              if [ -z "$DEFAULT_CACERTS" ]; then
-                echo "Error: Could not find default cacerts file!"
-                exit 1
-              fi
-              
-              echo "Copying default cacerts from $DEFAULT_CACERTS to {{ $comp.truststore.path }}/cacerts"
-              cp "$DEFAULT_CACERTS" {{ $comp.truststore.path }}/cacerts
-              
-              chmod +w {{ $comp.truststore.path }}/cacerts
-    
-              for cert in /certs/*.pem; do
-                if [ -f "$cert" ]; then
-                  alias_name=$(basename "$cert" .pem)
-                  echo "Importing certificate $cert with alias $alias_name..."
-                  keytool -importcert -trustcacerts -keystore {{ $comp.truststore.path }}/cacerts \
-                    -storepass changeit -noprompt -alias "$alias_name" -file "$cert"
-                fi
-              done
-              echo "All certificates imported successfully!"
+            {{- toYaml $config.command | nindent 12 }}
+          {{- end }}
+          {{- if $config.args }}
+          args:
+            {{- toYaml $config.args | nindent 12 }}
+          {{- end }}
+          {{- if $config.envFrom }}
+          envFrom:
+            {{- toYaml $config.envFrom | nindent 12 }}
+          {{- end }}
+          {{- if $config.env }}
+          env:
+            {{- toYaml $config.env | nindent 12 }}
+          {{- end }}
+          {{- if or (and $config.persistence $config.persistence.enabled) (and $config.files $config.files.cm) (and $config.files $config.files.secret) }}
           volumeMounts:
-            - name: custom-truststore
-              mountPath: {{ $comp.truststore.path }}
-            - name: ca-cert-volume
-              mountPath: /certs
-      {{- end }}
+            {{- if and $config.persistence $config.persistence.enabled }}
+            - name: data
+              mountPath: {{ $config.persistence.mountPath | default "/var/lib/data" }}
+            {{- end }}
+            {{- if and $config.files $config.files.cm }}
+            {{- range $filename, $fileconf := $config.files.cm }}
+            - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $fileconf.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+            {{- if and $config.files $config.files.secret }}
+            {{- range $filename, $fileconf := $config.files.secret }}
+            - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+              mountPath: {{ $fileconf.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
       containers:
         - name: app
           image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
@@ -110,11 +116,31 @@ spec:
               {{- end }}
             {{- end }}
           
-          {{- if and $comp.truststore $comp.truststore.enabled }}
-          env:
-            - name: JAVA_TOOL_OPTIONS
-              value: {{ if hasKey (default dict $comp.cm) "JAVA_TOOL_OPTIONS" }}{{ printf "%v %s" (index $comp.cm "JAVA_TOOL_OPTIONS") $comp.truststore.javaToolOptions | quote }}{{ else }}{{ $comp.truststore.javaToolOptions | quote }}{{ end }}
+                  {{- range $name, $config := $comp.initContainers }}
+        - name: {{ $name }}
+          image: "{{ $config.image.repository }}:{{ $config.image.tag }}"
+          imagePullPolicy: {{ $config.image.pullPolicy | default "IfNotPresent" }}
+          {{- if $config.command }}
+          command:
+            {{- toYaml $config.command | nindent 12 }}
           {{- end }}
+          {{- if $config.args }}
+          args:
+            {{- toYaml $config.args | nindent 12 }}
+          {{- end }}
+          {{- if $config.envFrom }}
+          envFrom:
+            {{- toYaml $config.envFrom | nindent 12 }}
+          {{- end }}
+          {{- if $config.env }}
+          env:
+            {{- toYaml $config.env | nindent 12 }}
+          {{- end }}
+          {{- if $config.volumeMounts }}
+          volumeMounts:
+            {{- toYaml $config.volumeMounts | nindent 12 }}
+          {{- end }}
+        {{- end }}
 
           # Clean Configuration Management: Full Decoupling via envFrom
           {{- if or (and .Values.global (not (empty .Values.global))) (and $comp.cm (not (empty $comp.cm))) (and $comp.secret (not (empty $comp.secret))) }}
@@ -140,6 +166,78 @@ spec:
                 name: {{ include "chart-model-multi.fullname" . }}-app-vso-secret
             {{- end }}
           {{- end }}
+
+        {{- if $comp.extraContainers }}
+        {{- range $name, $sidecar := $comp.extraContainers }}
+        - name: {{ $name }}
+          image: "{{ $sidecar.image.repository }}:{{ $sidecar.image.tag }}"
+          {{- if $sidecar.command }}
+          command:
+            {{- toYaml $sidecar.command | nindent 12 }}
+          {{- end }}
+          {{- if $sidecar.args }}
+          args:
+            {{- toYaml $sidecar.args | nindent 12 }}
+          {{- end }}
+          {{- if and $sidecar.service $sidecar.service.ports }}
+          ports:
+            {{- range $key, $val := $sidecar.service.ports }}
+            - name: {{ $key }}
+              containerPort: {{ $val.port }}
+              {{- if $val.protocol }}
+              protocol: {{ $val.protocol }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- if $sidecar.resources }}
+          resources:
+            {{- toYaml $sidecar.resources | nindent 12 }}
+          {{- end }}
+          {{- if $sidecar.startupProbe }}
+          startupProbe:
+            {{- toYaml $sidecar.startupProbe | nindent 12 }}
+          {{- end }}
+          {{- if $sidecar.livenessProbe }}
+          livenessProbe:
+            {{- toYaml $sidecar.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if $sidecar.readinessProbe }}
+          readinessProbe:
+            {{- toYaml $sidecar.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if $sidecar.cm }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "chart-model-multi.fullname" $ }}-app-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
+          {{- end }}
+          {{- if $sidecar.secret }}
+          envFrom:
+            - secretRef:
+                name: {{ include "chart-model-multi.fullname" $ }}-app-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
+          {{- end }}
+          {{- if or (and $sidecar.persistence $sidecar.persistence.enabled) (and $sidecar.files $sidecar.files.cm) (and $sidecar.files $sidecar.files.secret) }}
+          volumeMounts:
+            {{- if and $sidecar.persistence $sidecar.persistence.enabled }}
+            - name: data
+              mountPath: {{ $sidecar.persistence.mountPath | default "/var/lib/data" }}
+            {{- end }}
+            {{- if and $sidecar.files $sidecar.files.cm }}
+            {{- range $filename, $config := $sidecar.files.cm }}
+            - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+            {{- if and $sidecar.files $sidecar.files.secret }}
+            {{- range $filename, $config := $sidecar.files.secret }}
+            - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
 
           # Tiered "Fail-Fast" Health Probes
           {{- if and $comp.startupProbe (not (empty $comp.startupProbe)) }}
@@ -170,12 +268,33 @@ spec:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
       
-          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.files.cm)) (not (empty $comp.files.secret)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) (and $comp.truststore $comp.truststore.enabled) }}
+          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.files.cm)) (not (empty $comp.files.secret)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) }}
           volumeMounts:
-            {{- if and $comp.truststore $comp.truststore.enabled }}
-            - name: custom-truststore
-              mountPath: {{ $comp.truststore.path }}
-            {{- end }}
+                    {{- range $name, $config := $comp.initContainers }}
+        - name: {{ $name }}
+          image: "{{ $config.image.repository }}:{{ $config.image.tag }}"
+          imagePullPolicy: {{ $config.image.pullPolicy | default "IfNotPresent" }}
+          {{- if $config.command }}
+          command:
+            {{- toYaml $config.command | nindent 12 }}
+          {{- end }}
+          {{- if $config.args }}
+          args:
+            {{- toYaml $config.args | nindent 12 }}
+          {{- end }}
+          {{- if $config.envFrom }}
+          envFrom:
+            {{- toYaml $config.envFrom | nindent 12 }}
+          {{- end }}
+          {{- if $config.env }}
+          env:
+            {{- toYaml $config.env | nindent 12 }}
+          {{- end }}
+          {{- if $config.volumeMounts }}
+          volumeMounts:
+            {{- toYaml $config.volumeMounts | nindent 12 }}
+          {{- end }}
+        {{- end }}
             {{- if and $comp.persistence $comp.persistence.enabled }}
             - name: data
               mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
@@ -224,15 +343,32 @@ spec:
         {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.files.cm)) (not (empty $comp.files.secret)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) (and $comp.truststore $comp.truststore.enabled) }}
+      {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.files.cm)) (not (empty $comp.files.secret)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) }}
       volumes:
-        {{- if and $comp.truststore $comp.truststore.enabled }}
-        - name: custom-truststore
-          emptyDir: {}
-        - name: ca-cert-volume
-          secret:
-            defaultMode: 420
-            secretName: {{ include "chart-model-multi.fullname" . }}-app-secret-truststore
+                {{- range $name, $config := $comp.initContainers }}
+        - name: {{ $name }}
+          image: "{{ $config.image.repository }}:{{ $config.image.tag }}"
+          imagePullPolicy: {{ $config.image.pullPolicy | default "IfNotPresent" }}
+          {{- if $config.command }}
+          command:
+            {{- toYaml $config.command | nindent 12 }}
+          {{- end }}
+          {{- if $config.args }}
+          args:
+            {{- toYaml $config.args | nindent 12 }}
+          {{- end }}
+          {{- if $config.envFrom }}
+          envFrom:
+            {{- toYaml $config.envFrom | nindent 12 }}
+          {{- end }}
+          {{- if $config.env }}
+          env:
+            {{- toYaml $config.env | nindent 12 }}
+          {{- end }}
+          {{- if $config.volumeMounts }}
+          volumeMounts:
+            {{- toYaml $config.volumeMounts | nindent 12 }}
+          {{- end }}
         {{- end }}
         {{- if and $comp.persistence $comp.persistence.enabled }}
         - name: data

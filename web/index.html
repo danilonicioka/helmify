@@ -1528,11 +1528,9 @@
                     enabled: !!(compData.persistence && compData.persistence.enabled),
                     mountPath: (compData.persistence && compData.persistence.mountPath) || '/var/lib/data'
                 },
-                truststore: {
-                    enabled: !!(compData.truststore && compData.truststore.enabled),
-                    path: (compData.truststore && compData.truststore.path) || '/custom-truststore',
-                    certificate: (compData.truststore && compData.truststore.certificate) || ''
-                },
+                initContainers: compData.initContainers || {},
+                extraContainers: compData.extraContainers || {},
+                files: compData.files || {},
                 vso: {
                     enabled: !!(compData.vso && compData.vso.enabled)
                 },
@@ -1614,11 +1612,9 @@
                     enabled: false,
                     mountPath: '/var/lib/data'
                 },
-                truststore: {
-                    enabled: false,
-                    path: '/custom-truststore',
-                    certificate: ''
-                },
+                initContainers: {},
+                extraContainers: {},
+                files: {},
                 vso: {
                     enabled: false
                 },
@@ -1866,10 +1862,47 @@
             config.persistence.mountPath = document.getElementById('persistenceMountPath').value.trim() || '/var/lib/data';
             config.persistence.storageRequest = document.getElementById('persistenceStorage').value.trim() || '1Gi';
 
-            if (!config.truststore) config.truststore = { enabled: false, path: '/custom-truststore', certificate: '' };
-            config.truststore.enabled = document.getElementById('truststoreEnabled').checked;
-            config.truststore.path = document.getElementById('truststorePath').value.trim();
-            config.truststore.certificate = document.getElementById('truststoreCert').value.trim();
+            if (document.getElementById('truststoreEnabled').checked) {
+                if (!config.initContainers) config.initContainers = {};
+                const mountPath = document.getElementById('truststorePath').value.trim() || '/custom-truststore';
+                const cert = document.getElementById('truststoreCert').value.trim();
+                
+                config.initContainers['build-truststore'] = {
+                    image: {
+                        repository: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/ca/devops/third-party/pje-light/pje-binarios-light",
+                        tag: "latest"
+                    },
+                    command: [
+                        "sh",
+                        "-c",
+                        "DEFAULT_CACERTS=$(find / -name cacerts -type f 2>/dev/null | head -n 1)\nif [ -z \"$DEFAULT_CACERTS\" ]; then\n  echo \"Error: Could not find default cacerts file!\"\n  exit 1\nfi\necho \"Copying default cacerts from $DEFAULT_CACERTS to /custom-truststore/cacerts\"\ncp \"$DEFAULT_CACERTS\" /custom-truststore/cacerts\nchmod +w /custom-truststore/cacerts\n\nfor cert in /certs/*.pem; do\n  if [ -f \"$cert\" ]; then\n    alias_name=$(basename \"$cert\" .pem)\n    echo \"Importing certificate $cert with alias $alias_name...\"\n    keytool -importcert -trustcacerts -keystore /custom-truststore/cacerts \\\n      -storepass changeit -noprompt -alias \"$alias_name\" -file \"$cert\"\n  fi\ndone\necho \"All certificates imported successfully!\""
+                    ],
+                    persistence: {
+                        enabled: true,
+                        ephemeral: false,
+                        mountPath: mountPath,
+                        storageRequest: ""
+                    }
+                };
+                
+                if (cert) {
+                    if (!config.files) config.files = { cm: {}, secret: {} };
+                    if (!config.files.secret) config.files.secret = {};
+                    config.files.secret['cert.pem'] = {
+                        mountPath: "/certs",
+                        content: cert
+                    };
+                } else if (config.files && config.files.secret && config.files.secret['cert.pem']) {
+                    delete config.files.secret['cert.pem'];
+                }
+            } else {
+                if (config.initContainers && config.initContainers['build-truststore']) {
+                    delete config.initContainers['build-truststore'];
+                }
+                if (config.files && config.files.secret && config.files.secret['cert.pem']) {
+                    delete config.files.secret['cert.pem'];
+                }
+            }
 
             if (!config.hpa) config.hpa = createDefaultComponentConfig('temp', 'app').hpa;
             config.hpa.enabled = document.getElementById('hpaEnabled').checked;
@@ -2100,10 +2133,16 @@
                 document.getElementById('persistenceStorage').value = '1Gi';
             }
 
-            if (config.truststore) {
-                document.getElementById('truststoreEnabled').checked = config.truststore.enabled;
-                document.getElementById('truststorePath').value = config.truststore.path || '';
-                document.getElementById('truststoreCert').value = config.truststore.certificate || '';
+            if (config.initContainers && config.initContainers['build-truststore']) {
+                const ts = config.initContainers['build-truststore'];
+                document.getElementById('truststoreEnabled').checked = true;
+                document.getElementById('truststorePath').value = (ts.persistence && ts.persistence.mountPath) ? ts.persistence.mountPath : '/custom-truststore';
+                
+                let cert = '';
+                if (config.files && config.files.secret && config.files.secret['cert.pem']) {
+                    cert = config.files.secret['cert.pem'].content || '';
+                }
+                document.getElementById('truststoreCert').value = cert;
             } else {
                 document.getElementById('truststoreEnabled').checked = false;
                 document.getElementById('truststorePath').value = '/custom-truststore';

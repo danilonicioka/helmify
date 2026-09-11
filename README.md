@@ -1,508 +1,76 @@
-# Helmify
+# Standardized Standardized Helm Chart
 
-> **Note:** This project is a customized fork of the well-known [arttor/helmify](https://github.com/danilonicioka/helmify.git) project, tailored to generate standardized charts specifically for our environment.
-[![CI](https://github.com/danilonicioka/helmify/actions/workflows/ci.yml/badge.svg)](https://github.com/danilonicioka/helmify/actions/workflows/ci.yml)
-[Documentation](docs/index.md)
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/danilonicioka/helmify)
-![GitHub](https://img.shields.io/github/license/danilonicioka/helmify)
-![GitHub release (latest by date)](https://img.shields.io/github/v/release/danilonicioka/helmify)
-[![Go Report Card](https://goreportcard.com/badge/github.com/danilonicioka/helmify)](https://goreportcard.com/report/github.com/danilonicioka/helmify)
-[![GoDoc](https://godoc.org/github.com/danilonicioka/helmify?status.svg)](https://pkg.go.dev/github.com/danilonicioka/helmify?tab=doc)
-![GitHub total downloads](https://img.shields.io/github/downloads/danilonicioka/helmify/total)
+This Helm chart is a standardized template designed for applications deployed at **Organization**, especially when targeting **Red Hat OpenShift**. It serves as a base blueprint for developers, incorporating container security best practices and strict compliance with core architectural rules.
 
-CLI and Web API Service that creates [Helm](https://github.com/helm/helm) charts from Kubernetes manifests.
+## Core Architectural Design Rules
 
-Helmify reads a list of [supported k8s objects](#status) from stdin or files, and parses/translates them into a standardized, production-ready Helm chart layout. 
+This chart enforces a clean separation between the infrastructure blueprint (templates) and the operational overlay (`values.yaml`).
 
-Supports `Helm >=v3.6.0`
+### Two-Tier Configuration Inheritance
+Enforces a single source of truth using two distinct configuration levels:
+1. **Global (Universal):** Managed in `values.yaml` under the `global` block (e.g., `TZ: "America/Belem"`). Generates a shared configmap and secret.
+2. **Component-Specific:** Managed in `values.yaml` under each application/component block for variables unique to that container, defined in `cm` and `secret`.
 
-Submit an issue if some features are missing for your use-case.
-
-## 🌍 Organization-Agnostic Environment Variables
-
-Helmify is designed to be fully generic and configurable via environment variables, completely decoupling the codebase from specific organizational infrastructure (such as registries, domains, and timezones).
-
-The following environment variables dynamically override the defaults in generated charts:
-
-- `HELMIFY_ORG_NAME`: The name of your organization (e.g., "Standardized Organization").
-- `HELMIFY_DEFAULT_TIMEZONE`: Default TZ for workloads (e.g., "America/Belem" or "UTC").
-- `HELMIFY_REGISTRY`: The base registry host (e.g., `registry.example.com`).
-- `HELMIFY_DEFAULT_DOMAIN`: The domain used for default routes (e.g., `apps.example.com`).
-- `HELMIFY_INTERNAL_DOMAIN`: The domain used for internal networking.
-- `HELMIFY_EXTERNAL_DOMAIN`: The domain used for external networking.
-- `HELMIFY_CHART_VERSION`: Defines the semantic version dynamically stamped onto generated charts.
-
-## 🔗 Multi-Component Pipeline Standards (`sources`)
-
-When deploying multi-component architectures (using images from multiple GitLab/GitHub repositories), Helmify relies on the official Helm `sources` array.
-
-**Pipeline Standard:** Helmify sets the **FIRST source** in the `Chart.yaml` `sources` list as the authoritative repository. This is the repository where your deployment configurations (like `values-env.yaml`) reside and is what CI/CD tools (like `quay-audit` or `quay-integration`) will use for git audits and tracking.
+### Deterministic Rollouts
+**Immutable Config Strategy:** Any change to configurations in `values.yaml` triggers a rolling update using SHA256 checksums in the Pod template annotations:
+- `checksum/global-config`
+- `checksum/global-secret`
+- `checksum/cm-config`
+- `checksum/secret`
 
 ---
 
-## 🏗️ Repository Architecture & Modules
+## Configuration Structure (`values.yaml`)
 
-To makePair-programming or editing with Agent instances easier, here is the architectural structure of the project:
+The `values.yaml` is organized into standardized sections for each component:
 
-### 1. Modules Overview
-- **Core Processing Engine (`/pkg`)**: Holds the core translator logic.
-  - `pkg/processor`: Modular processors for parsing individual Kubernetes resources (Deployments, Services, ConfigMaps, routes, etc.).
-  - `pkg/helm`: Handles writing generated outputs to the file system (`chart.go`) or compiling them in-memory (`memory.go`).
-  - `pkg/helm/routes.go`: Handles dynamic/automated calculations for Route host subdomains.
-- **Web API Service (`/api`)**: Embedded HTTP backend server.
-  - `api/main.go`: API entry point. Implements endpoints for generating charts (`/v1/generate`), wizard payloads (`/v1/generate-wizard`), previews, and serving HTML.
-  - `api/wizard.go`: Handler functions for the Wizard configuration workflows.
-- **Web Frontend UIs (`/api/*.html`)**: Embedded rich web interfaces.
-  - `api/index.html`: The **Chart Generator Wizard** (declarative component setup).
-  - `api/converter.html`: The **Live YAML Converter** (real-time manifest translator).
-  - `api/instructions.html`: Detailed REST API reference guide.
-- **Helm Model Bases (`/models`)**: Embedded template baseline files.
-  - `models/single`: Template file overrides and comments for single-deployment configurations.
-  - `models/multi`: Template overrides for multi-deployment setups.
+### 1. Core Workload Settings
+Defines the `replicas`, custom `labels`, `annotations`, and the container `image` repository/tag.
 
-### 2. Execution Pathways
-```mermaid
-graph TD
-    A[Source YAML or JSON Config] --> B{Entrypoint}
-    B -->|CLI Stdin| C[pkg/app Engine]
-    B -->|Web REST API| D[api/main.go HTTP Handlers]
-    C --> E[pkg/processor Resource Translation]
-    D --> E
-    E --> F[pkg/helm/chart.go or memory.go Output]
-	F --> G[Packaged Helm Chart Tarball]
-```
+### 2. Application Configuration
+Defines environment variables for the container using two maps:
+- `cm`: Non-sensitive configuration variables.
+- `secret`: Sensitive variables.
 
-### 3. Recent Updates & Organization Customizations
-This fork incorporates specific behaviors designed to meet organizational requirements:
+### 3. Routing & Networking
+Configures the internal Kubernetes `service` (ports and type) and OpenShift routes:
+- **Default Route:** Internal route with self-signed TLS.
+- **Internal Route:** Valid certificate for the internal Organization intranet (`*-internal.example.com`).
+- **External Route:** Valid certificate for the external internet (`*example.com`).
+- **Additional Routes:** A dynamic map allowing arbitrary extra routes to be generated alongside the standard ones.
 
-- **Universal Global Configurations (`cm-global.yaml` & `secret-global.yaml`):**
-  Helmify now universally preserves and generates the `global` values block and associated `cm-global.yaml` and `secret-global.yaml` templates for both **Single-Component** and **Multi-Component** charts. To avoid ambiguity between resource types, the generated resources explicitly use `{{ include "chart.fullname" . }}-global-cm` and `{{ include "chart.fullname" . }}-global-secret` as their names. This ensures robust `envFrom` references and predictable `sha256sum` injections without template resolution errors in deployment manifests.
-  *(Update: The static template models in `models/single` and `models/multi` have now been fully synced with this dynamic split and naming convention to prevent rendering discrepancies.)*
-- **Environment Variable Deduplication (`envFrom`):**
-  Helmify extracts ConfigMap and Secret environment variables into `values.yaml`. The deployment spec's explicit `env` variables are dynamically stripped when they become redundant via `envFrom`. This now correctly uses normalized component comparisons to reliably drop all duplicate variable mappings. Furthermore, fully drained `env` arrays are natively omitted during marshaling to prevent YAML structure corruption (like missing hyphens on the first sequence element).
-  - Suffix Simplifications: Single-component resources (like `cm` and `secret`) no longer duplicate the component name in their file suffixes or `envFrom` references (e.g., using `{{ include "fullname" . }}-cm` instead of `<fullname>-<component>-cm`). Furthermore, `Secret` template names and resource names now uniformly use the singular suffix `-secret` (instead of `-secrets`) to maintain strict parity with `-cm`.
-- **Labels and Annotations Strategy:**
-  - Resource Selectors: `app.kubernetes.io/component` has been stripped from standard `matchLabels` to prevent upgrade-related immutable field conflicts in Deployments.
-  - Resource Metadata: Primary objects (Deployments, Services, ConfigMaps, Secrets, Routes) still receive the `app.kubernetes.io/component: {{ include "chart.fullname" . }}-<componentName>` label in their `.metadata.labels` to accurately classify them in OpenShift monitoring panels.
-  - Dynamic Annotations: Custom pod annotations parsed from original Kubernetes manifests are now seamlessly offloaded to `.Values.<component>.annotations` via a `_helpers.tpl` mapping (e.g. `{{- include "<chartName>.annotations" . | nindent 8 }}`). This allows configuring custom values while cleanly coexisting with dynamic configmap/secret reload checksums.
-- **Persistent Volume Claims (PVC) Consolidation:**
-  - Dynamic Metadata Resolution: `helmify` now scans Deployments/StatefulSets to map PVCs to their respective components *before* generating the PVC template. This guarantees the PVC correctly inherits the exact `claimName` the workload expects and seamlessly applies the specific component-level label templates (e.g., `{{ include "<chartName>.<comp>.labels" . }}`).
-  - Filename Standardization: PVC templates are now accurately saved as `pvc-<component>.yaml` (instead of using raw object names like `postgresql-pvc.yaml`), aligning with standard component file conventions.
-- **UI Code Preview Reliability:**
-  The `yaml` streaming decoder inside the web API has been hardened to aggressively abort on syntax errors. This resolves a known bug where pasting malformed YAML or half-typed templates into the UI wizard would trigger an unrecoverable infinite loop, locking up the CPU and freezing the `/v1/preview` API.
+### 4. Sidecars & Init Containers
+Supports deploying arbitrary sidecars and initialization tasks:
+- `extraContainers`: Dynamically injects sidecar containers into the Pod lifecycle.
+- `initContainers`: Injects initialization containers that run prior to the main workload.
+Both systems use a generic structural mapping that securely scopes `envFrom` (ConfigMap and Secret injection) and `volumeMounts` directly to the specific container, preventing sidecars from leaking configuration into the main global scope.
+
+### 4. Resources
+Defines CPU and Memory `requests` and `limits`.
+
+### 6. Tiered "Fail-Fast" Health Probes
+Standardized `tcpSocket` or `httpGet` probes with `initialDelaySeconds: 0`. Uses a generous `startupProbe` to allow slow applications to initialize, while keeping `livenessProbe` and `readinessProbe` dormant until ready.
+
+### 7. Lifecycle & HA Strategy
+Deployment strategies such as `RollingUpdate` (stateless apps) or `Recreate` (stateful applications using ReadWriteOnce persistence).
+
+### 8. Persistence
+Provides dynamic provisioning of PVCs. Supports ephemeral storage via `emptyDir` or persistent volumes via `storageRequest` and `mountPath`.
+
+### 9. Scheduling & Node Assignment
+Manages `imagePullSecrets`, `nodeSelector`, `tolerations`, and `affinity` rules (like podAntiAffinity to ensure pods are scheduled across different nodes).
+
+### 10. Custom Files
+Allows mounting arbitrary configuration files (like `nginx.conf` or keystores) directly from ConfigMaps or Secrets into the container via the `files` block.
 
 ---
 
 ## Usage
 
-1) As pipe:
+Other developers can copy the `<CHART_NAME>` folder, rename the references inside `Chart.yaml` and `values.yaml`, and start customising it immediately.
 
-    ```shell
-    cat my-app.yaml | helmify mychart
-    ```
-   Will create 'mychart' directory with Helm chart from yaml file with k8s objects.
-
-    ```shell
-    awk 'FNR==1 && NR!=1  {print "---"}{print}' /<my_directory>/*.yaml | helmify mychart
-    ```
-   Will create 'mychart' directory with Helm chart from all yaml files in `<my_directory> `directory.
-
-2) From filesystem:
-    ```shell
-    helmify -f /my_directory/my-app.yaml mychart
-    ```
-    Will create 'mychart' directory with Helm chart from `my_directory/my-app.yaml`.
-    ```shell
-    helmify -f /my_directory mychart
-    ```
-    Will create 'mychart' directory with Helm chart from all yaml files in `<my_directory> `directory.
-    ```shell
-    helmify -f /my_directory -r mychart
-    ```
-    Will create 'mychart' directory with Helm chart from all yaml files in `<my_directory> `directory recursively.
-    ```shell
-    helmify -f ./first_dir -f ./second_dir/my_deployment.yaml -f ./third_dir  mychart
-    ```
-    Will create 'mychart' directory with Helm chart from multiple directories and files.
-
-
-3) From [kustomize](https://kustomize.io/) output:
-    ```shell
-    kustomize build <kustomize_dir> | helmify mychart
-    ```
-    Will create 'mychart' directory with Helm chart from kustomize output.
-
-## Helmify
-
-Helmify can also be run as a web service, allowing you to generate charts via HTTP requests. This is useful for integrating Helmify into CI/CD pipelines or web-based tools.
-
-### Routes
-
-| Method | Route | Description |
-|--------|-------|-------------|
-| `GET` | `/healthz` | Health check endpoint. Returns `200 OK`. |
-| `POST` | `/v1/generate` | Extracts data from raw Kubernetes manifests and auto-detects/generates a standard compliant `models/single` or `models/multi` Helm chart. |
-
-### API Usage Examples
-
-#### Using a local manifest:
+To lint and render templates during local development:
 ```bash
-curl -X POST \
-  -H "X-Chart-Name: my-chart" \
-  --data-binary @my-app.yaml \
-  http://<helmify-url>/v1/generate \
-  --output my-chart.tar.gz
+helm lint ./<CHART_NAME>
+helm template ./<CHART_NAME>
 ```
-
-#### Using `kustomize` output:
-```bash
-kustomize build <dir> | curl -X POST \
-  -H "X-Chart-Name: my-chart" \
-  -H "X-Generate-All-Templates: true" \
-  -H "X-Dev-Repo-Url: https://github.com/my-org/my-app" \
-  --data-binary @- \
-  http://<helmify-url>/v1/generate \
-  --output my-chart.tar.gz
-```
-
-### Configuration Headers
-
-You can configure the chart generation by sending the following optional headers:
-
-| Header | Description |
-|--------|-------------|
-| `X-Chart-Name` | Name of the generated chart (default: `chart`). |
-| `X-Crd` | Place CRDs in their own folder (default: `false`). |
-| `X-Cert-Manager-Subchart` | Install cert-manager as a subchart (default: `false`). |
-| `X-Cert-Manager-Install-Crd` | Install cert-manager CRDs (default: `true`). |
-| `X-Add-Webhook-Option` | Adds an option to enable/disable webhook installation (default: `false`). |
-| `X-Optional-Crds` | Enable optional CRD installation through values (default: `false`). |
-| `X-Generate-All-Templates` | Generate all standard boilerplate templates (CM, Secret, Routes) for all components (default: `false`). |
-| `X-Dev-Repo-Url` | Organization developer source repository URL annotation for Chart.yaml (default: `""`). |
-
----
-
-### Integrate to your Operator-SDK/Kubebuilder project
-
-1. Open `Makefile` in your operator project generated by 
-   [Operator-SDK](https://github.com/operator-framework/operator-sdk) or [Kubebuilder](https://github.com/kubernetes-sigs/kubebuilder).
-2. Add these lines to `Makefile`:
-- With operator-sdk version < v1.23.0 
-    ```makefile
-    HELMIFY = $(shell pwd)/bin/helmify
-    helmify:
-    	$(call go-get-tool,$(HELMIFY),github.com/danilonicioka/helmify/cmd/helmify@v0.3.7)
-    
-    helm: manifests kustomize helmify
-    	$(KUSTOMIZE) build config/default | $(HELMIFY)
-    ```
-- With operator-sdk version >= v1.23.0
-    ```makefile
-    HELMIFY ?= $(LOCALBIN)/helmify
-    
-    .PHONY: helmify
-    helmify: $(HELMIFY) ## Download helmify locally if necessary.
-    $(HELMIFY): $(LOCALBIN)
-    	test -s $(LOCALBIN)/helmify || GOBIN=$(LOCALBIN) go install github.com/danilonicioka/helmify/cmd/helmify@latest
-        
-    helm: manifests kustomize helmify
-    	$(KUSTOMIZE) build config/default | $(HELMIFY)
-    ```
-3. Run `make helm` in project root. It will generate helm chart with name 'chart' in 'chart' directory.
-
-## Install
-
-With [Homebrew](https://brew.sh/) (for MacOS or Linux): `brew install danilonicioka/tap/helmify`
-
-Or download suitable for your system binary from [the Releases page](https://github.com/danilonicioka/helmify/releases/latest).
-Unpack the helmify binary and add it to your PATH and you are good to go!
-
-## Available options
-Helmify takes a chart name for an argument.
-Usage:
-
-```helmify [flags] CHART_NAME```  -  `CHART_NAME` is optional. Default is 'chart'. Can be a directory, e.g. 'deploy/charts/mychart'.
-
-| flag                      | description                                                                                                                                                                                                 | sample                              |
-|---------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------|
-| -h -help                  | Prints help                                                                                                                                                                                                 | `helmify -h`                        |
-| -f                        | File source for k8s manifests (directory or file), multiple sources supported                                                                                                                               | `helmify -f ./test_data`            |
-| -r                        | Scan file directory recursively. Used only if -f provided                                                                                                                                                   | `helmify -f ./test_data -r`         |
-| -v                        | Enable verbose output. Prints WARN and INFO.                                                                                                                                                                | `helmify -v`                        |
-| -vv                       | Enable very verbose output. Also prints DEBUG.                                                                                                                                                              | `helmify -vv`                       |
-| -version                  | Print helmify version.                                                                                                                                                                                      | `helmify -version`                  |
-| -crd-dir                  | Place crds in their own folder per Helm 3 [docs](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#method-1-let-helm-do-it-for-you). Caveat: CRDs templating is not supported by Helm. | `helmify -crd-dir`                  |
-| -image-pull-secrets       | Allows the user to use existing secrets as imagePullSecrets                                                                                                                                                 | `helmify -image-pull-secrets`       |
-| -original-name            | Use the object's original name instead of adding the chart's release name as the common prefix.                                                                                                             | `helmify -original-name`            |
-| -cert-manager-as-subchart | Allows the user to install cert-manager as a subchart                                                                                                                                                       | `helmify -cert-manager-as-subchart` |
-| -cert-manager-version     | Allows the user to specify cert-manager subchart version. Only useful with cert-manager-as-subchart. (default "v1.12.2")                                                                                    | `helmify -cert-manager-version=v1.12.2`    |
-| -cert-manager-install-crd     | Allows the user to install cert-manager CRD as part of the cert-manager subchart.(default "true")                                                                                                           | `helmify -cert-manager-install-crd` |
-| -preserve-ns              | Allows users to use the object's original namespace instead of adding all the resources to a common namespace. (default "false")                                                                            | `helmify -preserve-ns`              |
-| -add-webhook-option | Adds an option to enable/disable webhook installation  | `helmify -add-webhook-option`|
-| -optional-crds | Enable optional CRD installation through values. | `helmify -optional-crds` |
-## Production Standards (Organization compliant)
-
-Helmify is designed to generate production-ready charts that follow Organization standards:
-- **Zero-Default Architecture**: Unopinionated templates that only render resources explicitly defined in `values.yaml`.
-- **Fail-Fast Health Probes**: Automated 3-tier health probes (Startup, Liveness, Readiness) with default TCP fallback for exposed ports.
-- **Global Configuration**: Centralized environment settings via `cm-global.yaml` and automatic `envFrom` injection.
-- **Deterministic Rollouts**: Automatic SHA256 checksum annotations on PodSpecs to trigger restarts when configurations change.
-- **Deployment Strategy**: If a strategy is defined in the source manifest, it is preserved in the generated values. Otherwise, it defaults to a standardized `RollingUpdate` strategy (`maxUnavailable: 0`, `maxSurge: 25%`) to guarantee zero-downtime rolling updates.
-- **Standardized Labels**: Consistent application of `component` and `part-of` labels across all resources. The `app.kubernetes.io/component` label dynamically checks the deployment type: if it is a single-deployment chart (component name matches chart name), it renders simply as `{{ include "<chartName>.fullname" . }}` to avoid duplicate suffixes like `token-example-token-example`. Otherwise, it templates as `{{ include "<chartName>.fullname" . }}-<componentName>`.
-- **Dynamic Route Association**: Automatically associates OpenShift Routes with their target `Service` components by checking the target `spec.to.name`. If a Route targets a Service belonging to the same component, it maps to `.Values.<component>.route`. If it routes to a Service in a different component (additional routes), it is isolated under `.Values.<component>.routes.<routeName>` to prevent configuration overrides.
-- **Component Persistence**: PVCs that are mounted by a workload are now dynamically abstracted into `<component>.persistence` blocks positioned at the bottom of the component configuration, rather than top-level `.Values.pvc.<name>` configurations, ensuring cohesive configurations.
-- **Wizard Persistence Integration**: The Web UI Wizard now natively supports configuring Persistent Volume Claims (PVC). Enabling persistence in the wizard automatically generates standardized `pvc.yaml` templates and injects necessary `volumeMounts` and `volumes` into deployment manifests with configurable mount paths (defaulting to `/var/lib/data`).
-- **Dynamic Component Extraction (Anti-Panic)**: All generated resource templates (Deployments, Services, ConfigMaps, Secrets, Routes) dynamically extract their component configuration block using `{{- $comp := index .Values "<componentName>" | default dict -}}`. This prevents `nil pointer` panics during `helm lint` and `helm template` when users customize or kebab-case the root keys in `values.yaml` (e.g., renaming `admAuth` to `adm-auth`). Furthermore, iterative fields such as `ports` are now strictly defined as dictionaries (maps) rather than lists, adhering seamlessly to `models/single` and `models/multi` iteration standards.
-- **Universal Component Variable Standard (`$comp`)**: All templates internally standardise on using the `$comp` Go variable to cleanly index `.Values`. For single-deployment charts, this dynamically maps to `.Chart.Name` while for multi-deployment charts it natively points to the respective component name.
-- **Horizontal Pod Autoscaling (HPA)**: Helmify now generates a standardized `hpa.yaml` for components, controlled by `.Values.<component>.hpa`. This is disabled by default to ensure backward compatibility but provides a native template to auto-scale based on resource utilization.
-
-## Component Naming & Reference Resolution Engine
-
-To prevent naming inconsistencies and duplicate templates (such as `cm-foo.yaml` and `cm-foobar.yaml`), Helmify implements a naming and reference matching algorithm. 
-
-**Important Convention (Exact Component Naming / Kebab-case)**: 
-Helmify deliberately preserves the **exact component name** (typically kebab-case, like `adm-cep`) as the root key in `values.yaml`. It does **not** force camelCase conversions. This specific architectural choice allows generic templates like `_helpers.tpl` to dynamically use `{{ index .Values .Chart.Name }}`, making them 100% portable and reusable across your entire organization. Because Go templates do not support dot notation for keys with hyphens (e.g., `.Values.adm-cep.service`), all generated template resources safely rely on `(index .Values "<componentName>")` syntax instead.
-
-> **Why not just name the Chart with camelCase (e.g., `admCep`) to avoid indexing?**
-> While naming a chart `admCep` perfectly aligns Go template variables to allow clean dot notation (`.Values.admCep`), it introduces a fatal flaw at deployment time. Kubernetes resource names (Deployments, Services, Routes) strictly enforce **DNS-1123** naming rules, which forbid uppercase characters. Because Helm uses `.Chart.Name` to dynamically construct resource names, deploying a camelCased chart name will cause Kubernetes to reject the deployment (`Invalid value: a DNS-1123 subdomain must consist of lower case alphanumeric characters`). Thus, chart names must remain kebab-case, and using the `index` syntax in templates is the most robust, compliant architecture.
-
-1. **Component Name Extraction (`GetComponent`)**:
-   - Component names are parsed from resource names (e.g. stripping suffixes like `-deploy`, `-svc`, `-cm`, `-secret`) and normalized to lowercase kebab-case.
-   - A suffix matching list (e.g., `-judiciaria`) is checked to prevent stripping names prematurely. If name-matching rules differ between local and remote codebases, it causes different resolved component names (e.g. `adm-estrutura` vs `adm-estrutura-judiciaria`).
-
-2. **Reference Resolution (`FindReferencingComponents`)**:
-   - When a ConfigMap or Secret is parsed, Helmify scans all active workload resources (Deployments, StatefulSets, etc.) to see which component references them via `envFrom`, `valueFrom` (ConfigMapKeyRef/SecretKeyRef), or volumes.
-   - If a ConfigMap/Secret is referenced by a workload, its values in `values.yaml` are grouped under that workload's exact component name (e.g. `.Values.adm-estrutura-judiciaria`).
-
-3. **Template References Alignment**:
-   - Workload templates (like `deploy-backend.yaml`) use `TemplatedConfigMapName` and `TemplatedSecretName` to dynamically update inline references in container definitions (e.g., changing a raw ConfigMap name like `adm-estrutura-judiciaria-configmap` to `{{ include "fullname" . }}-adm-estrutura-judiciaria-cm`).
-
-4. **Numeric Port Safeguard**:
-   - When extracting Service ports into the `values.yaml` map, Helmify automatically prefixes purely numeric port names with `port-` (e.g., `"8080"` becomes `port-8080:`). This prevents the Go YAML library from dropping quotes and forcing Helm to parse the key as an `int`, which causes template compilation panics.
-
-5. **Dynamic Port Extraction (Anti-Duplication)**:
-   - To prevent Helmify from artificially injecting duplicate ports during the model merge phase (e.g. merging a model's `http:` port with a manifest's `"8080"` port), the standardized models (`models/single` and `models/multi`) explicitly leave the `service.ports` map empty (`{}`). Helmify will dynamically populate this map using strictly what is defined in the input manifests.
-    - If there is a version mismatch between the deployed Helmify and your local branch, the template names and values keys can diverge (e.g., writing the ConfigMap with name `adm-estrutura` but referencing `adm-estrutura-judiciaria` in the Deployment). **Always ensure the remote server is running the same commit as your local branch to keep naming consistent.**
-
-## Manifest Validation Checklist (Before Helmifying)
-
-Before sending your manifests to Helmify (or its CLI), run the following verification steps to ensure correct template generation and naming alignment:
-
-1. **Shared ConfigMaps / Secrets Verification**:
-   - Check if any ConfigMap or Secret is referenced by more than one workload (e.g., used by both frontend and backend).
-   - If referenced by multiple workloads, Helmify will treat it as a **global resource** (`cm-global.yaml`/`secret-global.yaml`), grouping its values under `.Values.global.cm` or `.Values.global.secret`.
-   - Ensure that this shared config behavior matches your project architecture design.
-
-2. **Suffix Collision Check**:
-   - Check resource names for suffixes that are exactly 10 lowercase alphanumeric characters long (e.g. `*-judiciaria`).
-   - Suffixes matching the `[-.][a-z0-9]{10}$` pattern will be stripped automatically by Helmify as if they were Kustomize generated hashes.
-   - If a suffix is stripped from some resources but not others, it will lead to component naming mismatches. Ensure any 10-character custom suffixes are whitelisted in `StripKustomizeHash` or rename the resources.
-
-3. **Route Target Verification**:
-   - Check that all `Route` objects have `spec.to.name` targeting valid `Service` names present in the input.
-   - Routes targeting a service belonging to the same component will map to `.Values.<component>.route`.
-   - Routes targeting a service belonging to a different component will map as additional routes under `.Values.<component>.routes.<routeName>`.
-
-4. **Kustomize Build Compilation**:
-   - Always run `kustomize build <dir>` locally and check for syntax errors before piping the output to `helmify`.
-
-## Status
-Supported k8s resources:
-- Deployment, DaemonSet, StatefulSet
-- Job, CronJob
-- Service, Ingress, Route (OpenShift)
-- PersistentVolumeClaim
-- RBAC (ServiceAccount, (cluster-)role, (cluster-)roleBinding)
-- configs (ConfigMap, Secret)
-- webhooks (cert, issuer, ValidatingWebhookConfiguration)
-- custom resource definitions (CRD)
-
-### Known issues
-- Helmify will not overwrite `Chart.yaml` file if presented. Done on purpose.
-- Helmify will not delete existing template files, only overwrite.
-- Helmify overwrites templates and values files on every run. 
-  This means that all your manual changes in helm template files will be lost on the next run.
-- if switching between the using the `-crd-dir` flag it is better to delete and regenerate the from scratch to ensure crds are not accidentally spliced/formatted into the same chart. Bear in mind you will want to update your `Chart.yaml` thereafter.
-  
-## Develop
-To support a new type of k8s object template:
-1. Implement `helmify.Processor` interface. Place implementation in `pkg/processor`. The package contains 
-examples for most k8s objects.
-2. Register your processor in the `pkg/app/app.go`
-3. Add relevant input sample to `test_data/kustomize.output`.
-
-
-### Run
-Clone repo and execute command:
-
-```shell
-cat test_data/k8s-operator-kustomize.output | go run ./cmd/helmify mychart
-```
-
-Will generate `mychart` Helm chart form file `test_data/k8s-operator-kustomize.output` representing typical operator
-[kustomize](https://github.com/kubernetes-sigs/kustomize) output.
-
-### Test
-For manual testing, run program with debug output:
-```shell
-cat test_data/k8s-operator-kustomize.output | go run ./cmd/helmify -vv mychart
-```
-Then inspect logs and generated chart in `./mychart` directory.
-
-To execute tests, run:
-```shell
-go test ./...
-```
-Beside unit-tests, project contains e2e test `pkg/app/app_e2e_test.go`.
-It's a go test, which uses `test_data/*` to generate a chart in temporary directory. 
-Then runs `helm lint --strict` to check if generated chart is valid.
-
-## Contribute
-
-Following rules will help changes to be accepted faster:
-- For more than one-line bugfixes consider creating an issue with bug description or feature request
-- For feature request try to think about and cover following topics (when applicable):
-  - Motivation: why feature is needed? Which problem does it solve? What is current workaround?
-  - Backward-compatibility: existing users expect that after upgrading helmify version their existing generated charts wont be changed without consent.
-- For bugfix PR consider adding example to [/test_data](./test_data/) source yamls reproducing bug.
-
-### Contribution flow
-
-Check list before submitting PR:
-1. Run `go fmt ./...`
-2. Run tests `go test ./...`
-3. Update chart examples:
-   ```shell
-   cat test_data/sample-app.yaml | go run ./cmd/helmify examples/app
-   ```
-   ```shell
-   cat test_data/k8s-operator-kustomize.output | go run ./cmd/helmify examples/operator
-   ```
-4. In case of long commit history (more than 3) squash local commits into one
-
----
-
-## ⚠️ Known Issues: Deployed Version Mismatch (Diagnostic Report)
-
-### Symptom
-When generating charts via the remote Helmify service, you may observe duplicate template files (e.g., `cm-adm-estrutura.yaml` and `cm-admestrutura.yaml`, or `secret-adm-estrutura.yaml` and `secret-admestrutura.yaml`) and name resolution mismatches inside the `Deployment` env/envFrom references.
-
-### Cause
-The remote Helmify instance running on OpenShift (`https://helmify.apps.example.com`) is currently running an **outdated version** built from the `gitlab/main` branch (last commit: June 12, `38ff265`).
-
-The local/upstream `main` branch contains **24 commits of bug fixes and feature additions** since then, including:
-1. **Commit `9bc1752`**: `fix: prevent premature stripping of common suffixes...`
-2. **Commit `ad1e253`**: `refactor: standardize configmap and secret naming resolution...`
-3. **Commit `5df8dcd`**: `refactor: normalize component names, improve route mapping logic...`
-
-Because these fixes are not yet deployed on the remote server, the server uses the old heuristic for component resolution, leading to inconsistent naming between the core workload and the configmaps/secrets.
-
-### Solution
-Push the updated local `main` branch commits to the GitLab remote repository to trigger the CI/CD pipeline and redeploy the latest API service to OpenShift:
-```bash
-git push gitlab main:main
-```
-Once the pipeline completes, generating the chart again via the API will produce clean, aligned, and optimized templates with no duplicates or invalid references.
-
-### 🐛 10-Character Suffix Collision Bug (`judiciaria`)
-A secondary root cause of component name divergence is the Kustomize hash stripping logic:
-- Kustomize configuration hash suffix detection uses the regex `[-.][a-z0-9]{10}$`.
-- The word `"judiciaria"` contains exactly **10 lowercase characters**.
-- Consequently, resource names ending in `-judiciaria` (e.g. `adm-estrutura-judiciaria` Deployment, Service, and Route) have their suffix stripped by `StripKustomizeHash` to `"adm-estrutura"`.
-- ConfigMaps and Secrets whose names end with other suffixes (like `-configmap` or `-secrets`) are NOT stripped, leading to inconsistent component resolution (e.g., workload resolving to component `adm-estrutura` but ConfigMap resolving to component `adm-estrutura-judiciaria` / values path `admEstruturaJudiciariaConfigmap`).
-- **Fix**: Whitelist `judiciaria` suffix in `StripKustomizeHash` within both [metadata.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/metadata/metadata.go#L53) and [meta.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/meta.go#L266) to prevent stripping.
-
-### 🔢 Numeric Component Suffix Mapping Bug (`1G` / `2G`)
-When components end with numeric suffixes (like `pje-service-1g` or `pje-service-2g`):
-- `strcase.ToKebab` transforms `"1g"` / `"2g"` to `"1-g"` / `"2-g"` and `"pje-service-1g"` to `"pje-service-1-g"`.
-- Because `"1-g"`, `"2-g"`, `"pje-service-1-g"`, and `"pje-service-2-g"` were missing from the switch cases inside `NormalizeComponentName`, they were returned as-is.
-- This bypassed normalization and was camel-cased by `ToLowerCamel` into `.Values.1G` and `.Values.2G` for Services/Routes (due to delimiter parsing rules), while Deployments mapped to `.Values.pjeService1G` and `.Values.pjeService2G`.
-- This mismatch caused Helm rendering syntax errors since Helm variables cannot start with a number.
-- **Fix**: Whitelist the kebab-cased keys `"1-g"`, `"2-g"`, `"pje-service-1-g"`, and `"pje-service-2-g"` inside `NormalizeComponentName` switch cases within [meta.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/meta.go#L403-L406) to ensure they resolve consistently to `pje-service-1g` and `pje-service-2g`.
-
-### 🔄 Global Values.yaml Ordering Bug
-- **Symptom**: The `global:` block in `values.yaml` rendered at the very top of the file, prior to section `I. CHART-WIDE OPTIONS` (`kubernetesClusterDomain` etc.).
-- **Cause**: The key priority assignment logic in `getPriority` (inside `chart.go`) assigned a weight of `-5` to the `global` key, causing it to sort before `kubernetesClusterDomain` (priority `-4`).
-- **Fix**: Adjusted priorities in `chart.go` to assign `global` a weight of `-1`, placing it after `fullnameOverride` (`-3`) and aligning it with the multi-deployment model layout.
-
-### 🏷️ Fullname-Prefixed Component Labels (`app.kubernetes.io/component`)
-- **Symptom**: Generated templates copied static `app.kubernetes.io/component` values from raw manifests, whereas the Organization Helm models require component labels to be dynamically prefixed with the chart fullname.
-- **Fix**: Updated `ProcessObjMeta` ([meta.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/meta.go)) and the Route processor ([route.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/processor/route/route.go)) to template the label using the chart fullname helper:
-  ```yaml
-  app.kubernetes.io/component: {{ include "<chartName>.fullname" . }}-<componentName>
-  ```
-    - **Problem**: For charts that represent a *single* deployment, the component name equals the chart name. The previous templating added a duplicate suffix (e.g. `{{ include "token-example.fullname" . }}-token-example-secrets` → `token-example-token-example-secrets`).
-    - **Cause**: The label templating always appended `-{{ .Values.<component> }}` without checking if the component name already matches the chart name.
-    - **Solution**: Helmify now checks `if normalizedComp == appMeta.ChartName()` (or equivalent in routes) and, for single‑deployment charts, renders the component label simply as `{{ include "<chartName>.fullname" . }}`. For multi‑deployment charts the suffix is kept, ensuring distinct component labels.
-    - **Caution**: When a chart defines **multiple** components (e.g., `frontend`, `backend`), the component name will differ from the chart name, so the suffix **must** remain. The logic safely preserves the suffix only when the names match.
-    - **Component-Specific Selector Helper Bug**: Previously, Helmify correctly generated component-specific `selectorLabels` helpers (e.g., `.db.selectorLabels`, `.mq.selectorLabels`) inside `_helpers.tpl` for multi-component charts. However, several resource generators ignored these helpers:
-      - `service.go` and `deployment.go` hardcoded a check `if comp == "api" || comp == "app"`, causing all other components to erroneously fall back to the generic `chart.selectorLabels` (which omits the component label). For Services, this caused them to mistakenly load-balance across all pods in the entire release!
-      - `daemonset.go` and `pdb.go` completely lacked a component check, unconditionally hardcoding `appMeta.ChartName()` instead of attempting to resolve the component helper.
-    - **Fix**: The hardcoded logic in `service.go`, `deployment.go`, `daemonset.go`, and `pdb.go` has been replaced with a dynamic check `if comp != "" && processor.IsMultiDeployment(appMeta)`. Helmify now correctly utilizes the component-specific `selectorLabels` helper for **every** component's selector in a multi-component chart.
-
-
-### 🕸️ Dynamic OpenShift Topology Mapping (`app.openshift.io/connects-to`)
-- **Problem**: Hardcoding the `app.openshift.io/connects-to` annotation in Service or Route templates limits flexibility and prevents workloads from dynamically declaring links to multiple deployments (e.g., API needing to connect to database/service workloads).
-- **Implementation**: The `app.openshift.io/connects-to` annotation is now treated as a regular standard annotation. It is no longer placed under a dedicated `.Values.<component>.connectsTo` field, but is now natively included within the `.Values.<component>.annotations` block alongside all other component annotations.
-  ```yaml
-    annotations:
-      app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
-  ```
-
-### 🏷️ Dynamic Labels and Annotations
-- **Problem**: Previously, custom labels (like `app.kubernetes.io/part-of` or `deploymentconfig`) and annotations from the source manifests were hardcoded directly into the templates, making them impossible to customize or override during Helm deployment.
-- **Implementation**: Helmify now extracts all custom labels and annotations from both the Deployment metadata and the Pod template metadata into `.Values.<component>.labels` and `.Values.<component>.annotations` respectively. The templates are injected with `{{- toYaml .Values.<component>.labels }}` and `{{- toYaml .Values.<component>.annotations }}`, ensuring clean templates and full configurability via `values.yaml`. Checksums and single-deployment component labels are the only exceptions.
-### 🗺️ Route Service Target Naming Bug (-svc suffix)
-- **Symptom**: When dynamically generating standard route templates (`route-default.yaml`, `route-int.yaml`, `route-ext.yaml`) using the `GenerateAllTemplates` option, the route manifests are generated referencing target services with a `-svc` suffix (e.g. `{{ include "fullname" . }}-svc`), causing routing errors in OpenShift since the actual generated service templates do not have the `-svc` suffix.
-- **Fix**: Removed the hardcoded `-svc` suffix from `compRouteDefaultTemplate`, `compRouteInternalTemplate`, and `compRouteExternalTemplate` inside [chart.go](file:///home/danilo.nicioka/git/hub/helmify/pkg/helm/chart.go) to match the service templates.
-- **Feature**: Helmify now ensures `extraAnnotations` and `extraLabels` placeholder maps exist in `values.yaml` for each component, enabling users to configure OpenShift topology annotations (`app.openshift.io/connects-to` and `console.alpha.openshift.io/overview-app-route`) without re‑generating the chart.
-
-### 🎯 Service TargetPort Zero Bug
-- **Symptom**: Generated services inside `values.yaml` explicitly declare `targetPort: 0` if the source manifest omitted the `targetPort` field (relying on the Kubernetes default where `targetPort` equals `port`).
-- **Cause**: Helmify's unmarshaler interpreted an omitted integer field as `0`, explicitly mapping it to the `values.yaml` structure. Port `0` is an invalid Kubernetes port.
-- **Fix**: Updated `pkg/processor/service/service.go` to gracefully omit `targetPort` from the generated template if it parses as `0` or empty, allowing standard Helm/Kubernetes defaults to prevail.
-
-### 📊 Resources and Probes Defaults
-- **Problem**: Previously, `resources` and health probes (`startupProbe`, `livenessProbe`, `readinessProbe`) were generated as empty maps `{}`, and their default recommended configurations were injected as commented-out `yaml.Node` foot comments (e.g. `# limits: ...`). This required manual intervention to uncomment and enable them in every generated chart.
-- **Fix**: The default models (`models/single/values.yaml` and `models/multi/values.yaml`) were updated to include these configurations uncommented by default, with `memory` requests at `128Mi` and limits at `256Mi`. The pod processor (`pkg/processor/pod/pod.go`) was refactored to directly populate the `values` map instead of relying on `OriginalValuesRegistry` for foot comments. If the input manifest defines resources or probes, they are preserved; if not, the Helm chart falls back to the fully defined and uncommented defaults from the models.
-
-### 🏷️ Component-Specific `selectorLabels` Template Missing Bug
-- **Symptom**: Helm template rendering fails with `template: no template "<chartName>.<component>.selectorLabels" associated with template "gotpl"`. This usually occurred for single-deployment charts where the component name happened to be identical to the chart name.
-- **Cause**: Both `pkg/helm/chart.go` and `pkg/helm/memory.go` intentionally skipped appending the component-specific `define` helper blocks in `_helpers.tpl` when the component array only had one item. However, the component processor files (`service.go` and `deployment.go`) continued trying to reference these templates if `IsMultiDeployment(appMeta)` independently evaluated to true or due to name mismatching logic.
-- **Fix**: Re-wrote the logic in `chart.go` and `memory.go` to unconditionally generate component-specific label, annotation, and selector helper blocks for **all** components defined in `values.yaml` (including the primary/single component). This guarantees the templates exist in `_helpers.tpl` whenever the processor outputs a `{{ include "<chart>.<component>.selectorLabels" }}` tag.
-
-## Modular Subcomponents Architecture
-Helmify now supports a fully modular dynamic subcomponent architecture. Auxiliary components (such as Redis, Postgres, or RabbitMQ) are no longer hardcoded into the core wizard or templates. 
-To add a new subcomponent to the Helmify wizard, simply create a new directory inside `models/subcomponents/<name>` containing a `values-snippet.yaml` and a `templates/` folder. The engine automatically scans this directory and exposes them via the `/v1/subcomponents` endpoint, dynamically bundling them into your chart if requested.
-
-## Migrating Legacy Helm Charts
-Helmify can now be used as a migration engine to modernize legacy Helm charts and convert them into the standardized Organization architecture. 
-
-**Workflow:**
-1. Render your legacy chart into raw Kubernetes manifests using Helm:
-   ```bash
-   helm template my-legacy-chart/ -f custom-values.yaml > legacy-manifests.yaml
-   ```
-2. Feed `legacy-manifests.yaml` directly into the Helmify converter.
-
-**Why this works:** The Helmify processor automatically strips legacy standard labels (like `helm.sh/chart`, `app.kubernetes.io/managed-by`) and automatically strips injected annotations (like `checksum/config` or `meta.helm.sh/`) before extracting the workload into the new `values.yaml` schema. This completely erases old, messy logic and outputs a perfectly standardized, clean modern chart.
-
-### 🎨 Wizard UI Enhancements (Config Reordering, Persistence & Routes)
-- **Problem**: The UI inputs for components in the wizard were slightly disjointed from the generated `values.yaml` schema, making review confusing. Routes were un-editable checkboxes, ConfigMaps/Secrets required individual clicking to add variables, and Persistence lacked emptyDir vs PVC toggling.
-- **Implementation**:
-  - **Component Reordering**: The configuration fields were strictly reordered to visually map 1-to-1 with `values.yaml` (Core Workload -> Config -> Routing -> Persistence).
-  - **Bulk ConfigMaps & Secrets**: The dynamic individual row additions were completely replaced with multi-line Text Areas. Users can now natively paste blocks of `.env` files (supporting both `KEY=VALUE` and `KEY: VALUE` syntaxes), saving clicks and time.
-  - **Editable Route Overrides**: The auto-generated domains for standard routes (Default, Intranet, Internet) are now fully exposed as text inputs inside the route cards, allowing users to safely override hostnames directly in the UI before generation.
-  - **Persistence Types**: Persistence was expanded to include a new **Storage Size** input (mapping to `storageRequest`) as well as an **Ephemeral Storage (emptyDir)** toggle, organized neatly inside a collapsible sub-menu. When the main Persistence toggle is enabled, the sub-menu expands. If Ephemeral is then selected, the Storage Size input is disabled, and emptyDir configurations are injected natively, entirely avoiding PersistentVolumeClaims for cache/scratch workloads.
-
-
-### 🚀 Version 6 Chart Architecture (Recent Features)
-Helmify models have been upgraded to support Version 6 chart standards:
-- **Unified Service Ports:** The `service.ports.http.targetPort` parameter has been deprecated and unified. You now only need to define `port`, which seamlessly controls both the Service exposed port and the target container port.
-- **Named Port Probes Defaults:** Default health probes (`startupProbe`, `livenessProbe`, `readinessProbe`) now point to the named port `http` natively, removing the need to hardcode numeric ports (e.g., `8080` or `8081`).
-- **Java Truststore Injection:** A dedicated `truststore` block has been added to `.Values.<component>.truststore`. Enabling this block automatically mounts custom certificates via an inline `certificate` block, and natively configures the `JAVA_TOOL_OPTIONS` environment variable with `-Djavax.net.ssl.trustStore` for Java runtimes.
-  - *Note:* We enforce strict generation of this Secret natively using the `certificate` field (removing external `secretName` fallbacks).
-  - *Note:* The engine dynamically concatenates and safely merges these `-Djavax...` flags with any user-defined `JAVA_TOOL_OPTIONS` inside your ConfigMap, guaranteeing no custom flags (like `-Xmx`) are overwritten!
-- **Binary File Secret Support (`b64enc`):** Added a new `b64enc: true` flag for `files.secret` configurations. This bypasses Helmify's automatic string encoder and mounts natively to the Kubernetes `data:` block—allowing users to inject pre-encoded binary files (like `.p12` PKCS#12 keystores) without triggering double-encoding bugs or breaking OpenShift's file-download UI.
-- **Files Secret Naming Consistency:** Standardized the generated volume labels to `-files-secret` (e.g. `entremanas-api-files-secret`) ensuring accurate mapping between the deployment volumes and the generated native Secret objects.
-- **Dynamic Additional Routes:** The `route.additional` dictionary allows you to dynamically expose the same component on multiple alternative OpenShift routes or custom DNS endpoints without cluttering the baseline configuration.

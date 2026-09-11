@@ -166,8 +166,24 @@ type DeploymentParams struct {
 	RuntimeVersion   string                      `json:"runtimeVersion"`
 	OverviewAppRoute string                      `json:"overviewAppRoute"`
 	Files            CustomFiles                 `json:"files"`
-	Truststore       *TruststoreParams           `json:"truststore,omitempty"`
-	ExtraContainers  []map[string]interface{}    `json:"extraContainers,omitempty"`
+	InitContainers   map[string]*SidecarParams   `json:"initContainers,omitempty"`
+	ExtraContainers  map[string]*SidecarParams   `json:"extraContainers,omitempty"`
+}
+
+// SidecarParams holds configuration for extra and init containers
+type SidecarParams struct {
+	Image          ImageParams                 `json:"image"`
+	Command        []string                    `json:"command,omitempty"`
+	Args           []string                    `json:"args,omitempty"`
+	Service        ServiceParams               `json:"service,omitempty"`
+	Resources      *ResourceParams             `json:"resources,omitempty"`
+	StartupProbe   *ProbeParams                `json:"startupProbe,omitempty"`
+	LivenessProbe  *ProbeParams                `json:"livenessProbe,omitempty"`
+	ReadinessProbe *ProbeParams                `json:"readinessProbe,omitempty"`
+	Persistence    PersistenceParams           `json:"persistence,omitempty"`
+	Cm             map[string]string           `json:"cm,omitempty"`
+	Secret         map[string]string           `json:"secret,omitempty"`
+	Files          CustomFiles                 `json:"files,omitempty"`
 }
 
 // CustomFiles holds cm and secret files
@@ -198,7 +214,7 @@ type ImageParams struct {
 type ServiceParams struct {
 	Port       int `json:"port"`
 	Ports      map[string]struct {
-		Port       int `json:"port"`
+		Port       int `json:"port" yaml:"port"`
 	} `json:"ports"`
 }
 
@@ -259,19 +275,12 @@ type SubRouteParams struct {
 
 // PersistenceParams configures PVC persistence.
 type PersistenceParams struct {
-	Enabled        bool   `json:"enabled"`
-	Ephemeral      bool   `json:"ephemeral"`
-	MountPath      string `json:"mountPath"`
-	StorageRequest string `json:"storageRequest"`
+	Enabled        bool   `json:"enabled" yaml:"enabled"`
+	Ephemeral      bool   `json:"ephemeral" yaml:"ephemeral"`
+	MountPath      string `json:"mountPath" yaml:"mountPath"`
+	StorageRequest string `json:"storageRequest" yaml:"storageRequest"`
 }
 
-// TruststoreParams configures Java Truststore injection.
-type TruststoreParams struct {
-	Enabled     bool   `json:"enabled"`
-	Path        string `json:"path"`
-	SecretName  string `json:"secretName,omitempty"`
-	Certificate string `json:"certificate,omitempty"`
-}
 
 // GenerateWizardChart reads single or multi chart templates from the embedded ModelsFS,
 // applies customization overrides to values.yaml preserving comments, renames files and
@@ -426,6 +435,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
 			_ = setYamlPath(&rootNode, []string{appKey, "extraContainers"}, depConfig.ExtraContainers)
 		}
+		if depConfig.InitContainers != nil && len(depConfig.InitContainers) > 0 {
+			_ = setYamlPath(&rootNode, []string{appKey, "initContainers"}, depConfig.InitContainers)
+		}
 		if depConfig.Command != nil {
 			_ = setYamlPath(&rootNode, []string{appKey, "command"}, depConfig.Command)
 		}
@@ -494,19 +506,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 					_ = setYamlPath(&rootNode, []string{appKey, "persistence", "storageRequest"}, depConfig.Persistence.StorageRequest)
 				}
 				_ = setYamlPath(&rootNode, []string{appKey, "strategy"}, map[string]string{"type": "Recreate"})
-			}
-		}
-
-		if depConfig.Truststore != nil && depConfig.Truststore.Enabled {
-			_ = setYamlPath(&rootNode, []string{appKey, "truststore", "enabled"}, true)
-			if depConfig.Truststore.Path != "" {
-				_ = setYamlPath(&rootNode, []string{appKey, "truststore", "path"}, depConfig.Truststore.Path)
-			}
-			if depConfig.Truststore.SecretName != "" {
-				_ = setYamlPath(&rootNode, []string{appKey, "truststore", "secretName"}, depConfig.Truststore.SecretName)
-			}
-			if depConfig.Truststore.Certificate != "" {
-				_ = setYamlPath(&rootNode, []string{appKey, "truststore", "certificate"}, depConfig.Truststore.Certificate)
 			}
 		}
 
@@ -744,6 +743,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
 				_ = setYamlPath(&rootNode, []string{compName, "extraContainers"}, depConfig.ExtraContainers)
 			}
+			if depConfig.InitContainers != nil && len(depConfig.InitContainers) > 0 {
+				_ = setYamlPath(&rootNode, []string{compName, "initContainers"}, depConfig.InitContainers)
+			}
 			if len(depConfig.ConnectsTo) > 0 {
 				var connects []string
 				for _, c := range depConfig.ConnectsTo {
@@ -794,19 +796,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 					_ = setYamlPath(&rootNode, []string{compName, "strategy"}, map[string]string{"type": "Recreate"})
 				}
 			
-			}
-
-			if depConfig.Truststore != nil && depConfig.Truststore.Enabled {
-				_ = setYamlPath(&rootNode, []string{compName, "truststore", "enabled"}, true)
-				if depConfig.Truststore.Path != "" {
-					_ = setYamlPath(&rootNode, []string{compName, "truststore", "path"}, depConfig.Truststore.Path)
-				}
-				if depConfig.Truststore.SecretName != "" {
-					_ = setYamlPath(&rootNode, []string{compName, "truststore", "secretName"}, depConfig.Truststore.SecretName)
-				}
-				if depConfig.Truststore.Certificate != "" {
-					_ = setYamlPath(&rootNode, []string{compName, "truststore", "certificate"}, depConfig.Truststore.Certificate)
-				}
 			}
 
 			if depConfig.WorkloadType != "CronJob" {

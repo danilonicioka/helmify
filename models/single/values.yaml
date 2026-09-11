@@ -38,7 +38,6 @@ chart-model-single:
     pullSecrets: []
 
   command: []
-  extraContainers: []
   args: []
 
   # -- Number of replica pods.
@@ -69,13 +68,6 @@ chart-model-single:
     files: {}
       #   my_vault_key.p12:
       #     mountPath: "/app/certs/my_vault_key.p12"
-
-  truststore:
-    enabled: false
-    path: "/custom-truststore"
-    javaToolOptions: "-Djavax.net.ssl.trustStore=/custom-truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
-    certificate: ""
-
   files:
     cm: {}
       #   nginx.conf:
@@ -242,3 +234,39 @@ chart-model-single:
                   values:
                     - chart-model-single
             topologyKey: kubernetes.io/hostname
+
+  # ----------------------------------------------------------------------------
+  # INIT CONTAINERS
+  # ----------------------------------------------------------------------------
+  # You can inject initialization containers into the pod.
+  initContainers: {}
+  #    image:
+  #      repository: alpine/curl
+  #      tag: latest
+  #    command: ["sh", "-c", "echo hello"]
+
+  # ----------------------------------------------------------------------------
+  # EXTRA CONTAINERS
+  # ----------------------------------------------------------------------------
+  # You can inject additional sidecar containers into the pod.
+  # The key (e.g. 'sidecar-example') will be used as the container name.
+  extraContainers: {}
+  #  sidecar-example:
+  #    image:
+  #      repository: sidecar-image
+  #      tag: latest
+  #      pullPolicy: IfNotPresent
+  #    command: []
+  #    args: []
+  #    service:
+  #      ports:
+  #        8080-tcp:
+  #          port: 8080
+  #    resources: {}
+  #    startupProbe: {}
+  #    livenessProbe: {}
+  #    readinessProbe: {}
+  #    files:
+  #      cm: {}
+  #      secret: {}
+  #      enabled: false

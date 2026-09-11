@@ -35,10 +35,7 @@ cronjob:
     path: "kv/data/<CHART_NAME>/cronjob"
     files: {}
 
-  truststore:
     enabled: false
-    path: "/custom-truststore"
-    javaToolOptions: "-Djavax.net.ssl.trustStore=/custom-truststore/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
     certificate: ""
 
   files:
