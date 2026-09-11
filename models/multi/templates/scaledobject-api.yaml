@@ -1,0 +1,32 @@
+{{- $comp := index .Values "api" | default dict -}}
+{{- if ne $comp.enabled false }}
+{{- if and $comp $comp.keda $comp.keda.enabled -}}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ include "chart-model-multi.fullname" . }}-api
+  labels:
+    {{- include "chart-model-multi.component.labels" (dict "context" . "component" "api") | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "chart-model-multi.fullname" . }}-api
+  minReplicaCount: {{ $comp.keda.minReplicas | default 1 }}
+  maxReplicaCount: {{ $comp.keda.maxReplicas | default 2 }}
+  {{- with $comp.keda.pollingInterval }}
+  pollingInterval: {{ . }}
+  {{- end }}
+  {{- with $comp.keda.cooldownPeriod }}
+  cooldownPeriod: {{ . }}
+  {{- end }}
+  triggers:
+    {{- range $trigger := $comp.keda.triggers }}
+    - type: {{ $trigger.type }}
+      metadata:
+        {{- toYaml $trigger.metadata | nindent 8 }}
+      authenticationRef:
+        name: {{ include "chart-model-multi.fullname" $ }}-api-trigger-auth
+    {{- end }}
+{{- end }}
+{{- end }}

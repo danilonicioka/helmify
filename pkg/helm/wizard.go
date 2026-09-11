@@ -153,6 +153,7 @@ type DeploymentParams struct {
 	Resources        *ResourceParams             `json:"resources,omitempty"`
 	Persistence      PersistenceParams           `json:"persistence"`
 	Hpa              *HpaParams                  `json:"hpa,omitempty"`
+	Keda             *KedaParams                 `json:"keda,omitempty"`
 	StartupProbe     *ProbeParams                `json:"startupProbe,omitempty"`
 	LivenessProbe    *ProbeParams                `json:"livenessProbe,omitempty"`
 	ReadinessProbe   *ProbeParams                `json:"readinessProbe,omitempty"`
@@ -249,6 +250,17 @@ type HpaParams struct {
 	MaxReplicas int         `json:"maxReplicas,omitempty" yaml:"maxReplicas,omitempty"`
 	Metrics     interface{} `json:"metrics,omitempty" yaml:"metrics,omitempty"`
 	Behavior    interface{} `json:"behavior,omitempty" yaml:"behavior,omitempty"`
+}
+
+// KedaParams configures KEDA autoscaling.
+type KedaParams struct {
+	Enabled         bool        `json:"enabled" yaml:"enabled"`
+	MinReplicas     int         `json:"minReplicas,omitempty" yaml:"minReplicas,omitempty"`
+	MaxReplicas     int         `json:"maxReplicas,omitempty" yaml:"maxReplicas,omitempty"`
+	PollingInterval int         `json:"pollingInterval,omitempty" yaml:"pollingInterval,omitempty"`
+	CooldownPeriod  int         `json:"cooldownPeriod,omitempty" yaml:"cooldownPeriod,omitempty"`
+	Triggers        interface{} `json:"triggers,omitempty" yaml:"triggers,omitempty"`
+	TriggerAuth     interface{} `json:"triggerAuth,omitempty" yaml:"triggerAuth,omitempty"`
 }
 
 // AffinityParams enforces strict ordering for Affinity fields

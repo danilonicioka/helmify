@@ -1,0 +1,19 @@
+{{- if and .Values.keda .Values.keda.enabled -}}
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-trigger-auth
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.keda.triggerAuth }}
+  {{- if .secretTargetRef }}
+  secretTargetRef:
+    {{- toYaml .secretTargetRef | nindent 4 }}
+  {{- end }}
+  {{- if .envTargetRef }}
+  envTargetRef:
+    {{- toYaml .envTargetRef | nindent 4 }}
+  {{- end }}
+  {{- end }}
+{{- end }}

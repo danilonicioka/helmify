@@ -48,6 +48,28 @@ Both systems use a generic structural mapping that securely scopes `envFrom` (Co
 ### 4. Resources
 Defines CPU and Memory `requests` and `limits`.
 
+### 5. Event-Driven Autoscaling (KEDA)
+Optionally configure advanced event-driven autoscaling using KEDA by overriding the standard HPA configuration.
+
+```yaml
+keda:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+    - type: rabbitmq
+      metadata:
+        queueName: "my-queue"
+        queueLength: "5"
+  triggerAuth:
+    secretTargetRef:
+      - parameter: host
+        name: "my-secret"
+        key: "RABBITMQ_URL"
+```
+
 ### 6. Tiered "Fail-Fast" Health Probes
 Standardized `tcpSocket` or `httpGet` probes with `initialDelaySeconds: 0`. Uses a generous `startupProbe` to allow slow applications to initialize, while keeping `livenessProbe` and `readinessProbe` dormant until ready.
 
