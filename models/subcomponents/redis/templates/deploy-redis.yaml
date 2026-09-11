@@ -11,7 +11,7 @@ metadata:
     {{- $annotations | nindent 4 }}
   {{- end }}
 spec:
-  {{- if not (kindIs "nil" .Values.redis.replicas) }}
+  {{- if hasKey .Values.redis "replicas" }}
   replicas: {{ .Values.redis.replicas }}
   {{- end }}
   {{- if .Values.redis.strategy }}
