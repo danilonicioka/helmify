@@ -614,6 +614,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			return compKeys[i] < compKeys[j]
 		})
 
+		// Parse the un-mutated valuesData ONCE for cloning bases
+		var origRoot yaml.Node
+		if err := yaml.Unmarshal(valuesData, &origRoot); err != nil {
+			return nil, fmt.Errorf("failed to parse original values.yaml for cloning: %w", err)
+		}
+
 		// Process each user component
 		for _, compName := range compKeys {
 			depConfig := params.Deployments[compName]
@@ -662,11 +668,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 			if !exists && mapping != nil && mapping.Kind == yaml.MappingNode {
 				// Find and clone baseComp node from original un-mutated values.yaml
-				// We MUST parse valuesData again to ensure we don't clone a node that has already been mutated by previous iterations.
 				var baseNode *yaml.Node
 				var baseKeyNode *yaml.Node
-				var origRoot yaml.Node
-				if err := yaml.Unmarshal(valuesData, &origRoot); err == nil && origRoot.Kind == yaml.DocumentNode && len(origRoot.Content) > 0 {
+				if origRoot.Kind == yaml.DocumentNode && len(origRoot.Content) > 0 {
 					origMapping := origRoot.Content[0]
 					if origMapping.Kind == yaml.MappingNode {
 						for i := 0; i < len(origMapping.Content); i += 2 {
@@ -938,16 +942,25 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	return outputFiles, nil
 }
 
+var formatBlocks = []string{"imagePullSecrets:", "replicas:", "labels:", "cm:", "secret:", "vso:", "resources:", "route:", "service:", "persistence:", "startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "nodeSelector:", "tolerations:", "affinity:"}
+var formatRegexes []*regexp.Regexp
+var topologyRegex1 = regexp.MustCompile(`(?m)^\s+app\.openshift\.io/connects-to:\s`)
+var topologyRegex2 = regexp.MustCompile(`(?m)^\s*# Example for OpenShift Topology View integration:\s*\n\s*# app\.openshift\.io/connects-to:.*\n`)
+
+func init() {
+	for _, block := range formatBlocks {
+		formatRegexes = append(formatRegexes, regexp.MustCompile(`(?m)^([^\n#]+[^:\n#\s])\s*\n(\s+`+block+`)`))
+	}
+}
+
 func formatValues(valuesStr string) string {
-	blocks := []string{"imagePullSecrets:", "replicas:", "labels:", "cm:", "secret:", "vso:", "resources:", "route:", "service:", "persistence:", "startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "nodeSelector:", "tolerations:", "affinity:"}
-	for _, block := range blocks {
-		r := regexp.MustCompile(`(?m)^([^\n#]+[^:\n#\s])\s*\n(\s+` + block + `)`)
+	for _, r := range formatRegexes {
 		valuesStr = r.ReplaceAllString(valuesStr, "$1\n\n$2")
 	}
 
 	// Clean up commented connects-to example if the user explicitly provided one
-	if regexp.MustCompile(`(?m)^\s+app\.openshift\.io/connects-to:\s`).MatchString(valuesStr) {
-		valuesStr = regexp.MustCompile(`(?m)^\s*# Example for OpenShift Topology View integration:\s*\n\s*# app\.openshift\.io/connects-to:.*\n`).ReplaceAllString(valuesStr, "")
+	if topologyRegex1.MatchString(valuesStr) {
+		valuesStr = topologyRegex2.ReplaceAllString(valuesStr, "")
 	}
 
 	return valuesStr
