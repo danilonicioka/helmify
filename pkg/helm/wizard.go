@@ -168,6 +168,7 @@ type DeploymentParams struct {
 
 // SidecarParams holds configuration for extra and init containers
 type SidecarParams struct {
+	Enabled     *bool             `json:"enabled,omitempty" yaml:"enabled,omitempty"`
 	Image       ImageParams       `json:"image"`
 	Command     []string          `json:"command,omitempty"`
 	Args        []string          `json:"args,omitempty"`

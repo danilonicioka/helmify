@@ -1,5 +1,6 @@
 {{- range $compName, $comp := .Values.components }}
 {{- range $name, $sidecar := $comp.extraContainers }}
+{{- if ne ($sidecar.enabled | default true) false }}
 {{- if and $sidecar $sidecar.config.env }}
 apiVersion: v1
 kind: ConfigMap
@@ -16,6 +17,7 @@ data:
 {{- end }}
 {{- range $compName, $comp := .Values.components }}
 {{- range $name, $sidecar := $comp.extraContainers }}
+{{- if ne ($sidecar.enabled | default true) false }}
 {{- if and $sidecar $sidecar.config $sidecar.config.files }}
 {{- range $filename, $config := $sidecar.config.files }}
 apiVersion: v1
@@ -29,6 +31,7 @@ data:
   {{ $filename }}: |-
     {{- $config.content | nindent 4 }}
 ---
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

@@ -63,9 +63,16 @@ spec:
       {{- else if .Values.serviceAccount }}
       serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
       {{- end }}
-      {{- if and $comp.initContainers (not (empty $comp.initContainers)) }}
+      {{- $hasInit := false }}
+      {{- range $name, $config := $comp.initContainers }}
+        {{- if ne ($config.enabled | default true) false }}
+          {{- $hasInit = true }}
+        {{- end }}
+      {{- end }}
+      {{- if $hasInit }}
       initContainers:
         {{- range $name, $config := $comp.initContainers }}
+        {{- if ne ($config.enabled | default true) false }}
         - name: {{ $name }}
           image: "{{ $config.image.repository }}:{{ $config.image.tag }}"
           imagePullPolicy: {{ $config.image.pullPolicy | default "IfNotPresent" }}
@@ -107,6 +114,7 @@ spec:
             {{- end }}
           {{- end }}
         {{- end }}
+        {{- end }}
       containers:
         - name: app
           image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
@@ -120,31 +128,6 @@ spec:
               {{- end }}
             {{- end }}
           
-                  {{- range $name, $config := $comp.initContainers }}
-        - name: {{ $name }}
-          image: "{{ $config.image.repository }}:{{ $config.image.tag }}"
-          imagePullPolicy: {{ $config.image.pullPolicy | default "IfNotPresent" }}
-          {{- if $config.command }}
-          command:
-            {{- toYaml $config.command | nindent 12 }}
-          {{- end }}
-          {{- if $config.args }}
-          args:
-            {{- toYaml $config.args | nindent 12 }}
-          {{- end }}
-          {{- if $config.envFrom }}
-          envFrom:
-            {{- toYaml $config.envFrom | nindent 12 }}
-          {{- end }}
-          {{- if $config.env }}
-          env:
-            {{- toYaml $config.env | nindent 12 }}
-          {{- end }}
-          {{- if $config.volumeMounts }}
-          volumeMounts:
-            {{- toYaml $config.volumeMounts | nindent 12 }}
-          {{- end }}
-        {{- end }}
 
           # Clean Configuration Management: Full Decoupling via envFrom
           {{- if or (and .Values.global (not (empty .Values.global))) (and $comp.config.env (not (empty $comp.config.env))) (and $comp.secrets.env (not (empty $comp.secrets.env))) }}
@@ -171,8 +154,15 @@ spec:
             {{- end }}
           {{- end }}
 
-        {{- if $comp.extraContainers }}
+        {{- $hasExtra := false }}
         {{- range $name, $sidecar := $comp.extraContainers }}
+          {{- if ne ($sidecar.enabled | default true) false }}
+            {{- $hasExtra = true }}
+          {{- end }}
+        {{- end }}
+        {{- if $hasExtra }}
+        {{- range $name, $sidecar := $comp.extraContainers }}
+        {{- if ne ($sidecar.enabled | default true) false }}
         - name: {{ $name }}
           image: "{{ $sidecar.image.repository }}:{{ $sidecar.image.tag }}"
           {{- if $sidecar.command }}
@@ -265,6 +255,7 @@ spec:
           args:
             {{- toYaml . | nindent 12 }}
           {{- end }}
+        {{- end }}
 
           # Resources (Operational Overlay-Only)
           {{- if and $comp.resources $comp.resources.limits }}
@@ -274,31 +265,6 @@ spec:
       
           {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.config.files)) (not (empty $comp.secrets.files)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) }}
           volumeMounts:
-                    {{- range $name, $config := $comp.initContainers }}
-        - name: {{ $name }}
-          image: "{{ $config.image.repository }}:{{ $config.image.tag }}"
-          imagePullPolicy: {{ $config.image.pullPolicy | default "IfNotPresent" }}
-          {{- if $config.command }}
-          command:
-            {{- toYaml $config.command | nindent 12 }}
-          {{- end }}
-          {{- if $config.args }}
-          args:
-            {{- toYaml $config.args | nindent 12 }}
-          {{- end }}
-          {{- if $config.envFrom }}
-          envFrom:
-            {{- toYaml $config.envFrom | nindent 12 }}
-          {{- end }}
-          {{- if $config.env }}
-          env:
-            {{- toYaml $config.env | nindent 12 }}
-          {{- end }}
-          {{- if $config.volumeMounts }}
-          volumeMounts:
-            {{- toYaml $config.volumeMounts | nindent 12 }}
-          {{- end }}
-        {{- end }}
             {{- if and $comp.persistence $comp.persistence.enabled }}
             - name: data
               mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
@@ -349,31 +315,6 @@ spec:
 
       {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.config.files)) (not (empty $comp.secrets.files)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) }}
       volumes:
-                {{- range $name, $config := $comp.initContainers }}
-        - name: {{ $name }}
-          image: "{{ $config.image.repository }}:{{ $config.image.tag }}"
-          imagePullPolicy: {{ $config.image.pullPolicy | default "IfNotPresent" }}
-          {{- if $config.command }}
-          command:
-            {{- toYaml $config.command | nindent 12 }}
-          {{- end }}
-          {{- if $config.args }}
-          args:
-            {{- toYaml $config.args | nindent 12 }}
-          {{- end }}
-          {{- if $config.envFrom }}
-          envFrom:
-            {{- toYaml $config.envFrom | nindent 12 }}
-          {{- end }}
-          {{- if $config.env }}
-          env:
-            {{- toYaml $config.env | nindent 12 }}
-          {{- end }}
-          {{- if $config.volumeMounts }}
-          volumeMounts:
-            {{- toYaml $config.volumeMounts | nindent 12 }}
-          {{- end }}
-        {{- end }}
         {{- if and $comp.persistence $comp.persistence.enabled }}
         - name: data
           {{- if $comp.persistence.ephemeral }}

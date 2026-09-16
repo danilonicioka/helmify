@@ -18,8 +18,9 @@ import (
 type VolumeMapping struct {
 	MountPath  string
 	SubPath    string
-	SourceType string // "configMap" or "secret"
-	SourceName string
+	SourceType  string // "configMap" or "secret"
+	SourceName  string
+	SidecarName string // set if mounted by a sidecar
 }
 
 func cleanMultilineString(s string) string {
@@ -301,16 +302,42 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 						if m.SourceType == "configMap" && m.SourceName == objName {
 							isMounted = true
 							depParams := params.Deployments[depName]
-							if depParams.Config.Files == nil {
-								depParams.Config.Files = make(map[string]CustomFileParams)
+							
+							var targetFiles map[string]CustomFileParams
+							if m.SidecarName != "" {
+								if sidecar, ok := depParams.ExtraContainers[m.SidecarName]; ok {
+									if sidecar.Config == nil {
+										sidecar.Config = &ConfigParams{}
+									}
+									if sidecar.Config.Files == nil {
+										sidecar.Config.Files = make(map[string]CustomFileParams)
+									}
+									targetFiles = sidecar.Config.Files
+								} else if sidecar, ok := depParams.InitContainers[m.SidecarName]; ok {
+									if sidecar.Config == nil {
+										sidecar.Config = &ConfigParams{}
+									}
+									if sidecar.Config.Files == nil {
+										sidecar.Config.Files = make(map[string]CustomFileParams)
+									}
+									targetFiles = sidecar.Config.Files
+								}
 							}
+							
+							if targetFiles == nil {
+								if depParams.Config.Files == nil {
+									depParams.Config.Files = make(map[string]CustomFileParams)
+								}
+								targetFiles = depParams.Config.Files
+							}
+
 							for k, v := range data {
 								if m.SubPath == "" || m.SubPath == k {
 									mntPath := m.MountPath
 									if m.SubPath == "" {
 										mntPath = filepath.Join(m.MountPath, k)
 									}
-									depParams.Config.Files[k] = CustomFileParams{
+									targetFiles[k] = CustomFileParams{
 										MountPath: mntPath,
 										Content:   cleanMultilineString(fmt.Sprintf("%v", v)),
 									}
@@ -357,8 +384,33 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					if m.SourceType == "secret" && m.SourceName == objName {
 						isMounted = true
 						depParams := params.Deployments[depName]
-						if depParams.Secrets.Files == nil {
-							depParams.Secrets.Files = make(map[string]CustomFileParams)
+						
+						var targetFiles map[string]CustomFileParams
+						if m.SidecarName != "" {
+							if sidecar, ok := depParams.ExtraContainers[m.SidecarName]; ok {
+								if sidecar.Secrets == nil {
+									sidecar.Secrets = &ConfigParams{}
+								}
+								if sidecar.Secrets.Files == nil {
+									sidecar.Secrets.Files = make(map[string]CustomFileParams)
+								}
+								targetFiles = sidecar.Secrets.Files
+							} else if sidecar, ok := depParams.InitContainers[m.SidecarName]; ok {
+								if sidecar.Secrets == nil {
+									sidecar.Secrets = &ConfigParams{}
+								}
+								if sidecar.Secrets.Files == nil {
+									sidecar.Secrets.Files = make(map[string]CustomFileParams)
+								}
+								targetFiles = sidecar.Secrets.Files
+							}
+						}
+						
+						if targetFiles == nil {
+							if depParams.Secrets.Files == nil {
+								depParams.Secrets.Files = make(map[string]CustomFileParams)
+							}
+							targetFiles = depParams.Secrets.Files
 						}
 						
 						processSecretData := func(sourceData map[string]interface{}, decode bool) {
@@ -368,17 +420,15 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 									if m.SubPath == "" {
 										mntPath = filepath.Join(m.MountPath, k)
 									}
-									val := fmt.Sprintf("%v", v)
+									contentStr := fmt.Sprintf("%v", v)
 									if decode {
-										if strVal, ok := v.(string); ok {
-											if decoded, err := base64.StdEncoding.DecodeString(strVal); err == nil {
-												val = string(decoded)
-											}
+										if decoded, err := base64.StdEncoding.DecodeString(contentStr); err == nil {
+											contentStr = string(decoded)
 										}
 									}
-									depParams.Secrets.Files[k] = CustomFileParams{
+									targetFiles[k] = CustomFileParams{
 										MountPath: mntPath,
-										Content:   cleanMultilineString(val),
+										Content:   cleanMultilineString(contentStr),
 									}
 								}
 							}
