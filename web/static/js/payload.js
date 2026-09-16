@@ -113,16 +113,43 @@
                     external: { enabled: false, host: `${hostPrefix}{{EXTERNAL_DOMAIN}}` },
                     additional: {}
                 },
-                hpa: {
+                autoscaling: {
                     enabled: false,
-                    minReplicas: 1,
-                    maxReplicas: 2,
-                    metrics: [
-                        { type: 'Resource', resource: { name: 'memory', target: { type: 'Utilization', averageUtilization: 180 } } }
-                    ],
-                    behavior: {
-                        scaleDown: { stabilizationWindowSeconds: 120 },
-                        scaleUp: { stabilizationWindowSeconds: 0, policies: [ { type: 'Percent', value: 100, periodSeconds: 15 } ] }
+                    engine: "",
+                    keda: {
+                        minReplicas: 3,
+                        maxReplicas: 20,
+                        pollingInterval: 30,
+                        cooldownPeriod: 300,
+                        triggers: [
+                            {
+                                type: 'rabbitmq',
+                                metadata: {
+                                    queueName: 'jurisprudencia.celery.knowledge',
+                                    queueLength: '200'
+                                }
+                            }
+                        ],
+                        triggerAuth: {
+                            secretTargetRef: [
+                                {
+                                    parameter: 'host',
+                                    name: 'iande-global-secret',
+                                    key: 'JURISPRUDENCIA_RABBITMQ_URL'
+                                }
+                            ]
+                        }
+                    },
+                    hpa: {
+                        minReplicas: 1,
+                        maxReplicas: 2,
+                        metrics: [
+                            { type: 'Resource', resource: { name: 'memory', target: { type: 'Utilization', averageUtilization: 180 } } }
+                        ],
+                        behavior: {
+                            scaleDown: { stabilizationWindowSeconds: 120 },
+                            scaleUp: { stabilizationWindowSeconds: 0, policies: [ { type: 'Percent', value: 100, periodSeconds: 15 } ] }
+                        }
                     }
                 }
             };

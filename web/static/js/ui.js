@@ -821,5 +821,4 @@
         style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
         document.head.appendChild(style);
 
-        // Run on load
-        init();
+        // Run on load removed (handled in main.js)
