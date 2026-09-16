@@ -787,8 +787,8 @@
 
         // Input listeners for live updates
         document.querySelectorAll('input, select').forEach(element => {
-            element.addEventListener('input', updatePreview);
-            element.addEventListener('change', updatePreview);
+            element.addEventListener('input', () => updatePreview());
+            element.addEventListener('change', () => updatePreview());
         });
 
         const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
