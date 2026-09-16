@@ -8,6 +8,7 @@ import (
 
 	"github.com/danilonicioka/helmify"
 	"github.com/danilonicioka/helmify/pkg/helm"
+	"github.com/go-playground/validator/v10"
 	"github.com/sirupsen/logrus"
 )
 
@@ -23,6 +24,13 @@ func handleGenerateWizard(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		logrus.WithError(err).Error("Failed to parse request body")
 		sendError(w, fmt.Sprintf("Invalid JSON request: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(params); err != nil {
+		logrus.WithError(err).Error("Payload validation failed")
+		sendError(w, fmt.Sprintf("Validation error: %v", err), http.StatusBadRequest)
 		return
 	}
 
@@ -77,6 +85,13 @@ func handlePreviewWizard(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		logrus.WithError(err).Error("Failed to parse request body")
 		sendError(w, fmt.Sprintf("Invalid JSON request: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	validate := validator.New()
+	if err := validate.Struct(params); err != nil {
+		logrus.WithError(err).Error("Payload validation failed")
+		sendError(w, fmt.Sprintf("Validation error: %v", err), http.StatusBadRequest)
 		return
 	}
 

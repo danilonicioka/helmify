@@ -1,6 +1,6 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
 {{- if ne $comp.enabled false }}
-{{- if and $comp.files $comp.files.cm -}}
+{{- if and $comp.config $comp.config.files -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,7 +8,7 @@ metadata:
   labels:
     {{- include "chart-model-single.labels" . | nindent 4 }}
 data:
-{{- range $filename, $config := $comp.files.cm }}
+{{- range $filename, $config := $comp.config.files }}
   {{ $filename }}: |
     {{- $config.content | nindent 4 }}
 {{- end }}

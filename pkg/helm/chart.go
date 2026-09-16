@@ -247,8 +247,12 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		"nameOverride":            "",
 		"fullnameOverride":        chartName,
 		"global": map[string]interface{}{
-			"cm":     map[string]interface{}{},
-			"secret": map[string]interface{}{},
+			"config": map[string]interface{}{
+				"env": map[string]interface{}{},
+			},
+			"secrets": map[string]interface{}{
+				"env": map[string]interface{}{},
+			},
 		},
 	}
 	for i, template := range templates {
@@ -316,11 +320,16 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 				continue
 			}
 
-			if _, hasCm := compMap["cm"]; !hasCm {
-				compMap["cm"] = map[string]interface{}{}
+			if _, hasConfig := compMap["config"]; !hasConfig {
+				compMap["config"] = map[string]interface{}{
+					"env": map[string]interface{}{},
+					"files": map[string]interface{}{},
+				}
 			}
-			if _, hasSecret := compMap["secret"]; !hasSecret {
-				compMap["secret"] = map[string]interface{}{}
+			if _, hasSecrets := compMap["secrets"]; !hasSecrets {
+				compMap["secrets"] = map[string]interface{}{
+					"env": map[string]interface{}{},
+				}
 			}
 			if _, hasRoute := compMap["route"]; !hasRoute {
 				defaultHost, internalHost, externalHost := computeRouteHosts(chartName, key, "/", isMulti)
@@ -365,7 +374,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 		if !ok {
 			continue
 		}
-		if _, hasCm := compMap["cm"]; hasCm {
+		if _, hasConfig := compMap["config"]; hasConfig {
 			cmFilename := "cm-" + compKebab + ".yaml"
 			if compKebab == chartName || !isMulti {
 				cmFilename = "cm.yaml"
@@ -378,7 +387,7 @@ func (o output) Create(chartDir, chartName string, crd bool, certManagerAsSubcha
 				}
 			}
 		}
-		if _, hasSecret := compMap["secret"]; hasSecret {
+		if _, hasSecrets := compMap["secrets"]; hasSecrets {
 			secretFilename := "secret-" + compKebab + ".yaml"
 			if compKebab == chartName || !isMulti {
 				secretFilename = "secret.yaml"

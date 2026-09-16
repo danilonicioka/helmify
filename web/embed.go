@@ -1,7 +1,7 @@
 package web
 
 import (
-	_ "embed"
+	"embed"
 )
 
 //go:embed home.html
@@ -15,3 +15,6 @@ var ConverterHTML []byte
 
 //go:embed index.html
 var WizardHTML []byte
+
+//go:embed static/*
+var StaticFS embed.FS

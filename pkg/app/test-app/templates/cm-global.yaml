@@ -1,4 +1,4 @@
-{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) -}}
+{{- if and .Values.global .Values.global.config .Values.global.config.env (not (empty .Values.global.config.env)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "test-app.labels" . | nindent 4 }}
 data:
-{{- range $key, $val := .Values.global.cm }}
+{{- range $key, $val := .Values.global.config.env }}
   {{ $key }}: {{ $val | quote }}
 {{- end }}
-{{- end }}
+{{- end -}}

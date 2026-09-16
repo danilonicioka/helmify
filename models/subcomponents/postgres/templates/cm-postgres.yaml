@@ -1,4 +1,4 @@
-{{- if and .Values.postgres .Values.postgres.cm (not (empty .Values.postgres.cm)) -}}
+{{- if and .Values.postgres .Values.postgres.config.env (not (empty .Values.postgres.config.env)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
 data:
-  {{- range $key, $val := .Values.postgres.cm }}
+  {{- range $key, $val := .Values.postgres.config.env }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
 {{- end }}

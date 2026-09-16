@@ -1,6 +1,6 @@
 {{- $comp := index .Values "app" | default dict -}}
 {{- if ne $comp.enabled false }}
-{{- if and $comp $comp.keda $comp.keda.enabled -}}
+{{- if and $comp.autoscaling $comp.autoscaling.enabled (eq $comp.autoscaling.engine "keda") -}}
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -12,16 +12,16 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "chart-model-multi.fullname" . }}-app
-  minReplicaCount: {{ $comp.keda.minReplicas | default 1 }}
-  maxReplicaCount: {{ $comp.keda.maxReplicas | default 2 }}
-  {{- with $comp.keda.pollingInterval }}
+  minReplicaCount: {{ $comp.autoscaling.keda.minReplicas | default 1 }}
+  maxReplicaCount: {{ $comp.autoscaling.keda.maxReplicas | default 2 }}
+  {{- with $comp.autoscaling.keda.pollingInterval }}
   pollingInterval: {{ . }}
   {{- end }}
-  {{- with $comp.keda.cooldownPeriod }}
+  {{- with $comp.autoscaling.keda.cooldownPeriod }}
   cooldownPeriod: {{ . }}
   {{- end }}
   triggers:
-    {{- range $trigger := $comp.keda.triggers }}
+    {{- range $trigger := $comp.autoscaling.keda.triggers }}
     - type: {{ $trigger.type }}
       metadata:
         {{- toYaml $trigger.metadata | nindent 8 }}

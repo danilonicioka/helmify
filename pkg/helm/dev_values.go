@@ -41,21 +41,21 @@ func mergeDevValues(caData []byte, chartName string, values helmify.Values, valu
 
 	for k, v := range values {
 		if valMap, ok := toMapStringInterface(v); ok {
-			if cmVal, ok := valMap["cm"]; ok {
-				if cmMap, ok := toMapStringInterface(cmVal); ok {
-					if len(cmMap) > 0 {
-						if err := mergeYamlNode(&node, cmMap, []string{k, "cm"}); err != nil {
-							return nil, err
+			if configVal, ok := valMap["config"]; ok {
+				if configMap, ok := toMapStringInterface(configVal); ok {
+					if envVal, ok := configMap["env"]; ok {
+						if envMap, ok := toMapStringInterface(envVal); ok {
+							if len(envMap) > 0 {
+								if err := mergeYamlNode(&node, envMap, []string{k, "config", "env"}); err != nil {
+									return nil, err
+								}
+							}
 						}
 					}
-				}
-			}
-			if filesVal, ok := valMap["files"]; ok {
-				if filesMap, ok := toMapStringInterface(filesVal); ok {
-					if filesCmVal, ok := filesMap["cm"]; ok {
-						if filesCmMap, ok := toMapStringInterface(filesCmVal); ok {
-							if len(filesCmMap) > 0 {
-								if err := mergeYamlNode(&node, filesCmMap, []string{k, "files", "cm"}); err != nil {
+					if filesVal, ok := configMap["files"]; ok {
+						if filesMap, ok := toMapStringInterface(filesVal); ok {
+							if len(filesMap) > 0 {
+								if err := mergeYamlNode(&node, filesMap, []string{k, "config", "files"}); err != nil {
 									return nil, err
 								}
 							}

@@ -7,13 +7,13 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"net/http"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strconv"
 	"syscall"
-	"strings"
 	"time"
 
 	"github.com/danilonicioka/helmify/pkg/config"
@@ -61,6 +61,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+	mux.Handle("/static/", http.FileServer(http.FS(web.StaticFS)))
 	mux.HandleFunc("/v1/generate", handleGenerate)
 	mux.HandleFunc("/v1/generate-wizard", handleGenerateWizard)
 	mux.HandleFunc("/v1/preview-wizard", handlePreviewWizard)
@@ -73,68 +74,26 @@ func main() {
 		json.NewEncoder(w).Encode(config.GlobalEnvConfig)
 	})
 	mux.HandleFunc("/wizard", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		htmlStr := strings.ReplaceAll(string(web.WizardHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
-		w.Write([]byte(htmlStr))
+		renderTemplate(w, web.WizardHTML)
 	})
 	mux.HandleFunc("/wizard/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		htmlStr := strings.ReplaceAll(string(web.WizardHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
-		w.Write([]byte(htmlStr))
+		renderTemplate(w, web.WizardHTML)
 	})
 	mux.HandleFunc("/instructions", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		htmlStr := strings.ReplaceAll(string(web.InstructionsHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
-		w.Write([]byte(htmlStr))
+		renderTemplate(w, web.InstructionsHTML)
 	})
 	mux.HandleFunc("/instructions/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		htmlStr := strings.ReplaceAll(string(web.InstructionsHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
-		w.Write([]byte(htmlStr))
+		renderTemplate(w, web.InstructionsHTML)
 	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
 	})
 	mux.HandleFunc("/converter", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		htmlStr := strings.ReplaceAll(string(web.ConverterHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
-		w.Write([]byte(htmlStr))
+		renderTemplate(w, web.ConverterHTML)
 	})
 	mux.HandleFunc("/converter/", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		htmlStr := strings.ReplaceAll(string(web.ConverterHTML), "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
-		w.Write([]byte(htmlStr))
+		renderTemplate(w, web.ConverterHTML)
 	})
 	// Serve the portal homepage or other assets on /
 	mux.HandleFunc("/", handleHomeOrAssets)
@@ -333,18 +292,21 @@ func parseConfig(r *http.Request) config.Config {
 	return conf
 }
 
+func renderTemplate(w http.ResponseWriter, tmplBytes []byte) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	tmpl, err := template.New("html").Parse(string(tmplBytes))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if err := tmpl.Execute(w, config.GlobalEnvConfig); err != nil {
+		logrus.WithError(err).Error("Failed to render template")
+	}
+}
+
 func handleHomeOrAssets(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path == "/" || r.URL.Path == "/index.html" {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		cv := config.GlobalEnvConfig.ChartVersion
-		htmlStr := strings.ReplaceAll(string(web.HomeHTML), "{{CHART_VERSION}}", cv)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{ORG_NAME}}", config.GlobalEnvConfig.OrgName)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
-		htmlStr = strings.ReplaceAll(htmlStr, "{{DEV_REPO}}", config.GlobalEnvConfig.DevRepo)
-		w.Write([]byte(htmlStr))
+		renderTemplate(w, web.HomeHTML)
 		return
 	}
 	http.NotFound(w, r)

@@ -1,4 +1,4 @@
-{{- if and .Values.keda .Values.keda.enabled -}}
+{{- if and .Values.autoscaling .Values.autoscaling.enabled (eq .Values.autoscaling.engine "keda") -}}
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -10,16 +10,16 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: {{ include "chart-model-single.fullname" . }}
-  minReplicaCount: {{ .Values.keda.minReplicas | default 1 }}
-  maxReplicaCount: {{ .Values.keda.maxReplicas | default 2 }}
-  {{- with .Values.keda.pollingInterval }}
+  minReplicaCount: {{ .Values.autoscaling.keda.minReplicas | default 1 }}
+  maxReplicaCount: {{ .Values.autoscaling.keda.maxReplicas | default 2 }}
+  {{- with .Values.autoscaling.keda.pollingInterval }}
   pollingInterval: {{ . }}
   {{- end }}
-  {{- with .Values.keda.cooldownPeriod }}
+  {{- with .Values.autoscaling.keda.cooldownPeriod }}
   cooldownPeriod: {{ . }}
   {{- end }}
   triggers:
-    {{- range $trigger := .Values.keda.triggers }}
+    {{- range $trigger := .Values.autoscaling.keda.triggers }}
     - type: {{ $trigger.type }}
       metadata:
         {{- toYaml $trigger.metadata | nindent 8 }}

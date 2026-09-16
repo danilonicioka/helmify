@@ -85,8 +85,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			if kind == "CronJob" {
 				depParams = DeploymentParams{
 					WorkloadType: "CronJob",
-					Cm:           make(map[string]string),
-					Secret:       make(map[string]string),
+					Config:       &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
+					Secrets:      &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
 				}
 				if schedule, found, _ := unstructured.NestedString(obj.Object, "spec", "schedule"); found {
 					depParams.Schedule = schedule
@@ -94,8 +94,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			} else {
 				depParams = DeploymentParams{
 					WorkloadType: kind,
-					Cm:           make(map[string]string),
-					Secret:       make(map[string]string),
+					Config:       &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
+					Secrets:      &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
 				}
 				// Extract Replicas for non-CronJobs
 				replicas, found, err := unstructured.NestedInt64(obj.Object, "spec", "replicas")
@@ -152,8 +152,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 								name = fmt.Sprintf("sidecar-%d", i)
 							}
 							sidecarParams := &SidecarParams{
-								Cm:     make(map[string]string),
-								Secret: make(map[string]string),
+								Config:       &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
+								Secrets:      &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
 							}
 							populateSidecarParams(sidecarParams, containerMap, volSources, envTracker, obj.GetName(), name)
 							depParams.ExtraContainers[name] = sidecarParams
@@ -175,8 +175,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 							name = fmt.Sprintf("init-%d", i)
 						}
 						sidecarParams := &SidecarParams{
-							Cm:     make(map[string]string),
-							Secret: make(map[string]string),
+							Config:       &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
+							Secrets:      &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
 						}
 						populateSidecarParams(sidecarParams, containerMap, volSources, envTracker, obj.GetName(), name)
 						depParams.InitContainers[name] = sidecarParams
@@ -186,22 +186,24 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 
 			affinityPath := append(podSpecPath, "affinity")
 			if affinity, ok, _ := unstructured.NestedMap(obj.Object, affinityPath...); ok && len(affinity) > 0 {
-				// Seamlessly modernize legacy labels to our new standard component pattern
 				if b, err := json.Marshal(affinity); err == nil {
 					b = bytes.ReplaceAll(b, []byte("app.kubernetes.io/name"), []byte("app.kubernetes.io/component"))
 					var modernAffinity AffinityParams
 					if json.Unmarshal(b, &modernAffinity) == nil {
-						depParams.Affinity = &modernAffinity
+						if depParams.Scheduling == nil { depParams.Scheduling = &SchedulingParams{} }
+						depParams.Scheduling.Affinity = &modernAffinity
 					}
 				}
 			}
 			nodeSelectorPath := append(podSpecPath, "nodeSelector")
 			if nodeSelector, ok, _ := unstructured.NestedMap(obj.Object, nodeSelectorPath...); ok && len(nodeSelector) > 0 {
-				depParams.NodeSelector = nodeSelector
+				if depParams.Scheduling == nil { depParams.Scheduling = &SchedulingParams{} }
+				depParams.Scheduling.NodeSelector = nodeSelector
 			}
 			tolerationsPath := append(podSpecPath, "tolerations")
 			if tolerations, ok, _ := unstructured.NestedSlice(obj.Object, tolerationsPath...); ok && len(tolerations) > 0 {
-				depParams.Tolerations = tolerations
+				if depParams.Scheduling == nil { depParams.Scheduling = &SchedulingParams{} }
+				depParams.Scheduling.Tolerations = tolerations
 			}
 
 			// Track volume mappings for Pass 2 (Custom Files routing)
@@ -297,8 +299,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 						if m.SourceType == "configMap" && m.SourceName == objName {
 							isMounted = true
 							depParams := params.Deployments[depName]
-							if depParams.Files.Cm == nil {
-								depParams.Files.Cm = make(map[string]CustomFileParams)
+							if depParams.Config.Files == nil {
+								depParams.Config.Files = make(map[string]CustomFileParams)
 							}
 							for k, v := range data {
 								if m.SubPath == "" || m.SubPath == k {
@@ -306,7 +308,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 									if m.SubPath == "" {
 										mntPath = filepath.Join(m.MountPath, k)
 									}
-									depParams.Files.Cm[k] = CustomFileParams{
+									depParams.Config.Files[k] = CustomFileParams{
 										MountPath: mntPath,
 										Content:   cleanMultilineString(fmt.Sprintf("%v", v)),
 									}
@@ -322,14 +324,14 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 						depParams := params.Deployments[target.CompName]
 						if sidecar, ok := depParams.ExtraContainers[target.SidecarName]; ok {
 							for k, v := range data {
-								sidecar.Cm[k] = cleanMultilineString(fmt.Sprintf("%v", v))
+								sidecar.Config.Env[k] = cleanMultilineString(fmt.Sprintf("%v", v))
 							}
 							params.Deployments[target.CompName] = depParams
 						}
 					} else if compName != "" {
 						depParams := params.Deployments[compName]
 						for k, v := range data {
-							depParams.Cm[k] = cleanMultilineString(fmt.Sprintf("%v", v))
+							depParams.Config.Env[k] = cleanMultilineString(fmt.Sprintf("%v", v))
 						}
 						params.Deployments[compName] = depParams
 					} else {
@@ -353,8 +355,8 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					if m.SourceType == "secret" && m.SourceName == objName {
 						isMounted = true
 						depParams := params.Deployments[depName]
-						if depParams.Files.Secret == nil {
-							depParams.Files.Secret = make(map[string]CustomFileParams)
+						if depParams.Secrets.Files == nil {
+							depParams.Secrets.Files = make(map[string]CustomFileParams)
 						}
 						
 						processSecretData := func(sourceData map[string]interface{}, decode bool) {
@@ -372,7 +374,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 											}
 										}
 									}
-									depParams.Files.Secret[k] = CustomFileParams{
+									depParams.Secrets.Files[k] = CustomFileParams{
 										MountPath: mntPath,
 										Content:   cleanMultilineString(val),
 									}
@@ -398,16 +400,16 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					if sidecar, ok := depParams.ExtraContainers[target.SidecarName]; ok {
 						if foundStr {
 							for k, v := range stringData {
-								sidecar.Secret[k] = cleanMultilineString(fmt.Sprintf("%v", v))
+								sidecar.Secrets.Env[k] = cleanMultilineString(fmt.Sprintf("%v", v))
 							}
 						}
 						if foundData {
 							for k, v := range data {
 								if strVal, ok := v.(string); ok {
 									if decoded, err := base64.StdEncoding.DecodeString(strVal); err == nil {
-										sidecar.Secret[k] = cleanMultilineString(string(decoded))
+										sidecar.Secrets.Env[k] = cleanMultilineString(string(decoded))
 									} else {
-										sidecar.Secret[k] = cleanMultilineString(strVal)
+										sidecar.Secrets.Env[k] = cleanMultilineString(strVal)
 									}
 								}
 							}
@@ -435,16 +437,16 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					depParams := params.Deployments[compName]
 					if foundStr {
 						for k, v := range stringData {
-							depParams.Secret[k] = cleanMultilineString(fmt.Sprintf("%v", v))
+							depParams.Secrets.Env[k] = cleanMultilineString(fmt.Sprintf("%v", v))
 						}
 					}
 					if foundData {
 						for k, v := range data {
 							if strVal, ok := v.(string); ok {
 								if decoded, err := base64.StdEncoding.DecodeString(strVal); err == nil {
-									depParams.Secret[k] = cleanMultilineString(string(decoded))
+									depParams.Secrets.Env[k] = cleanMultilineString(string(decoded))
 								} else {
-									depParams.Secret[k] = cleanMultilineString(strVal)
+									depParams.Secrets.Env[k] = cleanMultilineString(strVal)
 								}
 							}
 						}
@@ -504,7 +506,12 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			if behavior, ok, _ := unstructured.NestedMap(obj.Object, "spec", "behavior"); ok && len(behavior) > 0 {
 				hpaParams.Behavior = behavior
 			}
-			depParams.Hpa = hpaParams
+			if depParams.Autoscaling == nil {
+				depParams.Autoscaling = &AutoscalingParams{}
+			}
+			depParams.Autoscaling.Enabled = true
+			depParams.Autoscaling.Engine = "hpa"
+			depParams.Autoscaling.Hpa = hpaParams
 			params.Deployments[compName] = depParams
 		}
 	}
@@ -548,23 +555,17 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			if len(depParams.Args) > 0 {
 				cronjobData["args"] = depParams.Args
 			}
-			if depParams.Cm != nil && len(depParams.Cm) > 0 {
-				cronjobData["cm"] = depParams.Cm
+			if depParams.Config != nil && len(depParams.Config.Env) > 0 {
+				cronjobData["config"] = map[string]interface{}{"env": depParams.Config.Env}
 			}
-			if depParams.Secret != nil && len(depParams.Secret) > 0 {
-				cronjobData["secret"] = depParams.Secret
+			if depParams.Secrets != nil && len(depParams.Secrets.Env) > 0 {
+				cronjobData["secrets"] = map[string]interface{}{"env": depParams.Secrets.Env}
 			}
 			if depParams.Resources != nil {
 				cronjobData["resources"] = depParams.Resources
 			}
-			if depParams.Affinity != nil {
-				cronjobData["affinity"] = depParams.Affinity
-			}
-			if depParams.NodeSelector != nil && len(depParams.NodeSelector) > 0 {
-				cronjobData["nodeSelector"] = depParams.NodeSelector
-			}
-			if depParams.Tolerations != nil && len(depParams.Tolerations) > 0 {
-				cronjobData["tolerations"] = depParams.Tolerations
+			if depParams.Scheduling != nil {
+				cronjobData["scheduling"] = depParams.Scheduling
 			}
 			if depParams.Persistence.Enabled {
 				cronjobData["persistence"] = map[string]interface{}{
@@ -575,29 +576,35 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				}
 			}
 			// Map configMap and Secret files
-			if len(depParams.Files.Cm) > 0 || len(depParams.Files.Secret) > 0 {
-				filesMap := make(map[string]interface{})
-				if len(depParams.Files.Cm) > 0 {
+			if (depParams.Config != nil && len(depParams.Config.Files) > 0) || (depParams.Secrets != nil && len(depParams.Secrets.Files) > 0) {
+				if depParams.Config != nil && len(depParams.Config.Files) > 0 {
 					cmMap := make(map[string]interface{})
-					for k, v := range depParams.Files.Cm {
+					for k, v := range depParams.Config.Files {
 						cmMap[k] = map[string]interface{}{
-							"path": v.MountPath,
+							"mountPath": v.MountPath,
 							"content": v.Content,
 						}
 					}
-					filesMap["cm"] = cmMap
+					if configMap, ok := cronjobData["config"].(map[string]interface{}); ok {
+						configMap["files"] = cmMap
+					} else {
+						cronjobData["config"] = map[string]interface{}{"files": cmMap}
+					}
 				}
-				if len(depParams.Files.Secret) > 0 {
+				if depParams.Secrets != nil && len(depParams.Secrets.Files) > 0 {
 					secMap := make(map[string]interface{})
-					for k, v := range depParams.Files.Secret {
+					for k, v := range depParams.Secrets.Files {
 						secMap[k] = map[string]interface{}{
-							"path": v.MountPath,
+							"mountPath": v.MountPath,
 							"content": v.Content,
 						}
 					}
-					filesMap["secret"] = secMap
+					if secData, ok := cronjobData["secrets"].(map[string]interface{}); ok {
+						secData["files"] = secMap
+					} else {
+						cronjobData["secrets"] = map[string]interface{}{"files": secMap}
+					}
 				}
-				cronjobData["files"] = filesMap
 			}
 
 			// Assign to SubcomponentsData and remove from Deployments
@@ -690,7 +697,10 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 		if b, err := json.Marshal(p); err == nil {
 			var probe ProbeParams
 			if err := json.Unmarshal(b, &probe); err == nil {
-				depParams.StartupProbe = &probe
+				if depParams.Probes == nil {
+					depParams.Probes = &ProbesParams{}
+				}
+				depParams.Probes.Startup = &probe
 			}
 		}
 	}
@@ -698,7 +708,10 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 		if b, err := json.Marshal(p); err == nil {
 			var probe ProbeParams
 			if err := json.Unmarshal(b, &probe); err == nil {
-				depParams.LivenessProbe = &probe
+				if depParams.Probes == nil {
+					depParams.Probes = &ProbesParams{}
+				}
+				depParams.Probes.Liveness = &probe
 			}
 		}
 	}
@@ -706,7 +719,10 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 		if b, err := json.Marshal(p); err == nil {
 			var probe ProbeParams
 			if err := json.Unmarshal(b, &probe); err == nil {
-				depParams.ReadinessProbe = &probe
+				if depParams.Probes == nil {
+					depParams.Probes = &ProbesParams{}
+				}
+				depParams.Probes.Readiness = &probe
 			}
 		}
 	}
@@ -819,7 +835,10 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 		if b, err := json.Marshal(p); err == nil {
 			var probe ProbeParams
 			if err := json.Unmarshal(b, &probe); err == nil {
-				depParams.StartupProbe = &probe
+				if depParams.Probes == nil {
+					depParams.Probes = &ProbesParams{}
+				}
+				depParams.Probes.Startup = &probe
 			}
 		}
 	}
@@ -827,7 +846,10 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 		if b, err := json.Marshal(p); err == nil {
 			var probe ProbeParams
 			if err := json.Unmarshal(b, &probe); err == nil {
-				depParams.LivenessProbe = &probe
+				if depParams.Probes == nil {
+					depParams.Probes = &ProbesParams{}
+				}
+				depParams.Probes.Liveness = &probe
 			}
 		}
 	}
@@ -835,7 +857,10 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 		if b, err := json.Marshal(p); err == nil {
 			var probe ProbeParams
 			if err := json.Unmarshal(b, &probe); err == nil {
-				depParams.ReadinessProbe = &probe
+				if depParams.Probes == nil {
+					depParams.Probes = &ProbesParams{}
+				}
+				depParams.Probes.Readiness = &probe
 			}
 		}
 	}

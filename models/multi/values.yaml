@@ -14,9 +14,11 @@ fullnameOverride: ""
 
 # -- Global configuration shared across all deployments in the chart.
 global:
-  cm:
-    TZ: "America/Belem"
-  secret: {}
+  config:
+    env:
+      TZ: "America/Belem"
+  secrets:
+    env: {}
 
 # ==============================================================================
 # COMPONENT CONFIGURATION
@@ -48,9 +50,21 @@ api:
   # ----------------------------------------------------------------------------
   # APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
-  cm: {}
+  config:
+    env: {}
+    files: {}
+      #   application.properties:
+      #     mountPath: "/deployments/config/application.properties"
+      #     content: |
+      #       quarkus.http.port=8080
 
-  secret: {}
+  secrets:
+    env: {}
+    files: {}
+      #   sistema.p12:
+      #     mountPath: "/app/keystore/sistema.p12"
+      #     b64enc: true
+      #     content: "MIIKrAIB..."
 
   vso:
     enabled: false
@@ -59,17 +73,6 @@ api:
     files: {}
       #   my_vault_key.p12:
       #     mountPath: "/app/certs/my_vault_key.p12"
-  files:
-    cm: {}
-      #   application.properties:
-      #     mountPath: "/deployments/config/application.properties"
-      #     content: |
-      #       quarkus.http.port=8080
-    secret: {}
-      #   sistema.p12:
-      #     mountPath: "/app/keystore/sistema.p12"
-      #     b64enc: true
-      #     content: "MIIKrAIB..."
 
   # ----------------------------------------------------------------------------
   # RESOURCES
@@ -83,44 +86,43 @@ api:
       cpu: 30m
       memory: 256Mi
 
-  hpa:
+  autoscaling:
     enabled: false
-    minReplicas: 1
-    maxReplicas: 2
-    metrics:
-      - type: Resource
-        resource:
-          name: memory
-          target:
-            type: Utilization
-            averageUtilization: 180
-    behavior:
-      scaleDown:
-        stabilizationWindowSeconds: 120
-      scaleUp:
-        stabilizationWindowSeconds: 0
-        policies:
-          - type: Percent
-            value: 100
-            periodSeconds: 15
-
-  # keda:
-  #   enabled: true
-  #   minReplicas: 1
-  #   maxReplicas: 5
-  #   pollingInterval: 30
-  #   cooldownPeriod: 300
-  #   triggers:
-  #     - type: rabbitmq
-  #       metadata:
-  #         queueName: "my-queue"
-  #         queueLength: "5"
-  #   triggerAuth:
-  #     secretTargetRef:
-  #       - parameter: host
-  #         name: "my-secret"
-  #         key: "RABBITMQ_URL"
-
+    engine: "" # Options: "hpa", "keda"
+    keda:
+      minReplicas: 3
+      maxReplicas: 20
+      pollingInterval: 30
+      cooldownPeriod: 300
+      triggers:
+        - type: rabbitmq
+          metadata:
+            queueName: "jurisprudencia.celery.knowledge"
+            queueLength: "200"
+      triggerAuth:
+        secretTargetRef:
+          - parameter: host
+            name: "iande-global-secret"
+            key: "JURISPRUDENCIA_RABBITMQ_URL"
+    hpa:
+      minReplicas: 1
+      maxReplicas: 2
+      metrics:
+        - resource:
+            name: memory
+            target:
+              averageUtilization: 180
+              type: Utilization
+          type: Resource
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 120
+        scaleUp:
+          policies:
+            - periodSeconds: 15
+              type: Percent
+              value: 100
+          stabilizationWindowSeconds: 0
   # ----------------------------------------------------------------------------
   # ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -173,29 +175,28 @@ api:
   # ----------------------------------------------------------------------------
   # PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
-  startupProbe:
-    tcpSocket:
-      port: http
-    initialDelaySeconds: 0
-    periodSeconds: 5
-    failureThreshold: 30
-    successThreshold: 1
-
-  livenessProbe:
-    tcpSocket:
-      port: http
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    failureThreshold: 3
-    successThreshold: 1
-
-  readinessProbe:
-    tcpSocket:
-      port: http
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    failureThreshold: 3
-    successThreshold: 1
+  probes:
+    startup:
+      tcpSocket:
+        port: http
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      failureThreshold: 30
+      successThreshold: 1
+    liveness:
+      tcpSocket:
+        port: http
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
+    readiness:
+      tcpSocket:
+        port: http
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
 
   strategy:
     type: RollingUpdate
@@ -208,20 +209,21 @@ api:
   # ----------------------------------------------------------------------------
   # SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  nodeSelector: {}
-  tolerations: []
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-                - key: app.kubernetes.io/component
-                  operator: In
-                  values:
-                    - chart-model-multi-api
-            topologyKey: kubernetes.io/hostname
+  scheduling:
+    nodeSelector: {}
+    tolerations: []
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/component
+                    operator: In
+                    values:
+                      - chart-model-multi-api
+              topologyKey: kubernetes.io/hostname
 
 # ==============================================================================
 # COMPONENT CONFIGURATION
@@ -253,27 +255,28 @@ app:
   # ----------------------------------------------------------------------------
   # APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
-  cm: {}
+  config:
+    env: {}
+    files: {}
+      #   nginx.conf:
+      #     mountPath: "/etc/nginx/nginx.conf"
+      #     content: |
+      #       user nginx;
+      #       worker_processes auto;
 
-  secret: {}
+  secrets:
+    env: {}
+    files: {}
+      #   sistema.p12:
+      #     mountPath: "/app/keystore/sistema.p12"
+      #     b64enc: true
+      #     content: "MIIKrAIB..."
 
   vso:
     enabled: false
     role: "chart-model-multi-app-role"
     path: "kv/data/chart-model-multi/app"
     files: {}
-  files:
-    cm: {}
-      #   nginx.conf:
-      #     mountPath: "/etc/nginx/nginx.conf"
-      #     content: |
-      #       user nginx;
-      #       worker_processes auto;
-    secret: {}
-      #   sistema.p12:
-      #     mountPath: "/app/keystore/sistema.p12"
-      #     b64enc: true
-      #     content: "MIIKrAIB..."
 
   # ----------------------------------------------------------------------------
   # RESOURCES
@@ -287,45 +290,43 @@ app:
       cpu: 30m
       memory: 256Mi
 
-  hpa:
+  autoscaling:
     enabled: false
-    minReplicas: 1
-    maxReplicas: 2
-    metrics:
-      - type: Resource
-        resource:
-          name: memory
-          target:
-            type: Utilization
-            averageUtilization: 180
-    behavior:
-      scaleDown:
-        stabilizationWindowSeconds: 120
-      scaleUp:
-        stabilizationWindowSeconds: 0
-        policies:
-          - type: Percent
-            value: 100
-            periodSeconds: 15
-
-  # keda:
-  #   enabled: true
-  #   minReplicas: 1
-  #   maxReplicas: 5
-  #   pollingInterval: 30
-  #   cooldownPeriod: 300
-  #   triggers:
-  #     - type: rabbitmq
-  #       metadata:
-  #         queueName: "my-queue"
-  #         queueLength: "5"
-  #   triggerAuth:
-  #     secretTargetRef:
-  #       - parameter: host
-  #         name: "my-secret"
-  #         key: "RABBITMQ_URL"
-
-
+    engine: "" # Options: "hpa", "keda"
+    keda:
+      minReplicas: 3
+      maxReplicas: 20
+      pollingInterval: 30
+      cooldownPeriod: 300
+      triggers:
+        - type: rabbitmq
+          metadata:
+            queueName: "jurisprudencia.celery.knowledge"
+            queueLength: "200"
+      triggerAuth:
+        secretTargetRef:
+          - parameter: host
+            name: "iande-global-secret"
+            key: "JURISPRUDENCIA_RABBITMQ_URL"
+    hpa:
+      minReplicas: 1
+      maxReplicas: 2
+      metrics:
+        - resource:
+            name: memory
+            target:
+              averageUtilization: 180
+              type: Utilization
+          type: Resource
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 120
+        scaleUp:
+          policies:
+            - periodSeconds: 15
+              type: Percent
+              value: 100
+          stabilizationWindowSeconds: 0
   # ----------------------------------------------------------------------------
   # ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -378,29 +379,28 @@ app:
   # ----------------------------------------------------------------------------
   # PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
-  startupProbe:
-    tcpSocket:
-      port: http
-    initialDelaySeconds: 0
-    periodSeconds: 5
-    failureThreshold: 30
-    successThreshold: 1
-
-  livenessProbe:
-    tcpSocket:
-      port: http
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    failureThreshold: 3
-    successThreshold: 1
-
-  readinessProbe:
-    tcpSocket:
-      port: http
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    failureThreshold: 3
-    successThreshold: 1
+  probes:
+    startup:
+      tcpSocket:
+        port: http
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      failureThreshold: 30
+      successThreshold: 1
+    liveness:
+      tcpSocket:
+        port: http
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
+    readiness:
+      tcpSocket:
+        port: http
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
 
   strategy:
     type: RollingUpdate
@@ -413,20 +413,21 @@ app:
   # ----------------------------------------------------------------------------
   # SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  nodeSelector: {}
-  tolerations: []
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-                - key: app.kubernetes.io/component
-                  operator: In
-                  values:
-                    - chart-model-multi-app
-            topologyKey: kubernetes.io/hostname
+  scheduling:
+    nodeSelector: {}
+    tolerations: []
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/component
+                    operator: In
+                    values:
+                      - chart-model-multi-app
+              topologyKey: kubernetes.io/hostname
 
   # ----------------------------------------------------------------------------
   # INIT CONTAINERS

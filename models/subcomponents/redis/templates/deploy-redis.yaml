@@ -27,10 +27,10 @@ spec:
         {{- if $annotations }}
         {{- $annotations | nindent 8 }}
         {{- end }}
-        {{- if and .Values.redis .Values.redis.cm (not (empty .Values.redis.cm)) }}
+        {{- if and .Values.redis .Values.redis.config.env (not (empty .Values.redis.config.env)) }}
         checksum/config: '{{ include (print $.Template.BasePath "/cm-redis.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.redis .Values.redis.secret (not (empty .Values.redis.secret)) }}
+        {{- if and .Values.redis .Values.redis.secrets.env (not (empty .Values.redis.secrets.env)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret-redis.yaml") . | sha256sum }}'
         {{- end }}
         {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
@@ -59,13 +59,13 @@ spec:
               {{- end }}
             {{- end }}
           
-          {{- if or (and .Values.redis.cm (not (empty .Values.redis.cm))) (and .Values.redis.secret (not (empty .Values.redis.secret))) (and .Values.global (not (empty .Values.global))) }}
+          {{- if or (and .Values.redis.config.env (not (empty .Values.redis.config.env))) (and .Values.redis.secrets.env (not (empty .Values.redis.secrets.env))) (and .Values.global (not (empty .Values.global))) }}
           envFrom:
-            {{- if and .Values.redis.cm (not (empty .Values.redis.cm)) }}
+            {{- if and .Values.redis.config.env (not (empty .Values.redis.config.env)) }}
             - configMapRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-redis-cm
             {{- end }}
-            {{- if and .Values.redis.secret (not (empty .Values.redis.secret)) }}
+            {{- if and .Values.redis.secrets.env (not (empty .Values.redis.secrets.env)) }}
             - secretRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-redis-secret
             {{- end }}

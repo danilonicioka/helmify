@@ -8,7 +8,7 @@ metadata:
   labels:
     {{- include "chart-model-multi.labels" . | nindent 4 }}
 data:
-  {{- range $key, $val := $comp.cm }}
+  {{- range $key, $val := $comp.config.env }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
 {{- end }}

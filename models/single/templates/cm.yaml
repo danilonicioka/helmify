@@ -1,6 +1,6 @@
 {{- $comp := index .Values .Chart.Name | default dict -}}
 {{- if ne $comp.enabled false }}
-{{- if and $comp $comp.cm (not (empty $comp.cm)) -}}
+{{- if and $comp $comp.config.env (not (empty $comp.config.env)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -8,7 +8,7 @@ metadata:
   labels:
     {{- include "chart-model-single.labels" . | nindent 4 }}
 data:
-  {{- range $key, $val := $comp.cm }}
+  {{- range $key, $val := $comp.config.env }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
 {{- end }}

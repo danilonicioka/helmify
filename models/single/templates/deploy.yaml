@@ -12,7 +12,11 @@ metadata:
     {{- $annotations | nindent 4 }}
   {{- end }}
 spec:
-  {{- if hasKey $comp "replicas" }}
+  {{- $autoscalingEnabled := false }}
+  {{- if and $comp.autoscaling $comp.autoscaling.enabled }}
+    {{- $autoscalingEnabled = true }}
+  {{- end }}
+  {{- if and (hasKey $comp "replicas") (not $autoscalingEnabled) }}
   replicas: {{ $comp.replicas }}
   {{- end }}
   {{- if $comp.strategy }}
@@ -30,22 +34,22 @@ spec:
         {{- $annotations | nindent 8 }}
         {{- end }}
         # 6. Deterministic Rollouts: SHA256 checksum annotations to trigger automatic restarts
-        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        {{- if and .Values.global .Values.global.config.env (not (empty .Values.global.config.env)) }}
         checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        {{- if and .Values.global .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
         checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and $comp.cm (not (empty $comp.cm)) }}
+        {{- if and $comp.config.env (not (empty $comp.config.env)) }}
         checksum/cm-config: '{{ include (print $.Template.BasePath "/cm.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and $comp.secret (not (empty $comp.secret)) }}
+        {{- if and $comp.secrets.env (not (empty $comp.secrets.env)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and $comp.files $comp.files.cm (not (empty $comp.files.cm)) }}
+        {{- if and $comp.config $comp.config.files (not (empty $comp.config.files)) }}
         checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-files.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and $comp.files $comp.files.secret (not (empty $comp.files.secret)) }}
+        {{- if and $comp.secrets $comp.secrets.files (not (empty $comp.secrets.files)) }}
         checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-files.yaml") . | sha256sum }}'
         {{- end }}
       labels:
@@ -83,21 +87,21 @@ spec:
           env:
             {{- toYaml $config.env | nindent 12 }}
           {{- end }}
-          {{- if or (and $config.persistence $config.persistence.enabled) (and $config.files $config.files.cm) (and $config.files $config.files.secret) }}
+          {{- if or (and $config.persistence $config.persistence.enabled) (and $config.files $config.config.files) (and $config.files $config.secrets.files) }}
           volumeMounts:
             {{- if and $config.persistence $config.persistence.enabled }}
             - name: data
               mountPath: {{ $config.persistence.mountPath | default "/var/lib/data" }}
             {{- end }}
-            {{- if and $config.files $config.files.cm }}
-            {{- range $filename, $fileconf := $config.files.cm }}
+            {{- if and $config.files $config.config.files }}
+            {{- range $filename, $fileconf := $config.config.files }}
             - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
               mountPath: {{ $fileconf.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
-            {{- if and $config.files $config.files.secret }}
-            {{- range $filename, $fileconf := $config.files.secret }}
+            {{- if and $config.files $config.secrets.files }}
+            {{- range $filename, $fileconf := $config.secrets.files }}
             - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
               mountPath: {{ $fileconf.mountPath }}
               subPath: {{ $filename }}
@@ -146,19 +150,19 @@ spec:
 
           # 4. Clean Configuration Management: Full Decoupling via envFrom
           envFrom:
-            {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+            {{- if and .Values.global .Values.global.config.env (not (empty .Values.global.config.env)) }}
             - configMapRef:
                 name: {{ include "chart-model-single.fullname" . }}-global-cm
             {{- end }}
-            {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+            {{- if and .Values.global .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
             - secretRef:
                 name: {{ include "chart-model-single.fullname" . }}-global-secret
             {{- end }}
-            {{- if and $comp.cm (not (empty $comp.cm)) }}
+            {{- if and $comp.config.env (not (empty $comp.config.env)) }}
             - configMapRef:
                 name: {{ include "chart-model-single.fullname" . }}-cm
             {{- end }}
-            {{- if and $comp.secret (not (empty $comp.secret)) }}
+            {{- if and $comp.secrets.env (not (empty $comp.secrets.env)) }}
             - secretRef:
                 name: {{ include "chart-model-single.fullname" . }}-secret
             {{- end }}
@@ -168,17 +172,17 @@ spec:
             {{- end }}
 
           # 2. Tiered "Fail-Fast" Health Probes
-          {{- if and $comp.startupProbe (not (empty $comp.startupProbe)) }}
+          {{- if and $comp.probes.startup (not (empty $comp.probes.startup)) }}
           startupProbe:
-            {{- toYaml $comp.startupProbe | nindent 12 }}
+            {{- toYaml $comp.probes.startup | nindent 12 }}
           {{- end }}
-          {{- if and $comp.livenessProbe (not (empty $comp.livenessProbe)) }}
+          {{- if and $comp.probes.liveness (not (empty $comp.probes.liveness)) }}
           livenessProbe:
-            {{- toYaml $comp.livenessProbe | nindent 12 }}
+            {{- toYaml $comp.probes.liveness | nindent 12 }}
           {{- end }}
-          {{- if and $comp.readinessProbe (not (empty $comp.readinessProbe)) }}
+          {{- if and $comp.probes.readiness (not (empty $comp.probes.readiness)) }}
           readinessProbe:
-            {{- toYaml $comp.readinessProbe | nindent 12 }}
+            {{- toYaml $comp.probes.readiness | nindent 12 }}
           {{- end }}
 
           {{- with $comp.command }}
@@ -196,7 +200,7 @@ spec:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
 
-          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.files.cm)) (not (empty $comp.files.secret)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) }}
+          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.config.files)) (not (empty $comp.secrets.files)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) }}
           volumeMounts:
                     {{- range $name, $config := $comp.initContainers }}
         - name: {{ $name }}
@@ -227,15 +231,15 @@ spec:
             - name: data
               mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
             {{- end }}
-            {{- if and $comp.files $comp.files.cm }}
-            {{- range $filename, $config := $comp.files.cm }}
+            {{- if and $comp.config $comp.config.files }}
+            {{- range $filename, $config := $comp.config.files }}
             - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
-            {{- if and $comp.files $comp.files.secret }}
-            {{- range $filename, $config := $comp.files.secret }}
+            {{- if and $comp.secrets $comp.secrets.files }}
+            {{- range $filename, $config := $comp.secrets.files }}
             - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
@@ -276,43 +280,43 @@ spec:
           resources:
             {{- toYaml $sidecar.resources | nindent 12 }}
           {{- end }}
-          {{- if $sidecar.startupProbe }}
+          {{- if $sidecar.probes.startup }}
           startupProbe:
-            {{- toYaml $sidecar.startupProbe | nindent 12 }}
+            {{- toYaml $sidecar.probes.startup | nindent 12 }}
           {{- end }}
-          {{- if $sidecar.livenessProbe }}
+          {{- if $sidecar.probes.liveness }}
           livenessProbe:
-            {{- toYaml $sidecar.livenessProbe | nindent 12 }}
+            {{- toYaml $sidecar.probes.liveness | nindent 12 }}
           {{- end }}
-          {{- if $sidecar.readinessProbe }}
+          {{- if $sidecar.probes.readiness }}
           readinessProbe:
-            {{- toYaml $sidecar.readinessProbe | nindent 12 }}
+            {{- toYaml $sidecar.probes.readiness | nindent 12 }}
           {{- end }}
-          {{- if $sidecar.cm }}
+          {{- if $sidecar.config.env }}
           envFrom:
             - configMapRef:
                 name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
           {{- end }}
-          {{- if $sidecar.secret }}
+          {{- if $sidecar.secrets.env }}
           envFrom:
             - secretRef:
                 name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
           {{- end }}
-          {{- if or (and $sidecar.persistence $sidecar.persistence.enabled) (and $sidecar.files $sidecar.files.cm) (and $sidecar.files $sidecar.files.secret) }}
+          {{- if or (and $sidecar.persistence $sidecar.persistence.enabled) (and $sidecar.config $sidecar.config.files) (and $sidecar.secrets $sidecar.secrets.files) }}
           volumeMounts:
             {{- if and $sidecar.persistence $sidecar.persistence.enabled }}
             - name: data
               mountPath: {{ $sidecar.persistence.mountPath | default "/var/lib/data" }}
             {{- end }}
-            {{- if and $sidecar.files $sidecar.files.cm }}
-            {{- range $filename, $config := $sidecar.files.cm }}
+            {{- if and $sidecar.config $sidecar.config.files }}
+            {{- range $filename, $config := $sidecar.config.files }}
             - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
-            {{- if and $sidecar.files $sidecar.files.secret }}
-            {{- range $filename, $config := $sidecar.files.secret }}
+            {{- if and $sidecar.secrets $sidecar.secrets.files }}
+            {{- range $filename, $config := $sidecar.secrets.files }}
             - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
@@ -323,15 +327,15 @@ spec:
         {{- end }}
         {{- if $comp.extraContainers }}
           {{- range $name, $sidecar := $comp.extraContainers }}
-          {{- if and $sidecar $sidecar.files $sidecar.files.cm }}
-          {{- range $filename, $config := $sidecar.files.cm }}
+          {{- if and $sidecar $sidecar.config $sidecar.config.files }}
+          {{- range $filename, $config := $sidecar.config.files }}
           - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
             configMap:
               name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
           {{- end }}
           {{- end }}
-          {{- if and $sidecar $sidecar.files $sidecar.files.secret }}
-          {{- range $filename, $config := $sidecar.files.secret }}
+          {{- if and $sidecar $sidecar.secrets $sidecar.secrets.files }}
+          {{- range $filename, $config := $sidecar.secrets.files }}
           - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
             secret:
               secretName: {{ include "<CHART_NAME>.fullname" $ }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
@@ -345,15 +349,15 @@ spec:
       terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
       {{- end }}
 
-      {{- with $comp.nodeSelector }}
+      {{- with $comp.scheduling.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $comp.affinity }}
+      {{- with $comp.scheduling.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with $comp.tolerations }}
+      {{- with $comp.scheduling.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -362,7 +366,7 @@ spec:
         {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.files.cm)) (not (empty $comp.files.secret)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) }}
+      {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.config.files)) (not (empty $comp.secrets.files)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) }}
       volumes:
                 {{- range $name, $config := $comp.initContainers }}
         - name: {{ $name }}
@@ -398,15 +402,15 @@ spec:
             claimName: {{ include "chart-model-single.fullname" . }}
           {{- end }}
         {{- end }}
-        {{- if and $comp.files $comp.files.cm }}
-        {{- range $filename, $config := $comp.files.cm }}
+        {{- if and $comp.config $comp.config.files }}
+        {{- range $filename, $config := $comp.config.files }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
           configMap:
             name: {{ include "chart-model-single.fullname" $ }}-files-cm
         {{- end }}
         {{- end }}
-        {{- if and $comp.files $comp.files.secret }}
-        {{- range $filename, $config := $comp.files.secret }}
+        {{- if and $comp.secrets $comp.secrets.files }}
+        {{- range $filename, $config := $comp.secrets.files }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
           secret:
             secretName: {{ include "chart-model-single.fullname" $ }}-files-secret

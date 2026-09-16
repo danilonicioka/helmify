@@ -1,6 +1,6 @@
 {{- $comp := index .Values "app" | default dict -}}
 {{- if ne $comp.enabled false }}
-{{- if and $comp $comp.keda $comp.keda.enabled -}}
+{{- if and $comp.autoscaling $comp.autoscaling.enabled (eq $comp.autoscaling.engine "keda") -}}
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
@@ -8,7 +8,7 @@ metadata:
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" . "component" "app") | nindent 4 }}
 spec:
-  {{- with $comp.keda.triggerAuth }}
+  {{- with $comp.autoscaling.keda.triggerAuth }}
   {{- if .secretTargetRef }}
   secretTargetRef:
     {{- toYaml .secretTargetRef | nindent 4 }}

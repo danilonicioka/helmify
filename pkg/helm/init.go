@@ -117,7 +117,7 @@ Create the name of the service account to use
 {{- end }}
 `
 
-const globalConfigMapTempl = `{{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) -}}
+const globalConfigMapTempl = `{{- if and .Values.global .Values.global.config .Values.global.config.env (not (empty .Values.global.config.env)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -125,13 +125,13 @@ metadata:
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 data:
-{{- range $key, $val := .Values.global.cm }}
+{{- range $key, $val := .Values.global.config.env }}
   {{ $key }}: {{ $val | quote }}
 {{- end }}
-{{- end }}
+{{- end -}}
 `
 
-const globalSecretTempl = `{{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) -}}
+const globalSecretTempl = `{{- if and .Values.global .Values.global.secrets .Values.global.secrets.env (not (empty .Values.global.secrets.env)) -}}
 apiVersion: v1
 kind: Secret
 metadata:
@@ -139,12 +139,13 @@ metadata:
   labels:
     {{- include "<CHARTNAME>.labels" . | nindent 4 }}
 type: Opaque
-data:
-{{- range $key, $val := .Values.global.secret }}
-  {{ $key }}: {{ $val | b64enc | quote }}
+stringData:
+{{- range $key, $val := .Values.global.secrets.env }}
+  {{ $key }}: {{ $val | quote }}
 {{- end }}
-{{- end }}
+{{- end -}}
 `
+
 const defaultChartfile = `apiVersion: v2
 name: %s
 description: A standardized model Helm chart for Generic Organization applications.
@@ -235,6 +236,9 @@ func chartYAML(appName string, certManagerAsSubchart bool, certManagerVersion st
 		chartFile += fmt.Sprintf(certManagerDependencies, certManagerVersion)
 	}
 	cv := config.GlobalEnvConfig.ChartVersion
+	if cv == "" {
+		cv = "0.1.0"
+	}
 	return []byte(fmt.Sprintf(chartFile, appName, cv, cv))
 }
 

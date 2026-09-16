@@ -29,13 +29,13 @@ spec:
             {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
             checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
             {{- end }}
-            {{- if and .Values.cronjob.files .Values.cronjob.files.cm (not (empty .Values.cronjob.files.cm)) }}
+            {{- if and .Values.cronjob.config .Values.cronjob.config.files (not (empty .Values.cronjob.config.files)) }}
             checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-cronjob-files.yaml") . | sha256sum }}'
             {{- end }}
-            {{- if and .Values.cronjob.files .Values.cronjob.files.secret (not (empty .Values.cronjob.files.secret)) }}
+            {{- if and .Values.cronjob.secrets .Values.cronjob.secrets.files (not (empty .Values.cronjob.secrets.files)) }}
             checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-cronjob-files.yaml") . | sha256sum }}'
             {{- end }}
-            {{- if and .Values.cronjob.secret (not (empty .Values.cronjob.secret)) }}
+            {{- if and .Values.cronjob.secrets.env (not (empty .Values.cronjob.secrets.env)) }}
             checksum/secret: '{{ include (print $.Template.BasePath "/secret-cronjob.yaml") . | sha256sum }}'
             {{- end }}
           labels:
@@ -67,11 +67,11 @@ spec:
                     name: {{ include "<CHART_NAME>.fullname" . }}-global-cm
                 - secretRef:
                     name: {{ include "<CHART_NAME>.fullname" . }}-global-secret
-                {{- if and .Values.cronjob.cm (not (empty .Values.cronjob.cm)) }}
+                {{- if and .Values.cronjob.config.env (not (empty .Values.cronjob.config.env)) }}
                 - configMapRef:
                     name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-cm
                 {{- end }}
-                {{- if and .Values.cronjob.secret (not (empty .Values.cronjob.secret)) }}
+                {{- if and .Values.cronjob.secrets.env (not (empty .Values.cronjob.secrets.env)) }}
                 - secretRef:
                     name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-secret
                 {{- end }}
@@ -91,16 +91,16 @@ spec:
                   subPath: {{ .Values.cronjob.persistence.subPath }}
                   {{- end }}
                 {{- end }}
-                {{- if and .Values.cronjob.files .Values.cronjob.files.cm }}
-                {{- range $key, $val := .Values.cronjob.files.cm }}
+                {{- if and .Values.cronjob.config .Values.cronjob.config.files }}
+                {{- range $key, $val := .Values.cronjob.config.files }}
                 - name: files
                   mountPath: {{ $val.path }}
                   subPath: {{ $key | replace "." "-" }}
                   readOnly: true
                 {{- end }}
                 {{- end }}
-                {{- if and .Values.cronjob.files .Values.cronjob.files.secret }}
-                {{- range $key, $val := .Values.cronjob.files.secret }}
+                {{- if and .Values.cronjob.secrets .Values.cronjob.secrets.files }}
+                {{- range $key, $val := .Values.cronjob.secrets.files }}
                 - name: files-secret
                   mountPath: {{ $val.path }}
                   subPath: {{ $key | replace "." "-" }}
@@ -128,12 +128,12 @@ spec:
                 claimName: {{ include "<CHART_NAME>.fullname" . }}-cronjob
               {{- end }}
             {{- end }}
-            {{- if and .Values.cronjob.files .Values.cronjob.files.cm (not (empty .Values.cronjob.files.cm)) }}
+            {{- if and .Values.cronjob.config .Values.cronjob.config.files (not (empty .Values.cronjob.config.files)) }}
             - name: files
               configMap:
                 name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-files-cm
             {{- end }}
-            {{- if and .Values.cronjob.files .Values.cronjob.files.secret (not (empty .Values.cronjob.files.secret)) }}
+            {{- if and .Values.cronjob.secrets .Values.cronjob.secrets.files (not (empty .Values.cronjob.secrets.files)) }}
             - name: files-secret
               secret:
                 secretName: {{ include "<CHART_NAME>.fullname" . }}-cronjob-files-secret

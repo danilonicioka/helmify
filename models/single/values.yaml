@@ -14,8 +14,10 @@ fullnameOverride: ""
 
 # -- Global configuration shared across all deployments in the chart.
 global:
-  cm: {}
-  secret: {}
+  config:
+    env: {}
+  secrets:
+    env: {}
 
 # ==============================================================================
 # APPLICATION DEPLOYMENT CONFIGURATION (chart-model-single)
@@ -54,12 +56,23 @@ chart-model-single:
   # ----------------------------------------------------------------------------
   # APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
-  # ConfigMaps unique to this service container.
-  cm:
-    TZ: "America/Belem"
+  config:
+    env:
+      TZ: "America/Belem"
+    files: {}
+      #   nginx.conf:
+      #     mountPath: "/etc/nginx/nginx.conf"
+      #     content: |
+      #       user nginx;
+      #       worker_processes auto;
 
-  # Sensitive variables unique to this service container (Secrets).
-  secret: {}
+  secrets:
+    env: {}
+    files: {}
+      #   key.p12:
+      #     mountPath: "/app/certs/key.p12"
+      #     b64enc: true
+      #     content: "MIIKrAIB..."
 
   vso:
     enabled: false
@@ -68,18 +81,6 @@ chart-model-single:
     files: {}
       #   my_vault_key.p12:
       #     mountPath: "/app/certs/my_vault_key.p12"
-  files:
-    cm: {}
-      #   nginx.conf:
-      #     mountPath: "/etc/nginx/nginx.conf"
-      #     content: |
-      #       user nginx;
-      #       worker_processes auto;
-    secret: {}
-      #   key.p12:
-      #     mountPath: "/app/certs/key.p12"
-      #     b64enc: true
-      #     content: "MIIKrAIB..."
   # ----------------------------------------------------------------------------
   # RESOURCES
   # ----------------------------------------------------------------------------
@@ -92,45 +93,45 @@ chart-model-single:
       cpu: 30m
       memory: 256Mi
 
-  hpa:
+  autoscaling:
     enabled: false
-    minReplicas: 1
-    maxReplicas: 2
-    metrics:
-      - type: Resource
-        resource:
-          name: memory
-          target:
-            type: Utilization
-            averageUtilization: 180
-    behavior:
-      scaleDown:
-        stabilizationWindowSeconds: 120
-      scaleUp:
-        stabilizationWindowSeconds: 0
-        policies:
-          - type: Percent
-            value: 100
-            periodSeconds: 15
+    engine: "" # Options: "hpa", "keda"
+    keda:
+      minReplicas: 3
+      maxReplicas: 20
+      pollingInterval: 30
+      cooldownPeriod: 300
+      triggers:
+        - type: rabbitmq
+          metadata:
+            queueName: "jurisprudencia.celery.knowledge"
+            queueLength: "200"
+      triggerAuth:
+        secretTargetRef:
+          - parameter: host
+            name: "iande-global-secret"
+            key: "JURISPRUDENCIA_RABBITMQ_URL"
+    hpa:
+      minReplicas: 1
+      maxReplicas: 2
+      metrics:
+        - resource:
+            name: memory
+            target:
+              averageUtilization: 180
+              type: Utilization
+          type: Resource
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 120
+        scaleUp:
+          policies:
+            - periodSeconds: 15
+              type: Percent
+              value: 100
+          stabilizationWindowSeconds: 0
 
-  # keda:
-  #   enabled: true
-  #   minReplicas: 1
-  #   maxReplicas: 5
-  #   pollingInterval: 30
-  #   cooldownPeriod: 300
-  #   triggers:
-  #     - type: rabbitmq
-  #       metadata:
-  #         queueName: "my-queue"
-  #         queueLength: "5"
-  #   triggerAuth:
-  #     secretTargetRef:
-  #       - parameter: host
-  #         name: "my-secret"
-  #         key: "RABBITMQ_URL"
-
-
+  # ----------------------------------------------------------------------------
   # ----------------------------------------------------------------------------
   # ROUTING & NETWORKING
   # ----------------------------------------------------------------------------
@@ -200,30 +201,28 @@ chart-model-single:
   # ----------------------------------------------------------------------------
   # PROBES & LIFECYCLE
   # ----------------------------------------------------------------------------
-  # Probes are empty by default; the recommended tcpSocket configuration is commented below.
-  startupProbe:
-    tcpSocket:
-      port: http
-    initialDelaySeconds: 0
-    periodSeconds: 5
-    failureThreshold: 30
-    successThreshold: 1
-
-  livenessProbe:
-    tcpSocket:
-      port: http
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    failureThreshold: 3
-    successThreshold: 1
-
-  readinessProbe:
-    tcpSocket:
-      port: http
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    failureThreshold: 3
-    successThreshold: 1
+  probes:
+    startup:
+      tcpSocket:
+        port: http
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      failureThreshold: 30
+      successThreshold: 1
+    liveness:
+      tcpSocket:
+        port: http
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
+    readiness:
+      tcpSocket:
+        port: http
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
 
   # -- Deployment strategy. Use 'RollingUpdate' or 'Recreate' (e.g. for RWO volume claims).
   strategy:
@@ -238,20 +237,21 @@ chart-model-single:
   # ----------------------------------------------------------------------------
   # SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  nodeSelector: {}
-  tolerations: []
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-                - key: app.kubernetes.io/component
-                  operator: In
-                  values:
-                    - chart-model-single
-            topologyKey: kubernetes.io/hostname
+  scheduling:
+    nodeSelector: {}
+    tolerations: []
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/component
+                    operator: In
+                    values:
+                      - chart-model-single
+              topologyKey: kubernetes.io/hostname
 
   # ----------------------------------------------------------------------------
   # INIT CONTAINERS

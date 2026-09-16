@@ -1,9 +1,8 @@
-global:
-  cm:
-    TZ: "America/Belem"
-
 api:
-  cm: {}
-
+  config:
+    env:
+      TZ: "America/Belem"
 app:
-  cm: {}
+  config:
+    env:
+      TZ: "America/Belem"

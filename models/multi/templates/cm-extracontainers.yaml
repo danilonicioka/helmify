@@ -1,6 +1,6 @@
 {{- range $compName, $comp := .Values.components }}
 {{- range $name, $sidecar := $comp.extraContainers }}
-{{- if and $sidecar $sidecar.cm }}
+{{- if and $sidecar $sidecar.config.env }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -9,15 +9,15 @@ metadata:
     {{- include "chart-model-multi.labels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $compName }}
 data:
-  {{- toYaml $sidecar.cm | nindent 2 }}
+  {{- toYaml $sidecar.config.env | nindent 2 }}
 ---
 {{- end }}
 {{- end }}
 {{- end }}
 {{- range $compName, $comp := .Values.components }}
 {{- range $name, $sidecar := $comp.extraContainers }}
-{{- if and $sidecar $sidecar.files $sidecar.files.cm }}
-{{- range $filename, $config := $sidecar.files.cm }}
+{{- if and $sidecar $sidecar.config $sidecar.config.files }}
+{{- range $filename, $config := $sidecar.config.files }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

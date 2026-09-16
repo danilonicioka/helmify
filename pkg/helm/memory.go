@@ -98,10 +98,14 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	m.Files[filepath.Join("templates", "secret-global.yaml")] = globalSecretYAML(chartName)
 	if _, ok := values["global"]; !ok {
 		values["global"] = map[string]interface{}{
-			"cm": map[string]interface{}{
-				"TZ": "America/Belem",
+			"config": map[string]interface{}{
+				"env": map[string]interface{}{
+					"TZ": "America/Belem",
+				},
 			},
-			"secret": map[string]interface{}{},
+			"secrets": map[string]interface{}{
+				"env": map[string]interface{}{},
+			},
 		}
 	}
 
@@ -144,11 +148,16 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 				continue
 			}
 
-			if _, hasCm := compMap["cm"]; !hasCm {
-				compMap["cm"] = map[string]interface{}{}
+			if _, hasConfig := compMap["config"]; !hasConfig {
+				compMap["config"] = map[string]interface{}{
+					"env": map[string]interface{}{},
+					"files": map[string]interface{}{},
+				}
 			}
-			if _, hasSecret := compMap["secret"]; !hasSecret {
-				compMap["secret"] = map[string]interface{}{}
+			if _, hasSecrets := compMap["secrets"]; !hasSecrets {
+				compMap["secrets"] = map[string]interface{}{
+					"env": map[string]interface{}{},
+				}
 			}
 			if _, hasRoute := compMap["route"]; !hasRoute {
 				isMulti := false

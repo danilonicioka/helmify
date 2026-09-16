@@ -27,16 +27,16 @@ spec:
         {{- if $annotations }}
         {{- $annotations | nindent 8 }}
         {{- end }}
-        {{- if and .Values.postgres .Values.postgres.cm (not (empty .Values.postgres.cm)) }}
+        {{- if and .Values.postgres .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
         checksum/config: '{{ include (print $.Template.BasePath "/cm-postgres.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.postgres .Values.postgres.secret (not (empty .Values.postgres.secret)) }}
+        {{- if and .Values.postgres .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
         checksum/secret: '{{ include (print $.Template.BasePath "/secret-postgres.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+        {{- if and .Values.global .Values.global.config.env (not (empty .Values.global.config.env)) }}
         checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
         {{- end }}
-        {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+        {{- if and .Values.global .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
         checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
         {{- end }}
       labels:
@@ -59,37 +59,37 @@ spec:
               {{- end }}
             {{- end }}
           
-          {{- if or (and .Values.postgres.cm (not (empty .Values.postgres.cm))) (and .Values.postgres.secret (not (empty .Values.postgres.secret))) (and .Values.global (not (empty .Values.global))) }}
+          {{- if or (and .Values.postgres.config.env (not (empty .Values.postgres.config.env))) (and .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env))) (and .Values.global (not (empty .Values.global))) }}
           envFrom:
-            {{- if and .Values.postgres.cm (not (empty .Values.postgres.cm)) }}
+            {{- if and .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
             - configMapRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-postgres-cm
             {{- end }}
-            {{- if and .Values.postgres.secret (not (empty .Values.postgres.secret)) }}
+            {{- if and .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
             - secretRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-postgres-secret
             {{- end }}
-            {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
+            {{- if and .Values.global .Values.global.config.env (not (empty .Values.global.config.env)) }}
             - configMapRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-global-cm
             {{- end }}
-            {{- if and .Values.global .Values.global.secret (not (empty .Values.global.secret)) }}
+            {{- if and .Values.global .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
             - secretRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-global-secret
             {{- end }}
           {{- end }}
 
-          {{- if and .Values.postgres.startupProbe (not (empty .Values.postgres.startupProbe)) }}
+          {{- if and .Values.postgres.probes.startup (not (empty .Values.postgres.probes.startup)) }}
           startupProbe:
-            {{- toYaml .Values.postgres.startupProbe | nindent 12 }}
+            {{- toYaml .Values.postgres.probes.startup | nindent 12 }}
           {{- end }}
-          {{- if and .Values.postgres.livenessProbe (not (empty .Values.postgres.livenessProbe)) }}
+          {{- if and .Values.postgres.probes.liveness (not (empty .Values.postgres.probes.liveness)) }}
           livenessProbe:
-            {{- toYaml .Values.postgres.livenessProbe | nindent 12 }}
+            {{- toYaml .Values.postgres.probes.liveness | nindent 12 }}
           {{- end }}
-          {{- if and .Values.postgres.readinessProbe (not (empty .Values.postgres.readinessProbe)) }}
+          {{- if and .Values.postgres.probes.readiness (not (empty .Values.postgres.probes.readiness)) }}
           readinessProbe:
-            {{- toYaml .Values.postgres.readinessProbe | nindent 12 }}
+            {{- toYaml .Values.postgres.probes.readiness | nindent 12 }}
           {{- end }}
 
           {{- with .Values.postgres.command }}
@@ -116,15 +116,15 @@ spec:
       terminationGracePeriodSeconds: {{ .Values.postgres.terminationGracePeriodSeconds }}
       {{- end }}
 
-      {{- with .Values.postgres.nodeSelector }}
+      {{- with .Values.postgres.scheduling.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.postgres.affinity }}
+      {{- with .Values.postgres.scheduling.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.postgres.tolerations }}
+      {{- with .Values.postgres.scheduling.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}

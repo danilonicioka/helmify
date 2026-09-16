@@ -1,4 +1,4 @@
-{{- if and .Values.keda .Values.keda.enabled -}}
+{{- if and .Values.autoscaling .Values.autoscaling.enabled (eq .Values.autoscaling.engine "keda") -}}
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "chart-model-single.labels" . | nindent 4 }}
 spec:
-  {{- with .Values.keda.triggerAuth }}
+  {{- with .Values.autoscaling.keda.triggerAuth }}
   {{- if .secretTargetRef }}
   secretTargetRef:
     {{- toYaml .secretTargetRef | nindent 4 }}

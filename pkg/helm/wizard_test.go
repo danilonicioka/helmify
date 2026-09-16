@@ -27,12 +27,8 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 				Service: ServiceParams{
 					Port: 9090,
 				},
-				Cm: map[string]string{
-					"VAR_A": "VAL_A",
-				},
-				Secret: map[string]string{
-					"SECRET_B": "VAL_B",
-				},
+				Config: &ConfigParams{Env: map[string]string{"TZ": "America/Belem"}},
+				Secrets: &ConfigParams{Env: map[string]string{"API_KEY": "12345"}},
 				Route: RouteParams{
 					Path: "/prefix",
 					Default: SubRouteParams{
@@ -61,8 +57,8 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	assert.Contains(t, valuesStr, "repository: quay.io/my-org/my-app")
 	assert.Contains(t, valuesStr, "tag: v2.1.0")
 	assert.Contains(t, valuesStr, "port: 9090")
-	assert.Contains(t, valuesStr, "VAR_A: VAL_A")
-	assert.Contains(t, valuesStr, "SECRET_B: VAL_B")
+	assert.Contains(t, valuesStr, "TZ: America/Belem")
+	assert.Contains(t, valuesStr, "API_KEY:")
 	assert.Contains(t, valuesStr, "path: /prefix")
 	assert.Contains(t, valuesStr, "default.host.com")
 	assert.Contains(t, valuesStr, "internal.host.com")
@@ -78,11 +74,11 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	devValuesBytes, ok := files["values-ca.yaml"]
 	assert.True(t, ok)
 	devValuesStr := string(devValuesBytes)
-	assert.NotContains(t, devValuesStr, "global:")
-	assert.NotContains(t, devValuesStr, "TZ: America/Sao_Paulo")
+	assert.Contains(t, devValuesStr, "global:")
+	assert.Contains(t, devValuesStr, "TZ: America/Sao_Paulo")
 	assert.Contains(t, devValuesStr, "test-single-app:")
-	assert.Contains(t, devValuesStr, "VAR_A: VAL_A")
-	assert.NotContains(t, devValuesStr, "SECRET_B: VAL_B")
+	assert.Contains(t, devValuesStr, "TZ: America/Belem")
+	assert.NotContains(t, devValuesStr, "API_KEY: 12345")
 	// values-ca.yaml must NOT contain infrastructure-only parameters like replicas, image, port, etc.
 	assert.NotContains(t, devValuesStr, "replicas:")
 	assert.NotContains(t, devValuesStr, "repository:")
@@ -145,7 +141,7 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 	// Check if bff templates are created
 	_, ok = files["templates/deploy-backend.yaml"]
 	assert.True(t, ok)
-	_, ok = files["templates/deploy-bff-emissor.yaml"]
+	_, ok = files["templates/deploy-bff.yaml"]
 	assert.True(t, ok)
 	_, ok = files["templates/deploy-frontend.yaml"]
 	assert.False(t, ok) // frontend templates should be deleted
@@ -165,8 +161,8 @@ func TestGetModelDefaults(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, defaults)
 		assert.Contains(t, defaults, "global")
-		assert.Contains(t, defaults, "backend")
-		assert.Contains(t, defaults, "frontend")
+		assert.Contains(t, defaults, "api")
+		assert.Contains(t, defaults, "app")
 	})
 
 	t.Run("invalid type", func(t *testing.T) {
@@ -215,13 +211,13 @@ func TestRouteHostPrefixCalculation(t *testing.T) {
 	prefix3 := getRouteHostPrefix("gotenberg", "api", "/api", true)
 	assert.Equal(t, "gotenberg", prefix3)
 
-	// Multi deployment - generic component (api), no path, should append suffix (api normalizes to api-emissor)
+	// Multi deployment - generic component (api), no path, should append suffix
 	prefix4 := getRouteHostPrefix("gotenberg", "api", "", true)
-	assert.Equal(t, "gotenberg-api-emissor", prefix4)
+	assert.Equal(t, "gotenberg-api", prefix4)
 
 	// Multi deployment - suffix already exists in component name, no double suffix
-	prefix5 := getRouteHostPrefix("gotenberg", "gotenberg-api-emissor", "", true)
-	assert.Equal(t, "gotenberg-api-emissor", prefix5)
+	prefix5 := getRouteHostPrefix("gotenberg", "gotenberg-api", "", true)
+	assert.Equal(t, "gotenberg-api", prefix5)
 }
 
 func TestWriteTarGzStructure(t *testing.T) {

@@ -101,8 +101,6 @@ func ProcessObjMeta(appMeta helmify.AppMetadata, obj *unstructured.Unstructured,
 	compName := options.component
 	if compName == "" {
 		compName = GetComponent(obj)
-	} else {
-		compName = compName
 	}
 
 	var err error

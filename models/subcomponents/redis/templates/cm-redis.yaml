@@ -1,4 +1,4 @@
-{{- if and .Values.redis .Values.redis.cm (not (empty .Values.redis.cm)) -}}
+{{- if and .Values.redis .Values.redis.config.env (not (empty .Values.redis.config.env)) -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
 data:
-  {{- range $key, $val := .Values.redis.cm }}
+  {{- range $key, $val := .Values.redis.config.env }}
   {{ $key }}: {{ $val | quote }}
   {{- end }}
 {{- end }}

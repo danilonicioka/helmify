@@ -1,3 +1,4 @@
 chart-model-single:
-  cm:
-    TZ: "America/Belem"
+  config:
+    env:
+      TZ: "America/Belem"
