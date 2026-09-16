@@ -12,6 +12,9 @@ metadata:
   {{- end }}
 spec:
   schedule: {{ .Values.cronjob.schedule | quote }}
+  {{- if hasKey .Values.cronjob "suspend" }}
+  suspend: {{ .Values.cronjob.suspend }}
+  {{- end }}
   concurrencyPolicy: {{ default "Allow" .Values.cronjob.concurrencyPolicy }}
   successfulJobsHistoryLimit: {{ default 3 .Values.cronjob.successfulJobsHistoryLimit }}
   failedJobsHistoryLimit: {{ default 1 .Values.cronjob.failedJobsHistoryLimit }}

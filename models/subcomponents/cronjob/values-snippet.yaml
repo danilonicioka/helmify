@@ -5,6 +5,10 @@ cronjob:
   enabled: true
   # -- Schedule for the CronJob.
   schedule: "0 0 * * *"
+  # -- Suspend subsequent executions.
+  suspend: false
+  # -- Specifies how to treat concurrent executions of a Job.
+  concurrencyPolicy: Allow
 
   # ----------------------------------------------------------------------------
   # IMAGE & WORKLOAD

@@ -106,8 +106,9 @@ func main() {
 	done := make(chan os.Signal, 1)
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
+	logrus.WithField("port", port).Info("Starting Helmify")
+	
 	go func() {
-		logrus.WithField("port", port).Info("Starting Helmify")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logrus.WithError(err).Fatal("Server failed to start")
 		}

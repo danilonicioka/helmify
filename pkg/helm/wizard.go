@@ -144,6 +144,8 @@ type WizardParams struct {
 type DeploymentParams struct {
 	WorkloadType     string                      `json:"workloadType,omitempty" validate:"omitempty,oneof=Deployment StatefulSet DaemonSet CronJob"`
 	Schedule         string                      `json:"schedule,omitempty"`
+	Suspend          *bool                       `json:"suspend,omitempty"`
+	ConcurrencyPolicy string                     `json:"concurrencyPolicy,omitempty"`
 	Replicas         *int                        `json:"replicas" validate:"omitempty,min=0"`
 	Image            ImageParams                 `json:"image" validate:"required"`
 	Command          []string                    `json:"command,omitempty"`

@@ -94,6 +94,12 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				if schedule, found, _ := unstructured.NestedString(obj.Object, "spec", "schedule"); found {
 					depParams.Schedule = schedule
 				}
+				if suspend, found, _ := unstructured.NestedBool(obj.Object, "spec", "suspend"); found {
+					depParams.Suspend = &suspend
+				}
+				if cp, found, _ := unstructured.NestedString(obj.Object, "spec", "concurrencyPolicy"); found {
+					depParams.ConcurrencyPolicy = cp
+				}
 			} else {
 				depParams = DeploymentParams{
 					WorkloadType: kind,
@@ -682,6 +688,13 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				"failedJobsHistoryLimit": 1,
 				"restartPolicy": "OnFailure",
 			}
+
+			if depParams.Suspend != nil {
+				cronjobData["suspend"] = *depParams.Suspend
+			}
+			if depParams.ConcurrencyPolicy != "" {
+				cronjobData["concurrencyPolicy"] = depParams.ConcurrencyPolicy
+			}
 			
 			if len(depParams.Command) > 0 {
 				cronjobData["command"] = depParams.Command
@@ -742,7 +755,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			}
 
 			// Assign to SubcomponentsData and remove from Deployments
-			params.SubcomponentsData[compName] = cronjobData
+			params.SubcomponentsData["cronjob"] = cronjobData
 			delete(params.Deployments, compName)
 		}
 	}
