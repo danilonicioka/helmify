@@ -86,6 +86,48 @@
                 workloadType: 'Deployment',
                 schedule: '',
                 replicas: isFrontend ? 0 : 2,
+                image: {
+                    repository: `tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/tjpa/${chartNameVal}-${suffix}`,
+                    tag: 'latest'
+                },
+                service: {
+                    ports: {
+                        http: {
+                            port: 8080,
+                            protocol: 'TCP'
+                        }
+                    }
+                },
+                config: { env: {}, files: {} },
+                secrets: { env: {}, files: {} },
+                connectsTo: [],
+                runtime: '',
+                persistence: { enabled: false, mountPath: '/var/lib/data' },
+                initContainers: {},
+                extraContainers: {},
+                vso: { enabled: false },
+                route: {
+                    path: '',
+                    default: { enabled: true, host: `${hostPrefix}{{DEFAULT_DOMAIN}}` },
+                    internal: { enabled: false, host: `${hostPrefix}{{INTERNAL_DOMAIN}}` },
+                    external: { enabled: false, host: `${hostPrefix}{{EXTERNAL_DOMAIN}}` },
+                    additional: {}
+                },
+                hpa: {
+                    enabled: false,
+                    minReplicas: 1,
+                    maxReplicas: 2,
+                    metrics: [
+                        { type: 'Resource', resource: { name: 'memory', target: { type: 'Utilization', averageUtilization: 180 } } }
+                    ],
+                    behavior: {
+                        scaleDown: { stabilizationWindowSeconds: 120 },
+                        scaleUp: { stabilizationWindowSeconds: 0, policies: [ { type: 'Percent', value: 100, periodSeconds: 15 } ] }
+                    }
+                }
+            };
+        }
+
         // Combine inputs and return JSON payload
         function buildPayload() {
             saveActiveComponentState();
