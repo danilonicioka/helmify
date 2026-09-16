@@ -221,10 +221,11 @@ type ImageParams struct {
 
 // ServiceParams configures the internal service port.
 type ServiceParams struct {
-	Port       int `json:"port"`
+	Port       int `json:"port,omitempty" yaml:"port,omitempty"`
 	Ports      map[string]struct {
-		Port       int `json:"port" yaml:"port"`
-	} `json:"ports"`
+		Port       int    `json:"port" yaml:"port"`
+		Protocol   string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+	} `json:"ports,omitempty" yaml:"ports,omitempty"`
 }
 
 func flattenMap(m map[string]interface{}, prefix []string, result map[string]interface{}) {

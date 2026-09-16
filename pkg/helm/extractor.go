@@ -714,7 +714,7 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 
 	if ports, found, _ := unstructured.NestedSlice(container, "ports"); found && len(ports) > 0 {
 		if depParams.Service.Ports == nil {
-			depParams.Service.Ports = make(map[string]struct{Port int `json:"port" yaml:"port"`})
+			depParams.Service.Ports = make(map[string]struct{Port int `json:"port" yaml:"port"`; Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`})
 		}
 		for _, p := range ports {
 			portMap := p.(map[string]interface{})
@@ -724,7 +724,7 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 			if name == "" {
 				name = fmt.Sprintf("%d-tcp", containerPort)
 			}
-			depParams.Service.Ports[name] = struct{Port int `json:"port" yaml:"port"`}{
+			depParams.Service.Ports[name] = struct{Port int `json:"port" yaml:"port"`; Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`}{
 				Port:     int(containerPort),
 			}
 		}
@@ -852,7 +852,7 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 
 	if ports, found, _ := unstructured.NestedSlice(container, "ports"); found && len(ports) > 0 {
 		if depParams.Service.Ports == nil {
-			depParams.Service.Ports = make(map[string]struct{Port int `json:"port" yaml:"port"`})
+			depParams.Service.Ports = make(map[string]struct{Port int `json:"port" yaml:"port"`; Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`})
 		}
 		for _, p := range ports {
 			portMap := p.(map[string]interface{})
@@ -862,7 +862,7 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 			if name == "" {
 				name = fmt.Sprintf("%d-tcp", containerPort)
 			}
-			depParams.Service.Ports[name] = struct{Port int `json:"port" yaml:"port"`}{
+			depParams.Service.Ports[name] = struct{Port int `json:"port" yaml:"port"`; Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`}{
 				Port:     int(containerPort),
 			}
 		}
