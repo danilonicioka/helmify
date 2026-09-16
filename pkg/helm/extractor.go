@@ -230,6 +230,58 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					}
 				}
 			}
+			if len(containers) > 1 {
+				for i := 1; i < len(containers); i++ {
+					container := containers[i].(map[string]interface{})
+					sidecarName, _, _ := unstructured.NestedString(container, "name")
+					if sidecarName == "" {
+						sidecarName = fmt.Sprintf("sidecar-%d", i)
+					}
+					if mounts, mOk, _ := unstructured.NestedSlice(container, "volumeMounts"); mOk {
+						for _, m := range mounts {
+							mount := m.(map[string]interface{})
+							name, _, _ := unstructured.NestedString(mount, "name")
+							mountPath, _, _ := unstructured.NestedString(mount, "mountPath")
+							subPath, _, _ := unstructured.NestedString(mount, "subPath")
+							if src, found := volSources[name]; found {
+								currentVols = append(currentVols, VolumeMapping{
+									MountPath:   mountPath,
+									SubPath:     subPath,
+									SourceType:  src.Type,
+									SourceName:  src.Name,
+									SidecarName: sidecarName,
+								})
+							}
+						}
+					}
+				}
+			}
+			if len(initContainers) > 0 {
+				for i := 0; i < len(initContainers); i++ {
+					container := initContainers[i].(map[string]interface{})
+					sidecarName, _, _ := unstructured.NestedString(container, "name")
+					if sidecarName == "" {
+						sidecarName = fmt.Sprintf("init-%d", i)
+					}
+					if mounts, mOk, _ := unstructured.NestedSlice(container, "volumeMounts"); mOk {
+						for _, m := range mounts {
+							mount := m.(map[string]interface{})
+							name, _, _ := unstructured.NestedString(mount, "name")
+							mountPath, _, _ := unstructured.NestedString(mount, "mountPath")
+							subPath, _, _ := unstructured.NestedString(mount, "subPath")
+							if src, found := volSources[name]; found {
+								currentVols = append(currentVols, VolumeMapping{
+									MountPath:   mountPath,
+									SubPath:     subPath,
+									SourceType:  src.Type,
+									SourceName:  src.Name,
+									SidecarName: sidecarName,
+								})
+							}
+						}
+					}
+				}
+			}
 			volMappings[name] = currentVols
 
 			// Extract annotations/labels
@@ -282,13 +334,43 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			depParams := params.Deployments[compName]
 			ports, found, err := unstructured.NestedSlice(obj.Object, "spec", "ports")
 			if err == nil && found && len(ports) > 0 {
-				portMap := ports[0].(map[string]interface{})
-				if portInt, ok := portMap["port"].(int64); ok {
-					depParams.Service.Port = int(portInt)
-				} else if portFloat, ok := portMap["port"].(float64); ok {
-					depParams.Service.Port = int(portFloat)
+				if depParams.Service.Ports == nil {
+					depParams.Service.Ports = make(map[string]struct {
+						Port     int    `json:"port" yaml:"port"`
+						Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+					})
 				}
+				for _, p := range ports {
+					portMap := p.(map[string]interface{})
+					name, _, _ := unstructured.NestedString(portMap, "name")
+					protocol, _, _ := unstructured.NestedString(portMap, "protocol")
+					
+					var portVal int
+					if portInt, ok := portMap["port"].(int64); ok {
+						portVal = int(portInt)
+					} else if portFloat, ok := portMap["port"].(float64); ok {
+						portVal = int(portFloat)
+					}
 
+					if portVal > 0 {
+						if name == "" {
+							name = fmt.Sprintf("%d-%s", portVal, strings.ToLower(protocol))
+							if protocol == "" {
+								name = fmt.Sprintf("%d-tcp", portVal)
+							}
+						}
+						depParams.Service.Ports[name] = struct {
+							Port     int    `json:"port" yaml:"port"`
+							Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+						}{Port: portVal, Protocol: protocol}
+						
+						// Maintain backward compatibility for single-port fields
+						if depParams.Service.Port == nil || name == "http" {
+							pCopy := portVal
+							depParams.Service.Port = &pCopy
+						}
+					}
+				}
 			}
 			params.Deployments[compName] = depParams
 

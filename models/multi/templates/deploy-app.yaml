@@ -165,6 +165,7 @@ spec:
         {{- if ne ($sidecar.enabled | default true) false }}
         - name: {{ $name }}
           image: "{{ $sidecar.image.repository }}:{{ $sidecar.image.tag }}"
+          imagePullPolicy: {{ $sidecar.image.pullPolicy | default "IfNotPresent" }}
           {{- if $sidecar.command }}
           command:
             {{- toYaml $sidecar.command | nindent 12 }}

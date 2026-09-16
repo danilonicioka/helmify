@@ -258,10 +258,31 @@ chart-model-single:
   # ----------------------------------------------------------------------------
   # You can inject initialization containers into the pod.
   initContainers: {}
+  #  init-example:
+  #    enabled: true
   #    image:
   #      repository: alpine/curl
   #      tag: latest
+  #      pullPolicy: IfNotPresent
   #    command: ["sh", "-c", "echo hello"]
+  #    args: []
+  #    env: []
+  #    envFrom: []
+  #    persistence:
+  #      enabled: true
+  #      mountPath: /var/lib/data
+  #    config:
+  #      files:
+  #        example.txt:
+  #          mountPath: /etc/config/example.txt
+  #          content: |
+  #            hello world
+  #    secrets:
+  #      files:
+  #        secret.txt:
+  #          mountPath: /etc/secret/secret.txt
+  #          content: |
+  #            secret world
 
   # ----------------------------------------------------------------------------
   # EXTRA CONTAINERS
@@ -270,6 +291,7 @@ chart-model-single:
   # The key (e.g. 'sidecar-example') will be used as the container name.
   extraContainers: {}
   #  sidecar-example:
+  #    enabled: true
   #    image:
   #      repository: sidecar-image
   #      tag: latest
@@ -278,13 +300,35 @@ chart-model-single:
   #    args: []
   #    service:
   #      ports:
-  #        8080-tcp:
-  #          port: 8080
-  #    resources: {}
-  #    startupProbe: {}
-  #    livenessProbe: {}
-  #    readinessProbe: {}
-  #    files:
-  #      cm: {}
-  #      secret: {}
-  #      enabled: false
+  #        http:
+  #          port: 8081
+  #    resources:
+  #      limits:
+  #        cpu: "100m"
+  #        memory: "128Mi"
+  #      requests:
+  #        cpu: "100m"
+  #        memory: "128Mi"
+  #    probes:
+  #      startup: {}
+  #      liveness: {}
+  #      readiness: {}
+  #    persistence:
+  #      enabled: true
+  #      mountPath: /var/lib/data
+  #    config:
+  #      env:
+  #        EXAMPLE_VAR: "value"
+  #      files:
+  #        example.txt:
+  #          mountPath: /etc/config/example.txt
+  #          content: |
+  #            hello world
+  #    secrets:
+  #      env:
+  #        SECRET_VAR: "secret-value"
+  #      files:
+  #        secret.txt:
+  #          mountPath: /etc/secret/secret.txt
+  #          content: |
+  #            secret world

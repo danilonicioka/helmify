@@ -178,7 +178,6 @@ type SidecarParams struct {
 	Config      *ConfigParams     `json:"config,omitempty"`
 	Secrets     *ConfigParams     `json:"secrets,omitempty"`
 	Persistence PersistenceParams `json:"persistence,omitempty"`
-	Scheduling  *SchedulingParams `json:"scheduling,omitempty"`
 }
 
 // ConfigParams holds env vars and mounted files
@@ -221,7 +220,7 @@ type ImageParams struct {
 
 // ServiceParams configures the internal service port.
 type ServiceParams struct {
-	Port       int `json:"port,omitempty" yaml:"port,omitempty"`
+	Port       *int `json:"port,omitempty" yaml:"port,omitempty"`
 	Ports      map[string]struct {
 		Port       int    `json:"port" yaml:"port"`
 		Protocol   string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
@@ -432,7 +431,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Replicas != nil {
 			_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, *depConfig.Replicas)
 		}
-		svcPort := depConfig.Service.Port
+		svcPort := 0
+		if depConfig.Service.Port != nil {
+			svcPort = *depConfig.Service.Port
+		}
 		if svcPort == 0 && depConfig.Service.Ports != nil {
 			if httpPort, ok := depConfig.Service.Ports["http"]; ok {
 				svcPort = httpPort.Port
@@ -710,7 +712,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.Replicas != nil {
 				_ = setYamlPath(&rootNode, []string{compName, "replicas"}, *depConfig.Replicas)
 			}
-			svcPort := depConfig.Service.Port
+			svcPort := 0
+			if depConfig.Service.Port != nil {
+				svcPort = *depConfig.Service.Port
+			}
 			if svcPort == 0 && depConfig.Service.Ports != nil {
 				if httpPort, ok := depConfig.Service.Ports["http"]; ok {
 					svcPort = httpPort.Port
