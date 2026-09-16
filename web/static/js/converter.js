@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: my-app
-        image: {{REGISTRY}}/my-app:1.0.0
+        image: "{{REGISTRY}}/my-app:1.0.0"
         ports:
         - containerPort: 8080
         env:
@@ -120,6 +120,14 @@ spec:
             } finally {
                 previewLoading = false;
                 if (spinner) spinner.style.display = 'none';
+                
+                // If the very first load fails (e.g. invalid default manifest),
+                // ensure we still render the textarea so the user isn't stuck on the placeholder.
+                if (isFirstLoad) {
+                    isFirstLoad = false;
+                    activeFile = 'source.yaml';
+                    renderActiveFileContent();
+                }
             }
         }
 
