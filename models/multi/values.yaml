@@ -1,4 +1,4 @@
-# Standardized Standardized Helm Chart values.yaml
+# Standardized Helm Chart values.yaml
 # Designed in compliance with OpenShift Security Context Constraints (SCC)
 # and the 6 Core Architectural Rules.
 
