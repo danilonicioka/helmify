@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/danilonicioka/helmify/pkg/config"
+	"github.com/sirupsen/logrus"
 	"github.com/danilonicioka/helmify/pkg/decoder"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -57,6 +58,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 	for obj := range streamedObjects {
 		objects = append(objects, obj)
 	}
+	logrus.Infof("Extracted %d objects", len(objects))
 	envTracker := make(map[string]*EnvTarget)
 
 	volMappings := make(map[string][]VolumeMapping)
@@ -631,6 +633,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 		return params, fmt.Errorf("no valid Kubernetes Deployments found in input (ensure your manifests are correct and contain at least one Deployment)")
 	}
 
+	logrus.Info("Pass 5 complete")
 	return params, nil
 }
 

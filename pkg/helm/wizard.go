@@ -14,6 +14,7 @@ import (
 
 	roothelmify "github.com/danilonicioka/helmify"
 	"github.com/danilonicioka/helmify/pkg/config"
+	"github.com/sirupsen/logrus"
 	"github.com/danilonicioka/helmify/pkg/helmify"
 	"github.com/danilonicioka/helmify/pkg/processor"
 	"gopkg.in/yaml.v3"
@@ -318,6 +319,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	if params.Type != "single" && params.Type != "multi" {
 		return nil, fmt.Errorf("type must be 'single' or 'multi'")
 	}
+	logrus.Infof("Starting GenerateWizardChart for %s", params.ChartName)
 
 	basePath := "models/single"
 	if params.Type == "multi" {
@@ -932,6 +934,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 	outputFiles[".gitlab-ci.yml"] = roothelmify.GitLabCI
 
+	logrus.Info("GenerateWizardChart complete")
 	return outputFiles, nil
 }
 
