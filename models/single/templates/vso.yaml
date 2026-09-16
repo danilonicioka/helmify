@@ -1,0 +1,42 @@
+{- $comp := index .Values .Chart.Name | default dict -}
+{- if ne $comp.enabled false }
+{- if and $comp.vso $comp.vso.enabled }
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-sa
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-vault-auth
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+spec:
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: {{ .Values.vso.role | quote }}
+    serviceAccount: {{ include "chart-model-single.fullname" . }}-sa
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-vso-secret-obj
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+spec:
+  vaultAuthRef: {{ include "chart-model-single.fullname" . }}-vault-auth
+  type: kv-v2
+  mount: kv
+  path: {{ .Values.vso.path | quote }}
+  destination:
+    name: {{ include "chart-model-single.fullname" . }}-vso-secret
+    create: true
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: {{ include "chart-model-single.fullname" . }}
+{- end }
+{- end }

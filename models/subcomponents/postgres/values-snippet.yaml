@@ -156,6 +156,7 @@ postgres:
   #      files:
   #        secret.txt:
   #          mountPath: /etc/secret/secret.txt
+  #          b64enc: false
   #          content: |
   #            secret world
 
@@ -205,5 +206,6 @@ postgres:
   #      files:
   #        secret.txt:
   #          mountPath: /etc/secret/secret.txt
+  #          b64enc: false
   #          content: |
   #            secret world

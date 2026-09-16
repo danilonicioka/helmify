@@ -253,6 +253,7 @@ api:
   #      files:
   #        secret.txt:
   #          mountPath: /etc/secret/secret.txt
+  #          b64enc: false
   #          content: |
   #            secret world
 
@@ -302,6 +303,7 @@ api:
   #      files:
   #        secret.txt:
   #          mountPath: /etc/secret/secret.txt
+  #          b64enc: false
   #          content: |
   #            secret world
 
@@ -537,6 +539,7 @@ app:
   #      files:
   #        secret.txt:
   #          mountPath: /etc/secret/secret.txt
+  #          b64enc: false
   #          content: |
   #            secret world
 
@@ -586,5 +589,6 @@ app:
   #      files:
   #        secret.txt:
   #          mountPath: /etc/secret/secret.txt
+  #          b64enc: false
   #          content: |
   #            secret world

@@ -1,0 +1,147 @@
+{- $comp := .Values.app -}
+{- if ne $comp.enabled false }
+{- if ne $comp.workloadType "CronJob" }
+
+{- /* 1. Default Route */ -}
+{- if and $comp $comp.route $comp.route.default $comp.route.default.enabled -}
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "chart-model-multi-app.fullname" . }}
+  labels:
+    {{- include "chart-model-multi-app.labels" . | nindent 4 }}
+  {{- with $comp.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $comp.route.default.host }}
+  host: {{ $comp.route.default.host | quote }}
+  {{- end }}
+  {{- if $comp.route.path }}
+  path: {{ $comp.route.path | quote }}
+  {{- end }}
+  {{- if $comp.route.tls }}
+  tls:
+    {{- toYaml $comp.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "chart-model-multi-app.fullname" . }}
+    weight: 100
+  port:
+    targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
+  wildcardPolicy: None
+{- end }
+
+{- /* 2. External Route */ -}
+{- if and $comp $comp.route $comp.route.external $comp.route.external.enabled -}
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "chart-model-multi-app.fullname" . }}-ext
+  labels:
+    {{- include "chart-model-multi-app.labels" . | nindent 4 }}
+  {{- with $comp.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $comp.route.external.host }}
+  host: {{ $comp.route.external.host | quote }}
+  {{- end }}
+  {{- if $comp.route.path }}
+  path: {{ $comp.route.path | quote }}
+  {{- end }}
+  {{- if $comp.route.tls }}
+  tls:
+    {{- toYaml $comp.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "chart-model-multi-app.fullname" . }}
+    weight: 100
+  port:
+    targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
+  wildcardPolicy: None
+{- end }
+
+{- /* 3. Internal Route */ -}
+{- if and $comp $comp.route $comp.route.internal $comp.route.internal.enabled -}
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "chart-model-multi-app.fullname" . }}-int
+  labels:
+    {{- include "chart-model-multi-app.labels" . | nindent 4 }}
+  {{- with $comp.route.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $comp.route.internal.host }}
+  host: {{ $comp.route.internal.host | quote }}
+  {{- end }}
+  {{- if $comp.route.path }}
+  path: {{ $comp.route.path | quote }}
+  {{- end }}
+  {{- if $comp.route.tls }}
+  tls:
+    {{- toYaml $comp.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "chart-model-multi-app.fullname" . }}
+    weight: 100
+  port:
+    targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
+  wildcardPolicy: None
+{- end }
+
+{- /* 4. Additional Routes */ -}
+{- if and $comp $comp.route $comp.route.additional -}
+{- range $routeName, $routeConfig := $comp.route.additional }
+{- if ne $routeConfig.enabled false -}
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: {{ include "chart-model-multi-app.fullname" $ }}-{{ $routeName }}
+  labels:
+    {{- include "chart-model-multi-app.labels" $ | nindent 4 }}
+  {{- $annotations := merge ($routeConfig.annotations | default dict) ($comp.route.annotations | default dict) }}
+  {{- if $annotations }}
+  annotations:
+    {{- toYaml $annotations | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $routeConfig.host }}
+  host: {{ $routeConfig.host | quote }}
+  {{- end }}
+  {{- if $routeConfig.path }}
+  path: {{ $routeConfig.path | quote }}
+  {{- else if $comp.route.path }}
+  path: {{ $comp.route.path | quote }}
+  {{- end }}
+  {{- if $routeConfig.tls }}
+  tls:
+    {{- toYaml $routeConfig.tls | nindent 4 }}
+  {{- else if $comp.route.tls }}
+  tls:
+    {{- toYaml $comp.route.tls | nindent 4 }}
+  {{- end }}
+  to:
+    kind: Service
+    name: {{ include "chart-model-multi-app.fullname" $ }}
+    weight: 100
+  port:
+    targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
+  wildcardPolicy: None
+{- end }
+{- end }
+{- end }
+
+{- end }
+{- end }

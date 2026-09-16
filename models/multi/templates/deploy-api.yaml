@@ -33,23 +33,21 @@ spec:
         {{- $annotations | nindent 8 }}
         {{- end }}
         # Deterministic Rollouts: SHA256 checksum annotations to trigger automatic restarts
-        {{- if and .Values.global .Values.global.config.env (not (empty .Values.global.config.env)) }}
-        checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
+        {{- $cmApi := include (print $.Template.BasePath "/cm-api.yaml") . | trim }}
+        {{- if $cmApi }}
+        checksum/cm-api: '{{ $cmApi | sha256sum }}'
         {{- end }}
-        {{- if and .Values.global .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
-        checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
+        {{- $secretApi := include (print $.Template.BasePath "/secret-api.yaml") . | trim }}
+        {{- if $secretApi }}
+        checksum/secret-api: '{{ $secretApi | sha256sum }}'
         {{- end }}
-        {{- if and $comp.config.env (not (empty $comp.config.env)) }}
-        checksum/cm-config: '{{ include (print $.Template.BasePath "/cm-api.yaml") . | sha256sum }}'
+        {{- $cmGlobal := include (print $.Template.BasePath "/cm-global.yaml") . | trim }}
+        {{- if $cmGlobal }}
+        checksum/cm-global: '{{ $cmGlobal | sha256sum }}'
         {{- end }}
-        {{- if and $comp.secrets.env (not (empty $comp.secrets.env)) }}
-        checksum/secret: '{{ include (print $.Template.BasePath "/secret-api.yaml") . | sha256sum }}'
-        {{- end }}
-        {{- if and $comp.config $comp.config.files (not (empty $comp.config.files)) }}
-        checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-api-files.yaml") . | sha256sum }}'
-        {{- end }}
-        {{- if and $comp.secrets $comp.secrets.files (not (empty $comp.secrets.files)) }}
-        checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-api-files.yaml") . | sha256sum }}'
+        {{- $secretGlobal := include (print $.Template.BasePath "/secret-global.yaml") . | trim }}
+        {{- if $secretGlobal }}
+        checksum/secret-global: '{{ $secretGlobal | sha256sum }}'
         {{- end }}
       labels:
         {{- include "chart-model-multi.component.selectorLabels" (dict "context" . "component" "api") | nindent 8 }}
@@ -84,30 +82,32 @@ spec:
           args:
             {{- toYaml $config.args | nindent 12 }}
           {{- end }}
-          {{- if $config.envFrom }}
+          {{- if and $config.config $config.config.env }}
           envFrom:
-            {{- toYaml $config.envFrom | nindent 12 }}
+            - configMapRef:
+                name: {{ include "chart-model-multi-api.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
           {{- end }}
-          {{- if $config.env }}
-          env:
-            {{- toYaml $config.env | nindent 12 }}
+          {{- if and $config.secrets $config.secrets.env }}
+          envFrom:
+            - secretRef:
+                name: {{ include "chart-model-multi-api.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
           {{- end }}
-          {{- if or (and $config.persistence $config.persistence.enabled) (and $config.files $config.config.files) (and $config.files $config.secrets.files) }}
+          {{- if or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}
           volumeMounts:
             {{- if and $config.persistence $config.persistence.enabled }}
             - name: data
               mountPath: {{ $config.persistence.mountPath | default "/var/lib/data" }}
             {{- end }}
-            {{- if and $config.files $config.config.files }}
+            {{- if and $config.config $config.config.files }}
             {{- range $filename, $fileconf := $config.config.files }}
-            - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+            - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
               mountPath: {{ $fileconf.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
-            {{- if and $config.files $config.secrets.files }}
+            {{- if and $config.secrets $config.secrets.files }}
             {{- range $filename, $fileconf := $config.secrets.files }}
-            - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+            - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
               mountPath: {{ $fileconf.mountPath }}
               subPath: {{ $filename }}
             {{- end }}
@@ -161,6 +161,35 @@ spec:
             {{- $hasExtra = true }}
           {{- end }}
         {{- end }}
+        {{- $hasInit := false }}
+        {{- range $name, $config := $comp.initContainers }}
+          {{- if ne ($config.enabled | default true) false }}
+            {{- if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}
+              {{- $hasInit = true }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- if $hasInit }}
+        {{- range $name, $config := $comp.initContainers }}
+        {{- if ne ($config.enabled | default true) false }}
+          {{- if and $config $config.config $config.config.files }}
+          {{- range $filename, $fileconf := $config.config.files }}
+          - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+            configMap:
+              name: {{ include "chart-model-multi-api.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+          {{- end }}
+          {{- end }}
+          {{- if and $config $config.secrets $config.secrets.files }}
+          {{- range $filename, $fileconf := $config.secrets.files }}
+          - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+            secret:
+              secretName: {{ include "chart-model-multi-api.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+          {{- end }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+
         {{- if $hasExtra }}
         {{- range $name, $sidecar := $comp.extraContainers }}
         {{- if ne ($sidecar.enabled | default true) false }}

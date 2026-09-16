@@ -281,6 +281,7 @@ chart-model-single:
   #      files:
   #        secret.txt:
   #          mountPath: /etc/secret/secret.txt
+  #          b64enc: false
   #          content: |
   #            secret world
 
@@ -330,5 +331,6 @@ chart-model-single:
   #      files:
   #        secret.txt:
   #          mountPath: /etc/secret/secret.txt
+  #          b64enc: false
   #          content: |
   #            secret world

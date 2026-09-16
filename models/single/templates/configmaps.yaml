@@ -1,0 +1,121 @@
+{{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if ne $comp.enabled false }}
+{{- if and $comp $comp.config.env (not (empty $comp.config.env)) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-cm
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+data:
+  {{- range $key, $val := $comp.config.env }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+
+{{- end }}
+---
+{{- $comp := index .Values .Chart.Name | default dict -}}
+{{- if ne $comp.enabled false }}
+{{- if and $comp.config $comp.config.files -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-files-cm
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+data:
+{{- range $filename, $config := $comp.config.files }}
+  {{ $filename }}: |
+    {{- $config.content | nindent 4 }}
+{{- end }}
+{{- end }}
+
+{{- end }}
+---
+{{- if and .Values.global .Values.global.config.env (not (empty .Values.global.config.env)) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart-model-single.fullname" . }}-global-cm
+  labels:
+    {{- include "chart-model-single.labels" . | nindent 4 }}
+data:
+  {{- range $key, $val := .Values.global.config.env }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+---
+{{- $comp := .Values }}
+{{- if eq "single" "multi" }}
+{{- $comp = .Values.component }}
+{{- end }}
+{{- range $name, $config := $comp.initContainers }}
+{{- if ne ($config.enabled | default true) false }}
+{{- if and $config.config $config.config.env }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart-model-single.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
+  labels:
+    {{- include "chart-model-single.fullname.labels" $ | nindent 4 }}
+data:
+  {{- toYaml $config.config.env | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- $comp := .Values }}
+{{- if eq "single" "multi" }}
+{{- $comp = .Values.component }}
+{{- end }}
+{{- range $name, $config := $comp.initContainers }}
+{{- if ne ($config.enabled | default true) false }}
+{{- if and $config.config $config.config.files }}
+{{- range $filename, $fileconf := $config.config.files }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart-model-single.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+  labels:
+    {{- include "chart-model-single.fullname.labels" $ | nindent 4 }}
+data:
+  {{ $filename }}: |-
+    {{- $fileconf.content | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+---
+{{- range $name, $sidecar := .Values.component.extraContainers }}
+{{- if and $sidecar $sidecar.config.env }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
+  labels:
+    {{- include "<CHART_NAME>.labels" $ | nindent 4 }}
+data:
+  {{- toYaml $sidecar.config.env | nindent 2 }}
+---
+{{- end }}
+{{- end }}
+{{- range $name, $sidecar := .Values.component.extraContainers }}
+{{- if and $sidecar $sidecar.config $sidecar.config.files }}
+{{- range $filename, $config := $sidecar.config.files }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+  labels:
+    {{- include "<CHART_NAME>.labels" $ | nindent 4 }}
+data:
+  {{ $filename }}: |-
+    {{- $config.content | nindent 4 }}
+---
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+---

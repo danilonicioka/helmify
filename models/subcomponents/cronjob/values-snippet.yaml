@@ -119,6 +119,7 @@ cronjob:
   #      files:
   #        secret.txt:
   #          mountPath: /etc/secret/secret.txt
+  #          b64enc: false
   #          content: |
   #            secret world
 
@@ -168,5 +169,6 @@ cronjob:
   #      files:
   #        secret.txt:
   #          mountPath: /etc/secret/secret.txt
+  #          b64enc: false
   #          content: |
   #            secret world

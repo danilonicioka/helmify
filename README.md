@@ -13,10 +13,8 @@ Enforces a single source of truth using two distinct configuration levels:
 
 ### Deterministic Rollouts
 **Immutable Config Strategy:** Any change to configurations in `values.yaml` triggers a rolling update using SHA256 checksums in the Pod template annotations:
-- `checksum/global-config`
-- `checksum/global-secret`
-- `checksum/cm-config`
-- `checksum/secret`
+- `checksum/configmaps`
+- `checksum/secrets`
 
 ---
 

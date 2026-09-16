@@ -17,14 +17,16 @@ All Organization charts must conform to the following layout:
   crds/               # Plain Custom Resource Definitions (un-templated)
   templates/
     _helpers.tpl      # Central helper template library (no separate files)
-    cm-global.yaml    # Global shared configuration ConfigMap
-    cm.yaml           # Workload-specific configuration (if single model)
+    autoscaling.yaml  # Unified autoscaling definitions (HPA or KEDA)
+    configmaps.yaml   # Unified configuration (global, main, and sidecars)
     deploy.yaml       # Deployment/StatefulSet template
+    route.yaml        # Unified OpenShift Routes (default, int, ext, additional)
+    secrets.yaml      # Unified sensitive configuration (global, main, and sidecars)
     svc.yaml          # ClusterIP Service definition
-    route-default.yaml# OpenShift Default Route (Self-Signed / OCP dev router)
-    route-int.yaml    # OpenShift Internal Route (Intranet / Organization intranet router)
-    route-ext.yaml    # OpenShift External Route (Internet / Organization internet router)
-    secret.yaml       # Decoupled secrets manifest
+    vso.yaml          # Unified Vault Secrets Operator integration (SA, Auth, Secret)
+
+> [!NOTE]
+> **One File per Feature:** Helmify enforces a clean "one file per feature" philosophy. Related or tightly coupled resources (e.g. `VaultAuth` and `VaultStaticSecret`, or all `ConfigMaps` for a component) should be generated dynamically within a single template file using the `---` YAML document separator. This significantly reduces boilerplate and cognitive load when extending the chart with new resources.
 ```
 
 ---

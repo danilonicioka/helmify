@@ -113,6 +113,8 @@ func main() {
 		}
 	}()
 
+	logrus.Info("Application successfully started and is now listening for requests")
+
 	<-done
 	logrus.Info("Server Stopping...")
 
