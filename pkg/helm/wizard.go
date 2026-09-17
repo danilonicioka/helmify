@@ -207,8 +207,8 @@ type ProbesParams struct {
 
 // SchedulingParams groups node assignment rules
 type SchedulingParams struct {
-	NodeSelector map[string]interface{} `json:"nodeSelector,omitempty" yaml:"nodeSelector,omitempty"`
-	Tolerations  []interface{}          `json:"tolerations,omitempty" yaml:"tolerations,omitempty"`
+	NodeSelector map[string]interface{} `json:"nodeSelector,omitempty" yaml:"nodeSelector"`
+	Tolerations  []interface{}          `json:"tolerations,omitempty" yaml:"tolerations"`
 	Affinity     *AffinityParams        `json:"affinity,omitempty" yaml:"affinity,omitempty"`
 }
 
@@ -530,6 +530,13 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "resources"), depConfig.Resources)
 		}
 		if depConfig.Scheduling != nil {
+			// Always ensure nodeSelector and tolerations are present so users know they can be set
+			if depConfig.Scheduling.NodeSelector == nil {
+				depConfig.Scheduling.NodeSelector = map[string]interface{}{}
+			}
+			if depConfig.Scheduling.Tolerations == nil {
+				depConfig.Scheduling.Tolerations = []interface{}{}
+			}
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "scheduling"), depConfig.Scheduling)
 		}
 		if depConfig.Strategy != nil && len(depConfig.Strategy) > 0 {
