@@ -676,9 +676,9 @@ var formatBlocks = []string{"imagePullSecrets:", "replicas:", "labels:", "cm:", 
 var formatRegexes []*regexp.Regexp
 var topologyRegex1 = regexp.MustCompile(`(?m)^\s+app\.openshift\.io/connects-to:\s`)
 var topologyRegex2 = regexp.MustCompile(`(?m)^\s*# Example for OpenShift Topology View integration:\s*\n\s*# app\.openshift\.io/connects-to:.*\n`)
-var sidecarExampleRegex = regexp.MustCompile(`(?ms)^(\s*)#\s+sidecar-example:\s*\n(?:\1#[^\n]*\n)+`)
+var sidecarExampleRegex = regexp.MustCompile(`(?m)^\s*#\s+sidecar-example:\s*\n(?:\s*#[^\n]*\n)+`)
 var realExtraContainersRegex = regexp.MustCompile(`(?m)^\s+extraContainers:\s*\n\s+\S`)
-var initExampleRegex = regexp.MustCompile(`(?ms)^(\s*)#\s+init-example:\s*\n(?:\1#[^\n]*\n)+`)
+var initExampleRegex = regexp.MustCompile(`(?m)^\s*#\s+init-example:\s*\n(?:\s*#[^\n]*\n)+`)
 var realInitContainersRegex = regexp.MustCompile(`(?m)^\s+initContainers:\s*\n\s+\S`)
 
 func init() {
