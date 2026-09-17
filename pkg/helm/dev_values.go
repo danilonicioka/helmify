@@ -62,6 +62,28 @@ func mergeDevValues(caData []byte, chartName string, values helmify.Values, valu
 				}
 			}
 		}
+		if secretsVal, ok := valMap["secrets"]; ok {
+			if secretsMap, ok := toMapStringInterface(secretsVal); ok {
+				if envVal, ok := secretsMap["env"]; ok {
+					if envMap, ok := toMapStringInterface(envVal); ok {
+						if len(envMap) > 0 {
+							if err := mergeYamlNode(&node, envMap, append(pathPrefix, "secrets", "env")); err != nil {
+								return err
+							}
+						}
+					}
+				}
+				if filesVal, ok := secretsMap["files"]; ok {
+					if filesMap, ok := toMapStringInterface(filesVal); ok {
+						if len(filesMap) > 0 {
+							if err := mergeYamlNode(&node, filesMap, append(pathPrefix, "secrets", "files")); err != nil {
+								return err
+							}
+						}
+					}
+				}
+			}
+		}
 		return nil
 	}
 

@@ -17,7 +17,7 @@ import (
 
 var configMapTempl = template.Must(template.New("configMap").Funcs(sprig.TxtFuncMap()).Parse(
 	`{{- if .IsGlobal -}}
-{{- if and .Values.global .Values.global.cm -}}
+{{- if and .Values.global .Values.global.config .Values.global.config.env -}}
 {{ .Meta }}
 {{- if .Immutable }}
 {{ .Immutable }}
@@ -26,13 +26,13 @@ var configMapTempl = template.Must(template.New("configMap").Funcs(sprig.TxtFunc
 {{ .BinaryData }}
 {{- end }}
 data:
-{{- range $key, $value := .Values.global.cm }}
+{{- range $key, $value := .Values.global.config.env }}
   {{ $key }}: {{ $value | quote }}
 {{- end }}
 {{- end }}
 {{- else -}}
 {{ "{" }}{{ "{" }} $comp := index .Values "{{ .Name }}" | default dict {{ "}" }}{{ "}" }}
-{{ "{" }}{{ "{" }}- if and $comp $comp.cm {{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- if and $comp $comp.config $comp.config.env {{ "}" }}{{ "}" }}
 {{ .Meta }}
 {{- if .Immutable }}
 {{ .Immutable }}
@@ -41,7 +41,7 @@ data:
 {{ .BinaryData }}
 {{- end }}
 data:
-{{ "{" }}{{ "{" }}- range $key, $val := $comp.cm {{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- range $key, $val := $comp.config.env {{ "}" }}{{ "}" }}
   {{ "{{ $key }}" }}: {{ "{{ $val | quote }}" }}
 {{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
 {{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
@@ -98,7 +98,9 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 		}
 		values := helmify.Values{
 			"global": map[string]interface{}{
-				"cm": globalValues,
+				"config": map[string]interface{}{
+					"env": globalValues,
+				},
 			},
 		}
 
@@ -143,7 +145,7 @@ func (d configMap) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstru
 		values := helmify.Values{}
 		if exists {
 			for key, val := range field {
-				valuesNamePath := []string{compCamel, "cm", key}
+				valuesNamePath := []string{compCamel, "config", "env", key}
 				_ = unstructured.SetNestedField(values, val, valuesNamePath...)
 			}
 		}

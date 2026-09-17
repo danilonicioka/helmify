@@ -18,25 +18,25 @@ import (
 
 var secretTempl = template.Must(template.New("secret").Funcs(sprig.TxtFuncMap()).Parse(
 	`{{- if .IsGlobal -}}
-{{- if and .Values.global .Values.global.secret -}}
+{{- if and .Values.global .Values.global.secrets .Values.global.secrets.env -}}
 {{ .Meta }}
 {{- if .Type }}
 {{ .Type }}
 {{- end }}
 data:
-{{- range $key, $value := .Values.global.secret }}
+{{- range $key, $value := .Values.global.secrets.env }}
   {{ $key }}: {{ $value | b64enc | quote }}
 {{- end }}
 {{- end }}
 {{- else -}}
 {{ "{" }}{{ "{" }} $comp := index .Values "{{ .Name }}" | default dict {{ "}" }}{{ "}" }}
-{{ "{" }}{{ "{" }}- if and $comp $comp.secret (not (empty $comp.secret)) -{{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- if and $comp $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env)) -{{ "}" }}{{ "}" }}
 {{ .Meta }}
 {{- if .Type }}
 {{ .Type }}
 {{- end }}
 data:
-{{ "{" }}{{ "{" }}- range $key, $value := $comp.secret {{ "}" }}{{ "}" }}
+{{ "{" }}{{ "{" }}- range $key, $value := $comp.secrets.env {{ "}" }}{{ "}" }}
   {{ "{{ $key }}" }}: {{ "{{ $value | b64enc | quote }}" }}
 {{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
 {{ "{" }}{{ "{" }}- end {{ "}" }}{{ "}" }}
@@ -89,7 +89,9 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 		}
 		values := helmify.Values{
 			"global": map[string]interface{}{
-				"secret": globalValues,
+				"secrets": map[string]interface{}{
+					"env": globalValues,
+				},
 			},
 		}
 
@@ -133,7 +135,9 @@ func (d secret) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstructu
 		nameCamelCase := comp
 		values := helmify.Values{
 			nameCamelCase: map[string]interface{}{
-				"secret": secValues,
+				"secrets": map[string]interface{}{
+					"env": secValues,
+				},
 			},
 		}
 
