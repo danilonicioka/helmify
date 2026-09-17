@@ -358,6 +358,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			continue // handled separately
 		}
 		content := replaceChartName(string(data), oldChartName, params.ChartName)
+		if relPath == "Chart.yaml" && params.DevRepoURL != "" {
+			content = strings.Replace(content, "sources: []", "sources:\n  - \""+params.DevRepoURL+"\"", 1)
+		}
 		outputFiles[relPath] = []byte(content)
 	}
 

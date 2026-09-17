@@ -4,3 +4,4 @@ description: A standardized multi-deployment model Helm chart for Organization a
 type: application
 version: 11.0.0
 appVersion: 11.0.0
+sources: []
