@@ -1,4 +1,4 @@
-.PHONY: build lint container-build clean
+.PHONY: build lint container-build container-run clean
 
 APP_NAME = helmify
 IMAGE_TAG = latest
@@ -12,10 +12,13 @@ lint:
 	golangci-lint run ./...
 
 # Build the container image locally
-container-build:
+container-build: build
 	podman build -t $(APP_NAME):$(IMAGE_TAG) .
+
+# Run the container image locally
+container-run: container-build
+	podman run --rm -p 8080:8080 --name $(APP_NAME) $(APP_NAME):$(IMAGE_TAG)
 
 # Clean up binaries
 clean:
 	rm -f $(APP_NAME)
-

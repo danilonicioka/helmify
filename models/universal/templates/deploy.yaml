@@ -265,6 +265,7 @@ spec:
           {{- end }}
         {{- end }}
         {{- end }}
+        {{- end }}
 
           # Tiered "Fail-Fast" Health Probes
           {{- if and $comp.probes.startup (not (empty $comp.probes.startup)) }}
@@ -280,6 +281,11 @@ spec:
             {{- toYaml $comp.probes.readiness | nindent 12 }}
           {{- end }}
 
+          {{- if hasKey $comp "lifecycle" }}
+          lifecycle:
+            {{- toYaml $comp.lifecycle | nindent 12 }}
+          {{- end }}
+
           {{- with $comp.command }}
           command:
             {{- toYaml . | nindent 12 }}
@@ -288,7 +294,6 @@ spec:
           args:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-        {{- end }}
 
           # Resources (Operational Overlay-Only)
           {{- if and $comp.resources $comp.resources.limits }}
