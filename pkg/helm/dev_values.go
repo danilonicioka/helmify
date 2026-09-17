@@ -39,28 +39,50 @@ func mergeDevValues(caData []byte, chartName string, values helmify.Values, valu
 		return nil, err
 	}
 
+	mergeConfigBlock := func(valMap map[string]interface{}, pathPrefix []string) error {
+		if configVal, ok := valMap["config"]; ok {
+			if configMap, ok := toMapStringInterface(configVal); ok {
+				if envVal, ok := configMap["env"]; ok {
+					if envMap, ok := toMapStringInterface(envVal); ok {
+						if len(envMap) > 0 {
+							if err := mergeYamlNode(&node, envMap, append(pathPrefix, "config", "env")); err != nil {
+								return err
+							}
+						}
+					}
+				}
+				if filesVal, ok := configMap["files"]; ok {
+					if filesMap, ok := toMapStringInterface(filesVal); ok {
+						if len(filesMap) > 0 {
+							if err := mergeYamlNode(&node, filesMap, append(pathPrefix, "config", "files")); err != nil {
+								return err
+							}
+						}
+					}
+				}
+			}
+		}
+		return nil
+	}
+
 	for k, v := range values {
 		if valMap, ok := toMapStringInterface(v); ok {
-			if configVal, ok := valMap["config"]; ok {
-				if configMap, ok := toMapStringInterface(configVal); ok {
-					if envVal, ok := configMap["env"]; ok {
-						if envMap, ok := toMapStringInterface(envVal); ok {
-							if len(envMap) > 0 {
-								if err := mergeYamlNode(&node, envMap, []string{k, "config", "env"}); err != nil {
-									return nil, err
-								}
-							}
+			if k == "global" {
+				if err := mergeConfigBlock(valMap, []string{k}); err != nil {
+					return nil, err
+				}
+			} else if k == "deploys" {
+				for deployName, deployVal := range valMap {
+					if dMap, ok := toMapStringInterface(deployVal); ok {
+						if err := mergeConfigBlock(dMap, []string{k, deployName}); err != nil {
+							return nil, err
 						}
 					}
-					if filesVal, ok := configMap["files"]; ok {
-						if filesMap, ok := toMapStringInterface(filesVal); ok {
-							if len(filesMap) > 0 {
-								if err := mergeYamlNode(&node, filesMap, []string{k, "config", "files"}); err != nil {
-									return nil, err
-								}
-							}
-						}
-					}
+				}
+			} else {
+				// Fallback for legacy format if any
+				if err := mergeConfigBlock(valMap, []string{k}); err != nil {
+					return nil, err
 				}
 			}
 		}

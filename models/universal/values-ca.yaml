@@ -1,8 +1,9 @@
-api:
+global:
   config:
     env:
       TZ: "America/Belem"
-app:
-  config:
-    env:
-      TZ: "America/Belem"
+deploys:
+  api:
+    config:
+      env:
+        TZ: "America/Belem"

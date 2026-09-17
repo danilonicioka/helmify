@@ -669,6 +669,57 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
 	valuesStr = formatValues(valuesStr)
 	outputFiles["values.yaml"] = []byte(valuesStr)
+
+	// Process values-ca.yaml to generate matching components
+	if caData, ok := embeddedFiles["values-ca.yaml"]; ok {
+		var caRoot yaml.Node
+		if err := yaml.Unmarshal(caData, &caRoot); err == nil {
+			var caDeploys *yaml.Node
+			var caBaseNode *yaml.Node
+
+			if caRoot.Kind == yaml.DocumentNode && len(caRoot.Content) > 0 {
+				topMapping := caRoot.Content[0]
+				for i := 0; i < len(topMapping.Content); i += 2 {
+					if topMapping.Content[i].Value == "deploys" {
+						caDeploys = topMapping.Content[i+1]
+						for j := 0; j < len(caDeploys.Content); j += 2 {
+							if caDeploys.Content[j].Value == "api" {
+								caBaseNode = caDeploys.Content[j+1]
+								break
+							}
+						}
+						break
+					}
+				}
+			}
+
+			if caDeploys != nil && caBaseNode != nil {
+				caDeploys.Content = []*yaml.Node{}
+				for _, compKey := range compKeys {
+					cloneBytes, _ := yaml.Marshal(caBaseNode)
+					var cloned yaml.Node
+					_ = yaml.Unmarshal(cloneBytes, &cloned)
+
+					if len(cloned.Content) > 0 {
+						keyNode := &yaml.Node{
+							Kind:  yaml.ScalarNode,
+							Value: compKey,
+						}
+						caDeploys.Content = append(caDeploys.Content, keyNode, cloned.Content[0])
+					}
+				}
+
+				setBlockStyle(&caRoot)
+				var bufCa bytes.Buffer
+				encCa := yaml.NewEncoder(&bufCa)
+				encCa.SetIndent(2)
+				if err := encCa.Encode(&caRoot); err == nil {
+					caStr := replaceChartName(bufCa.String(), oldChartName, params.ChartName)
+					outputFiles["values-ca.yaml"] = []byte(caStr)
+				}
+			}
+		}
+	}
 	outputFiles[".gitlab-ci.yml"] = roothelmify.GitLabCI
 
 	logrus.Infof("GenerateWizardChart complete for %s", params.ChartName)
