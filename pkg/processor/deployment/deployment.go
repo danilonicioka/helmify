@@ -193,7 +193,7 @@ func (d deployment) Process(appMeta helmify.AppMetadata, obj *unstructured.Unstr
 		defaultStrategy := map[string]interface{}{
 			"type": "RollingUpdate",
 			"rollingUpdate": map[string]interface{}{
-				"maxUnavailable": int64(0),
+				"maxUnavailable": "25%",
 				"maxSurge":       "25%",
 			},
 		}

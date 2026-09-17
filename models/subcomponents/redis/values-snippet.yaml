@@ -93,7 +93,7 @@ redis:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 25%
-      maxUnavailable: 0
+      maxUnavailable: 25%
   # -- Connection draining grace period for graceful shutdowns.
   terminationGracePeriodSeconds: 30
 

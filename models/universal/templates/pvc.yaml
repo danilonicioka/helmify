@@ -5,7 +5,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
   labels:
     {{- include "chart-model-multi.labels" $ | nindent 4 }}
 spec:

@@ -203,7 +203,7 @@ deploys:
       type: RollingUpdate
       rollingUpdate:
         maxSurge: 25%
-        maxUnavailable: 0
+        maxUnavailable: 25%
   
     terminationGracePeriodSeconds: 30
 
@@ -496,7 +496,7 @@ deploys:
       type: RollingUpdate
       rollingUpdate:
         maxSurge: 25%
-        maxUnavailable: 0
+        maxUnavailable: 25%
   
     terminationGracePeriodSeconds: 30
 

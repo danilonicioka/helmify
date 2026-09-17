@@ -178,7 +178,7 @@ spec:
 
 		ruMap, ok := strategy["rollingUpdate"].(map[string]interface{})
 		assert.True(t, ok)
-		assert.Equal(t, int64(0), ruMap["maxUnavailable"])
+		assert.Equal(t, "25%", ruMap["maxUnavailable"])
 		assert.Equal(t, "25%", ruMap["maxSurge"])
 	})
 

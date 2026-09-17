@@ -531,10 +531,10 @@ func generateValuesYAML(chartName string, values helmify.Values, certManagerAsSu
 		}
 	}
 
-	basePath := "models/single"
+	basePath := "models/universal"
 	oldChartName := "chart-model-single"
 	if compCount > 1 {
-		basePath = "models/multi"
+		basePath = "models/universal"
 		oldChartName = "chart-model-multi"
 	}
 
@@ -734,9 +734,9 @@ func overwriteValuesFile(chartDir string, res []byte, chartName string, isMulti 
 	logrus.WithField("file", file).Info("overwritten")
 
 	fileDev := filepath.Join(chartDir, "values-ca.yaml")
-	basePath := "models/single"
+	basePath := "models/universal"
 	if isMulti {
-		basePath = "models/multi"
+		basePath = "models/universal"
 	}
 	caData, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values-ca.yaml"))
 	if err == nil {
@@ -809,7 +809,7 @@ func toNode(v interface{}, depth int, path string) *yaml.Node {
 				} else {
 					switch k {
 					case "strategy":
-						keyNode.FootComment = "  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
+						keyNode.FootComment = "  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 25%"
 					case "labels":
 						keyNode.FootComment = "  app.openshift.io/runtime: openjdk"
 					case "annotations":
@@ -864,7 +864,7 @@ func injectFootComments(node *yaml.Node) {
 					if keyNode.FootComment == "" {
 						switch k {
 						case "strategy":
-							keyNode.FootComment = "  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 0"
+							keyNode.FootComment = "  type: RollingUpdate\n  rollingUpdate:\n    maxSurge: 25%\n    maxUnavailable: 25%"
 						case "labels":
 							keyNode.FootComment = "  app.openshift.io/runtime: openjdk"
 						case "annotations":

@@ -278,9 +278,9 @@ func (m *MemoryOutput) Create(chartDir, chartName string, crd bool, certManagerA
 	}
 	m.Files["values.yaml"] = res
 
-	basePath := "models/single"
+	basePath := "models/universal"
 	if isMulti {
-		basePath = "models/multi"
+		basePath = "models/universal"
 	}
 	caData, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values-ca.yaml"))
 	if err == nil {

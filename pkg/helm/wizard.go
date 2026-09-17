@@ -667,6 +667,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
 	valuesStr = formatValues(valuesStr)
 	outputFiles["values.yaml"] = []byte(valuesStr)
+	outputFiles[".gitlab-ci.yml"] = roothelmify.GitLabCI
 
 	logrus.Infof("GenerateWizardChart complete for %s (Universal Model)", params.ChartName)
 	return outputFiles, nil

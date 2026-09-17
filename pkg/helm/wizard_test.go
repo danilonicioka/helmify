@@ -25,7 +25,7 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 					Tag:        "v2.1.0",
 				},
 				Service: ServiceParams{
-					Port: 9090,
+					Port: intPtr(9090),
 				},
 				Config: &ConfigParams{Env: map[string]string{"TZ": "America/Belem"}},
 				Secrets: &ConfigParams{Env: map[string]string{"API_KEY": "12345"}},
@@ -97,7 +97,7 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 					Tag:        "v1.0.0",
 				},
 				Service: ServiceParams{
-					Port: 8080,
+					Port: intPtr(8080),
 				},
 				Route: RouteParams{
 					Default: SubRouteParams{
@@ -113,7 +113,7 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 					Tag:        "v1.1.0",
 				},
 				Service: ServiceParams{
-					Port: 5000,
+					Port: intPtr(5000),
 				},
 				Route: RouteParams{
 					Default: SubRouteParams{
@@ -153,7 +153,7 @@ func TestGetModelDefaults(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, defaults)
 		assert.Contains(t, defaults, "global")
-		assert.Contains(t, defaults, "chart-model-single")
+		assert.Contains(t, defaults, "deploys")
 	})
 
 	t.Run("multi defaults", func(t *testing.T) {
@@ -161,8 +161,7 @@ func TestGetModelDefaults(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, defaults)
 		assert.Contains(t, defaults, "global")
-		assert.Contains(t, defaults, "api")
-		assert.Contains(t, defaults, "app")
+		assert.Contains(t, defaults, "deploys")
 	})
 
 	t.Run("invalid type", func(t *testing.T) {

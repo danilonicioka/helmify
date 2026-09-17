@@ -120,7 +120,7 @@ The following keys inside `values.yaml` must always include commented-out exampl
       # type: RollingUpdate
       # rollingUpdate:
       #   maxSurge: 25%
-      #   maxUnavailable: 0
+      #   maxUnavailable: 25%
   ```
 
 #### 2. Converter & Wizard Preservation
