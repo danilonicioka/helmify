@@ -42,3 +42,4 @@ generated-chart.zip
 test-helm-merge.yaml
 test.zip
 test-output/
+test-output.yaml

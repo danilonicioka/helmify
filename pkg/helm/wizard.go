@@ -158,6 +158,7 @@ type DeploymentParams struct {
 	Autoscaling      *AutoscalingParams          `json:"autoscaling,omitempty"`
 	Probes           *ProbesParams               `json:"probes,omitempty"`
 	Scheduling       *SchedulingParams           `json:"scheduling,omitempty"`
+	Strategy         map[string]interface{}      `json:"strategy,omitempty" yaml:"strategy,omitempty"`
 	Route            RouteParams                 `json:"route"`
 	ConnectsTo       []string                    `json:"connectsTo"`
 	Runtime          string                      `json:"runtime"`
@@ -206,6 +207,7 @@ type SchedulingParams struct {
 type CustomFileParams struct {
 	MountPath string `json:"mountPath" yaml:"mountPath"`
 	Content   string `json:"content" yaml:"content"`
+	B64enc    bool   `json:"b64enc,omitempty" yaml:"b64enc,omitempty"`
 }
 
 // ResourceParams configures container resource requests and limits.
@@ -218,6 +220,8 @@ type ResourceParams struct {
 type ImageParams struct {
 	Repository string `json:"repository" validate:"required"`
 	Tag        string `json:"tag"`
+	PullPolicy string `json:"pullPolicy,omitempty"`
+	PullSecrets []map[string]interface{} `json:"pullSecrets,omitempty"`
 }
 
 // ServiceParams configures the internal service port.
@@ -455,17 +459,15 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Replicas != nil {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "replicas"), *depConfig.Replicas)
 		}
-		svcPort := 0
-		if depConfig.Service.Port != nil {
-			svcPort = *depConfig.Service.Port
-		}
-		if svcPort == 0 && depConfig.Service.Ports != nil {
-			if httpPort, ok := depConfig.Service.Ports["http"]; ok {
-				svcPort = httpPort.Port
+		if depConfig.Service.Ports != nil && len(depConfig.Service.Ports) > 0 {
+			for pName, pData := range depConfig.Service.Ports {
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "port"), pData.Port)
+				if pData.Protocol != "" && pData.Protocol != "TCP" {
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "protocol"), pData.Protocol)
+				}
 			}
-		}
-		if svcPort > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", "http", "port"), svcPort)
+		} else if svcPort := depConfig.Service.Port; svcPort != nil && *svcPort > 0 {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", "http", "port"), *svcPort)
 		}
 		if depConfig.Autoscaling != nil {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "autoscaling"), depConfig.Autoscaling)
@@ -481,6 +483,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 		if depConfig.Image.Tag != "" {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "tag"), depConfig.Image.Tag)
+		}
+		if depConfig.Image.PullSecrets != nil && len(depConfig.Image.PullSecrets) > 0 {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "pullSecrets"), depConfig.Image.PullSecrets)
 		}
 		if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "extraContainers"), depConfig.ExtraContainers)
@@ -512,9 +517,14 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Scheduling != nil {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "scheduling"), depConfig.Scheduling)
 		}
+		if depConfig.Strategy != nil && len(depConfig.Strategy) > 0 {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "strategy"), depConfig.Strategy)
+		}
 		
 		for _, sub := range params.Subcomponents {
-			depConfig.ConnectsTo = append(depConfig.ConnectsTo, params.ChartName+"-"+sub)
+			if sub != "cronjob" {
+				depConfig.ConnectsTo = append(depConfig.ConnectsTo, params.ChartName+"-"+sub)
+			}
 		}
 		if len(depConfig.ConnectsTo) > 0 {
 			var connects []string

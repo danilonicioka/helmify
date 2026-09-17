@@ -8,6 +8,7 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/danilonicioka/helmify/pkg/config"
 	"github.com/sirupsen/logrus"
@@ -112,6 +113,13 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					r := int(replicas)
 					depParams.Replicas = &r
 				}
+				
+				// Extract Strategy
+				if strategy, found, err := unstructured.NestedMap(obj.Object, "spec", "strategy"); err == nil && found {
+					depParams.Strategy = strategy
+				} else if updateStrategy, found, err := unstructured.NestedMap(obj.Object, "spec", "updateStrategy"); err == nil && found {
+					depParams.Strategy = updateStrategy
+				}
 			}
 
 			// Pod spec path differs for CronJobs
@@ -140,6 +148,15 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					} else if _, ok, _ := unstructured.NestedMap(vol, "persistentVolumeClaim"); ok {
 						depParams.Persistence.Enabled = true
 						depParams.Persistence.Ephemeral = false
+					}
+				}
+			}
+
+			imagePullSecrets, found, err := unstructured.NestedSlice(obj.Object, append(podSpecPath, "imagePullSecrets")...)
+			if err == nil && found {
+				for _, s := range imagePullSecrets {
+					if secretMap, ok := s.(map[string]interface{}); ok {
+						depParams.Image.PullSecrets = append(depParams.Image.PullSecrets, secretMap)
 					}
 				}
 			}
@@ -509,14 +526,20 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 										mntPath = filepath.Join(m.MountPath, k)
 									}
 									contentStr := fmt.Sprintf("%v", v)
+									var b64enc bool
 									if decode {
 										if decoded, err := base64.StdEncoding.DecodeString(contentStr); err == nil {
-											contentStr = string(decoded)
+											if utf8.Valid(decoded) {
+												contentStr = string(decoded)
+											} else {
+												b64enc = true
+											}
 										}
 									}
 									targetFiles[k] = CustomFileParams{
 										MountPath: mntPath,
 										Content:   cleanMultilineString(contentStr),
+										B64enc:    b64enc,
 									}
 								}
 							}
