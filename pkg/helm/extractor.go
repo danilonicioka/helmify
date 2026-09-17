@@ -985,6 +985,10 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 
 
 func populateSidecarParams(depParams *SidecarParams, container map[string]interface{}, volSources map[string]struct{Type string; Name string}, envTracker map[string]*EnvTarget, compName string, sidecarName string) {
+	// Mark as enabled — if it exists in the input manifest, it's active
+	t := true
+	depParams.Enabled = &t
+
 	image, _, _ := unstructured.NestedString(container, "image")
 	if image != "" {
 		index := strings.LastIndex(image, ":")
