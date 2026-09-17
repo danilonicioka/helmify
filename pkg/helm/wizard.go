@@ -61,12 +61,14 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 			continue
 		}
 		content := files[name]
-		contentStr := string(content)
-		contentStr = strings.ReplaceAll(contentStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
-		contentStr = strings.ReplaceAll(contentStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
-		contentStr = strings.ReplaceAll(contentStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
-		contentStr = strings.ReplaceAll(contentStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
-		content = []byte(contentStr)
+		if name != ".gitlab-ci.yml" {
+			contentStr := string(content)
+			contentStr = strings.ReplaceAll(contentStr, "{{REGISTRY}}", config.GlobalEnvConfig.Registry)
+			contentStr = strings.ReplaceAll(contentStr, "{{DEFAULT_DOMAIN}}", config.GlobalEnvConfig.DefaultDomain)
+			contentStr = strings.ReplaceAll(contentStr, "{{INTERNAL_DOMAIN}}", config.GlobalEnvConfig.InternalDomain)
+			contentStr = strings.ReplaceAll(contentStr, "{{EXTERNAL_DOMAIN}}", config.GlobalEnvConfig.ExternalDomain)
+			content = []byte(contentStr)
+		}
 
 		var pathStr string
 		if name == ".gitlab-ci.yml" || name == "README.md" {
@@ -669,7 +671,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	outputFiles["values.yaml"] = []byte(valuesStr)
 	outputFiles[".gitlab-ci.yml"] = roothelmify.GitLabCI
 
-	logrus.Infof("GenerateWizardChart complete for %s (Universal Model)", params.ChartName)
+	logrus.Infof("GenerateWizardChart complete for %s", params.ChartName)
 	return outputFiles, nil
 }
 
