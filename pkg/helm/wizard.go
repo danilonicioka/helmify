@@ -150,6 +150,8 @@ type DeploymentParams struct {
 	Image            ImageParams                 `json:"image" validate:"required"`
 	Command          []string                    `json:"command,omitempty"`
 	Args             []string                    `json:"args,omitempty"`
+	Annotations      map[string]string           `json:"annotations,omitempty"`
+	Labels           map[string]string           `json:"labels,omitempty"`
 	Service          ServiceParams               `json:"service"`
 	Config           *ConfigParams               `json:"config,omitempty"`
 	Secrets          *ConfigParams               `json:"secrets,omitempty"`
@@ -169,18 +171,25 @@ type DeploymentParams struct {
 	ExtraContainers  map[string]*SidecarParams   `json:"extraContainers,omitempty"`
 }
 
+// SidecarPersistenceParams is a simplified persistence config for sidecars.
+// Sidecars share the pod's PVC — they cannot create their own. Only enabled and mountPath are relevant.
+type SidecarPersistenceParams struct {
+	Enabled   bool   `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+	MountPath string `json:"mountPath,omitempty" yaml:"mountPath,omitempty"`
+}
+
 // SidecarParams holds configuration for extra and init containers
 type SidecarParams struct {
-	Enabled     *bool             `json:"enabled,omitempty" yaml:"enabled,omitempty"`
-	Image       ImageParams       `json:"image"`
-	Command     []string          `json:"command,omitempty"`
-	Args        []string          `json:"args,omitempty"`
-	Service     ServiceParams     `json:"service,omitempty"`
-	Resources   *ResourceParams   `json:"resources,omitempty"`
-	Probes      *ProbesParams     `json:"probes,omitempty"`
-	Config      *ConfigParams     `json:"config,omitempty"`
-	Secrets     *ConfigParams     `json:"secrets,omitempty"`
-	Persistence PersistenceParams `json:"persistence,omitempty"`
+	Enabled     *bool                    `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+	Image       ImageParams              `json:"image" yaml:"image"`
+	Command     []string                 `json:"command,omitempty" yaml:"command,omitempty"`
+	Args        []string                 `json:"args,omitempty" yaml:"args,omitempty"`
+	Config      *ConfigParams            `json:"config,omitempty" yaml:"config,omitempty"`
+	Secrets     *ConfigParams            `json:"secrets,omitempty" yaml:"secrets,omitempty"`
+	Service     ServiceParams            `json:"service,omitempty" yaml:"service,omitempty"`
+	Resources   *ResourceParams          `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Probes      *ProbesParams            `json:"probes,omitempty" yaml:"probes,omitempty"`
+	Persistence SidecarPersistenceParams `json:"persistence,omitempty" yaml:"persistence,omitempty"`
 }
 
 // ConfigParams holds env vars and mounted files
@@ -218,10 +227,10 @@ type ResourceParams struct {
 
 // ImageParams configures the container image.
 type ImageParams struct {
-	Repository string `json:"repository" validate:"required"`
-	Tag        string `json:"tag"`
-	PullPolicy string `json:"pullPolicy,omitempty"`
-	PullSecrets []map[string]interface{} `json:"pullSecrets,omitempty"`
+	Repository  string                   `json:"repository" yaml:"repository" validate:"required"`
+	Tag         string                   `json:"tag" yaml:"tag"`
+	PullPolicy  string                   `json:"pullPolicy,omitempty" yaml:"pullPolicy,omitempty"`
+	PullSecrets []map[string]interface{} `json:"pullSecrets,omitempty" yaml:"pullSecrets,omitempty"`
 }
 
 // ServiceParams configures the internal service port.
@@ -499,6 +508,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Args != nil {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "args"), depConfig.Args)
 		}
+		if len(depConfig.Annotations) > 0 {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations"), depConfig.Annotations)
+		}
+		if len(depConfig.Labels) > 0 {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "labels"), depConfig.Labels)
+		}
 		if depConfig.Config != nil {
 			if depConfig.Config.Env != nil {
 				stripQuotesFromMap(depConfig.Config.Env)
@@ -654,6 +669,10 @@ var formatBlocks = []string{"imagePullSecrets:", "replicas:", "labels:", "cm:", 
 var formatRegexes []*regexp.Regexp
 var topologyRegex1 = regexp.MustCompile(`(?m)^\s+app\.openshift\.io/connects-to:\s`)
 var topologyRegex2 = regexp.MustCompile(`(?m)^\s*# Example for OpenShift Topology View integration:\s*\n\s*# app\.openshift\.io/connects-to:.*\n`)
+var sidecarExampleRegex = regexp.MustCompile(`(?ms)^(\s*)#\s+sidecar-example:\s*\n(?:\1#[^\n]*\n)+`)
+var realExtraContainersRegex = regexp.MustCompile(`(?m)^\s+extraContainers:\s*\n\s+\S`)
+var initExampleRegex = regexp.MustCompile(`(?ms)^(\s*)#\s+init-example:\s*\n(?:\1#[^\n]*\n)+`)
+var realInitContainersRegex = regexp.MustCompile(`(?m)^\s+initContainers:\s*\n\s+\S`)
 
 func init() {
 	for _, block := range formatBlocks {
@@ -669,6 +688,16 @@ func formatValues(valuesStr string) string {
 	// Clean up commented connects-to example if the user explicitly provided one
 	if topologyRegex1.MatchString(valuesStr) {
 		valuesStr = topologyRegex2.ReplaceAllString(valuesStr, "")
+	}
+
+	// Clean up commented sidecar-example block if real extraContainers are already present
+	if realExtraContainersRegex.MatchString(valuesStr) {
+		valuesStr = sidecarExampleRegex.ReplaceAllString(valuesStr, "")
+	}
+
+	// Clean up commented init-example block if real initContainers are already present
+	if realInitContainersRegex.MatchString(valuesStr) {
+		valuesStr = initExampleRegex.ReplaceAllString(valuesStr, "")
 	}
 
 	return valuesStr

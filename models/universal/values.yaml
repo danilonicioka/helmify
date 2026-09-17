@@ -272,6 +272,17 @@ deploys:
     #      pullPolicy: IfNotPresent
     #    command: []
     #    args: []
+    #    config:
+    #      env:
+    #        EXAMPLE_VAR: "value"
+    #      files:
+    #        example.conf:
+    #          mountPath: /etc/sidecar/example.conf
+    #          content: |
+    #            key=value
+    #    secrets:
+    #      env:
+    #        SECRET_VAR: "secret"
     #    service:
     #      ports:
     #        http:
@@ -290,10 +301,6 @@ deploys:
     #    persistence:
     #      enabled: true
     #      mountPath: /var/lib/data
-    #    config:
-    #      env:
-    #        EXAMPLE_VAR: "value"
-    #      files:
     #        example.txt:
     #          mountPath: /etc/config/example.txt
     #          content: |

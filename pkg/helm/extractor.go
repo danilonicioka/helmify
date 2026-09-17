@@ -312,10 +312,50 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			if runtime, ok := labels["app.openshift.io/runtime"]; ok {
 				depParams.Runtime = runtime
 			}
+			// Capture all non-system labels
+			skipLabelPrefixes := []string{
+				"app.kubernetes.io/", "helm.sh/", "app.openshift.io/runtime",
+			}
+			for k, v := range labels {
+				skip := false
+				for _, prefix := range skipLabelPrefixes {
+					if strings.HasPrefix(k, prefix) || k == prefix {
+						skip = true
+						break
+					}
+				}
+				if !skip {
+					if depParams.Labels == nil {
+						depParams.Labels = make(map[string]string)
+					}
+					depParams.Labels[k] = v
+				}
+			}
 
 			annotations := obj.GetAnnotations()
 			if overview, ok := annotations["console.alpha.openshift.io/overview-app-route"]; ok {
 				depParams.OverviewAppRoute = overview
+			}
+			// Capture all non-system annotations (skip kubectl, deployment.kubernetes.io, etc.)
+			skipAnnotationPrefixes := []string{
+				"kubectl.kubernetes.io/", "deployment.kubernetes.io/",
+				"deprecated.deployment.rollback-to", "pod-template-hash",
+				"app.openshift.io/connects-to", // handled separately via ConnectsTo
+			}
+			for k, v := range annotations {
+				skip := false
+				for _, prefix := range skipAnnotationPrefixes {
+					if strings.HasPrefix(k, prefix) || k == prefix {
+						skip = true
+						break
+					}
+				}
+				if !skip {
+					if depParams.Annotations == nil {
+						depParams.Annotations = make(map[string]string)
+					}
+					depParams.Annotations[k] = v
+				}
 			}
 
 			params.Deployments[name] = depParams

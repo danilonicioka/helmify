@@ -231,15 +231,16 @@ spec:
           readinessProbe:
             {{- toYaml $sidecar.probes.readiness | nindent 12 }}
           {{- end }}
-          {{- if $sidecar.config.env }}
+          {{- if or $sidecar.config.env $sidecar.secrets.env }}
           envFrom:
+            {{- if $sidecar.config.env }}
             - configMapRef:
                 name: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
-          {{- end }}
-          {{- if $sidecar.secrets.env }}
-          envFrom:
+            {{- end }}
+            {{- if $sidecar.secrets.env }}
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
+            {{- end }}
           {{- end }}
           {{- if or (and $sidecar.persistence $sidecar.persistence.enabled) (and $sidecar.config $sidecar.config.files) (and $sidecar.secrets $sidecar.secrets.files) }}
           volumeMounts:
