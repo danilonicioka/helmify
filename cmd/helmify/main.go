@@ -114,6 +114,19 @@ func main() {
 		}
 	}()
 
+	// Wait for server to start listening by pinging /healthz
+	for i := 0; i < 10; i++ {
+		resp, err := http.Get(fmt.Sprintf("http://localhost:%s/healthz", port))
+		if err == nil && resp.StatusCode == http.StatusOK {
+			resp.Body.Close()
+			break
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
 	logrus.Info("Application successfully started and is now listening for requests")
 
 	<-done

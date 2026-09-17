@@ -1,6 +1,7 @@
-{{- $comp := index .Values "global" | default dict -}}
+{{ $comp := index .Values "global" | default dict -}}
 {{- if ne $comp.enabled false }}
-{{- if and $comp (not (empty $comp)) -}}
+{{- if and $comp (not (empty $comp)) }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -14,7 +15,6 @@ data:
 {{- end }}
 
 {{- end }}
----
 {{- $comp := .Values }}
 {{- if eq "multi" "multi" }}
 {{- $comp = .Values.component }}
@@ -56,11 +56,11 @@ data:
 {{- end }}
 {{- end }}
 {{- end }}
----
-{{- range $compName, $comp := .Values.components }}
+{{- range $compName, $comp := .Values.deploys }}
 {{- range $name, $sidecar := $comp.extraContainers }}
 {{- if ne ($sidecar.enabled | default true) false }}
 {{- if and $sidecar $sidecar.config.env }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -70,15 +70,16 @@ metadata:
     app.kubernetes.io/component: {{ $compName }}
 data:
   {{- toYaml $sidecar.config.env | nindent 2 }}
----
 {{- end }}
 {{- end }}
 {{- end }}
-{{- range $compName, $comp := .Values.components }}
+{{- end }}
+{{- range $compName, $comp := .Values.deploys }}
 {{- range $name, $sidecar := $comp.extraContainers }}
 {{- if ne ($sidecar.enabled | default true) false }}
 {{- if and $sidecar $sidecar.config $sidecar.config.files }}
 {{- range $filename, $config := $sidecar.config.files }}
+---
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -89,10 +90,8 @@ metadata:
 data:
   {{ $filename }}: |-
     {{- $config.content | nindent 4 }}
----
 {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
----

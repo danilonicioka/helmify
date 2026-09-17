@@ -1,15 +1,16 @@
-{- $comp := .Values.api -}
-{- if ne $comp.enabled false }
-{- if ne $comp.workloadType "CronJob" }
-{- if and $comp.autoscaling $comp.autoscaling.enabled }
+{{- range $compName, $comp := .Values.deploys }}
+{{- if ne $comp.enabled false }}
+{{- if ne $comp.workloadType "CronJob" }}
+{{- if and $comp.autoscaling $comp.autoscaling.enabled }}
 
-{- if eq $comp.autoscaling.engine "hpa" -}
+{{- if eq $comp.autoscaling.engine "hpa" }}
+---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "chart-model-multi-api.fullname" . }}
+  name: {{ include "chart-model-multi.fullname" $ }}
   labels:
-    {{- include "chart-model-multi-api.labels" . | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
   {{- with $comp.autoscaling.hpa.behavior }}
   behavior:
@@ -22,21 +23,22 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "chart-model-multi-api.fullname" . }}
-{- end }
+    name: {{ include "chart-model-multi.fullname" $ }}
+{{- end }}
 
-{- if eq $comp.autoscaling.engine "keda" -}
+{{- if eq $comp.autoscaling.engine "keda" }}
+---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: {{ include "chart-model-multi-api.fullname" . }}
+  name: {{ include "chart-model-multi.fullname" $ }}
   labels:
-    {{- include "chart-model-multi-api.labels" . | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "chart-model-multi-api.fullname" . }}
+    name: {{ include "chart-model-multi.fullname" $ }}
   minReplicaCount: {{ $comp.autoscaling.keda.minReplicas | default 1 }}
   maxReplicaCount: {{ $comp.autoscaling.keda.maxReplicas | default 2 }}
   {{- with $comp.autoscaling.keda.pollingInterval }}
@@ -51,15 +53,15 @@ spec:
       metadata:
         {{- toYaml $trigger.metadata | nindent 8 }}
       authenticationRef:
-        name: {{ include "chart-model-multi-api.fullname" $ }}-trigger-auth
+        name: {{ include "chart-model-multi.fullname" $ }}-trigger-auth
     {{- end }}
 ---
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: {{ include "chart-model-multi-api.fullname" . }}-trigger-auth
+  name: {{ include "chart-model-multi.fullname" $ }}-trigger-auth
   labels:
-    {{- include "chart-model-multi-api.labels" . | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
   {{- with $comp.autoscaling.keda.triggerAuth }}
   {{- if .secretTargetRef }}
@@ -71,8 +73,10 @@ spec:
     {{- toYaml .envTargetRef | nindent 4 }}
   {{- end }}
   {{- end }}
-{- end }
+{{- end }}
 
-{- end }
-{- end }
-{- end }
+{{- end }}
+{{- end }}
+{{- end }}
+---
+{{- end }}

@@ -1,12 +1,13 @@
-{{- $comp := index .Values "api" | default dict -}}
+{{- range $compName, $comp := .Values.deploys }}
 {{- if ne $comp.enabled false }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "chart-model-multi.fullname" . }}-api
+  name: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}
   labels:
-    {{- include "chart-model-multi.component.labels" (dict "context" . "component" "api") | nindent 4 }}
-  {{- $annotations := include "chart-model-multi.component.annotations" (dict "context" . "component" "api") }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+  {{- $annotations := include "chart-model-multi.component.annotations" (dict "context" $ "component" $compName) }}
   {{- if $annotations }}
   annotations:
     {{- $annotations | nindent 4 }}
@@ -25,7 +26,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "chart-model-multi.component.selectorLabels" (dict "context" . "component" "api") | nindent 6 }}
+      {{- include "chart-model-multi.component.selectorLabels" (dict "context" $ "component" $compName) | nindent 6 }}
   template:
     metadata:
       annotations:
@@ -33,33 +34,33 @@ spec:
         {{- $annotations | nindent 8 }}
         {{- end }}
         # Deterministic Rollouts: SHA256 checksum annotations to trigger automatic restarts
-        {{- $cmApi := include (print $.Template.BasePath "/cm-api.yaml") . | trim }}
+        {{- $cmApi := include (print $.Template.BasePath "/cm-deploys.yaml") $ | trim }}
         {{- if $cmApi }}
-        checksum/cm-api: '{{ $cmApi | sha256sum }}'
+        checksum/cm-{{ $compName }}: '{{ $cmApi | sha256sum }}'
         {{- end }}
-        {{- $secretApi := include (print $.Template.BasePath "/secret-api.yaml") . | trim }}
+        {{- $secretApi := include (print $.Template.BasePath "/secret-deploys.yaml") $ | trim }}
         {{- if $secretApi }}
-        checksum/secret-api: '{{ $secretApi | sha256sum }}'
+        checksum/secret-{{ $compName }}: '{{ $secretApi | sha256sum }}'
         {{- end }}
-        {{- $cmGlobal := include (print $.Template.BasePath "/cm-global.yaml") . | trim }}
+        {{- $cmGlobal := include (print $.Template.BasePath "/cm-global.yaml") $ | trim }}
         {{- if $cmGlobal }}
         checksum/cm-global: '{{ $cmGlobal | sha256sum }}'
         {{- end }}
-        {{- $secretGlobal := include (print $.Template.BasePath "/secret-global.yaml") . | trim }}
+        {{- $secretGlobal := include (print $.Template.BasePath "/secret-global.yaml") $ | trim }}
         {{- if $secretGlobal }}
         checksum/secret-global: '{{ $secretGlobal | sha256sum }}'
         {{- end }}
       labels:
-        {{- include "chart-model-multi.component.selectorLabels" (dict "context" . "component" "api") | nindent 8 }}
+        {{- include "chart-model-multi.component.selectorLabels" (dict "context" $ "component" $compName) | nindent 8 }}
     spec:
       {{- with $comp.image.pullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- if and $comp.vso $comp.vso.enabled }}
-      serviceAccountName: {{ include "chart-model-multi.fullname" . }}-api-sa
-      {{- else if .Values.serviceAccount }}
-      serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
+      serviceAccountName: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-sa
+      {{- else if $.Values.serviceAccount }}
+      serviceAccountName: {{ include "chart-model-multi.serviceAccountName" $ }}
       {{- end }}
       {{- $hasInit := false }}
       {{- range $name, $config := $comp.initContainers }}
@@ -85,12 +86,12 @@ spec:
           {{- if and $config.config $config.config.env }}
           envFrom:
             - configMapRef:
-                name: {{ include "chart-model-multi-api.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
+                name: {{ include "chart-model-multi.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
           {{- end }}
           {{- if and $config.secrets $config.secrets.env }}
           envFrom:
             - secretRef:
-                name: {{ include "chart-model-multi-api.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
+                name: {{ include "chart-model-multi.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
           {{- end }}
           {{- if or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}
           volumeMounts:
@@ -118,7 +119,7 @@ spec:
         {{- end }}
       containers:
         - name: api
-          image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
+          image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default $.Chart.AppVersion }}"
           imagePullPolicy: {{ $comp.image.pullPolicy }}
           ports:
             {{- range $key, $val := $comp.service.ports }}
@@ -131,27 +132,27 @@ spec:
           
 
           # Clean Configuration Management: Full Decoupling via envFrom
-          {{- if or (and .Values.global (not (empty .Values.global))) (and $comp.config.env (not (empty $comp.config.env))) (and $comp.secrets.env (not (empty $comp.secrets.env))) }}
+          {{- if or (and $.Values.global (not (empty $.Values.global))) (and $comp.config.env (not (empty $comp.config.env))) (and $comp.secrets.env (not (empty $comp.secrets.env))) }}
           envFrom:
-            {{- if and .Values.global .Values.global.config.env (not (empty .Values.global.config.env)) }}
+            {{- if and $.Values.global $.Values.global.config.env (not (empty $.Values.global.config.env)) }}
             - configMapRef:
-                name: {{ include "chart-model-multi.fullname" . }}-global-cm
+                name: {{ include "chart-model-multi.fullname" $ }}-global-cm
             {{- end }}
-            {{- if and .Values.global .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
+            {{- if and $.Values.global $.Values.global.secrets.env (not (empty $.Values.global.secrets.env)) }}
             - secretRef:
-                name: {{ include "chart-model-multi.fullname" . }}-global-secret
+                name: {{ include "chart-model-multi.fullname" $ }}-global-secret
             {{- end }}
             {{- if and $comp.config.env (not (empty $comp.config.env)) }}
             - configMapRef:
-                name: {{ include "chart-model-multi.fullname" . }}-api-cm
+                name: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-cm
             {{- end }}
             {{- if and $comp.secrets.env (not (empty $comp.secrets.env)) }}
             - secretRef:
-                name: {{ include "chart-model-multi.fullname" . }}-api-secret
+                name: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-secret
             {{- end }}
             {{- if and $comp.vso $comp.vso.enabled }}
             - secretRef:
-                name: {{ include "chart-model-multi.fullname" . }}-api-vso-secret
+                name: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-vso-secret
             {{- end }}
           {{- end }}
 
@@ -176,14 +177,14 @@ spec:
           {{- range $filename, $fileconf := $config.config.files }}
           - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
             configMap:
-              name: {{ include "chart-model-multi-api.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+              name: {{ include "chart-model-multi.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
           {{- end }}
           {{- end }}
           {{- if and $config $config.secrets $config.secrets.files }}
           {{- range $filename, $fileconf := $config.secrets.files }}
           - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
             secret:
-              secretName: {{ include "chart-model-multi-api.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+              secretName: {{ include "chart-model-multi.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
           {{- end }}
           {{- end }}
         {{- end }}
@@ -233,12 +234,12 @@ spec:
           {{- if $sidecar.config.env }}
           envFrom:
             - configMapRef:
-                name: {{ include "chart-model-multi.fullname" $ }}-api-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
+                name: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
           {{- end }}
           {{- if $sidecar.secrets.env }}
           envFrom:
             - secretRef:
-                name: {{ include "chart-model-multi.fullname" $ }}-api-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
+                name: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
           {{- end }}
           {{- if or (and $sidecar.persistence $sidecar.persistence.enabled) (and $sidecar.config $sidecar.config.files) (and $sidecar.secrets $sidecar.secrets.files) }}
           volumeMounts:
@@ -353,21 +354,21 @@ spec:
           emptyDir: {}
           {{- else }}
           persistentVolumeClaim:
-            claimName: {{ include "chart-model-multi.fullname" . }}-api
+            claimName: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}
           {{- end }}
         {{- end }}
         {{- if and $comp.config $comp.config.files }}
         {{- range $filename, $config := $comp.config.files }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
           configMap:
-            name: {{ include "chart-model-multi.fullname" $ }}-api-files-cm
+            name: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-files-cm
         {{- end }}
         {{- end }}
         {{- if and $comp.secrets $comp.secrets.files }}
         {{- range $filename, $config := $comp.secrets.files }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
           secret:
-            secretName: {{ include "chart-model-multi.fullname" $ }}-api-files-secret
+            secretName: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-files-secret
             items:
               - key: {{ $filename }}
                 path: {{ $filename }}
@@ -377,7 +378,7 @@ spec:
         {{- range $filename, $config := $comp.vso.files }}
         - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
           secret:
-            secretName: {{ include "chart-model-multi.fullname" $ }}-api-vso-secret
+            secretName: {{ include "chart-model-multi.fullname" $ }}-{{ $compName }}-vso-secret
             items:
               - key: {{ $filename }}
                 path: {{ $filename }}
@@ -385,4 +386,6 @@ spec:
         {{- end }}
       {{- end }}
 
+{{- end }}
+---
 {{- end }}

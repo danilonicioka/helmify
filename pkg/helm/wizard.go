@@ -15,9 +15,8 @@ import (
 	roothelmify "github.com/danilonicioka/helmify"
 	"github.com/danilonicioka/helmify/pkg/config"
 	"github.com/sirupsen/logrus"
-	"github.com/danilonicioka/helmify/pkg/helmify"
-	"github.com/danilonicioka/helmify/pkg/processor"
 	"gopkg.in/yaml.v3"
+	"github.com/danilonicioka/helmify/pkg/processor"
 )
 
 // WriteTarGz writes the map of relative file path -> file content into a tar.gz stream.
@@ -135,8 +134,9 @@ type WizardParams struct {
 	DevRepoURL    string                      `json:"devRepoUrl" validate:"required"`
 	GlobalConfig  map[string]string           `json:"globalConfig"`
 	GlobalSecret  map[string]string           `json:"globalSecret"`
-	Deployments   map[string]DeploymentParams `json:"deployments" validate:"required,dive"`
-	Subcomponents []string                    `json:"subcomponents"`
+	Deployments       map[string]DeploymentParams `json:"deployments" validate:"required,dive"`
+	CronJobs          map[string]DeploymentParams `json:"cronJobs,omitempty"`
+	Subcomponents     []string                    `json:"subcomponents"`
 	SubcomponentsData map[string]interface{}          `json:"subcomponentsData,omitempty"`
 }
 
@@ -319,15 +319,9 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	if params.ChartName == "" {
 		return nil, fmt.Errorf("chartName is required")
 	}
-	if params.Type != "single" && params.Type != "multi" {
-		return nil, fmt.Errorf("type must be 'single' or 'multi'")
-	}
 	logrus.Infof("Starting GenerateWizardChart for %s", params.ChartName)
 
-	basePath := "models/single"
-	if params.Type == "multi" {
-		basePath = "models/multi"
-	}
+	basePath := "models/universal"
 
 	// 1. Walk the embedded directory and read all files
 	embeddedFiles := make(map[string][]byte)
@@ -353,26 +347,18 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		return nil, fmt.Errorf("failed to read embedded templates: %w", err)
 	}
 
-	oldChartName := ""
-	if chartYaml, ok := embeddedFiles["Chart.yaml"]; ok {
-		oldChartName = getChartNameFromMetadata(chartYaml)
-	}
-	if oldChartName == "" {
-		oldChartName = "chart-model-single"
-		if params.Type == "multi" {
-			oldChartName = "chart-model-multi"
-		}
-	}
+	oldChartName := "chart-model-multi"
 
-	// 2. Setup the output map and filters
+	// 2. Setup the output map
 	outputFiles := make(map[string][]byte)
 
-	// Copy non-component files (Chart.yaml, helpers, global config, .helmignore)
+	// Copy ALL files (templates, Chart.yaml, etc) as-is, just replacing oldChartName
 	for relPath, data := range embeddedFiles {
-		if !strings.Contains(relPath, "templates/") || relPath == "templates/_helpers.tpl" || relPath == "templates/cm-global.yaml" || relPath == "templates/secret-global.yaml" {
-			content := replaceChartName(string(data), oldChartName, params.ChartName)
-			outputFiles[relPath] = []byte(content)
+		if relPath == "values.yaml" {
+			continue // handled separately
 		}
+		content := replaceChartName(string(data), oldChartName, params.ChartName)
+		outputFiles[relPath] = []byte(content)
 	}
 
 	// Inject subcomponent templates
@@ -392,46 +378,79 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		})
 	}
 
-	// 3. Process component templates
-	if params.Type == "single" {
-		// Single deployment has a single component mapped directly to the chart itself
-		var depConfig DeploymentParams
-		if cfg, ok := params.Deployments[params.ChartName]; ok {
-			depConfig = cfg
-		} else if len(params.Deployments) > 0 {
-			// fallback to first key
-			for _, cfg := range params.Deployments {
-				depConfig = cfg
+	// 3. Process values.yaml
+	valuesData := embeddedFiles["values.yaml"]
+	var rootNode yaml.Node
+	if err := yaml.Unmarshal(valuesData, &rootNode); err != nil {
+		return nil, fmt.Errorf("failed to parse values.yaml: %w", err)
+	}
+
+	_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
+
+	// Collect and sort component keys
+	var compKeys []string
+	for k := range params.Deployments {
+		compKeys = append(compKeys, k)
+	}
+	sort.Strings(compKeys)
+
+	// Parse un-mutated values for cloning the "api" dummy block
+	var origRoot yaml.Node
+	if err := yaml.Unmarshal(valuesData, &origRoot); err != nil {
+		return nil, fmt.Errorf("failed to parse original values.yaml for cloning: %w", err)
+	}
+	
+	// Find components mapping inside rootNode
+	var componentsMapping *yaml.Node
+	if rootNode.Kind == yaml.DocumentNode && len(rootNode.Content) > 0 {
+		topMapping := rootNode.Content[0]
+		for i := 0; i < len(topMapping.Content); i += 2 {
+			if topMapping.Content[i].Value == "deploys" {
+				componentsMapping = topMapping.Content[i+1]
 				break
 			}
 		}
+	}
+	
+	if componentsMapping != nil {
+		// Clear default components from rootNode's "deploys" map
+		componentsMapping.Content = []*yaml.Node{}
+	}
 
-		// Copy templates as-is but replacing name/references
-		for relPath, data := range embeddedFiles {
-			if strings.Contains(relPath, "templates/") && relPath != "templates/_helpers.tpl" && relPath != "templates/cm-global.yaml" && relPath != "templates/secret-global.yaml" {
-				base := filepath.Base(relPath)
-				if strings.HasSuffix(base, "-redis.yaml") || strings.HasSuffix(base, "-postgres.yaml") {
-					continue
+	// Find base component "api" from origRoot to use as template
+	var baseNode *yaml.Node
+	if origRoot.Kind == yaml.DocumentNode && len(origRoot.Content) > 0 {
+		topMapping := origRoot.Content[0]
+		for i := 0; i < len(topMapping.Content); i += 2 {
+			if topMapping.Content[i].Value == "deploys" {
+				origComponentsMapping := topMapping.Content[i+1]
+				for j := 0; j < len(origComponentsMapping.Content); j += 2 {
+					if origComponentsMapping.Content[j].Value == "api" {
+						baseNode = origComponentsMapping.Content[j+1]
+						break
+					}
 				}
-				content := replaceChartName(string(data), oldChartName, params.ChartName)
-				outputFiles[relPath] = []byte(content)
+				break
 			}
 		}
+	}
 
-		// Update values.yaml
-		valuesData := embeddedFiles["values.yaml"]
-		var rootNode yaml.Node
-		if err := yaml.Unmarshal(valuesData, &rootNode); err != nil {
-			return nil, fmt.Errorf("failed to parse values.yaml: %w", err)
+	// Process each user component
+	for _, compName := range compKeys {
+		depConfig := params.Deployments[compName]
+
+		if baseNode != nil && componentsMapping != nil {
+			cloned := cloneYamlNode(baseNode)
+			// Replace any nested references to 'api' (if we had any)
+			replaceNodeComponent(cloned, "api", compName)
+			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: compName}
+			componentsMapping.Content = append(componentsMapping.Content, keyNode, cloned)
 		}
 
-		renameRootKey(&rootNode, oldChartName, params.ChartName)
-		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
-
-		// Set overrides
-		appKey := params.ChartName
+		appKeyPrefix := []string{"deploys", compName}
+		
 		if depConfig.Replicas != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "replicas"}, *depConfig.Replicas)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "replicas"), *depConfig.Replicas)
 		}
 		svcPort := 0
 		if depConfig.Service.Port != nil {
@@ -443,53 +462,54 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 		}
 		if svcPort > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "service", "ports", "http", "port"}, svcPort)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", "http", "port"), svcPort)
 		}
 		if depConfig.Autoscaling != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "autoscaling"}, depConfig.Autoscaling)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "autoscaling"), depConfig.Autoscaling)
 		}
 		if depConfig.Probes != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "probes"}, depConfig.Probes)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "probes"), depConfig.Probes)
 		}
 		if depConfig.Route.Path != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "route", "path"}, depConfig.Route.Path)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "path"), depConfig.Route.Path)
 		}
 		if depConfig.Image.Repository != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "image", "repository"}, depConfig.Image.Repository)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "repository"), depConfig.Image.Repository)
 		}
 		if depConfig.Image.Tag != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "image", "tag"}, depConfig.Image.Tag)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "tag"), depConfig.Image.Tag)
 		}
 		if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "extraContainers"}, depConfig.ExtraContainers)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "extraContainers"), depConfig.ExtraContainers)
 		}
 		if depConfig.InitContainers != nil && len(depConfig.InitContainers) > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "initContainers"}, depConfig.InitContainers)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "initContainers"), depConfig.InitContainers)
 		}
 		if depConfig.Command != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "command"}, depConfig.Command)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "command"), depConfig.Command)
 		}
 		if depConfig.Args != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "args"}, depConfig.Args)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "args"), depConfig.Args)
 		}
 		if depConfig.Config != nil {
 			if depConfig.Config.Env != nil {
 				stripQuotesFromMap(depConfig.Config.Env)
 			}
-			_ = setYamlPath(&rootNode, []string{appKey, "config"}, depConfig.Config)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "config"), depConfig.Config)
 		}
 		if depConfig.Secrets != nil {
 			if depConfig.Secrets.Env != nil {
 				stripQuotesFromMap(depConfig.Secrets.Env)
 			}
-			_ = setYamlPath(&rootNode, []string{appKey, "secrets"}, depConfig.Secrets)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "secrets"), depConfig.Secrets)
 		}
 		if depConfig.Resources != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "resources"}, depConfig.Resources)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "resources"), depConfig.Resources)
 		}
 		if depConfig.Scheduling != nil {
-			_ = setYamlPath(&rootNode, []string{appKey, "scheduling"}, depConfig.Scheduling)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "scheduling"), depConfig.Scheduling)
 		}
+		
 		for _, sub := range params.Subcomponents {
 			depConfig.ConnectsTo = append(depConfig.ConnectsTo, params.ChartName+"-"+sub)
 		}
@@ -502,452 +522,118 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				}
 				connects = append(connects, fmt.Sprintf(`{"apiVersion":"apps/v1","kind":"Deployment","name":"%s"}`, cName))
 			}
-			_ = setYamlPath(&rootNode, []string{appKey, "annotations", "app.openshift.io/connects-to"}, "["+strings.Join(connects, ",")+"]")
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations", "app.openshift.io/connects-to"), "["+strings.Join(connects, ",")+"]")
 		}
-		// Set runtime properties directly under the standard labels map
 		if depConfig.Runtime != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "labels", "app.openshift.io/runtime"}, depConfig.Runtime)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "labels", "app.openshift.io/runtime"), depConfig.Runtime)
 		}
-		if depConfig.RuntimeNamespace != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "labels", "app.openshift.io/runtime-namespace"}, depConfig.RuntimeNamespace)
-		}
-		if depConfig.RuntimeVersion != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "labels", "app.openshift.io/runtime-version"}, depConfig.RuntimeVersion)
-		}
-		// Add primary route annotation if supplied
 		if depConfig.OverviewAppRoute != "" {
-			_ = setYamlPath(&rootNode, []string{appKey, "annotations", "console.alpha.openshift.io/overview-app-route"}, depConfig.OverviewAppRoute)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations", "console.alpha.openshift.io/overview-app-route"), depConfig.OverviewAppRoute)
 		}
 
 		if depConfig.Persistence.Enabled {
-			_ = setYamlPath(&rootNode, []string{appKey, "persistence", "enabled"}, true)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "enabled"), true)
 			if depConfig.Persistence.Ephemeral {
-				_ = setYamlPath(&rootNode, []string{appKey, "persistence", "ephemeral"}, true)
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "ephemeral"), true)
 			}
 			if depConfig.Persistence.MountPath != "" {
-				_ = setYamlPath(&rootNode, []string{appKey, "persistence", "mountPath"}, depConfig.Persistence.MountPath)
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "mountPath"), depConfig.Persistence.MountPath)
 			}
 			if !depConfig.Persistence.Ephemeral {
 				if depConfig.Persistence.StorageRequest != "" {
-					_ = setYamlPath(&rootNode, []string{appKey, "persistence", "storageRequest"}, depConfig.Persistence.StorageRequest)
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "storageRequest"), depConfig.Persistence.StorageRequest)
 				}
-				_ = setYamlPath(&rootNode, []string{appKey, "strategy"}, map[string]string{"type": "Recreate"})
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "strategy"), map[string]string{"type": "Recreate"})
 			}
 		}
 
 		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)
-		_ = setYamlPath(&rootNode, []string{appKey, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "default", "enabled"), depConfig.Route.Default.Enabled)
 		if depConfig.Route.Default.Host != "" {
 			defaultHost = depConfig.Route.Default.Host
 		}
-		_ = setYamlPath(&rootNode, []string{appKey, "route", "default", "host"}, defaultHost)
-
-		_ = setYamlPath(&rootNode, []string{appKey, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "default", "host"), defaultHost)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "internal", "enabled"), depConfig.Route.Internal.Enabled)
 		if depConfig.Route.Internal.Host != "" {
 			internalHost = depConfig.Route.Internal.Host
 		}
-		_ = setYamlPath(&rootNode, []string{appKey, "route", "internal", "host"}, internalHost)
-
-		_ = setYamlPath(&rootNode, []string{appKey, "route", "external", "enabled"}, depConfig.Route.External.Enabled)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "internal", "host"), internalHost)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "external", "enabled"), depConfig.Route.External.Enabled)
 		if depConfig.Route.External.Host != "" {
 			externalHost = depConfig.Route.External.Host
 		}
-		_ = setYamlPath(&rootNode, []string{appKey, "route", "external", "host"}, externalHost)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "external", "host"), externalHost)
 
 		if len(depConfig.Route.Additional) > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "route", "additional"}, depConfig.Route.Additional)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "additional"), depConfig.Route.Additional)
 		}
-
 		if depConfig.Config != nil && len(depConfig.Config.Files) > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "config", "files"}, depConfig.Config.Files)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "config", "files"), depConfig.Config.Files)
 		}
 		if depConfig.Secrets != nil && len(depConfig.Secrets.Files) > 0 {
-			_ = setYamlPath(&rootNode, []string{appKey, "secrets", "files"}, depConfig.Secrets.Files)
-		}
-
-		if len(params.GlobalConfig) > 0 {
-			stripQuotesFromMap(params.GlobalConfig)
-			_ = setYamlPath(&rootNode, []string{"global", "config", "env"}, params.GlobalConfig)
-		}
-		if len(params.GlobalSecret) > 0 {
-			stripQuotesFromMap(params.GlobalSecret)
-			_ = setYamlPath(&rootNode, []string{"global", "secrets", "env"}, params.GlobalSecret)
-		}
-
-		// Re-marshal preserving comments
-		setBlockStyle(&rootNode)
-		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
-		if err := enc.Encode(&rootNode); err != nil {
-			return nil, fmt.Errorf("failed to encode values.yaml: %w", err)
-		}
-		valuesStr := buf.String()
-		valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
-		valuesStr = formatValues(valuesStr)
-		outputFiles["values.yaml"] = []byte(valuesStr)
-
-	} else {
-		// Multi deployment supports api, web, and custom components dynamically
-		valuesData := embeddedFiles["values.yaml"]
-		var rootNode yaml.Node
-		if err := yaml.Unmarshal(valuesData, &rootNode); err != nil {
-			return nil, fmt.Errorf("failed to parse values.yaml: %w", err)
-		}
-
-		// Find the mapping node
-		var mapping *yaml.Node
-		if rootNode.Kind == yaml.DocumentNode && len(rootNode.Content) > 0 {
-			mapping = rootNode.Content[0]
-		}
-
-		// Delete default components if not requested
-		if _, ok := params.Deployments["api"]; !ok {
-			deleteYamlPath(&rootNode, []string{"api"})
-		}
-		if _, ok := params.Deployments["app"]; !ok {
-			deleteYamlPath(&rootNode, []string{"app"})
-		}
-
-		_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
-
-		// Collect and sort component keys to ensure deterministic order (Deployments first, then CronJobs, then alphabetical)
-		var compKeys []string
-		for k := range params.Deployments {
-			compKeys = append(compKeys, k)
-		}
-		sort.Slice(compKeys, func(i, j int) bool {
-			return compKeys[i] < compKeys[j]
-		})
-
-		// Parse the un-mutated valuesData ONCE for cloning bases
-		var origRoot yaml.Node
-		if err := yaml.Unmarshal(valuesData, &origRoot); err != nil {
-			return nil, fmt.Errorf("failed to parse original values.yaml for cloning: %w", err)
-		}
-
-		// Process each user component
-		for _, compName := range compKeys {
-			depConfig := params.Deployments[compName]
-			templateBaseComp := "api"
-			valuesBaseComp := "api"
-			
-			if compName == "app" || compName == "web" || strings.HasSuffix(compName, "-app") || strings.HasSuffix(compName, "-web") || strings.Contains(compName, "frontend") {
-				templateBaseComp = "app"
-				valuesBaseComp = "app"
-			}
-
-			// 1. Copy/rename templates
-			for relPath, data := range embeddedFiles {
-				if !strings.Contains(relPath, "templates/") || relPath == "templates/_helpers.tpl" || relPath == "templates/cm-global.yaml" {
-					continue
-				}
-
-				filename := filepath.Base(relPath)
-
-
-				if strings.Contains(filename, "-"+templateBaseComp) || strings.Contains(filename, templateBaseComp+"-") || strings.Contains(filename, templateBaseComp+".") {
-					compKebab := processor.NormalizeComponentName(compName)
-					newFilename := strings.Replace(filename, templateBaseComp, compKebab, 1)
-					newRelPath := filepath.Join("templates", newFilename)
-
-					contentStr := string(data)
-					if compName != templateBaseComp {
-						contentStr = replaceComponent(contentStr, templateBaseComp, compName)
-					}
-					contentStr = replaceChartName(contentStr, oldChartName, params.ChartName)
-					outputFiles[newRelPath] = []byte(contentStr)
-				}
-			}
-
-			// 2. Setup values.yaml entry
-			// If key doesn't exist, clone the baseComp structure from original values.yaml, or fallback to api
-			exists := false
-			if mapping != nil && mapping.Kind == yaml.MappingNode {
-				for i := 0; i < len(mapping.Content); i += 2 {
-					if mapping.Content[i].Value == compName {
-						exists = true
-						break
-					}
-				}
-			}
-
-			if !exists && mapping != nil && mapping.Kind == yaml.MappingNode {
-				// Find and clone baseComp node from original un-mutated values.yaml
-				var baseNode *yaml.Node
-				var baseKeyNode *yaml.Node
-				if origRoot.Kind == yaml.DocumentNode && len(origRoot.Content) > 0 {
-					origMapping := origRoot.Content[0]
-					if origMapping.Kind == yaml.MappingNode {
-						for i := 0; i < len(origMapping.Content); i += 2 {
-							if origMapping.Content[i].Value == valuesBaseComp {
-								baseKeyNode = origMapping.Content[i]
-								baseNode = origMapping.Content[i+1]
-								break
-							}
-						}
-						// Fallback to the first available component if baseComp wasn't found
-						if baseNode == nil && len(origMapping.Content) >= 2 {
-							baseKeyNode = origMapping.Content[0]
-							baseNode = origMapping.Content[1]
-						}
-					}
-				}
-
-				if baseNode != nil {
-					cloned := cloneYamlNode(baseNode)
-					replaceNodeComponent(cloned, valuesBaseComp, compName)
-					keyNode := &yaml.Node{
-						Kind:  yaml.ScalarNode,
-						Value: compName,
-					}
-					if baseKeyNode != nil {
-						keyNode.HeadComment = baseKeyNode.HeadComment
-						keyNode.LineComment = baseKeyNode.LineComment
-						keyNode.FootComment = baseKeyNode.FootComment
-					}
-					mapping.Content = append(mapping.Content, keyNode, cloned)
-				}
-			}
-
-			// Apply overrides to compName in values.yaml
-			if depConfig.Replicas != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "replicas"}, *depConfig.Replicas)
-			}
-			svcPort := 0
-			if depConfig.Service.Port != nil {
-				svcPort = *depConfig.Service.Port
-			}
-			if svcPort == 0 && depConfig.Service.Ports != nil {
-				if httpPort, ok := depConfig.Service.Ports["http"]; ok {
-					svcPort = httpPort.Port
-				}
-			}
-			if svcPort > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "service", "ports", "http", "port"}, svcPort)
-			}
-			if depConfig.Autoscaling != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "autoscaling"}, depConfig.Autoscaling)
-			}
-			if depConfig.Probes != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "probes"}, depConfig.Probes)
-			}
-			if depConfig.Route.Path != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "route", "path"}, depConfig.Route.Path)
-			}
-			if depConfig.Image.Repository != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "image", "repository"}, depConfig.Image.Repository)
-			}
-			if depConfig.Image.Tag != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "image", "tag"}, depConfig.Image.Tag)
-			}
-			if depConfig.Command != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "command"}, depConfig.Command)
-			}
-			if depConfig.Args != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "args"}, depConfig.Args)
-			}
-			if depConfig.Config != nil {
-				if depConfig.Config.Env != nil {
-					stripQuotesFromMap(depConfig.Config.Env)
-				}
-				_ = setYamlPath(&rootNode, []string{compName, "config"}, depConfig.Config)
-			}
-			if depConfig.Secrets != nil {
-				if depConfig.Secrets.Env != nil {
-					stripQuotesFromMap(depConfig.Secrets.Env)
-				}
-				_ = setYamlPath(&rootNode, []string{compName, "secrets"}, depConfig.Secrets)
-			}
-			if depConfig.Resources != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "resources"}, depConfig.Resources)
-			}
-			if depConfig.Scheduling != nil {
-				_ = setYamlPath(&rootNode, []string{compName, "scheduling"}, depConfig.Scheduling)
-			}
-			if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "extraContainers"}, depConfig.ExtraContainers)
-			}
-			if depConfig.InitContainers != nil && len(depConfig.InitContainers) > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "initContainers"}, depConfig.InitContainers)
-			}
-			if len(depConfig.ConnectsTo) > 0 {
-				var connects []string
-				for _, c := range depConfig.ConnectsTo {
-					cName := c
-					if !strings.HasPrefix(cName, params.ChartName+"-") && cName != params.ChartName {
-						cName = params.ChartName + "-" + cName
-					}
-					connects = append(connects, fmt.Sprintf(`{"apiVersion":"apps/v1","kind":"Deployment","name":"%s"}`, cName))
-				}
-				_ = setYamlPath(&rootNode, []string{compName, "annotations", "app.openshift.io/connects-to"}, "["+strings.Join(connects, ",")+"]")
-			}
-			defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, compName, depConfig.Route.Path, true)
-			if depConfig.WorkloadType != "CronJob" {
-				_ = setYamlPath(&rootNode, []string{compName, "route", "default", "enabled"}, depConfig.Route.Default.Enabled)
-				if depConfig.Route.Default.Host != "" {
-					defaultHost = depConfig.Route.Default.Host
-				}
-				_ = setYamlPath(&rootNode, []string{compName, "route", "default", "host"}, defaultHost)
-			}
-
-			// Set runtime properties directly under the standard labels map
-			if depConfig.Runtime != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "labels", "app.openshift.io/runtime"}, depConfig.Runtime)
-			}
-			if depConfig.RuntimeNamespace != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "labels", "app.openshift.io/runtime-namespace"}, depConfig.RuntimeNamespace)
-			}
-			if depConfig.RuntimeVersion != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "labels", "app.openshift.io/runtime-version"}, depConfig.RuntimeVersion)
-			}
-			// Add primary route annotation if supplied
-			if depConfig.OverviewAppRoute != "" {
-				_ = setYamlPath(&rootNode, []string{compName, "annotations", "console.alpha.openshift.io/overview-app-route"}, depConfig.OverviewAppRoute)
-			}
-
-			if depConfig.Persistence.Enabled {
-				_ = setYamlPath(&rootNode, []string{compName, "persistence", "enabled"}, true)
-				if depConfig.Persistence.Ephemeral {
-					_ = setYamlPath(&rootNode, []string{compName, "persistence", "ephemeral"}, true)
-				}
-				if depConfig.Persistence.MountPath != "" {
-					_ = setYamlPath(&rootNode, []string{compName, "persistence", "mountPath"}, depConfig.Persistence.MountPath)
-				}
-				if !depConfig.Persistence.Ephemeral {
-					if depConfig.Persistence.StorageRequest != "" {
-						_ = setYamlPath(&rootNode, []string{compName, "persistence", "storageRequest"}, depConfig.Persistence.StorageRequest)
-					}
-					_ = setYamlPath(&rootNode, []string{compName, "strategy"}, map[string]string{"type": "Recreate"})
-				}
-			
-			}
-
-			if depConfig.WorkloadType != "CronJob" {
-				_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "enabled"}, depConfig.Route.Internal.Enabled)
-				if depConfig.Route.Internal.Host != "" {
-					internalHost = depConfig.Route.Internal.Host
-				}
-				_ = setYamlPath(&rootNode, []string{compName, "route", "internal", "host"}, internalHost)
-
-				_ = setYamlPath(&rootNode, []string{compName, "route", "external", "enabled"}, depConfig.Route.External.Enabled)
-				if depConfig.Route.External.Host != "" {
-					externalHost = depConfig.Route.External.Host
-				}
-				_ = setYamlPath(&rootNode, []string{compName, "route", "external", "host"}, externalHost)
-
-				if len(depConfig.Route.Additional) > 0 {
-					_ = setYamlPath(&rootNode, []string{compName, "route", "additional"}, depConfig.Route.Additional)
-				}
-			}
-
-			if depConfig.Config != nil && len(depConfig.Config.Files) > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "config", "files"}, depConfig.Config.Files)
-			}
-			if depConfig.Secrets != nil && len(depConfig.Secrets.Files) > 0 {
-				_ = setYamlPath(&rootNode, []string{compName, "secrets", "files"}, depConfig.Secrets.Files)
-			}
-		}
-
-		if len(params.GlobalConfig) > 0 {
-			stripQuotesFromMap(params.GlobalConfig)
-			_ = setYamlPath(&rootNode, []string{"global", "config", "env"}, params.GlobalConfig)
-		}
-		if len(params.GlobalSecret) > 0 {
-			stripQuotesFromMap(params.GlobalSecret)
-			_ = setYamlPath(&rootNode, []string{"global", "secrets", "env"}, params.GlobalSecret)
-		}
-
-		// Re-marshal values.yaml preserving comments
-		setBlockStyle(&rootNode)
-		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
-		if err := enc.Encode(&rootNode); err != nil {
-			return nil, fmt.Errorf("failed to encode values.yaml: %w", err)
-		}
-		valuesStr := buf.String()
-		// Replace chart name inside values.yaml (e.g. in affinity matching labels)
-		valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
-		valuesStr = formatValues(valuesStr)
-		outputFiles["values.yaml"] = []byte(valuesStr)
-	}
-
-	// Inject subcomponent values snippets
-	var subValuesStr string
-	for _, sub := range params.Subcomponents {
-		subPath := fmt.Sprintf("models/subcomponents/%s/values-snippet.yaml", sub)
-		var snippetNode yaml.Node
-		if data, err := roothelmify.ModelsFS.ReadFile(subPath); err == nil {
-			yaml.Unmarshal(data, &snippetNode)
-		}
-
-		// Apply dynamic user overrides for this subcomponent if present using AST to preserve comments
-		if params.SubcomponentsData != nil {
-			if overrideData, ok := params.SubcomponentsData[sub]; ok {
-				if overrideMap, ok := overrideData.(map[string]interface{}); ok {
-					flat := make(map[string]interface{})
-					flattenMap(overrideMap, []string{sub}, flat)
-					for k, v := range flat {
-						_ = setYamlPath(&snippetNode, strings.Split(k, "."), v)
-					}
-				}
-			}
-		}
-
-		// Marshal the node back to a string
-		var buf bytes.Buffer
-		enc := yaml.NewEncoder(&buf)
-		enc.SetIndent(2)
-		_ = enc.Encode(&snippetNode)
-		
-		subValuesStr += "\n\n" + strings.ReplaceAll(buf.String(), "<CHART_NAME>", params.ChartName)
-	}
-	if len(subValuesStr) > 0 {
-		if valuesData, ok := outputFiles["values.yaml"]; ok {
-			outputFiles["values.yaml"] = []byte(string(valuesData) + subValuesStr)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "secrets", "files"), depConfig.Secrets.Files)
 		}
 	}
 
-	if chartData, ok := outputFiles["Chart.yaml"]; ok {
-		var chartNode yaml.Node
-		if err := yaml.Unmarshal(chartData, &chartNode); err == nil {
-			if params.DevRepoURL != "" {
-				_ = setYamlPath(&chartNode, []string{"sources"}, []string{params.DevRepoURL})
-			}
-			cv := config.GlobalEnvConfig.ChartVersion
-			_ = setYamlPath(&chartNode, []string{"version"}, cv)
-			_ = setYamlPath(&chartNode, []string{"appVersion"}, cv)
+	// 4. Set global variables
+	if len(params.GlobalConfig) > 0 {
+		stripQuotesFromMap(params.GlobalConfig)
+		_ = setYamlPath(&rootNode, []string{"global", "config", "env"}, params.GlobalConfig)
+	}
+	if len(params.GlobalSecret) > 0 {
+		stripQuotesFromMap(params.GlobalSecret)
+		_ = setYamlPath(&rootNode, []string{"global", "secrets", "env"}, params.GlobalSecret)
+	}
 
-			var buf bytes.Buffer
-			enc := yaml.NewEncoder(&buf)
-			enc.SetIndent(2)
-			if err := enc.Encode(&chartNode); err == nil {
-				outputFiles["Chart.yaml"] = buf.Bytes()
+	// Process CronJobs properly
+	if len(params.CronJobs) > 0 {
+		for cName, cj := range params.CronJobs {
+			cjKeyPrefix := []string{"cronjobs", cName}
+			_ = setYamlPath(&rootNode, append(cjKeyPrefix, "enabled"), true)
+			if cj.Schedule != "" {
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "schedule"), cj.Schedule)
+			}
+			if cj.Image.Repository != "" {
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "image", "repository"), cj.Image.Repository)
+			}
+			if cj.Image.Tag != "" {
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "image", "tag"), cj.Image.Tag)
+			}
+			if cj.Command != nil {
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "command"), cj.Command)
+			}
+			if cj.Args != nil {
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "args"), cj.Args)
+			}
+			if cj.Config != nil {
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "config"), cj.Config)
+			}
+			if cj.Secrets != nil {
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "secrets"), cj.Secrets)
+			}
+			if cj.Suspend != nil {
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "suspend"), *cj.Suspend)
+			}
+			if cj.ConcurrencyPolicy != "" {
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "concurrencyPolicy"), cj.ConcurrencyPolicy)
 			}
 		}
 	}
 
-	basePath = "models/single"
-	if params.Type == "multi" {
-		basePath = "models/multi"
+	// Re-marshal
+	setBlockStyle(&rootNode)
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(&rootNode); err != nil {
+		return nil, fmt.Errorf("failed to encode values.yaml: %w", err)
 	}
-	caData, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values-ca.yaml"))
-	if err == nil {
-		if valuesData, ok := outputFiles["values.yaml"]; ok {
-			var values helmify.Values
-			if err := yaml.Unmarshal(valuesData, &values); err == nil {
-				mergedCa, err := mergeDevValues(caData, params.ChartName, values, valuesData)
-				if err == nil {
-					outputFiles["values-ca.yaml"] = mergedCa
-				}
-			}
-		}
-	}
+	valuesStr := buf.String()
+	valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
+	valuesStr = formatValues(valuesStr)
+	outputFiles["values.yaml"] = []byte(valuesStr)
 
-	outputFiles[".gitlab-ci.yml"] = roothelmify.GitLabCI
-
-	logrus.Info("GenerateWizardChart complete")
+	logrus.Infof("GenerateWizardChart complete for %s (Universal Model)", params.ChartName)
 	return outputFiles, nil
 }
 

@@ -1,4 +1,0 @@
-chart-model-single:
-  config:
-    env:
-      TZ: "America/Belem"

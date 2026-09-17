@@ -1,6 +1,6 @@
 # CRONJOB CONFIGURATION
 # ==============================================================================
-cronjob:
+cronjobs:
   # -- Enable or disable this component
   enabled: true
   # -- Schedule for the CronJob.

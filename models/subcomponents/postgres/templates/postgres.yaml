@@ -1,4 +1,19 @@
-{{- if .Values.postgres.enabled -}}
+{{ if and .Values.postgres .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-cm
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+data:
+  {{- range $key, $val := .Values.postgres.config.env }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+
+{{ if .Values.postgres.enabled }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -143,4 +158,65 @@ spec:
             claimName: {{ include "<CHART_NAME>.fullname" $ }}-postgres
           {{- end }}
       {{- end }}
+{{- end -}}
+
+{{ if and .Values.postgres.enabled (and .Values.postgres.persistence.enabled (not .Values.postgres.persistence.ephemeral)) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.postgres.persistence.accessMode | default "ReadWriteOnce" }}
+  resources:
+    requests:
+      storage: {{ .Values.postgres.persistence.storageRequest | quote }}
+  {{- if .Values.postgres.persistence.storageClass }}
+  {{- if (eq "-" .Values.postgres.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ .Values.postgres.persistence.storageClass }}"
+  {{- end }}
+  {{- end }}
+{{- end -}}
+
+{{ if and .Values.postgres .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-secret
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+type: Opaque
+data:
+  {{- range $key, $val := .Values.postgres.secrets.env }}
+  {{ $key }}: {{ $val | b64enc | quote }}
+  {{- end }}
+{{- end }}
+
+{{ if .Values.postgres.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+spec:
+  type: {{ .Values.postgres.service.type | default "ClusterIP" }}
+  ports:
+    {{- range $key, $val := .Values.postgres.service.ports }}
+  - name: {{ $key }}
+    port: {{ $val.port }}
+    targetPort: {{ $key }}
+    {{- if $val.protocol }}
+    protocol: {{ $val.protocol }}
+    {{- end }}
+  {{- end }}
+  selector:
+    {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "postgres") | nindent 4 }}
 {{- end -}}

@@ -2,5 +2,5 @@ apiVersion: v2
 name: chart-model-multi
 description: A standardized multi-deployment model Helm chart for Organization applications.
 type: application
-sources:
-  - ""
+version: 11.0.0
+appVersion: 11.0.0

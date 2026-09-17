@@ -1,4 +1,19 @@
-{{- if .Values.redis.enabled -}}
+{{ if and .Values.redis .Values.redis.config.env (not (empty .Values.redis.config.env)) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis-cm
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+data:
+  {{- range $key, $val := .Values.redis.config.env }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+
+{{ if .Values.redis.enabled }}
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -143,4 +158,65 @@ spec:
             claimName: {{ include "<CHART_NAME>.fullname" $ }}-redis
           {{- end }}
       {{- end }}
+{{- end -}}
+
+{{ if and .Values.redis.enabled (and .Values.redis.persistence.enabled (not .Values.redis.persistence.ephemeral)) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.redis.persistence.accessMode | default "ReadWriteOnce" }}
+  resources:
+    requests:
+      storage: {{ .Values.redis.persistence.storageRequest | quote }}
+  {{- if .Values.redis.persistence.storageClass }}
+  {{- if (eq "-" .Values.redis.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ .Values.redis.persistence.storageClass }}"
+  {{- end }}
+  {{- end }}
+{{- end -}}
+
+{{ if and .Values.redis .Values.redis.secrets.env (not (empty .Values.redis.secrets.env)) }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis-secret
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+type: Opaque
+data:
+  {{- range $key, $val := .Values.redis.secrets.env }}
+  {{ $key }}: {{ $val | b64enc | quote }}
+  {{- end }}
+{{- end }}
+
+{{ if .Values.redis.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+spec:
+  type: {{ .Values.redis.service.type | default "ClusterIP" }}
+  ports:
+    {{- range $key, $val := .Values.redis.service.ports }}
+  - name: {{ $key }}
+    port: {{ $val.port }}
+    targetPort: {{ $key }}
+    {{- if $val.protocol }}
+    protocol: {{ $val.protocol }}
+    {{- end }}
+  {{- end }}
+  selector:
+    {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "redis") | nindent 4 }}
 {{- end -}}

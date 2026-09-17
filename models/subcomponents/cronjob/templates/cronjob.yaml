@@ -1,27 +1,29 @@
-{{- if .Values.cronjob.enabled -}}
+{{- range $compName, $comp := .Values.cronjobs }}
+{{- if ne $comp.enabled false }}
+---
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" . }}-cronjob
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "cronjob") | nindent 4 }}
-  {{- $annotations := include "<CHART_NAME>.component.annotations" (dict "context" . "component" "cronjob") }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+  {{- $annotations := include "<CHART_NAME>.component.annotations" (dict "context" $ "component" $compName) }}
   {{- if $annotations }}
   annotations:
     {{- $annotations | nindent 4 }}
   {{- end }}
 spec:
-  schedule: {{ .Values.cronjob.schedule | quote }}
-  {{- if hasKey .Values.cronjob "suspend" }}
-  suspend: {{ .Values.cronjob.suspend }}
+  schedule: {{ $comp.schedule | quote }}
+  {{- if hasKey $comp "suspend" }}
+  suspend: {{ $comp.suspend }}
   {{- end }}
-  concurrencyPolicy: {{ default "Allow" .Values.cronjob.concurrencyPolicy }}
-  successfulJobsHistoryLimit: {{ default 3 .Values.cronjob.successfulJobsHistoryLimit }}
-  failedJobsHistoryLimit: {{ default 1 .Values.cronjob.failedJobsHistoryLimit }}
+  concurrencyPolicy: {{ default "Allow" $comp.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ default 3 $comp.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ default 1 $comp.failedJobsHistoryLimit }}
   jobTemplate:
     metadata:
       labels:
-        {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "cronjob") | nindent 8 }}
+        {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" $compName) | nindent 8 }}
     spec:
       template:
         metadata:
@@ -32,126 +34,236 @@ spec:
             {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
             checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
             {{- end }}
-            {{- if and .Values.cronjob.config .Values.cronjob.config.files (not (empty .Values.cronjob.config.files)) }}
-            checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-cronjob-files.yaml") . | sha256sum }}'
+            {{- if and $comp.config $comp.config.files (not (empty $comp.config.files)) }}
+            checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-{{ $compName }}-files.yaml") . | sha256sum }}'
             {{- end }}
-            {{- if and .Values.cronjob.secrets .Values.cronjob.secrets.files (not (empty .Values.cronjob.secrets.files)) }}
-            checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-cronjob-files.yaml") . | sha256sum }}'
+            {{- if and $comp.secrets $comp.secrets.files (not (empty $comp.secrets.files)) }}
+            checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-{{ $compName }}-files.yaml") . | sha256sum }}'
             {{- end }}
-            {{- if and .Values.cronjob.secrets.env (not (empty .Values.cronjob.secrets.env)) }}
-            checksum/secret: '{{ include (print $.Template.BasePath "/secret-cronjob.yaml") . | sha256sum }}'
+            {{- if and $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env)) }}
+            checksum/secret: '{{ include (print $.Template.BasePath "/secret-{{ $compName }}.yaml") . | sha256sum }}'
             {{- end }}
           labels:
-            {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "cronjob") | nindent 12 }}
+            {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" $compName) | nindent 12 }}
         spec:
-          {{- with .Values.cronjob.image.pullSecrets }}
+          {{- with $comp.image.pullSecrets }}
           imagePullSecrets:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- if and .Values.cronjob.vso .Values.cronjob.vso.enabled }}
-          serviceAccountName: {{ include "<CHART_NAME>.fullname" . }}-cronjob-sa
+          {{- if and $comp.vso $comp.vso.enabled }}
+          serviceAccountName: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-sa
           {{- else if .Values.serviceAccount }}
           serviceAccountName: {{ include "<CHART_NAME>.serviceAccountName" . }}
           {{- end }}
           containers:
             - name: cronjob
-              image: "{{ .Values.cronjob.image.repository }}:{{ .Values.cronjob.image.tag | default .Chart.AppVersion }}"
-              imagePullPolicy: {{ .Values.cronjob.image.pullPolicy }}
-              {{- if .Values.cronjob.command }}
+              image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
+              imagePullPolicy: {{ $comp.image.pullPolicy }}
+              {{- if $comp.command }}
               command:
-                {{- toYaml .Values.cronjob.command | nindent 16 }}
+                {{- toYaml $comp.command | nindent 16 }}
               {{- end }}
-              {{- if .Values.cronjob.args }}
+              {{- if $comp.args }}
               args:
-                {{- toYaml .Values.cronjob.args | nindent 16 }}
+                {{- toYaml $comp.args | nindent 16 }}
               {{- end }}
               envFrom:
                 - configMapRef:
-                    name: {{ include "<CHART_NAME>.fullname" . }}-global-cm
+                    name: {{ include "<CHART_NAME>.fullname" $ }}-global-cm
                 - secretRef:
-                    name: {{ include "<CHART_NAME>.fullname" . }}-global-secret
-                {{- if and .Values.cronjob.config.env (not (empty .Values.cronjob.config.env)) }}
+                    name: {{ include "<CHART_NAME>.fullname" $ }}-global-secret
+                {{- if and $comp.config $comp.config.env (not (empty $comp.config.env)) }}
                 - configMapRef:
-                    name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-cm
+                    name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-cm
                 {{- end }}
-                {{- if and .Values.cronjob.secrets.env (not (empty .Values.cronjob.secrets.env)) }}
+                {{- if and $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env)) }}
                 - secretRef:
-                    name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-secret
+                    name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-secret
                 {{- end }}
-                {{- if and .Values.cronjob.vso .Values.cronjob.vso.enabled }}
+                {{- if and $comp.vso $comp.vso.enabled }}
                 - secretRef:
-                    name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-vso-secret
+                    name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-vso-secret
                 {{- end }}
-              {{- if .Values.cronjob.resources }}
+              {{- if $comp.resources }}
               resources:
-                {{- toYaml .Values.cronjob.resources | nindent 16 }}
+                {{- toYaml $comp.resources | nindent 16 }}
               {{- end }}
               volumeMounts:
-                {{- if and .Values.cronjob.persistence .Values.cronjob.persistence.enabled }}
+                {{- if and $comp.persistence $comp.persistence.enabled }}
                 - name: cronjob-data
-                  mountPath: {{ .Values.cronjob.persistence.mountPath | default "/data" }}
-                  {{- if .Values.cronjob.persistence.subPath }}
-                  subPath: {{ .Values.cronjob.persistence.subPath }}
+                  mountPath: {{ $comp.persistence.mountPath | default "/data" }}
+                  {{- if $comp.persistence.subPath }}
+                  subPath: {{ $comp.persistence.subPath }}
                   {{- end }}
                 {{- end }}
-                {{- if and .Values.cronjob.config .Values.cronjob.config.files }}
-                {{- range $key, $val := .Values.cronjob.config.files }}
+                {{- if and $comp.config $comp.config.files }}
+                {{- range $key, $val := $comp.config.files }}
                 - name: files
                   mountPath: {{ $val.path }}
                   subPath: {{ $key | replace "." "-" }}
                   readOnly: true
                 {{- end }}
                 {{- end }}
-                {{- if and .Values.cronjob.secrets .Values.cronjob.secrets.files }}
-                {{- range $key, $val := .Values.cronjob.secrets.files }}
+                {{- if and $comp.secrets $comp.secrets.files }}
+                {{- range $key, $val := $comp.secrets.files }}
                 - name: files-secret
                   mountPath: {{ $val.path }}
                   subPath: {{ $key | replace "." "-" }}
                   readOnly: true
                 {{- end }}
                 {{- end }}
-                {{- if and .Values.cronjob.vso .Values.cronjob.vso.enabled .Values.cronjob.vso.secretFiles }}
-                {{- range $key, $val := .Values.cronjob.vso.secretFiles }}
+                {{- if and $comp.vso $comp.vso.enabled $comp.vso.secretFiles }}
+                {{- range $key, $val := $comp.vso.secretFiles }}
                 - name: vso-files-secret
                   mountPath: {{ $val.path }}
                   subPath: {{ $key | replace "." "-" }}
                   readOnly: true
                 {{- end }}
                 {{- end }}
-          {{- if .Values.cronjob.extraContainers }}
-          {{- toYaml .Values.cronjob.extraContainers | nindent 12 }}
+          {{- if $comp.extraContainers }}
+          {{- toYaml $comp.extraContainers | nindent 12 }}
           {{- end }}
           volumes:
-            {{- if and .Values.cronjob.persistence .Values.cronjob.persistence.enabled }}
+            {{- if and $comp.persistence $comp.persistence.enabled }}
             - name: cronjob-data
-              {{- if .Values.cronjob.persistence.ephemeral }}
+              {{- if $comp.persistence.ephemeral }}
               emptyDir: {}
               {{- else }}
               persistentVolumeClaim:
-                claimName: {{ include "<CHART_NAME>.fullname" . }}-cronjob
+                claimName: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}
               {{- end }}
             {{- end }}
-            {{- if and .Values.cronjob.config .Values.cronjob.config.files (not (empty .Values.cronjob.config.files)) }}
+            {{- if and $comp.config $comp.config.files (not (empty $comp.config.files)) }}
             - name: files
               configMap:
-                name: {{ include "<CHART_NAME>.fullname" . }}-cronjob-files-cm
+                name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-files-cm
             {{- end }}
-            {{- if and .Values.cronjob.secrets .Values.cronjob.secrets.files (not (empty .Values.cronjob.secrets.files)) }}
+            {{- if and $comp.secrets $comp.secrets.files (not (empty $comp.secrets.files)) }}
             - name: files-secret
               secret:
-                secretName: {{ include "<CHART_NAME>.fullname" . }}-cronjob-files-secret
+                secretName: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-files-secret
             {{- end }}
-          restartPolicy: {{ default "OnFailure" .Values.cronjob.restartPolicy }}
-          {{- with .Values.cronjob.nodeSelector }}
+          restartPolicy: {{ default "OnFailure" $comp.restartPolicy }}
+          {{- with $comp.nodeSelector }}
           nodeSelector:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.cronjob.affinity }}
+          {{- with $comp.affinity }}
           affinity:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with .Values.cronjob.tolerations }}
+          {{- with $comp.tolerations }}
           tolerations:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-{{- end -}}
+{{- end }}
+
+{{ if and $comp.enabled $comp.config $comp.config.files (not (empty $comp.config.files)) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-files-cm
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+data:
+  {{- range $key, $val := $comp.config.files }}
+  {{ $key | replace "." "-" }}: |
+    {{- $val.content | nindent 4 }}
+  {{- end }}
+{{- end }}
+
+{{ if and $comp.enabled $comp.config $comp.config.env (not (empty $comp.config.env)) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-cm
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+data:
+  {{- range $key, $val := $comp.config.env }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+
+{{ if and $comp.enabled $comp.secrets $comp.secrets.files (not (empty $comp.secrets.files)) }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-files-secret
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+type: Opaque
+stringData:
+  {{- range $key, $val := $comp.secrets.files }}
+  {{ $key | replace "." "-" }}: |
+    {{- $val.content | nindent 4 }}
+  {{- end }}
+{{- end }}
+
+{{ if and $comp.enabled $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env)) }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-secret
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+type: Opaque
+stringData:
+  {{- range $key, $val := $comp.secrets.env }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+
+{{ if and $comp.enabled $comp.vso $comp.vso.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-sa
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+{{- end }}
+
+{{ if and $comp.enabled $comp.vso $comp.vso.enabled }}
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-vaultauth
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+spec:
+  method: kubernetes
+  mount: {{ $comp.vso.mount | default "kubernetes" }}
+  kubernetes:
+    role: {{ $comp.vso.role }}
+    serviceAccount: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-sa
+    audiences:
+      - vault
+{{- end }}
+
+{{ if and $comp.enabled $comp.vso $comp.vso.enabled }}
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-vaultstaticsecret
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+spec:
+  type: kv-v2
+  mount: {{ $comp.vso.secretMount | default "kv" }}
+  path: {{ $comp.vso.path }}
+  destination:
+    name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-vso-secret
+    create: true
+  refreshAfter: {{ $comp.vso.refreshAfter | default "30s" }}
+  vaultAuthRef: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-vaultauth
+{{- end }}
+
+---
+{{- end }}
