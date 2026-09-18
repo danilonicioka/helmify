@@ -198,6 +198,14 @@ function createDefaultComponentConfig(name, type) {
             internal: { enabled: false, host: "" },
             external: { enabled: false, host: "" }
         },
-        resources: { limits: { cpu: "100m", memory: "128Mi" }, requests: { cpu: "10m", memory: "64Mi" } }
+        resources: { limits: { cpu: "100m", memory: "128Mi" }, requests: { cpu: "10m", memory: "64Mi" } },
+        autoscaling: {
+            enabled: false,
+            engine: "",
+            keda: { minReplicas: 3, maxReplicas: 20 },
+            hpa: { minReplicas: 1, maxReplicas: 2, metrics: [ { resource: { target: { averageUtilization: 180 } } } ] }
+        },
+        vso: { enabled: false },
+        persistence: { enabled: false }
     };
 }
