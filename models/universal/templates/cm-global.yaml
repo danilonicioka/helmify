@@ -1,6 +1,6 @@
 {{ $comp := index .Values "global" | default dict -}}
 {{- if ne $comp.enabled false }}
-{{- if and $comp (not (empty $comp)) }}
+{{- if and $comp $comp.config $comp.config.env (not (empty $comp.config.env)) }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -59,7 +59,7 @@ data:
 {{- range $compName, $comp := .Values.deploys }}
 {{- range $name, $sidecar := $comp.extraContainers }}
 {{- if ne ($sidecar.enabled | default true) false }}
-{{- if and $sidecar $sidecar.config.env }}
+{{- if and $sidecar $sidecar.config $sidecar.config.env }}
 ---
 apiVersion: v1
 kind: ConfigMap

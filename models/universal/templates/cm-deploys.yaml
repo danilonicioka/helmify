@@ -1,6 +1,6 @@
 {{- range $compName, $comp := .Values.deploys }}
 {{- if ne $comp.enabled false }}
-{{- if and $comp $comp.config.env (not (empty $comp.config.env)) }}
+{{- if and $comp $comp.config $comp.config.env (not (empty $comp.config.env)) }}
 ---
 apiVersion: v1
 kind: ConfigMap
