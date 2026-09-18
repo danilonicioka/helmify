@@ -181,11 +181,18 @@
         });
 
 
+
 function createDefaultComponentConfig(name, type) {
     return {
         type: type,
         enabled: true,
         image: { repository: name, tag: "latest" },
+        service: {
+            ports: {
+                http: { port: 8080 }
+            }
+        },
+        route: { path: "" },
         resources: { limits: { cpu: "100m", memory: "128Mi" }, requests: { cpu: "10m", memory: "64Mi" } }
     };
 }
