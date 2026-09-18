@@ -121,10 +121,33 @@ spec:
             {{- toYaml .Values.postgres.resources | nindent 12 }}
           {{- end }}
 
-          {{- if and .Values.postgres.persistence .Values.postgres.persistence.enabled }}
+          {{- if or (and .Values.postgres.persistence .Values.postgres.persistence.enabled) (and .Values.postgres.config .Values.postgres.config.files) (and .Values.postgres.secrets .Values.postgres.secrets.files) (and .Values.postgres.vso .Values.postgres.vso.enabled .Values.postgres.vso.files) }}
           volumeMounts:
+          {{- if and .Values.postgres.persistence .Values.postgres.persistence.enabled }}
             - name: data
               mountPath: {{ .Values.postgres.persistence.mountPath | default "/var/lib/postgresql/data" }}
+          {{- end }}
+          {{- if and .Values.postgres.config .Values.postgres.config.files }}
+          {{- range $filename, $config := .Values.postgres.config.files }}
+            - name: config-files
+              mountPath: {{ $config.mountPath | default (printf "/etc/config/%s" $filename) }}
+              subPath: {{ $filename }}
+          {{- end }}
+          {{- end }}
+          {{- if and .Values.postgres.secrets .Values.postgres.secrets.files }}
+          {{- range $filename, $config := .Values.postgres.secrets.files }}
+            - name: secret-files
+              mountPath: {{ $config.mountPath | default (printf "/etc/secret/%s" $filename) }}
+              subPath: {{ $filename }}
+          {{- end }}
+          {{- end }}
+          {{- if and .Values.postgres.vso .Values.postgres.vso.enabled .Values.postgres.vso.files }}
+          {{- range $filename, $config := .Values.postgres.vso.files }}
+            - name: vso-files
+              mountPath: {{ $config.mountPath | default (printf "/etc/vso/%s" $filename) }}
+              subPath: {{ $filename }}
+          {{- end }}
+          {{- end }}
           {{- end }}
       
       {{- if .Values.postgres.terminationGracePeriodSeconds }}
@@ -157,6 +180,21 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "<CHART_NAME>.fullname" $ }}-postgres
           {{- end }}
+      {{- if and .Values.postgres.config .Values.postgres.config.files }}
+        - name: config-files
+          configMap:
+            name: {{ include "<CHART_NAME>.fullname" . }}-postgres-files-cm
+      {{- end }}
+      {{- if and .Values.postgres.secrets .Values.postgres.secrets.files }}
+        - name: secret-files
+          secret:
+            secretName: {{ include "<CHART_NAME>.fullname" . }}-postgres-files-secret
+      {{- end }}
+      {{- if and .Values.postgres.vso .Values.postgres.vso.enabled }}
+        - name: vso-files
+          secret:
+            secretName: {{ include "<CHART_NAME>.fullname" . }}-postgres-vso-secret
+      {{- end }}
       {{- end }}
 {{- end -}}
 
@@ -220,3 +258,52 @@ spec:
   selector:
     {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "postgres") | nindent 4 }}
 {{- end -}}
+
+{{- if and .Values.postgres .Values.postgres.config .Values.postgres.config.files }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-files-cm
+  labels:
+    {{- include "<CHART_NAME>.labels" . | nindent 4 }}
+data:
+{{- range $filename, $config := .Values.postgres.config.files }}
+  {{ $filename }}: |
+    {{- $config.content | nindent 4 }}
+{{- end }}
+{{- end }}
+
+{{- if and .Values.postgres .Values.postgres.secrets .Values.postgres.secrets.files }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-files-secret
+  labels:
+    {{- include "<CHART_NAME>.labels" . | nindent 4 }}
+type: Opaque
+data:
+{{- range $filename, $config := .Values.postgres.secrets.files }}
+  {{ $filename }}: {{ if $config.b64enc }}{{ $config.content | quote }}{{ else }}{{ $config.content | b64enc | quote }}{{ end }}
+{{- end }}
+{{- end }}
+
+{{- if and .Values.postgres .Values.postgres.vso .Values.postgres.vso.enabled }}
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-vso
+  labels:
+    {{- include "<CHART_NAME>.labels" . | nindent 4 }}
+spec:
+  type: kv-v2
+  mount: kv
+  path: {{ .Values.postgres.vso.path }}
+  destination:
+    name: {{ include "<CHART_NAME>.fullname" . }}-postgres-vso-secret
+    create: true
+  refreshAfter: 60s
+  vaultAuthRef: {{ .Values.postgres.vso.role | default (printf "%s-%s-role" (include "<CHART_NAME>.fullname" .) "postgres") }}
+{{- end }}

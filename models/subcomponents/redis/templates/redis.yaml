@@ -94,17 +94,17 @@ spec:
             {{- end }}
           {{- end }}
 
-          {{- if and .Values.redis.startupProbe (not (empty .Values.redis.startupProbe)) }}
+          {{- if and .Values.redis.probes.startup (not (empty .Values.redis.probes.startup)) }}
           startupProbe:
-            {{- toYaml .Values.redis.startupProbe | nindent 12 }}
+            {{- toYaml .Values.redis.probes.startup | nindent 12 }}
           {{- end }}
-          {{- if and .Values.redis.livenessProbe (not (empty .Values.redis.livenessProbe)) }}
+          {{- if and .Values.redis.probes.liveness (not (empty .Values.redis.probes.liveness)) }}
           livenessProbe:
-            {{- toYaml .Values.redis.livenessProbe | nindent 12 }}
+            {{- toYaml .Values.redis.probes.liveness | nindent 12 }}
           {{- end }}
-          {{- if and .Values.redis.readinessProbe (not (empty .Values.redis.readinessProbe)) }}
+          {{- if and .Values.redis.probes.readiness (not (empty .Values.redis.probes.readiness)) }}
           readinessProbe:
-            {{- toYaml .Values.redis.readinessProbe | nindent 12 }}
+            {{- toYaml .Values.redis.probes.readiness | nindent 12 }}
           {{- end }}
 
           {{- with .Values.redis.command }}
@@ -121,25 +121,48 @@ spec:
             {{- toYaml .Values.redis.resources | nindent 12 }}
           {{- end }}
 
-          {{- if and .Values.redis.persistence .Values.redis.persistence.enabled }}
+          {{- if or (and .Values.redis.persistence .Values.redis.persistence.enabled) (and .Values.redis.config .Values.redis.config.files) (and .Values.redis.secrets .Values.redis.secrets.files) (and .Values.redis.vso .Values.redis.vso.enabled .Values.redis.vso.files) }}
           volumeMounts:
+          {{- if and .Values.redis.persistence .Values.redis.persistence.enabled }}
             - name: data
               mountPath: {{ .Values.redis.persistence.mountPath | default "/data" }}
+          {{- end }}
+          {{- if and .Values.redis.config .Values.redis.config.files }}
+          {{- range $filename, $config := .Values.redis.config.files }}
+            - name: config-files
+              mountPath: {{ $config.mountPath | default (printf "/etc/config/%s" $filename) }}
+              subPath: {{ $filename }}
+          {{- end }}
+          {{- end }}
+          {{- if and .Values.redis.secrets .Values.redis.secrets.files }}
+          {{- range $filename, $config := .Values.redis.secrets.files }}
+            - name: secret-files
+              mountPath: {{ $config.mountPath | default (printf "/etc/secret/%s" $filename) }}
+              subPath: {{ $filename }}
+          {{- end }}
+          {{- end }}
+          {{- if and .Values.redis.vso .Values.redis.vso.enabled .Values.redis.vso.files }}
+          {{- range $filename, $config := .Values.redis.vso.files }}
+            - name: vso-files
+              mountPath: {{ $config.mountPath | default (printf "/etc/vso/%s" $filename) }}
+              subPath: {{ $filename }}
+          {{- end }}
+          {{- end }}
           {{- end }}
       
       {{- if .Values.redis.terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{ .Values.redis.terminationGracePeriodSeconds }}
       {{- end }}
 
-      {{- with .Values.redis.nodeSelector }}
+      {{- with .Values.redis.scheduling.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.redis.affinity }}
+      {{- with .Values.redis.scheduling.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.redis.tolerations }}
+      {{- with .Values.redis.scheduling.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
@@ -157,6 +180,21 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "<CHART_NAME>.fullname" $ }}-redis
           {{- end }}
+      {{- if and .Values.redis.config .Values.redis.config.files }}
+        - name: config-files
+          configMap:
+            name: {{ include "<CHART_NAME>.fullname" . }}-redis-files-cm
+      {{- end }}
+      {{- if and .Values.redis.secrets .Values.redis.secrets.files }}
+        - name: secret-files
+          secret:
+            secretName: {{ include "<CHART_NAME>.fullname" . }}-redis-files-secret
+      {{- end }}
+      {{- if and .Values.redis.vso .Values.redis.vso.enabled }}
+        - name: vso-files
+          secret:
+            secretName: {{ include "<CHART_NAME>.fullname" . }}-redis-vso-secret
+      {{- end }}
       {{- end }}
 {{- end -}}
 
@@ -220,3 +258,52 @@ spec:
   selector:
     {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "redis") | nindent 4 }}
 {{- end -}}
+
+{{- if and .Values.redis .Values.redis.config .Values.redis.config.files }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis-files-cm
+  labels:
+    {{- include "<CHART_NAME>.labels" . | nindent 4 }}
+data:
+{{- range $filename, $config := .Values.redis.config.files }}
+  {{ $filename }}: |
+    {{- $config.content | nindent 4 }}
+{{- end }}
+{{- end }}
+
+{{- if and .Values.redis .Values.redis.secrets .Values.redis.secrets.files }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis-files-secret
+  labels:
+    {{- include "<CHART_NAME>.labels" . | nindent 4 }}
+type: Opaque
+data:
+{{- range $filename, $config := .Values.redis.secrets.files }}
+  {{ $filename }}: {{ if $config.b64enc }}{{ $config.content | quote }}{{ else }}{{ $config.content | b64enc | quote }}{{ end }}
+{{- end }}
+{{- end }}
+
+{{- if and .Values.redis .Values.redis.vso .Values.redis.vso.enabled }}
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis-vso
+  labels:
+    {{- include "<CHART_NAME>.labels" . | nindent 4 }}
+spec:
+  type: kv-v2
+  mount: kv
+  path: {{ .Values.redis.vso.path }}
+  destination:
+    name: {{ include "<CHART_NAME>.fullname" . }}-redis-vso-secret
+    create: true
+  refreshAfter: 60s
+  vaultAuthRef: {{ .Values.redis.vso.role | default (printf "%s-%s-role" (include "<CHART_NAME>.fullname" .) "redis") }}
+{{- end }}

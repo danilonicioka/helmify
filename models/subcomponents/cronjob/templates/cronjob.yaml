@@ -144,15 +144,15 @@ spec:
                 secretName: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-files-secret
             {{- end }}
           restartPolicy: {{ default "OnFailure" $comp.restartPolicy }}
-          {{- with $comp.nodeSelector }}
+          {{- with $comp.scheduling.nodeSelector }}
           nodeSelector:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with $comp.affinity }}
+          {{- with $comp.scheduling.affinity }}
           affinity:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          {{- with $comp.tolerations }}
+          {{- with $comp.scheduling.tolerations }}
           tolerations:
             {{- toYaml . | nindent 12 }}
           {{- end }}

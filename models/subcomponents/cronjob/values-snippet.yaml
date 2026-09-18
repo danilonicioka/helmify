@@ -29,30 +29,27 @@ cronjobs:
   # ----------------------------------------------------------------------------
   # APPLICATION CONFIGURATION & SECRETS
   # ----------------------------------------------------------------------------
-  cm: {}
+  config:
+    env: {}
+    files: {}
+    #   application.properties:
+    #     mountPath: "/deployments/config/application.properties"
+    #     content: |
+    #       quarkus.http.port=8080
 
-  secret: {}
+  secrets:
+    env: {}
+    files: {}
+    #   sistema.p12:
+    #     mountPath: "/app/keystore/sistema.p12"
+    #     b64enc: true
+    #     content: "MIIKrAIB..."
 
   vso:
     enabled: false
     role: "<CHART_NAME>-cronjob-role"
     path: "kv/data/<CHART_NAME>/cronjob"
     files: {}
-
-    enabled: false
-    certificate: ""
-
-  files:
-    cm: {}
-    #   application.properties:
-    #     mountPath: "/deployments/config/application.properties"
-    #     content: |
-    #       quarkus.http.port=8080
-    secret: {}
-    #   sistema.p12:
-    #     mountPath: "/app/keystore/sistema.p12"
-    #     b64enc: true
-    #     content: "MIIKrAIB..."
 
   # ----------------------------------------------------------------------------
   # RESOURCES
@@ -80,20 +77,21 @@ cronjobs:
   # ----------------------------------------------------------------------------
   # SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  nodeSelector: {}
-  tolerations: []
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-                - key: app.kubernetes.io/component
-                  operator: In
-                  values:
-                    - <CHART_NAME>-cronjob
-            topologyKey: kubernetes.io/hostname
+  scheduling:
+    nodeSelector: {}
+    tolerations: []
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/component
+                    operator: In
+                    values:
+                      - <CHART_NAME>-cronjob
+              topologyKey: kubernetes.io/hostname
 
   # ----------------------------------------------------------------------------
   # INIT CONTAINERS

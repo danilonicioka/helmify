@@ -26,9 +26,9 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
+  name: {{ include "chart-model-multi.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
   labels:
-    {{- include "<CHART_NAME>.fullname.labels" $ | nindent 4 }}
+    {{- include "chart-model-multi.labels" $ | nindent 4 }}
 data:
   {{- toYaml $config.config.env | nindent 2 }}
 {{- end }}
@@ -46,9 +46,9 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+  name: {{ include "chart-model-multi.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
   labels:
-    {{- include "<CHART_NAME>.fullname.labels" $ | nindent 4 }}
+    {{- include "chart-model-multi.labels" $ | nindent 4 }}
 data:
   {{ $filename }}: |-
     {{- $fileconf.content | nindent 4 }}

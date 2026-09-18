@@ -31,9 +31,19 @@ redis:
   # 2. APPLICATION CONFIGURATION (Variables & Credentials)
   # ----------------------------------------------------------------------------
   # ConfigMaps unique to this service container.
-  cm: {}
+  config:
+    env: {}
+    files: {}
   # Sensitive variables unique to this service container (Secrets).
-  secret: {}
+  secrets:
+    env: {}
+    files: {}
+
+  vso:
+    enabled: false
+    role: "chart-model-multi-redis-role"
+    path: "kv/data/chart-model-multi/redis"
+    files: {}
 
   # ----------------------------------------------------------------------------
   # 3. ROUTING & NETWORKING
@@ -61,29 +71,30 @@ redis:
   # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
   # ----------------------------------------------------------------------------
   # Probes are empty by default; the recommended tcpSocket configuration is commented below.
-  startupProbe:
-    tcpSocket:
-      port: redis
-    initialDelaySeconds: 0
-    periodSeconds: 5
-    failureThreshold: 30
-    successThreshold: 1
+  probes:
+    startup:
+      tcpSocket:
+        port: redis
+      initialDelaySeconds: 0
+      periodSeconds: 5
+      failureThreshold: 30
+      successThreshold: 1
 
-  livenessProbe:
-    tcpSocket:
-      port: redis
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    failureThreshold: 3
-    successThreshold: 1
+    liveness:
+      tcpSocket:
+        port: redis
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
 
-  readinessProbe:
-    tcpSocket:
-      port: redis
-    initialDelaySeconds: 0
-    periodSeconds: 10
-    failureThreshold: 3
-    successThreshold: 1
+    readiness:
+      tcpSocket:
+        port: redis
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+      successThreshold: 1
 
   # ----------------------------------------------------------------------------
   # 6. LIFECYCLE & HA STRATEGY
@@ -111,99 +122,18 @@ redis:
   # ----------------------------------------------------------------------------
   # 8. SCHEDULING & NODE ASSIGNMENT
   # ----------------------------------------------------------------------------
-  nodeSelector: {}
-  tolerations: []
-  affinity:
-    podAntiAffinity:
-      preferredDuringSchedulingIgnoredDuringExecution:
-        - weight: 100
-          podAffinityTerm:
-            labelSelector:
-              matchExpressions:
-                - key: app.kubernetes.io/component
-                  operator: In
-                  values:
-                    - <CHART_NAME>-redis
-            topologyKey: kubernetes.io/hostname
-
-  # ----------------------------------------------------------------------------
-  # INIT CONTAINERS
-  # ----------------------------------------------------------------------------
-  # You can inject initialization containers into the pod.
-  initContainers: {}
-  #  init-example:
-  #    enabled: true
-  #    image:
-  #      repository: alpine/curl
-  #      tag: latest
-  #      pullPolicy: IfNotPresent
-  #    command: ["sh", "-c", "echo hello"]
-  #    args: []
-  #    env: []
-  #    envFrom: []
-  #    persistence:
-  #      enabled: true
-  #      mountPath: /var/lib/data
-  #    config:
-  #      files:
-  #        example.txt:
-  #          mountPath: /etc/config/example.txt
-  #          content: |
-  #            hello world
-  #    secrets:
-  #      files:
-  #        secret.txt:
-  #          mountPath: /etc/secret/secret.txt
-  #          b64enc: false
-  #          content: |
-  #            secret world
-
-  # ----------------------------------------------------------------------------
-  # EXTRA CONTAINERS
-  # ----------------------------------------------------------------------------
-  # You can inject additional sidecar containers into the pod.
-  # The key (e.g. 'sidecar-example') will be used as the container name.
-  extraContainers: {}
-  #  sidecar-example:
-  #    enabled: true
-  #    image:
-  #      repository: sidecar-image
-  #      tag: latest
-  #      pullPolicy: IfNotPresent
-  #    command: []
-  #    args: []
-  #    service:
-  #      ports:
-  #        http:
-  #          port: 8081
-  #    resources:
-  #      limits:
-  #        cpu: "100m"
-  #        memory: "128Mi"
-  #      requests:
-  #        cpu: "100m"
-  #        memory: "128Mi"
-  #    probes:
-  #      startup: {}
-  #      liveness: {}
-  #      readiness: {}
-  #    persistence:
-  #      enabled: true
-  #      mountPath: /var/lib/data
-  #    config:
-  #      env:
-  #        EXAMPLE_VAR: "value"
-  #      files:
-  #        example.txt:
-  #          mountPath: /etc/config/example.txt
-  #          content: |
-  #            hello world
-  #    secrets:
-  #      env:
-  #        SECRET_VAR: "secret-value"
-  #      files:
-  #        secret.txt:
-  #          mountPath: /etc/secret/secret.txt
-  #          b64enc: false
-  #          content: |
-  #            secret world
+  scheduling:
+    nodeSelector: {}
+    tolerations: []
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/component
+                    operator: In
+                    values:
+                      - <CHART_NAME>-redis
+              topologyKey: kubernetes.io/hostname

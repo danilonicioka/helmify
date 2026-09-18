@@ -667,6 +667,15 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	}
 	valuesStr := buf.String()
 	valuesStr = replaceChartName(valuesStr, oldChartName, params.ChartName)
+
+	for _, sub := range params.Subcomponents {
+		snippetPath := fmt.Sprintf("models/subcomponents/%s/values-snippet.yaml", sub)
+		if data, err := roothelmify.ModelsFS.ReadFile(snippetPath); err == nil {
+			snippetStr := strings.ReplaceAll(string(data), "<CHART_NAME>", params.ChartName)
+			valuesStr += "\n" + snippetStr
+		}
+	}
+
 	valuesStr = formatValues(valuesStr)
 	outputFiles["values.yaml"] = []byte(valuesStr)
 
@@ -769,6 +778,7 @@ func replaceChartName(content string, oldChartName, newChartName string) string 
 	res = strings.ReplaceAll(res, "chart-model-single", newChartName)
 	res = strings.ReplaceAll(res, "chart-model-multi", newChartName)
 	res = strings.ReplaceAll(res, "chart-model", newChartName)
+	res = strings.ReplaceAll(res, "<CHART_NAME>", newChartName)
 	return res
 }
 
