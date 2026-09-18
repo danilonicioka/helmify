@@ -33,7 +33,8 @@
                 // Extract components
                 components = {};
                 let compKeys = [];
-                Object.entries(defaults).forEach(([key, val]) => {
+                const deploysSource = defaults.deploys || defaults;
+                Object.entries(deploysSource).forEach(([key, val]) => {
                     if (val && typeof val === 'object' && val.image && val.service) {
                         components[key] = parseComponentConfig(val);
                         compKeys.push(key);
