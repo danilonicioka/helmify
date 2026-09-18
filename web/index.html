@@ -513,6 +513,15 @@
 
     <div class="toast" id="toast-message">Chart generated successfully!</div>
 
+
+    <script>
+        window.ENV = {
+            DefaultDomain: "{{.DefaultDomain}}",
+            InternalDomain: "{{.InternalDomain}}",
+            ExternalDomain: "{{.ExternalDomain}}",
+            DevRepo: "{{.DevRepo}}"
+        };
+    </script>
     <script src="/static/js/state.js"></script>
     <script src="/static/js/payload.js"></script>
     <script src="/static/js/ui.js"></script>

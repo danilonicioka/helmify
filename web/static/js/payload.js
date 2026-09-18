@@ -108,9 +108,9 @@
                 vso: { enabled: false },
                 route: {
                     path: '',
-                    default: { enabled: true, host: `${hostPrefix}{{DEFAULT_DOMAIN}}` },
-                    internal: { enabled: false, host: `${hostPrefix}{{INTERNAL_DOMAIN}}` },
-                    external: { enabled: false, host: `${hostPrefix}{{EXTERNAL_DOMAIN}}` },
+                    default: { enabled: true, host: `${hostPrefix}${window.ENV?.DefaultDomain || '{{DEFAULT_DOMAIN}}'}` },
+                    internal: { enabled: false, host: `${hostPrefix}${window.ENV?.InternalDomain || '{{INTERNAL_DOMAIN}}'}` },
+                    external: { enabled: false, host: `${hostPrefix}${window.ENV?.ExternalDomain || '{{EXTERNAL_DOMAIN}}'}` },
                     additional: {}
                 },
                 autoscaling: {
@@ -167,7 +167,7 @@
             const payload = {
                 chartName: document.getElementById('chartName').value || 'chart-model',
                 type: chartType,
-                devRepoUrl: document.getElementById('devRepoUrl').value || (chartType === 'single' ? 'https://{{DEV_REPO}}/devops/my-app.git' : 'https://{{DEV_REPO}}/devops/my-app-multi.git'),
+                devRepoUrl: document.getElementById('devRepoUrl').value || (chartType === 'single' ? 'https://${window.ENV?.DevRepo || '{{DEV_REPO}}'}/devops/my-app.git' : 'https://${window.ENV?.DevRepo || '{{DEV_REPO}}'}/devops/my-app-multi.git'),
                 globalConfig: globalConfig,
                 globalSecret: globalSecret,
                 deployments: components,

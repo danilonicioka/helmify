@@ -41,8 +41,8 @@ redis:
 
   vso:
     enabled: false
-    role: "chart-model-multi-redis-role"
-    path: "kv/data/chart-model-multi/redis"
+    role: "<CHART_NAME>-redis-role"
+    path: "kv/data/<CHART_NAME>/redis"
     files: {}
 
   # ----------------------------------------------------------------------------

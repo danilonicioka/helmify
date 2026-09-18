@@ -31,18 +31,6 @@ spec:
             {{- if $annotations }}
             {{- $annotations | nindent 12 }}
             {{- end }}
-            {{- if and .Values.global .Values.global.cm (not (empty .Values.global.cm)) }}
-            checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
-            {{- end }}
-            {{- if and $comp.config $comp.config.files (not (empty $comp.config.files)) }}
-            checksum/cm-files: '{{ include (print $.Template.BasePath "/cm-{{ $compName }}-files.yaml") . | sha256sum }}'
-            {{- end }}
-            {{- if and $comp.secrets $comp.secrets.files (not (empty $comp.secrets.files)) }}
-            checksum/secret-files: '{{ include (print $.Template.BasePath "/secret-{{ $compName }}-files.yaml") . | sha256sum }}'
-            {{- end }}
-            {{- if and $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env)) }}
-            checksum/secret: '{{ include (print $.Template.BasePath "/secret-{{ $compName }}.yaml") . | sha256sum }}'
-            {{- end }}
           labels:
             {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" $compName) | nindent 12 }}
         spec:
@@ -266,4 +254,74 @@ spec:
 {{- end }}
 
 ---
+{{- end }}
+
+
+{{- range $compName, $comp := .Values.cronjobs }}
+{{- if ne ($comp.enabled | default true) false }}
+{{- if and $comp $comp.config $comp.config.env (not (empty $comp.config.env)) -}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-cm
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+data:
+  {{- range $key, $val := $comp.config.env }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+{{- if and $comp $comp.config $comp.config.files (not (empty $comp.config.files)) }}
+{{- range $filename, $fileconf := $comp.config.files }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+data:
+  {{ $filename }}: |-
+    {{- $fileconf.content | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+---
+{{- range $compName, $comp := .Values.cronjobs }}
+{{- if ne ($comp.enabled | default true) false }}
+{{- if and $comp $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env)) -}}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-secret
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+type: Opaque
+stringData:
+  {{- toYaml $comp.secrets.env | nindent 2 }}
+{{- end }}
+{{- if and $comp $comp.secrets $comp.secrets.files (not (empty $comp.secrets.files)) }}
+{{- range $filename, $fileconf := $comp.secrets.files }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+type: Opaque
+{{- if $fileconf.b64enc }}
+data:
+  {{ $filename }}: {{ $fileconf.content | quote }}
+{{- else }}
+stringData:
+  {{ $filename }}: |-
+    {{- $fileconf.content | nindent 4 }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}

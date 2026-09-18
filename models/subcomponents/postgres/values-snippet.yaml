@@ -46,8 +46,8 @@ postgres:
 
   vso:
     enabled: false
-    role: "chart-model-multi-postgres-role"
-    path: "kv/data/chart-model-multi/postgres"
+    role: "<CHART_NAME>-postgres-role"
+    path: "kv/data/<CHART_NAME>/postgres"
     files: {}
 
   # ----------------------------------------------------------------------------

@@ -42,18 +42,6 @@ spec:
         {{- if $annotations }}
         {{- $annotations | nindent 8 }}
         {{- end }}
-        {{- if and .Values.postgres .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
-        checksum/config: '{{ include (print $.Template.BasePath "/cm-postgres.yaml") . | sha256sum }}'
-        {{- end }}
-        {{- if and .Values.postgres .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
-        checksum/secret: '{{ include (print $.Template.BasePath "/secret-postgres.yaml") . | sha256sum }}'
-        {{- end }}
-        {{- if and .Values.global .Values.global.config.env (not (empty .Values.global.config.env)) }}
-        checksum/global-config: '{{ include (print $.Template.BasePath "/cm-global.yaml") . | sha256sum }}'
-        {{- end }}
-        {{- if and .Values.global .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
-        checksum/global-secret: '{{ include (print $.Template.BasePath "/secret-global.yaml") . | sha256sum }}'
-        {{- end }}
       labels:
         {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "postgres") | nindent 8 }}
     spec:
@@ -306,4 +294,64 @@ spec:
     create: true
   refreshAfter: 60s
   vaultAuthRef: {{ .Values.postgres.vso.role | default (printf "%s-%s-role" (include "<CHART_NAME>.fullname" .) "postgres") }}
+{{- end }}
+
+
+{{- if and .Values.postgres .Values.postgres.config .Values.postgres.config.env (not (empty .Values.postgres.config.env)) -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-cm
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+data:
+  {{- range $key, $val := .Values.postgres.config.env }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+{{- if and .Values.postgres .Values.postgres.config .Values.postgres.config.files (not (empty .Values.postgres.config.files)) }}
+{{- range $filename, $fileconf := .Values.postgres.config.files }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-postgres-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" "postgres") | nindent 4 }}
+data:
+  {{ $filename }}: |-
+    {{- $fileconf.content | nindent 4 }}
+{{- end }}
+{{- end }}
+---
+{{- if and .Values.postgres .Values.postgres.secrets .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) -}}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-secret
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+type: Opaque
+stringData:
+  {{- toYaml .Values.postgres.secrets.env | nindent 2 }}
+{{- end }}
+{{- if and .Values.postgres .Values.postgres.secrets .Values.postgres.secrets.files (not (empty .Values.postgres.secrets.files)) }}
+{{- range $filename, $fileconf := .Values.postgres.secrets.files }}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" $ }}-postgres-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" "postgres") | nindent 4 }}
+type: Opaque
+{{- if $fileconf.b64enc }}
+data:
+  {{ $filename }}: {{ $fileconf.content | quote }}
+{{- else }}
+stringData:
+  {{ $filename }}: |-
+    {{- $fileconf.content | nindent 4 }}
+{{- end }}
+{{- end }}
 {{- end }}
