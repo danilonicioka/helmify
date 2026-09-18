@@ -105,10 +105,7 @@ func GetModelDefaults(chartType string) (map[string]interface{}, error) {
 		return nil, fmt.Errorf("invalid chart type: %s", chartType)
 	}
 
-	basePath := "models/single"
-	if chartType == "multi" {
-		basePath = "models/multi"
-	}
+	basePath := "models/universal"
 
 	data, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values.yaml"))
 	if err != nil {
