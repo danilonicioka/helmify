@@ -192,7 +192,12 @@ function createDefaultComponentConfig(name, type) {
                 http: { port: 8080 }
             }
         },
-        route: { path: "" },
+        route: { 
+            path: "",
+            default: { enabled: true, host: "" },
+            internal: { enabled: false, host: "" },
+            external: { enabled: false, host: "" }
+        },
         resources: { limits: { cpu: "100m", memory: "128Mi" }, requests: { cpu: "10m", memory: "64Mi" } }
     };
 }
