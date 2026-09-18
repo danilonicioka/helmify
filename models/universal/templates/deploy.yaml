@@ -301,7 +301,7 @@ spec:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
 
-          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.config.files)) (not (empty $comp.secrets.files)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) }}
+          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}
           volumeMounts:
             {{- if and $comp.persistence $comp.persistence.enabled }}
             - name: data
@@ -352,7 +352,7 @@ spec:
         {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.files (or (not (empty $comp.config.files)) (not (empty $comp.secrets.files)))) (and $comp.vso $comp.vso.enabled (not (empty $comp.vso.files))) }}
+      {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}
       volumes:
         {{- if and $comp.persistence $comp.persistence.enabled }}
         - name: data
