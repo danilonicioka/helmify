@@ -167,7 +167,7 @@
             const payload = {
                 chartName: document.getElementById('chartName').value || 'chart-model',
                 type: chartType,
-                devRepoUrl: document.getElementById('devRepoUrl').value || (chartType === 'single' ? 'https://{{DEV_REPO}}/devops/chart-model-app.git' : 'https://{{DEV_REPO}}/devops/chart-model-api.git'),
+                devRepoUrl: document.getElementById('devRepoUrl').value || (chartType === 'single' ? 'https://{{DEV_REPO}}/devops/my-app.git' : 'https://{{DEV_REPO}}/devops/my-app-multi.git'),
                 globalConfig: globalConfig,
                 globalSecret: globalSecret,
                 deployments: components,

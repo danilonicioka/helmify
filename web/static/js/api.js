@@ -40,9 +40,9 @@
                     }
                 });
 
-                let oldKey = 'chart-model-single';
+                let oldKey = 'my-app';
                 if (chartType === 'multi') {
-                    oldKey = 'chart-model-multi';
+                    oldKey = 'my-app-multi';
                 } else if (compKeys.length > 0) {
                     oldKey = compKeys[0];
                 }
@@ -77,7 +77,7 @@
         }
         function fallbackInit() {
             if (chartType === 'single') {
-                const name = chartNameManuallyEdited ? (document.getElementById('chartName').value || 'chart-model-single') : 'chart-model-single';
+                const name = chartNameManuallyEdited ? (document.getElementById('chartName').value || 'my-app') : 'my-app';
                 if (!chartNameManuallyEdited) {
                     document.getElementById('chartName').value = name;
                 }
@@ -87,7 +87,7 @@
                 document.getElementById('btn-add-comp').style.display = 'none';
             } else {
                 if (!chartNameManuallyEdited) {
-                    document.getElementById('chartName').value = 'chart-model-multi';
+                    document.getElementById('chartName').value = 'my-app-multi';
                 }
                 components = {
                     'api': createDefaultComponentConfig('api', 'api'),
