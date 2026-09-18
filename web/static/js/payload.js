@@ -16,6 +16,8 @@
                     }
                 },
                 config: compData.config || { env: {}, files: {} },
+                resources: compData.resources,
+                autoscaling: compData.autoscaling,
                 secrets: compData.secrets || { env: {}, files: {} },
                 connectsTo: compData.connectsTo || [],
                 runtime: compData.runtime || '',
