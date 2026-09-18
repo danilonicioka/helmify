@@ -1,4 +1,4 @@
-{{ if and .Values.postgres .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
+{{ if and .Values.postgres .Values.postgres.config .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -62,35 +62,35 @@ spec:
               {{- end }}
             {{- end }}
           
-          {{- if or (and .Values.postgres.config.env (not (empty .Values.postgres.config.env))) (and .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env))) (and .Values.global (not (empty .Values.global))) }}
+          {{- if or (and .Values.postgres.config .Values.postgres.config.env (not (empty .Values.postgres.config.env))) (and .Values.postgres.secrets .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env))) (and .Values.global (not (empty .Values.global))) }}
           envFrom:
-            {{- if and .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
+            {{- if and .Values.postgres.config .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
             - configMapRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-postgres-cm
             {{- end }}
-            {{- if and .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
+            {{- if and .Values.postgres.secrets .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
             - secretRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-postgres-secret
             {{- end }}
-            {{- if and .Values.global .Values.global.config.env (not (empty .Values.global.config.env)) }}
+            {{- if and .Values.global .Values.global.config .Values.global.config.env (not (empty .Values.global.config.env)) }}
             - configMapRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-global-cm
             {{- end }}
-            {{- if and .Values.global .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
+            {{- if and .Values.global .Values.global.secrets .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
             - secretRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-global-secret
             {{- end }}
           {{- end }}
 
-          {{- if and .Values.postgres.probes.startup (not (empty .Values.postgres.probes.startup)) }}
+          {{- if and .Values.postgres.probes .Values.postgres.probes.startup (not (empty .Values.postgres.probes.startup)) }}
           startupProbe:
             {{- toYaml .Values.postgres.probes.startup | nindent 12 }}
           {{- end }}
-          {{- if and .Values.postgres.probes.liveness (not (empty .Values.postgres.probes.liveness)) }}
+          {{- if and .Values.postgres.probes .Values.postgres.probes.liveness (not (empty .Values.postgres.probes.liveness)) }}
           livenessProbe:
             {{- toYaml .Values.postgres.probes.liveness | nindent 12 }}
           {{- end }}
-          {{- if and .Values.postgres.probes.readiness (not (empty .Values.postgres.probes.readiness)) }}
+          {{- if and .Values.postgres.probes .Values.postgres.probes.readiness (not (empty .Values.postgres.probes.readiness)) }}
           readinessProbe:
             {{- toYaml .Values.postgres.probes.readiness | nindent 12 }}
           {{- end }}
@@ -209,7 +209,7 @@ spec:
   {{- end }}
 {{- end -}}
 
-{{ if and .Values.postgres .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
+{{ if and .Values.postgres .Values.postgres.secrets .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
 ---
 apiVersion: v1
 kind: Secret

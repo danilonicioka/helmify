@@ -132,21 +132,21 @@ spec:
           
 
           # Clean Configuration Management: Full Decoupling via envFrom
-          {{- if or (and $.Values.global (not (empty $.Values.global))) (and $comp.config.env (not (empty $comp.config.env))) (and $comp.secrets.env (not (empty $comp.secrets.env))) }}
+          {{- if or (and $.Values.global (not (empty $.Values.global))) (and $comp.config $comp.config.env (not (empty $comp.config.env))) (and $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env))) }}
           envFrom:
-            {{- if and $.Values.global $.Values.global.config.env (not (empty $.Values.global.config.env)) }}
+            {{- if and $.Values.global $.Values.global.config $.Values.global.config.env (not (empty $.Values.global.config.env)) }}
             - configMapRef:
                 name: {{ include "chart-model-multi.fullname" $ }}-global-cm
             {{- end }}
-            {{- if and $.Values.global $.Values.global.secrets.env (not (empty $.Values.global.secrets.env)) }}
+            {{- if and $.Values.global $.Values.global.secrets $.Values.global.secrets.env (not (empty $.Values.global.secrets.env)) }}
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" $ }}-global-secret
             {{- end }}
-            {{- if and $comp.config.env (not (empty $comp.config.env)) }}
+            {{- if and $comp.config $comp.config.env (not (empty $comp.config.env)) }}
             - configMapRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-cm
             {{- end }}
-            {{- if and $comp.secrets.env (not (empty $comp.secrets.env)) }}
+            {{- if and $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env)) }}
             - secretRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-secret
             {{- end }}
@@ -219,25 +219,25 @@ spec:
           resources:
             {{- toYaml $sidecar.resources | nindent 12 }}
           {{- end }}
-          {{- if $sidecar.probes.startup }}
+          {{- if and $sidecar.probes $sidecar.probes.startup }}
           startupProbe:
             {{- toYaml $sidecar.probes.startup | nindent 12 }}
           {{- end }}
-          {{- if $sidecar.probes.liveness }}
+          {{- if and $sidecar.probes $sidecar.probes.liveness }}
           livenessProbe:
             {{- toYaml $sidecar.probes.liveness | nindent 12 }}
           {{- end }}
-          {{- if $sidecar.probes.readiness }}
+          {{- if and $sidecar.probes $sidecar.probes.readiness }}
           readinessProbe:
             {{- toYaml $sidecar.probes.readiness | nindent 12 }}
           {{- end }}
-          {{- if or $sidecar.config.env $sidecar.secrets.env }}
+          {{- if or (and $sidecar.config $sidecar.config.env) (and $sidecar.secrets $sidecar.secrets.env) }}
           envFrom:
-            {{- if $sidecar.config.env }}
+            {{- if and $sidecar.config $sidecar.config.env }}
             - configMapRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
             {{- end }}
-            {{- if $sidecar.secrets.env }}
+            {{- if and $sidecar.secrets $sidecar.secrets.env }}
             - secretRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
             {{- end }}
@@ -268,15 +268,15 @@ spec:
         {{- end }}
 
           # Tiered "Fail-Fast" Health Probes
-          {{- if and $comp.probes.startup (not (empty $comp.probes.startup)) }}
+          {{- if and $comp.probes $comp.probes.startup (not (empty $comp.probes.startup)) }}
           startupProbe:
             {{- toYaml $comp.probes.startup | nindent 12 }}
           {{- end }}
-          {{- if and $comp.probes.liveness (not (empty $comp.probes.liveness)) }}
+          {{- if and $comp.probes $comp.probes.liveness (not (empty $comp.probes.liveness)) }}
           livenessProbe:
             {{- toYaml $comp.probes.liveness | nindent 12 }}
           {{- end }}
-          {{- if and $comp.probes.readiness (not (empty $comp.probes.readiness)) }}
+          {{- if and $comp.probes $comp.probes.readiness (not (empty $comp.probes.readiness)) }}
           readinessProbe:
             {{- toYaml $comp.probes.readiness | nindent 12 }}
           {{- end }}
