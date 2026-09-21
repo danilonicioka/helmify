@@ -8,7 +8,7 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "chart-model-multi.fullname" $ }}
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
@@ -23,7 +23,7 @@ spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "chart-model-multi.fullname" $ }}
+    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
 {{- end }}
 
 {{- if eq $comp.autoscaling.engine "keda" }}
@@ -31,14 +31,14 @@ spec:
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: {{ include "chart-model-multi.fullname" $ }}
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "chart-model-multi.fullname" $ }}
+    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
   minReplicaCount: {{ $comp.autoscaling.keda.minReplicas | default 1 }}
   maxReplicaCount: {{ $comp.autoscaling.keda.maxReplicas | default 2 }}
   {{- with $comp.autoscaling.keda.pollingInterval }}
@@ -53,13 +53,13 @@ spec:
       metadata:
         {{- toYaml $trigger.metadata | nindent 8 }}
       authenticationRef:
-        name: {{ include "chart-model-multi.fullname" $ }}-trigger-auth
+        name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-trigger-auth
     {{- end }}
 ---
 apiVersion: keda.sh/v1alpha1
 kind: TriggerAuthentication
 metadata:
-  name: {{ include "chart-model-multi.fullname" $ }}-trigger-auth
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-trigger-auth
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:

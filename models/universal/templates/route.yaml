@@ -8,7 +8,7 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "chart-model-multi.fullname" $ }}
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
   {{- with $comp.route.annotations }}
@@ -28,7 +28,7 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "chart-model-multi.fullname" $ }}
+    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
     weight: 100
   port:
     targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
@@ -41,7 +41,7 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "chart-model-multi.fullname" $ }}-ext
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-ext
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
   {{- with $comp.route.annotations }}
@@ -61,7 +61,7 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "chart-model-multi.fullname" $ }}
+    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
     weight: 100
   port:
     targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
@@ -74,7 +74,7 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "chart-model-multi.fullname" $ }}-int
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-int
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
   {{- with $comp.route.annotations }}
@@ -94,7 +94,7 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "chart-model-multi.fullname" $ }}
+    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
     weight: 100
   port:
     targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
@@ -109,7 +109,7 @@ spec:
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: {{ include "chart-model-multi.fullname" $ }}-{{ $routeName }}
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $routeName }}
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
   {{- $annotations := merge ($routeConfig.annotations | default dict) ($comp.route.annotations | default dict) }}
@@ -135,7 +135,7 @@ spec:
   {{- end }}
   to:
     kind: Service
-    name: {{ include "chart-model-multi.fullname" $ }}
+    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
     weight: 100
   port:
     targetPort: {{ if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}

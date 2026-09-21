@@ -118,9 +118,11 @@ spec:
       {{- end }}
         {{- end }}
       containers:
-        - name: api
+        - name: {{ $compName }}
+        {{- if and $comp.image $comp.image.repository }}
           image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default $.Chart.AppVersion }}"
           imagePullPolicy: {{ $comp.image.pullPolicy }}
+        {{- end }}
           ports:
             {{- range $key, $val := $comp.service.ports }}
             - name: {{ $key }}
