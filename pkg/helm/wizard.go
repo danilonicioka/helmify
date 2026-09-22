@@ -882,9 +882,26 @@ func setBlockStyle(node *yaml.Node) {
 	}
 	if node.Kind == yaml.MappingNode {
 		node.Style &= ^yaml.FlowStyle
+		for i := 0; i < len(node.Content); i += 2 {
+			kNode := node.Content[i]
+			vNode := node.Content[i+1]
+			if kNode.Value == "content" && vNode.Kind == yaml.ScalarNode {
+				vNode.Tag = "!!str"
+				vNode.Style = yaml.LiteralStyle
+				if !strings.HasSuffix(vNode.Value, "\n") {
+					vNode.Value += "\n"
+				}
+			}
+		}
 	}
-	if node.Kind == yaml.ScalarNode && strings.Contains(node.Value, "\n") {
-		node.Style = yaml.LiteralStyle
+	if node.Kind == yaml.ScalarNode {
+		if node.Tag == "!!binary" || strings.Contains(node.Value, "\n") {
+			node.Tag = "!!str"
+			node.Style = yaml.LiteralStyle
+			if !strings.HasSuffix(node.Value, "\n") {
+				node.Value += "\n"
+			}
+		}
 	}
 	for _, child := range node.Content {
 		setBlockStyle(child)
