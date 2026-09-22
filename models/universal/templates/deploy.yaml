@@ -73,8 +73,10 @@ spec:
         {{- range $name, $config := $comp.initContainers }}
         {{- if ne ($config.enabled | default true) false }}
         - name: {{ $name }}
-          image: "{{ $config.image.repository }}:{{ $config.image.tag }}"
+          {{- if and $config.image $config.image.repository }}
+          image: "{{ $config.image.repository }}:{{ $config.image.tag | default "latest" }}"
           imagePullPolicy: {{ $config.image.pullPolicy | default "IfNotPresent" }}
+          {{- end }}
           {{- if $config.command }}
           command:
             {{- toYaml $config.command | nindent 12 }}
@@ -86,12 +88,12 @@ spec:
           {{- if and $config.config $config.config.env }}
           envFrom:
             - configMapRef:
-                name: {{ include "chart-model-multi.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
+                name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
           {{- end }}
           {{- if and $config.secrets $config.secrets.env }}
           envFrom:
             - secretRef:
-                name: {{ include "chart-model-multi.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
+                name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
           {{- end }}
           {{- if or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}
           volumeMounts:
@@ -123,6 +125,7 @@ spec:
           image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default $.Chart.AppVersion }}"
           imagePullPolicy: {{ $comp.image.pullPolicy }}
         {{- end }}
+          {{- if and $comp.service $comp.service.ports }}
           ports:
             {{- range $key, $val := $comp.service.ports }}
             - name: {{ $key }}
@@ -131,6 +134,7 @@ spec:
               protocol: {{ $val.protocol }}
               {{- end }}
             {{- end }}
+          {{- end }}
           
 
           # Clean Configuration Management: Full Decoupling via envFrom
@@ -164,41 +168,15 @@ spec:
             {{- $hasExtra = true }}
           {{- end }}
         {{- end }}
-        {{- $hasInit := false }}
-        {{- range $name, $config := $comp.initContainers }}
-          {{- if ne ($config.enabled | default true) false }}
-            {{- if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}
-              {{- $hasInit = true }}
-            {{- end }}
-          {{- end }}
-        {{- end }}
-        {{- if $hasInit }}
-        {{- range $name, $config := $comp.initContainers }}
-        {{- if ne ($config.enabled | default true) false }}
-          {{- if and $config $config.config $config.config.files }}
-          {{- range $filename, $fileconf := $config.config.files }}
-          - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
-            configMap:
-              name: {{ include "chart-model-multi.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
-          {{- end }}
-          {{- end }}
-          {{- if and $config $config.secrets $config.secrets.files }}
-          {{- range $filename, $fileconf := $config.secrets.files }}
-          - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
-            secret:
-              secretName: {{ include "chart-model-multi.fullname" $ }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
-          {{- end }}
-          {{- end }}
-        {{- end }}
-        {{- end }}
-        {{- end }}
 
         {{- if $hasExtra }}
         {{- range $name, $sidecar := $comp.extraContainers }}
         {{- if ne ($sidecar.enabled | default true) false }}
         - name: {{ $name }}
-          image: "{{ $sidecar.image.repository }}:{{ $sidecar.image.tag }}"
+          {{- if and $sidecar.image $sidecar.image.repository }}
+          image: "{{ $sidecar.image.repository }}:{{ $sidecar.image.tag | default "latest" }}"
           imagePullPolicy: {{ $sidecar.image.pullPolicy | default "IfNotPresent" }}
+          {{- end }}
           {{- if $sidecar.command }}
           command:
             {{- toYaml $sidecar.command | nindent 12 }}
@@ -337,6 +315,7 @@ spec:
       terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
       {{- end }}
 
+      {{- if $comp.scheduling }}
       {{- with $comp.scheduling.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -349,13 +328,54 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- end }}
       {{- if $comp.topologySpreadConstraints }}
       topologySpreadConstraints:
         {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
-      {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}
+      {{- $hasVols := false }}
+      {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasVols = true }}{{ end }}
+      {{- range $name, $config := $comp.initContainers }}{{ if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}{{ $hasVols = true }}{{ end }}{{ end }}
+      {{- range $name, $config := $comp.extraContainers }}{{ if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}{{ $hasVols = true }}{{ end }}{{ end }}
+      {{- if $hasVols }}
       volumes:
+        {{- range $name, $config := $comp.initContainers }}
+        {{- if ne ($config.enabled | default true) false }}
+        {{- if and $config.config $config.config.files }}
+        {{- range $filename, $fileconf := $config.config.files }}
+        - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+          configMap:
+            name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+        {{- end }}
+        {{- end }}
+        {{- if and $config.secrets $config.secrets.files }}
+        {{- range $filename, $fileconf := $config.secrets.files }}
+        - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+          secret:
+            secretName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- range $name, $config := $comp.extraContainers }}
+        {{- if ne ($config.enabled | default true) false }}
+        {{- if and $config.config $config.config.files }}
+        {{- range $filename, $fileconf := $config.config.files }}
+        - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+          configMap:
+            name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
+        {{- end }}
+        {{- end }}
+        {{- if and $config.secrets $config.secrets.files }}
+        {{- range $filename, $fileconf := $config.secrets.files }}
+        - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+          secret:
+            secretName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
         {{- if and $comp.persistence $comp.persistence.enabled }}
         - name: data
           {{- if $comp.persistence.ephemeral }}

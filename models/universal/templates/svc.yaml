@@ -1,5 +1,6 @@
 {{- range $compName, $comp := .Values.deploys }}
 {{- if ne $comp.enabled false }}
+{{- if and $comp $comp.service }}
 ---
 apiVersion: v1
 kind: Service
@@ -8,7 +9,7 @@ metadata:
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
-  type: {{ $comp.service.type }}
+  type: {{ $comp.service.type | default "ClusterIP" }}
   ports:
     {{- range $key, $val := $comp.service.ports }}
   - name: {{ $key }}
@@ -20,7 +21,6 @@ spec:
   {{- end }}
   selector:
     {{- include "chart-model-multi.component.selectorLabels" (dict "context" $ "component" $compName) | nindent 4 }}
-
 {{- end }}
----
+{{- end }}
 {{- end }}
