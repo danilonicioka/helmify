@@ -54,10 +54,9 @@
 
                 if (chartType === 'single') {
                     const currentName = document.getElementById('chartName').value.trim() || oldKey;
-                    components[currentName] = components[oldKey] || createDefaultComponentConfig(currentName, 'app');
-                    if (oldKey !== currentName) {
-                        delete components[oldKey];
-                    }
+                    const keptComponent = components[oldKey] || createDefaultComponentConfig(currentName, 'app');
+                    components = {};
+                    components[currentName] = keptComponent;
                     activeComponent = currentName;
                     document.getElementById('btn-add-comp').style.display = 'none';
                 } else {
