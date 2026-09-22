@@ -458,8 +458,11 @@
                         <label>Mount Path</label>
                         <input type="text" class="file-mount" value="${mountPath}" placeholder="e.g. /etc/nginx/nginx.conf" oninput="saveAndPreview()">
                     </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                    <label style="margin-bottom: 0;">File Content</label>
                     ${type === 'secret' ? `
-                    <div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 25px; margin-left: 10px;">
+                    <div style="display: flex; align-items: center;">
                         <label class="route-switch" style="margin-bottom: 0;">
                             <input type="checkbox" class="file-b64enc" ${b64enc ? 'checked' : ''} onchange="saveAndPreview()">
                             <span class="slider"></span>
@@ -467,7 +470,6 @@
                         <span style="margin-left: 8px; font-size: 13px;">Base64 Encoded?</span>
                     </div>` : ''}
                 </div>
-                <label>File Content</label>
                 <textarea class="file-content" rows="4" placeholder="Paste file content here..." oninput="saveAndPreview()">${content}</textarea>
             `;
             container.appendChild(fileDiv);
