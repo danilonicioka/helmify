@@ -6,6 +6,9 @@ metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-postgres-cm
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+    {{- with .Values.postgres.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 data:
   {{- range $key, $val := .Values.postgres.config.env }}
   {{ $key }}: {{ $val | quote }}
@@ -20,10 +23,18 @@ metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-postgres
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+    {{- with .Values.postgres.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- $annotations := include "<CHART_NAME>.component.annotations" (dict "context" . "component" "postgres") }}
-  {{- if $annotations }}
+  {{- if or $annotations .Values.postgres.annotations }}
   annotations:
+    {{- if $annotations }}
     {{- $annotations | nindent 4 }}
+    {{- end }}
+    {{- with .Values.postgres.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- end }}
 spec:
   {{- if hasKey .Values.postgres "replicas" }}
@@ -42,8 +53,14 @@ spec:
         {{- if $annotations }}
         {{- $annotations | nindent 8 }}
         {{- end }}
+        {{- with .Values.postgres.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "postgres") | nindent 8 }}
+        {{- with .Values.postgres.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.postgres.image.pullSecrets }}
       imagePullSecrets:
@@ -194,6 +211,9 @@ metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-postgres
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+    {{- with .Values.postgres.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   accessModes:
     - {{ .Values.postgres.persistence.accessMode | default "ReadWriteOnce" }}
@@ -217,6 +237,9 @@ metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-postgres-secret
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+    {{- with .Values.postgres.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 type: Opaque
 data:
   {{- range $key, $val := .Values.postgres.secrets.env }}
@@ -232,6 +255,9 @@ metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-postgres
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+    {{- with .Values.postgres.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   type: {{ .Values.postgres.service.type | default "ClusterIP" }}
   ports:

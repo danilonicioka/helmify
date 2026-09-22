@@ -6,6 +6,9 @@ metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-redis-cm
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+    {{- with .Values.redis.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 data:
   {{- range $key, $val := .Values.redis.config.env }}
   {{ $key }}: {{ $val | quote }}
@@ -20,10 +23,18 @@ metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-redis
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+    {{- with .Values.redis.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- $annotations := include "<CHART_NAME>.component.annotations" (dict "context" . "component" "redis") }}
-  {{- if $annotations }}
+  {{- if or $annotations .Values.redis.annotations }}
   annotations:
+    {{- if $annotations }}
     {{- $annotations | nindent 4 }}
+    {{- end }}
+    {{- with .Values.redis.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
   {{- end }}
 spec:
   {{- if hasKey .Values.redis "replicas" }}
@@ -42,8 +53,14 @@ spec:
         {{- if $annotations }}
         {{- $annotations | nindent 8 }}
         {{- end }}
+        {{- with .Values.redis.annotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "redis") | nindent 8 }}
+        {{- with .Values.redis.labels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.redis.image.pullSecrets }}
       imagePullSecrets:
@@ -194,6 +211,9 @@ metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-redis
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+    {{- with .Values.redis.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   accessModes:
     - {{ .Values.redis.persistence.accessMode | default "ReadWriteOnce" }}
@@ -217,6 +237,9 @@ metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-redis-secret
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+    {{- with .Values.redis.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 type: Opaque
 data:
   {{- range $key, $val := .Values.redis.secrets.env }}
@@ -232,6 +255,9 @@ metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-redis
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+    {{- with .Values.redis.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   type: {{ .Values.redis.service.type | default "ClusterIP" }}
   ports:

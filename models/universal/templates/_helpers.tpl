@@ -86,10 +86,6 @@ app.kubernetes.io/component: {{ include "chart-model-multi.componentname" (dict 
 {{- with (index .context.Values.cronjobs .component).labels }}
 {{ toYaml . }}
 {{- end }}
-{{- else if hasKey .context.Values .component }}
-{{- with (index .context.Values .component).labels }}
-{{ toYaml . }}
-{{- end }}
 {{- end }}
 {{- end }}
 
@@ -103,10 +99,6 @@ Component-specific annotations
 {{- end }}
 {{- else if and .context.Values.cronjobs (hasKey .context.Values.cronjobs .component) }}
 {{- with (index .context.Values.cronjobs .component).annotations }}
-{{ toYaml . }}
-{{- end }}
-{{- else if hasKey .context.Values .component }}
-{{- with (index .context.Values .component).annotations }}
 {{ toYaml . }}
 {{- end }}
 {{- end }}
