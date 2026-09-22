@@ -600,3 +600,14 @@ deploys:
     #          b64enc: false
     #          content: |
     #            secret world
+# ==============================================================================
+# Cronjobs Configuration Example
+# ==============================================================================
+# cronjobs:
+#   my-cronjob:
+#     enabled: true
+#     schedule: "*/5 * * * *"
+#     image:
+#       repository: my-repo/my-cronjob
+#       tag: latest
+#       pullPolicy: IfNotPresent

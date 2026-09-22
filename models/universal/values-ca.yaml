@@ -7,3 +7,14 @@ deploys:
     config:
       env:
         TZ: "America/Belem"
+# ==============================================================================
+# Cronjobs Configuration Example
+# ==============================================================================
+# cronjobs:
+#   my-cronjob:
+#     enabled: true
+#     schedule: "*/5 * * * *"
+#     image:
+#       repository: my-repo/my-cronjob
+#       tag: latest
+#       pullPolicy: IfNotPresent

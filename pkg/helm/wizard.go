@@ -740,6 +740,8 @@ var sidecarExampleRegex = regexp.MustCompile(`(?m)^\s*#\s+sidecar-example:\s*\n(
 var realExtraContainersRegex = regexp.MustCompile(`(?m)^\s+extraContainers:\s*\n\s+\S`)
 var initExampleRegex = regexp.MustCompile(`(?m)^\s*#\s+init-example:\s*\n(?:\s*#[^\n]*\n)+`)
 var realInitContainersRegex = regexp.MustCompile(`(?m)^\s+initContainers:\s*\n\s+\S`)
+var cronjobExampleRegex = regexp.MustCompile(`(?m)^# =+\n# Cronjobs Configuration Example\n# =+\n(?:#[^\n]*\n)+`)
+var realCronjobsRegex = regexp.MustCompile(`(?m)^cronjobs:\s*\n\s+\S`)
 
 func init() {
 	for _, block := range formatBlocks {
@@ -765,6 +767,11 @@ func formatValues(valuesStr string) string {
 	// Clean up commented init-example block if real initContainers are already present
 	if realInitContainersRegex.MatchString(valuesStr) {
 		valuesStr = initExampleRegex.ReplaceAllString(valuesStr, "")
+	}
+
+	// Clean up commented cronjobs example if real cronjobs are already present
+	if realCronjobsRegex.MatchString(valuesStr) {
+		valuesStr = cronjobExampleRegex.ReplaceAllString(valuesStr, "")
 	}
 
 	return valuesStr
