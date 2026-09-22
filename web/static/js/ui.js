@@ -310,7 +310,7 @@
                     if (type === 'cm') {
                         config.config.files[name] = { mountPath: path, content: content };
                     } else {
-                        const b64enc = div.querySelector('.file-b64enc') ? div.querySelector('.file-b64enc').checked : false;
+                        const b64enc = fileDivs[i].querySelector('.file-b64enc') ? fileDivs[i].querySelector('.file-b64enc').checked : false;
                         config.secrets.files[name] = { mountPath: path, content: content, b64enc: b64enc };
                     }
                 }
