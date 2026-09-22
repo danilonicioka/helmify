@@ -460,7 +460,7 @@
                     </div>
                     ${type === 'secret' ? `
                     <div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 25px; margin-left: 10px;">
-                        <label class="toggle-switch" style="margin-bottom: 0;">
+                        <label class="route-switch" style="margin-bottom: 0;">
                             <input type="checkbox" class="file-b64enc" ${b64enc ? 'checked' : ''} onchange="saveAndPreview()">
                             <span class="slider"></span>
                         </label>
