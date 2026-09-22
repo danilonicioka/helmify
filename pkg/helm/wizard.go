@@ -774,6 +774,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 	}
 	outputFiles[".gitlab-ci.yml"] = roothelmify.GitLabCI
+	outputFiles["files/.gitkeep"] = []byte("")
 
 	logrus.Infof("GenerateWizardChart complete for %s", params.ChartName)
 	return outputFiles, nil

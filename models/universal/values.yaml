@@ -53,14 +53,22 @@ deploys:
     # ----------------------------------------------------------------------------
     config:
       env: {}
+      # Define files to be mounted as a ConfigMap into the container.
+      # If 'content' is provided, the file is embedded directly here.
+      # If 'content' is omitted, the chart will automatically load the file from the 'files/' directory.
       files: {}
         #   application.properties:
         #     mountPath: "/deployments/config/application.properties"
         #     content: |
         #       quarkus.http.port=8080
+        #   nginx.conf:
+        #     mountPath: "/etc/nginx/nginx.conf"
+        #     # 'content' is intentionally omitted here, so the chart automatically loads from files/nginx.conf
 
     secrets:
       env: {}
+      # Define sensitive files to be mounted as a Secret into the container.
+      # Identical fallback behavior: omit 'content' to load from the 'files/' directory.
       files: {}
         #   sistema.p12:
         #     mountPath: "/app/keystore/sistema.p12"

@@ -306,12 +306,15 @@
                 const name = fileDivs[i].querySelector('.file-name').value.trim();
                 const path = fileDivs[i].querySelector('.file-mount').value.trim();
                 const content = fileDivs[i].querySelector('.file-content').value;
+                const isInline = fileDivs[i].querySelector('.file-content-toggle').checked;
                 if (name && path) {
                     if (type === 'cm') {
-                        config.config.files[name] = { mountPath: path, content: content };
+                        config.config.files[name] = { mountPath: path };
+                        if (isInline) config.config.files[name].content = content;
                     } else {
                         const b64enc = fileDivs[i].querySelector('.file-b64enc') ? fileDivs[i].querySelector('.file-b64enc').checked : false;
-                        config.secrets.files[name] = { mountPath: path, content: content, b64enc: b64enc };
+                        config.secrets.files[name] = { mountPath: path, b64enc: b64enc };
+                        if (isInline) config.secrets.files[name].content = content;
                     }
                 }
             }
@@ -431,9 +434,13 @@
             container.appendChild(routeDiv);
         }
 
-        function addCustomFile(type, filename = '', mountPath = '', content = '', b64enc = false) {
+        function addCustomFile(type, filename = '', mountPath = '', content = undefined, b64enc = false) {
             const container = document.getElementById('custom-files-container');
             const fileId = 'file-' + Date.now() + Math.floor(Math.random() * 1000);
+            
+            // If content is explicitly undefined and not empty string from typing, it defaults to inline true unless we are loading a state without it
+            const isInline = content !== undefined;
+            const actualContent = content || '';
 
             const fileDiv = document.createElement('div');
             fileDiv.className = 'form-group';
@@ -460,7 +467,13 @@
                     </div>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                    <label style="margin-bottom: 0;">File Content</label>
+                    <div style="display: flex; align-items: center;">
+                        <label class="route-switch" style="margin-bottom: 0;">
+                            <input type="checkbox" class="file-content-toggle" ${isInline ? 'checked' : ''} onchange="this.parentElement.parentElement.parentElement.nextElementSibling.style.display = this.checked ? 'block' : 'none'; this.parentElement.parentElement.parentElement.nextElementSibling.nextElementSibling.style.display = this.checked ? 'none' : 'block'; saveAndPreview()">
+                            <span class="slider"></span>
+                        </label>
+                        <span style="margin-left: 8px; font-size: 13px; font-weight: bold;">Provide Content Inline</span>
+                    </div>
                     ${type === 'secret' ? `
                     <div style="display: flex; align-items: center;">
                         <label class="route-switch" style="margin-bottom: 0;">
@@ -470,7 +483,10 @@
                         <span style="margin-left: 8px; font-size: 13px;">Base64 Encoded</span>
                     </div>` : ''}
                 </div>
-                <textarea class="file-content" rows="4" placeholder="Paste file content here..." oninput="saveAndPreview()">${content}</textarea>
+                <textarea class="file-content" rows="4" placeholder="Paste file content here..." oninput="saveAndPreview()" style="display: ${isInline ? 'block' : 'none'};">${actualContent}</textarea>
+                <div class="file-external-notice" style="display: ${isInline ? 'none' : 'block'}; padding: 10px; background-color: var(--surface-bg); border-radius: var(--radius-sm); border: 1px dashed var(--border-color); color: var(--text-muted); font-size: 13px; text-align: center; margin-top: 5px;">
+                    Chart will automatically load this file from <code>files/&lt;filename&gt;</code>
+                </div>
             `;
             container.appendChild(fileDiv);
         }

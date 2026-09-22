@@ -23,8 +23,13 @@ metadata:
     {{- include "chart-model-multi.labels" $ | nindent 4 }}
 data:
 {{- range $filename, $config := $comp.config.files }}
+{{- if $config.content }}
   {{ $filename }}: |
     {{- $config.content | nindent 4 }}
+{{- else }}
+  {{ $filename }}: |-
+{{ $.Files.Get (printf "files/%s" $filename) | indent 4 }}
+{{- end }}
 {{- end }}
 {{- end }}
 
