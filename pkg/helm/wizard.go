@@ -193,8 +193,8 @@ type SidecarParams struct {
 
 // ConfigParams holds env vars and mounted files
 type ConfigParams struct {
-	Env   map[string]string           `json:"env,omitempty" yaml:"env,omitempty"`
-	Files map[string]CustomFileParams `json:"files,omitempty" yaml:"files,omitempty"`
+	Env   map[string]string           `json:"env,omitempty" yaml:"env"`
+	Files map[string]CustomFileParams `json:"files,omitempty" yaml:"files"`
 }
 
 // ProbesParams groups lifecycle probes
@@ -214,7 +214,7 @@ type SchedulingParams struct {
 // CustomFileParams defines custom file injection.
 type CustomFileParams struct {
 	MountPath string `json:"mountPath" yaml:"mountPath"`
-	B64enc    bool   `json:"b64enc,omitempty" yaml:"b64enc,omitempty"`
+	B64enc    bool   `json:"b64enc,omitempty" yaml:"b64enc"`
 	Content   string `json:"content" yaml:"content"`
 }
 
@@ -332,6 +332,53 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		return nil, fmt.Errorf("chartName is required")
 	}
 	logrus.Infof("Starting GenerateWizardChart for %s", params.ChartName)
+	// Initialize Config and Secrets for all deployments and cronjobs to guarantee env: {} and files: {}
+	for k, dep := range params.Deployments {
+		if dep.Config == nil {
+			dep.Config = &ConfigParams{}
+		}
+		if dep.Config.Env == nil {
+			dep.Config.Env = make(map[string]string)
+		}
+		if dep.Config.Files == nil {
+			dep.Config.Files = make(map[string]CustomFileParams)
+		}
+
+		if dep.Secrets == nil {
+			dep.Secrets = &ConfigParams{}
+		}
+		if dep.Secrets.Env == nil {
+			dep.Secrets.Env = make(map[string]string)
+		}
+		if dep.Secrets.Files == nil {
+			dep.Secrets.Files = make(map[string]CustomFileParams)
+		}
+		params.Deployments[k] = dep
+	}
+
+	for k, cj := range params.CronJobs {
+		if cj.Config == nil {
+			cj.Config = &ConfigParams{}
+		}
+		if cj.Config.Env == nil {
+			cj.Config.Env = make(map[string]string)
+		}
+		if cj.Config.Files == nil {
+			cj.Config.Files = make(map[string]CustomFileParams)
+		}
+
+		if cj.Secrets == nil {
+			cj.Secrets = &ConfigParams{}
+		}
+		if cj.Secrets.Env == nil {
+			cj.Secrets.Env = make(map[string]string)
+		}
+		if cj.Secrets.Files == nil {
+			cj.Secrets.Files = make(map[string]CustomFileParams)
+		}
+		params.CronJobs[k] = cj
+	}
+
 
 	basePath := "models/universal"
 
