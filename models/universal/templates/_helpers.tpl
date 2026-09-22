@@ -78,8 +78,16 @@ Component-specific labels
 {{- define "chart-model-multi.component.labels" -}}
 {{ include "chart-model-multi.labels" .context }}
 app.kubernetes.io/component: {{ include "chart-model-multi.componentname" (dict "context" .context "component" .component) }}
-{{- if hasKey .context.Values.deploys .component }}
+{{- if and .context.Values.deploys (hasKey .context.Values.deploys .component) }}
 {{- with (index .context.Values.deploys .component).labels }}
+{{ toYaml . }}
+{{- end }}
+{{- else if and .context.Values.cronjobs (hasKey .context.Values.cronjobs .component) }}
+{{- with (index .context.Values.cronjobs .component).labels }}
+{{ toYaml . }}
+{{- end }}
+{{- else if hasKey .context.Values .component }}
+{{- with (index .context.Values .component).labels }}
 {{ toYaml . }}
 {{- end }}
 {{- end }}
@@ -89,8 +97,16 @@ app.kubernetes.io/component: {{ include "chart-model-multi.componentname" (dict 
 Component-specific annotations
 */}}
 {{- define "chart-model-multi.component.annotations" -}}
-{{- if hasKey .context.Values.deploys .component }}
+{{- if and .context.Values.deploys (hasKey .context.Values.deploys .component) }}
 {{- with (index .context.Values.deploys .component).annotations }}
+{{ toYaml . }}
+{{- end }}
+{{- else if and .context.Values.cronjobs (hasKey .context.Values.cronjobs .component) }}
+{{- with (index .context.Values.cronjobs .component).annotations }}
+{{ toYaml . }}
+{{- end }}
+{{- else if hasKey .context.Values .component }}
+{{- with (index .context.Values .component).annotations }}
 {{ toYaml . }}
 {{- end }}
 {{- end }}
