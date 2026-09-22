@@ -280,7 +280,10 @@ kind: ConfigMap
 metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-postgres-files-cm
   labels:
-    {{- include "<CHART_NAME>.labels" . | nindent 4 }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+    {{- with .Values.postgres.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 data:
 {{- range $filename, $config := .Values.postgres.config.files }}
   {{ $filename }}: |
@@ -295,7 +298,10 @@ kind: Secret
 metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-postgres-files-secret
   labels:
-    {{- include "<CHART_NAME>.labels" . | nindent 4 }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+    {{- with .Values.postgres.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 type: Opaque
 data:
 {{- range $filename, $config := .Values.postgres.secrets.files }}
@@ -310,7 +316,10 @@ kind: VaultStaticSecret
 metadata:
   name: {{ include "<CHART_NAME>.fullname" . }}-postgres-vso
   labels:
-    {{- include "<CHART_NAME>.labels" . | nindent 4 }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+    {{- with .Values.postgres.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   type: kv-v2
   mount: kv
