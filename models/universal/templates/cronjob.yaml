@@ -4,7 +4,7 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
   {{- $annotations := include "<CHART_NAME>.component.annotations" (dict "context" $ "component" $compName) }}
@@ -39,9 +39,9 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           {{- if and $comp.vso $comp.vso.enabled }}
-          serviceAccountName: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-sa
+          serviceAccountName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-sa
           {{- else if .Values.serviceAccount }}
-          serviceAccountName: {{ include "<CHART_NAME>.serviceAccountName" . }}
+          serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
           {{- end }}
           containers:
             - name: cronjob
@@ -57,20 +57,20 @@ spec:
               {{- end }}
               envFrom:
                 - configMapRef:
-                    name: {{ include "<CHART_NAME>.fullname" $ }}-global-cm
+                    name: {{ include "chart-model-multi.fullname" $ }}-global-cm
                 - secretRef:
-                    name: {{ include "<CHART_NAME>.fullname" $ }}-global-secret
+                    name: {{ include "chart-model-multi.fullname" $ }}-global-secret
                 {{- if and $comp.config $comp.config.env (not (empty $comp.config.env)) }}
                 - configMapRef:
-                    name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-cm
+                    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-cm
                 {{- end }}
                 {{- if and $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env)) }}
                 - secretRef:
-                    name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-secret
+                    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-secret
                 {{- end }}
                 {{- if and $comp.vso $comp.vso.enabled }}
                 - secretRef:
-                    name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-vso-secret
+                    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-secret
                 {{- end }}
               {{- if $comp.resources }}
               resources:
@@ -118,18 +118,18 @@ spec:
               emptyDir: {}
               {{- else }}
               persistentVolumeClaim:
-                claimName: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}
+                claimName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
               {{- end }}
             {{- end }}
             {{- if and $comp.config $comp.config.files (not (empty $comp.config.files)) }}
             - name: files
               configMap:
-                name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-files-cm
+                name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-files-cm
             {{- end }}
             {{- if and $comp.secrets $comp.secrets.files (not (empty $comp.secrets.files)) }}
             - name: files-secret
               secret:
-                secretName: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-files-secret
+                secretName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-files-secret
             {{- end }}
           restartPolicy: {{ default "OnFailure" $comp.restartPolicy }}
           {{- with $comp.scheduling.nodeSelector }}
@@ -151,7 +151,7 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-files-cm
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-files-cm
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 data:
@@ -166,7 +166,7 @@ data:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-cm
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-cm
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 data:
@@ -180,7 +180,7 @@ data:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-files-secret
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-files-secret
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 type: Opaque
@@ -196,7 +196,7 @@ stringData:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-secret
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-secret
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 type: Opaque
@@ -211,7 +211,7 @@ stringData:
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-sa
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-sa
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 {{- end }}
@@ -221,7 +221,7 @@ metadata:
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultAuth
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-vaultauth
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vaultauth
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
@@ -229,7 +229,7 @@ spec:
   mount: {{ $comp.vso.mount | default "kubernetes" }}
   kubernetes:
     role: {{ $comp.vso.role }}
-    serviceAccount: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-sa
+    serviceAccount: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-sa
     audiences:
       - vault
 {{- end }}
@@ -239,7 +239,7 @@ spec:
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-vaultstaticsecret
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vaultstaticsecret
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
@@ -247,10 +247,10 @@ spec:
   mount: {{ $comp.vso.secretMount | default "kv" }}
   path: {{ $comp.vso.path }}
   destination:
-    name: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-vso-secret
+    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-secret
     create: true
   refreshAfter: {{ $comp.vso.refreshAfter | default "30s" }}
-  vaultAuthRef: {{ include "<CHART_NAME>.fullname" $ }}-{{ $compName }}-vaultauth
+  vaultAuthRef: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vaultauth
 {{- end }}
 
 ---

@@ -34,9 +34,16 @@
                 components = {};
                 let compKeys = [];
                 const deploysSource = defaults.deploys || defaults;
-                Object.entries(deploysSource).forEach(([key, val]) => {
-                    if (val && typeof val === 'object' && val.image && val.service) {
+                const cronjobsSource = defaults.cronjobs || {};
+                const allComps = { ...deploysSource, ...cronjobsSource };
+                
+                Object.entries(allComps).forEach(([key, val]) => {
+                    if (val && typeof val === 'object' && val.image) {
                         components[key] = parseComponentConfig(val);
+                        if (cronjobsSource[key]) {
+                            components[key].workloadType = 'CronJob';
+                            components[key].schedule = val.schedule || '';
+                        }
                         compKeys.push(key);
                     }
                 });

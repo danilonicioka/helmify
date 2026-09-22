@@ -166,13 +166,23 @@
                 selectedSubcomponents.push(cb.value);
             });
 
+            const deploys = {};
+            const cronJobs = {};
+            Object.entries(components).forEach(([name, comp]) => {
+                if (comp.workloadType === 'CronJob') {
+                    cronJobs[name] = comp;
+                } else {
+                    deploys[name] = comp;
+                }
+            });
             const payload = {
                 chartName: document.getElementById('chartName').value || 'chart-model',
                 type: chartType,
                 devRepoUrl: document.getElementById('devRepoUrl').value || (chartType === 'single' ? `https://${window.ENV?.DevRepo || '{{DEV_REPO}}'}/devops/my-app.git` : `https://${window.ENV?.DevRepo || '{{DEV_REPO}}'}/devops/my-app-multi.git`),
                 globalConfig: globalConfig,
                 globalSecret: globalSecret,
-                deployments: components,
+                deployments: deploys,
+                cronJobs: cronJobs,
                 subcomponents: selectedSubcomponents
             };
             return payload;
