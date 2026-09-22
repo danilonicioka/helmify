@@ -310,7 +310,8 @@
                     if (type === 'cm') {
                         config.config.files[name] = { mountPath: path, content: content };
                     } else {
-                        config.secrets.files[name] = { mountPath: path, content: content };
+                        const b64enc = div.querySelector('.file-b64enc') ? div.querySelector('.file-b64enc').checked : false;
+                        config.secrets.files[name] = { mountPath: path, content: content, b64enc: b64enc };
                     }
                 }
             }
@@ -430,7 +431,7 @@
             container.appendChild(routeDiv);
         }
 
-        function addCustomFile(type, filename = '', mountPath = '', content = '') {
+        function addCustomFile(type, filename = '', mountPath = '', content = '', b64enc = false) {
             const container = document.getElementById('custom-files-container');
             const fileId = 'file-' + Date.now() + Math.floor(Math.random() * 1000);
 
@@ -457,6 +458,14 @@
                         <label>Mount Path</label>
                         <input type="text" class="file-mount" value="${mountPath}" placeholder="e.g. /etc/nginx/nginx.conf" oninput="saveAndPreview()">
                     </div>
+                    ${type === 'secret' ? `
+                    <div style="display: flex; align-items: center; justify-content: flex-end; margin-top: 25px; margin-left: 10px;">
+                        <label class="toggle-switch" style="margin-bottom: 0;">
+                            <input type="checkbox" class="file-b64enc" ${b64enc ? 'checked' : ''} onchange="saveAndPreview()">
+                            <span class="slider"></span>
+                        </label>
+                        <span style="margin-left: 8px; font-size: 13px;">Base64 Encoded?</span>
+                    </div>` : ''}
                 </div>
                 <label>File Content</label>
                 <textarea class="file-content" rows="4" placeholder="Paste file content here..." oninput="saveAndPreview()">${content}</textarea>
@@ -580,7 +589,7 @@
             }
             if (config.secrets && config.secrets.files) {
                 for (const [name, fileConfig] of Object.entries(config.secrets.files)) {
-                    addCustomFile('secret', name, fileConfig.mountPath, fileConfig.content);
+                    addCustomFile('secret', name, fileConfig.mountPath, fileConfig.content, fileConfig.b64enc);
                 }
             }
 
