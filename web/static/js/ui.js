@@ -467,7 +467,7 @@
                             <input type="checkbox" class="file-b64enc" ${b64enc ? 'checked' : ''} onchange="saveAndPreview()">
                             <span class="slider"></span>
                         </label>
-                        <span style="margin-left: 8px; font-size: 13px;">Base64 Encoded?</span>
+                        <span style="margin-left: 8px; font-size: 13px;">Base64 Encoded</span>
                     </div>` : ''}
                 </div>
                 <textarea class="file-content" rows="4" placeholder="Paste file content here..." oninput="saveAndPreview()">${content}</textarea>
