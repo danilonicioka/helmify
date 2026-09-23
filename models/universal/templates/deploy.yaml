@@ -95,11 +95,15 @@ spec:
             - secretRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
           {{- end }}
-          {{- if or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}
+          {{- if or (and $config.persistence $config.persistence.enabled) (and $config.sharedVolume $config.sharedVolume.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}
           volumeMounts:
             {{- if and $config.persistence $config.persistence.enabled }}
-            - name: data
+            - name: init-{{ $name }}-data
               mountPath: {{ $config.persistence.mountPath | default "/var/lib/data" }}
+            {{- end }}
+            {{- if and $config.sharedVolume $config.sharedVolume.enabled }}
+            - name: data
+              mountPath: {{ $config.sharedVolume.mountPath | default "/var/lib/data" }}
             {{- end }}
             {{- if and $config.config $config.config.files }}
             {{- range $filename, $fileconf := $config.config.files }}
@@ -222,11 +226,15 @@ spec:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
             {{- end }}
           {{- end }}
-          {{- if or (and $sidecar.persistence $sidecar.persistence.enabled) (and $sidecar.config $sidecar.config.files) (and $sidecar.secrets $sidecar.secrets.files) }}
+          {{- if or (and $sidecar.persistence $sidecar.persistence.enabled) (and $sidecar.sharedVolume $sidecar.sharedVolume.enabled) (and $sidecar.config $sidecar.config.files) (and $sidecar.secrets $sidecar.secrets.files) }}
           volumeMounts:
             {{- if and $sidecar.persistence $sidecar.persistence.enabled }}
-            - name: data
+            - name: sidecar-{{ $name }}-data
               mountPath: {{ $sidecar.persistence.mountPath | default "/var/lib/data" }}
+            {{- end }}
+            {{- if and $sidecar.sharedVolume $sidecar.sharedVolume.enabled }}
+            - name: data
+              mountPath: {{ $sidecar.sharedVolume.mountPath | default "/var/lib/data" }}
             {{- end }}
             {{- if and $sidecar.config $sidecar.config.files }}
             {{- range $filename, $config := $sidecar.config.files }}
@@ -336,8 +344,8 @@ spec:
 
       {{- $hasVols := false }}
       {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasVols = true }}{{ end }}
-      {{- range $name, $config := $comp.initContainers }}{{ if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}{{ $hasVols = true }}{{ end }}{{ end }}
-      {{- range $name, $config := $comp.extraContainers }}{{ if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}{{ $hasVols = true }}{{ end }}{{ end }}
+      {{- range $name, $config := $comp.initContainers }}{{ if or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}{{ $hasVols = true }}{{ end }}{{ end }}
+      {{- range $name, $config := $comp.extraContainers }}{{ if or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}{{ $hasVols = true }}{{ end }}{{ end }}
       {{- if $hasVols }}
       volumes:
         {{- range $name, $config := $comp.initContainers }}
@@ -374,6 +382,28 @@ spec:
             secretName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
         {{- end }}
         {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- range $name, $config := $comp.initContainers }}
+        {{- if and $config.persistence $config.persistence.enabled }}
+        - name: init-{{ $name }}-data
+          {{- if $config.persistence.ephemeral }}
+          emptyDir: {}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- range $name, $config := $comp.extraContainers }}
+        {{- if and $config.persistence $config.persistence.enabled }}
+        - name: sidecar-{{ $name }}-data
+          {{- if $config.persistence.ephemeral }}
+          emptyDir: {}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}
+          {{- end }}
         {{- end }}
         {{- end }}
         {{- if and $comp.persistence $comp.persistence.enabled }}

@@ -23,6 +23,56 @@ spec:
       storage: {{ $comp.persistence.storageRequest | default "1Gi" }}
 {{- end }}
 
+{{- range $name, $config := $comp.initContainers }}
+{{- if and $config.persistence (and $config.persistence.enabled (not $config.persistence.ephemeral)) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}
+  labels:
+    {{- include "chart-model-multi.labels" $ | nindent 4 }}
+spec:
+  accessModes:
+    - {{ $config.persistence.accessMode | default "ReadWriteOnce" }}
+  {{- if $config.persistence.storageClass }}
+  {{- if (eq "-" $config.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ $config.persistence.storageClass }}"
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $config.persistence.storageRequest | default "1Gi" }}
+{{- end }}
+{{- end }}
+
+{{- range $name, $config := $comp.extraContainers }}
+{{- if and $config.persistence (and $config.persistence.enabled (not $config.persistence.ephemeral)) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}
+  labels:
+    {{- include "chart-model-multi.labels" $ | nindent 4 }}
+spec:
+  accessModes:
+    - {{ $config.persistence.accessMode | default "ReadWriteOnce" }}
+  {{- if $config.persistence.storageClass }}
+  {{- if (eq "-" $config.persistence.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ $config.persistence.storageClass }}"
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $config.persistence.storageRequest | default "1Gi" }}
+{{- end }}
+{{- end }}
+
 {{- end }}
 ---
 {{- end }}

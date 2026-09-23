@@ -14,3 +14,4 @@
         let activeFile = 'values.yaml';
         let isFirstLoad = true;
         let templatesFolderOpen = true;
+        let chartNameManuallyEdited = false;

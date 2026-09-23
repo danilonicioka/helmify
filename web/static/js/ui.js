@@ -9,7 +9,6 @@ function toggleWorkloadTypeFields() {
         }
         
         // Watch chart name changes for single deployment key renaming
-        let chartNameManuallyEdited = false;
         document.getElementById('chartName').addEventListener('input', (e) => {
             chartNameManuallyEdited = true;
             const newName = e.target.value.trim() || 'chart';
