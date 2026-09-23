@@ -81,7 +81,7 @@
 
         function createDefaultComponentConfig(name, type) {
             const chartNameVal = document.getElementById('chartName').value.trim() || 'chart-model';
-            const hostPrefix = chartType === 'single' ? name : `${chartNameVal}-${name}`;
+            const hostPrefix = `${chartNameVal}-${name}`;
             const isFrontend = type === 'app' || type === 'frontend' || type === 'web';
             const suffix = isFrontend ? 'app' : 'api';
             return {
