@@ -68,7 +68,7 @@
             renderGlobalConfigList();
             renderTabs();
             renderActiveComponent();
-            updateUIForChartType();
+            
             updatePreview();
         }
         function fallbackInit() {
