@@ -8,16 +8,6 @@ function toggleWorkloadTypeFields() {
             }
         }
         
-        document.getElementById('btn-type-multi').addEventListener('click', () => {
-            if (chartType === 'multi') return;
-            chartType = 'multi';
-            document.getElementById('btn-type-multi').classList.add('active');
-            document.getElementById('btn-type-single').classList.remove('active');
-            isFirstLoad = true;
-            updateUIForChartType();
-            init();
-        });
-
         // Watch chart name changes for single deployment key renaming
         let chartNameManuallyEdited = false;
         document.getElementById('chartName').addEventListener('input', (e) => {
