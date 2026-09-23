@@ -417,8 +417,17 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			continue // handled separately
 		}
 		content := replaceChartName(string(data), oldChartName, params.ChartName)
-		if relPath == "Chart.yaml" && params.DevRepoURL != "" {
-			content = strings.Replace(content, "sources: []", "sources:\n  - \""+params.DevRepoURL+"\"", 1)
+		if relPath == "Chart.yaml" {
+			cv := config.GlobalEnvConfig.ChartVersion
+			if cv == "" {
+				cv = "0.1.0"
+			}
+			content = regexp.MustCompile(`(?m)^version:.*$`).ReplaceAllString(content, "version: "+cv)
+			content = regexp.MustCompile(`(?m)^appVersion:.*$`).ReplaceAllString(content, "appVersion: "+cv)
+			
+			if params.DevRepoURL != "" {
+				content = strings.Replace(content, "sources: []", "sources:\n  - \""+params.DevRepoURL+"\"", 1)
+			}
 		}
 		outputFiles[relPath] = []byte(content)
 	}
