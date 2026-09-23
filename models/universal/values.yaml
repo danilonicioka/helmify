@@ -573,6 +573,25 @@ deploys:
     #      pullPolicy: IfNotPresent
     #    command: []
     #    args: []
+    #
+    #    config:
+    #      env:
+    #        EXAMPLE_VAR: "value"
+    #      files:
+    #        example.txt:
+    #          mountPath: /etc/config/example.txt
+    #          content: |
+    #            hello world
+    #    secrets:
+    #      env:
+    #        SECRET_VAR: "secret-value"
+    #      files:
+    #        secret.txt:
+    #          mountPath: /etc/secret/secret.txt
+    #          b64enc: false
+    #          content: |
+    #            secret world
+    #
     #    service:
     #      ports:
     #        http:
@@ -591,23 +610,6 @@ deploys:
     #    persistence:
     #      enabled: true
     #      mountPath: /var/lib/data
-    #    config:
-    #      env:
-    #        EXAMPLE_VAR: "value"
-    #      files:
-    #        example.txt:
-    #          mountPath: /etc/config/example.txt
-    #          content: |
-    #            hello world
-    #    secrets:
-    #      env:
-    #        SECRET_VAR: "secret-value"
-    #      files:
-    #        secret.txt:
-    #          mountPath: /etc/secret/secret.txt
-    #          b64enc: false
-    #          content: |
-    #            secret world
 # ==============================================================================
 # Cronjobs Configuration Example
 # ==============================================================================
