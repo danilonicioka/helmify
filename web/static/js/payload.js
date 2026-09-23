@@ -177,8 +177,7 @@
             });
             const payload = {
                 chartName: document.getElementById('chartName').value || 'chart-model',
-                type: chartType,
-                devRepoUrl: document.getElementById('devRepoUrl').value || (chartType === 'single' ? `https://${window.ENV?.DevRepo || '{{DEV_REPO}}'}/devops/my-app.git` : `https://${window.ENV?.DevRepo || '{{DEV_REPO}}'}/devops/my-app-multi.git`),
+                devRepoUrl: document.getElementById('devRepoUrl').value || `https://${window.ENV?.DevRepo || '{{DEV_REPO}}'}/devops/my-app.git`,
                 globalConfig: globalConfig,
                 globalSecret: globalSecret,
                 deployments: deploys,

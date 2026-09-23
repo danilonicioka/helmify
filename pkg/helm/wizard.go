@@ -100,11 +100,7 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 }
 
 // GetModelDefaults returns the parsed values.yaml structure for a given chart type.
-func GetModelDefaults(chartType string) (map[string]interface{}, error) {
-	if chartType != "single" && chartType != "multi" {
-		return nil, fmt.Errorf("invalid chart type: %s", chartType)
-	}
-
+func GetModelDefaults() (map[string]interface{}, error) {
 	basePath := "models/universal"
 
 	data, err := roothelmify.ModelsFS.ReadFile(filepath.Join(basePath, "values.yaml"))
@@ -129,7 +125,6 @@ func GetModelDefaults(chartType string) (map[string]interface{}, error) {
 // WizardParams defines the JSON request payload for the Chart Generator Wizard.
 type WizardParams struct {
 	ChartName     string                      `json:"chartName" validate:"required"`
-	Type          string                      `json:"type" validate:"required,oneof=single multi"`
 	DevRepoURL    string                      `json:"devRepoUrl" validate:"required"`
 	GlobalConfig  map[string]string           `json:"globalConfig"`
 	GlobalSecret  map[string]string           `json:"globalSecret"`

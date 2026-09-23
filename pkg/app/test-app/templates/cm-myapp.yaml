@@ -1,5 +1,5 @@
 {{ $comp := index .Values "myapp" | default dict }}
-{{- if and $comp $comp.cm }}
+{{- if and $comp $comp.config $comp.config.env }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -13,13 +13,13 @@ metadata:
     {{- include "test-app.myapp.labels" . | nindent 4 }}
 immutable: true
 data:
-{{- range $key, $val := $comp.cm }}
+{{- range $key, $val := $comp.config.env }}
   {{ $key }}: {{ $val | quote }}
 {{- end }}
 {{- end }}
 ---
 {{ $comp := index .Values "myapp" | default dict }}
-{{- if and $comp $comp.cm }}
+{{- if and $comp $comp.config $comp.config.env }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -32,7 +32,7 @@ metadata:
   labels:
     {{- include "test-app.myapp.labels" . | nindent 4 }}
 data:
-{{- range $key, $val := $comp.cm }}
+{{- range $key, $val := $comp.config.env }}
   {{ $key }}: {{ $val | quote }}
 {{- end }}
 {{- end }}

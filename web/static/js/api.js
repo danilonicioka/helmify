@@ -20,7 +20,7 @@
                     }
                 }
 
-                const response = await fetch(`/v1/defaults?type=${chartType}`);
+                const response = await fetch(`/v1/defaults`);
                 if (!response.ok) {
                     throw new Error("Failed to fetch defaults");
                 }
@@ -49,9 +49,7 @@
                 });
 
                 let oldKey = 'my-app';
-                if (chartType === 'multi') {
-                    oldKey = 'my-app-multi';
-                } else if (compKeys.length > 0) {
+                if (compKeys.length > 0) {
                     oldKey = compKeys[0];
                 }
 
@@ -59,17 +57,8 @@
                     document.getElementById('chartName').value = oldKey;
                 }
 
-                if (chartType === 'single') {
-                    const currentName = document.getElementById('chartName').value.trim() || oldKey;
-                    const keptComponent = components[oldKey] || createDefaultComponentConfig(currentName, 'app');
-                    components = {};
-                    components[currentName] = keptComponent;
-                    activeComponent = currentName;
-                    document.getElementById('btn-add-comp').style.display = 'none';
-                } else {
-                    activeComponent = compKeys.includes('api') ? 'api' : (compKeys[0] || 'api');
-                    document.getElementById('btn-add-comp').style.display = 'block';
-                }
+                activeComponent = compKeys.includes('api') ? 'api' : (compKeys[0] || 'api');
+                document.getElementById('btn-add-comp').style.display = 'block';
 
             } catch (err) {
                 console.error("Error loading defaults:", err);
@@ -83,26 +72,15 @@
             updatePreview();
         }
         function fallbackInit() {
-            if (chartType === 'single') {
-                const name = chartNameManuallyEdited ? (document.getElementById('chartName').value || 'my-app') : 'my-app';
-                if (!chartNameManuallyEdited) {
-                    document.getElementById('chartName').value = name;
-                }
-                components = {};
-                components[name] = createDefaultComponentConfig(name, 'app');
-                activeComponent = name;
-                document.getElementById('btn-add-comp').style.display = 'none';
-            } else {
-                if (!chartNameManuallyEdited) {
-                    document.getElementById('chartName').value = 'my-app-multi';
-                }
-                components = {
-                    'api': createDefaultComponentConfig('api', 'api'),
-                    'app': createDefaultComponentConfig('app', 'app')
-                };
-                activeComponent = 'api';
-                document.getElementById('btn-add-comp').style.display = 'block';
+            if (!chartNameManuallyEdited) {
+                document.getElementById('chartName').value = 'my-app';
             }
+            components = {
+                'api': createDefaultComponentConfig('api', 'api'),
+                'app': createDefaultComponentConfig('app', 'app')
+            };
+            activeComponent = 'api';
+            document.getElementById('btn-add-comp').style.display = 'block';
         }
         // Update real-time preview
         async function updatePreview() {

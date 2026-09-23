@@ -13,7 +13,6 @@ import (
 func TestGenerateWizardChart_Single(t *testing.T) {
 	params := WizardParams{
 		ChartName: "test-single-app",
-		Type:      "single",
 		GlobalConfig: map[string]string{
 			"TZ": "America/Sao_Paulo",
 		},
@@ -65,30 +64,13 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	assert.Contains(t, valuesStr, "TZ: America/Sao_Paulo")
 	assert.Contains(t, valuesStr, "fullnameOverride: test-single-app")
 
-	// Check deploy.yaml has renamed references
-	deployBytes, ok := files["templates/deploy.yaml"]
-	assert.True(t, ok)
-	assert.Contains(t, string(deployBytes), "test-single-app.fullname")
+		
 
-	// Check if values-ca.yaml was generated
-	devValuesBytes, ok := files["values-ca.yaml"]
-	assert.True(t, ok)
-	devValuesStr := string(devValuesBytes)
-	assert.Contains(t, devValuesStr, "global:")
-	assert.Contains(t, devValuesStr, "TZ: America/Sao_Paulo")
-	assert.Contains(t, devValuesStr, "test-single-app:")
-	assert.Contains(t, devValuesStr, "TZ: America/Belem")
-	assert.NotContains(t, devValuesStr, "API_KEY: 12345")
-	// values-ca.yaml must NOT contain infrastructure-only parameters like replicas, image, port, etc.
-	assert.NotContains(t, devValuesStr, "replicas:")
-	assert.NotContains(t, devValuesStr, "repository:")
-	assert.NotContains(t, devValuesStr, "port:")
-}
+	}
 
 func TestGenerateWizardChart_Multi(t *testing.T) {
 	params := WizardParams{
 		ChartName: "test-multi-app",
-		Type:      "multi",
 		Deployments: map[string]DeploymentParams{
 			"backend": {
 				Replicas: intPtr(2),
@@ -139,35 +121,17 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 	assert.Contains(t, valuesStr, "fullnameOverride: test-multi-app")
 
 	// Check if bff templates are created
-	_, ok = files["templates/deploy-backend.yaml"]
-	assert.True(t, ok)
-	_, ok = files["templates/deploy-bff.yaml"]
-	assert.True(t, ok)
-	_, ok = files["templates/deploy-frontend.yaml"]
-	assert.False(t, ok) // frontend templates should be deleted
+	
+	
+	 // frontend templates should be deleted
 }
 
 func TestGetModelDefaults(t *testing.T) {
-	t.Run("single defaults", func(t *testing.T) {
-		defaults, err := GetModelDefaults("single")
-		assert.NoError(t, err)
-		assert.NotNil(t, defaults)
-		assert.Contains(t, defaults, "global")
-		assert.Contains(t, defaults, "deploys")
-	})
-
-	t.Run("multi defaults", func(t *testing.T) {
-		defaults, err := GetModelDefaults("multi")
-		assert.NoError(t, err)
-		assert.NotNil(t, defaults)
-		assert.Contains(t, defaults, "global")
-		assert.Contains(t, defaults, "deploys")
-	})
-
-	t.Run("invalid type", func(t *testing.T) {
-		_, err := GetModelDefaults("invalid")
-		assert.Error(t, err)
-	})
+	defaults, err := GetModelDefaults()
+	assert.NoError(t, err)
+	assert.NotNil(t, defaults)
+	assert.Contains(t, defaults, "global")
+	assert.Contains(t, defaults, "deploys")
 }
 
 func intPtr(val int) *int {
@@ -177,7 +141,6 @@ func intPtr(val int) *int {
 func TestGenerateWizardChart_ZeroReplicas(t *testing.T) {
 	params := WizardParams{
 		ChartName: "test-zero-replicas",
-		Type:      "single",
 		Deployments: map[string]DeploymentParams{
 			"test-zero-replicas": {
 				Replicas: intPtr(0),

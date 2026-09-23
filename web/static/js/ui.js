@@ -1,13 +1,4 @@
-        function updateUIForChartType() {
-            if (chartType === 'single') {
-                document.getElementById('global-config-section').style.display = 'none';
-                document.getElementById('connects-to-field').style.display = 'none';
-            } else {
-                document.getElementById('global-config-section').style.display = 'block';
-                document.getElementById('connects-to-field').style.display = 'block';
-            }
-        }
-        function toggleWorkloadTypeFields() {
+function toggleWorkloadTypeFields() {
             const workloadType = document.getElementById('compWorkloadType').value;
             const scheduleField = document.getElementById('scheduleField');
             if (workloadType === 'CronJob') {
@@ -16,17 +7,7 @@
                 scheduleField.style.display = 'none';
             }
         }
-        // Toggle Single/Multi type
-        document.getElementById('btn-type-single').addEventListener('click', () => {
-            if (chartType === 'single') return;
-            chartType = 'single';
-            document.getElementById('btn-type-single').classList.add('active');
-            document.getElementById('btn-type-multi').classList.remove('active');
-            isFirstLoad = true;
-            updateUIForChartType();
-            init();
-        });
-
+        
         document.getElementById('btn-type-multi').addEventListener('click', () => {
             if (chartType === 'multi') return;
             chartType = 'multi';
@@ -42,15 +23,6 @@
         document.getElementById('chartName').addEventListener('input', (e) => {
             chartNameManuallyEdited = true;
             const newName = e.target.value.trim() || 'chart';
-            if (chartType === 'single') {
-                const oldName = Object.keys(components)[0];
-                if (oldName && oldName !== newName) {
-                    components[newName] = components[oldName];
-                    delete components[oldName];
-                    activeComponent = newName;
-                    renderTabs();
-                }
-            }
             updatePreview();
         });
 
@@ -66,7 +38,7 @@
                 tab.innerHTML = `<span>${name}</span>`;
 
                 // Allow removing tabs in multi type
-                if (chartType === 'multi' && Object.keys(components).length > 1) {
+                if (Object.keys(components).length > 1) {
                     const removeBtn = document.createElement('button');
                     removeBtn.type = 'button';
                     removeBtn.className = 'remove-comp-btn';

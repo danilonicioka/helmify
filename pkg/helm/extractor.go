@@ -824,7 +824,6 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 	}
 	// Auto-detect type and normalize naming if single
 	if len(params.Deployments) == 1 {
-		params.Type = "single"
 		// If there is only one component, the wizard expects it to be named the same as the chart
 		var oldKey string
 		for k := range params.Deployments {
@@ -836,7 +835,6 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			delete(params.Deployments, oldKey)
 		}
 	} else if len(params.Deployments) > 1 {
-		params.Type = "multi"
 	} else {
 		return params, fmt.Errorf("no valid Kubernetes Deployments found in input (ensure your manifests are correct and contain at least one Deployment)")
 	}

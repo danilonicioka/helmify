@@ -34,7 +34,7 @@ func handleGenerateWizard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	logrus.Infof("Generating Wizard chart: %s (%s)", params.ChartName, params.Type)
+	logrus.Infof("Generating Wizard chart: %s", params.ChartName)
 
 	files, err := helm.GenerateWizardChart(params)
 	if err != nil {
@@ -57,12 +57,7 @@ func handleDefaults(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	chartType := r.URL.Query().Get("type")
-	if chartType == "" {
-		chartType = "single"
-	}
-
-	defaults, err := helm.GetModelDefaults(chartType)
+	defaults, err := helm.GetModelDefaults()
 	if err != nil {
 		logrus.WithError(err).Error("Failed to retrieve defaults")
 		sendError(w, fmt.Sprintf("Failed to retrieve defaults: %v", err), http.StatusInternalServerError)

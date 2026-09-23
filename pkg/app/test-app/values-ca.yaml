@@ -1,8 +1,88 @@
-api:
+global:
   config:
     env:
       TZ: "America/Belem"
-app:
+deploys:
+  api:
+    config:
+      env:
+        TZ: "America/Belem"
+# ==============================================================================
+# Cronjobs Configuration Example
+# ==============================================================================
+# cronjobs:
+#   my-cronjob:
+#     enabled: true
+#     schedule: "*/5 * * * *"
+#     suspend: false
+#     concurrencyPolicy: Allow
+#     successfulJobsHistoryLimit: 3
+#     failedJobsHistoryLimit: 1
+#     restartPolicy: OnFailure
+#     image:
+#       repository: my-repo/my-cronjob
+#       tag: latest
+#       pullPolicy: IfNotPresent
+#       pullSecrets: []
+#     command: []
+#     args: []
+#     config:
+#       env: {}
+#       files: {}
+#     secrets:
+#       env: {}
+#       files: {}
+#     vso:
+#       enabled: false
+#       role: my-role
+#       path: /path/to/secret
+#       secretFiles: {}
+#     resources:
+#       limits:
+#         cpu: "100m"
+#         memory: "128Mi"
+#       requests:
+#         cpu: "10m"
+#         memory: "64Mi"
+#     persistence:
+#       enabled: false
+#       mountPath: /var/lib/data
+#       ephemeral: false
+#     scheduling:
+#       nodeSelector: {}
+#       affinity: {}
+#       tolerations: []
+#     extraContainers: []
+
+myapp:
   config:
     env:
-      TZ: "America/Belem"
+      dummyconfigmapkey: dummyconfigmapvalue
+      my.prop1: "1"
+      my.prop2: val 1
+      my.prop3: "true"
+      my_config.properties: |
+        health.healthProbeBindAddress=8081
+        metrics.bindAddress=127.0.0.1:8080
+      myval.yaml: |
+        apiVersion: clickhouse.altinity.com/v1
+        kind: ClickHouseInstallationTemplate
+        metadata:
+          name: default-oneperhost-pod-template
+        spec:
+          templates:
+            podTemplates:
+              - name: default-oneperhost-pod-template
+                distribution: "OnePerHost"
+  secrets:
+    env:
+      ELASTIC_FOOBAR_HUNTER123_MEOWTOWN_VERIFY: my_secret_var_2
+      VAR1: my_secret_var_1
+      VAR2: my_secret_var_2
+      ca.crt: |
+        superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-
+        superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+        superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt-superlongtestcrt
+      str: |
+        some big not so secret string with
+        multiple lines

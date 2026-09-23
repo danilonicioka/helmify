@@ -1,6 +1,5 @@
         // State variables
-        let chartType = 'single'; // 'single' or 'multi'
-        let globalConfig = {
+                let globalConfig = {
             'TZ': 'America/Belem'
         };
         let globalSecret = {};
