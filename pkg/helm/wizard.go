@@ -209,7 +209,7 @@ type SchedulingParams struct {
 // CustomFileParams defines custom file injection.
 type CustomFileParams struct {
 	MountPath string `json:"mountPath" yaml:"mountPath"`
-	B64enc    bool   `json:"b64enc,omitempty" yaml:"b64enc"`
+	B64enc    *bool  `json:"b64enc,omitempty" yaml:"b64enc,omitempty"`
 	Content   string `json:"content" yaml:"content"`
 }
 

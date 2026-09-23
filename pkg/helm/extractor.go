@@ -567,6 +567,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 									}
 									contentStr := fmt.Sprintf("%v", v)
 									var b64enc bool
+										var b64encPtr *bool
 									if decode {
 										if decoded, err := base64.StdEncoding.DecodeString(contentStr); err == nil {
 											if utf8.Valid(decoded) {
@@ -574,12 +575,13 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 											} else {
 												b64enc = true
 											}
+											b64encPtr = &b64enc
 										}
 									}
 									targetFiles[k] = CustomFileParams{
 										MountPath: mntPath,
 										Content:   cleanMultilineString(contentStr),
-										B64enc:    b64enc,
+										B64enc:    b64encPtr,
 									}
 								}
 							}
