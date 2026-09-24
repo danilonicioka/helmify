@@ -155,6 +155,13 @@ type DeploymentParams struct {
 	Probes           *ProbesParams               `json:"probes,omitempty"`
 	Scheduling       *SchedulingParams           `json:"scheduling,omitempty"`
 	Strategy         map[string]interface{}      `json:"strategy,omitempty" yaml:"strategy,omitempty"`
+	PodSecurityContext map[string]interface{}    `json:"podSecurityContext,omitempty" yaml:"podSecurityContext,omitempty"`
+	SecurityContext    map[string]interface{}    `json:"securityContext,omitempty" yaml:"securityContext,omitempty"`
+	HostAliases        []map[string]interface{}  `json:"hostAliases,omitempty" yaml:"hostAliases,omitempty"`
+	TopologySpreadConstraints []map[string]interface{} `json:"topologySpreadConstraints,omitempty" yaml:"topologySpreadConstraints,omitempty"`
+	PriorityClassName  string                    `json:"priorityClassName,omitempty" yaml:"priorityClassName,omitempty"`
+	TerminationGracePeriodSeconds *int64         `json:"terminationGracePeriodSeconds,omitempty" yaml:"terminationGracePeriodSeconds,omitempty"`
+	Lifecycle        map[string]interface{}      `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
 	Route            RouteParams                 `json:"route"`
 	ConnectsTo       []string                    `json:"connectsTo"`
 	Runtime          string                      `json:"runtime"`
@@ -183,7 +190,10 @@ type SidecarParams struct {
 	Service     ServiceParams            `json:"service,omitempty" yaml:"service,omitempty"`
 	Resources   *ResourceParams          `json:"resources,omitempty" yaml:"resources,omitempty"`
 	Probes      *ProbesParams            `json:"probes,omitempty" yaml:"probes,omitempty"`
-	Persistence SidecarPersistenceParams `json:"persistence,omitempty" yaml:"persistence,omitempty"`
+	SecurityContext map[string]interface{} `json:"securityContext,omitempty" yaml:"securityContext,omitempty"`
+	Lifecycle       map[string]interface{} `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
+	SharedVolume  SidecarPersistenceParams `json:"sharedVolume,omitempty" yaml:"sharedVolume,omitempty"`
+	Persistence   PersistenceParams        `json:"persistence,omitempty" yaml:"persistence,omitempty"`
 }
 
 // ConfigParams holds env vars and mounted files
@@ -316,6 +326,8 @@ type PersistenceParams struct {
 	Ephemeral      bool   `json:"ephemeral" yaml:"ephemeral"`
 	MountPath      string `json:"mountPath" yaml:"mountPath"`
 	StorageRequest string `json:"storageRequest" yaml:"storageRequest"`
+	AccessMode     string `json:"accessMode,omitempty" yaml:"accessMode,omitempty"`
+	StorageClass   string `json:"storageClass,omitempty" yaml:"storageClass,omitempty"`
 }
 
 
@@ -628,8 +640,36 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				if depConfig.Persistence.StorageRequest != "" {
 					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "storageRequest"), depConfig.Persistence.StorageRequest)
 				}
+				if depConfig.Persistence.AccessMode != "" {
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "accessMode"), depConfig.Persistence.AccessMode)
+				}
+				if depConfig.Persistence.StorageClass != "" {
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "storageClass"), depConfig.Persistence.StorageClass)
+				}
 				_ = setYamlPath(&rootNode, append(appKeyPrefix, "strategy"), map[string]string{"type": "Recreate"})
 			}
+		}
+		
+		if len(depConfig.PodSecurityContext) > 0 {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "podSecurityContext"), depConfig.PodSecurityContext)
+		}
+		if len(depConfig.SecurityContext) > 0 {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "securityContext"), depConfig.SecurityContext)
+		}
+		if len(depConfig.HostAliases) > 0 {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "hostAliases"), depConfig.HostAliases)
+		}
+		if len(depConfig.TopologySpreadConstraints) > 0 {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "topologySpreadConstraints"), depConfig.TopologySpreadConstraints)
+		}
+		if depConfig.PriorityClassName != "" {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "priorityClassName"), depConfig.PriorityClassName)
+		}
+		if depConfig.TerminationGracePeriodSeconds != nil {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "terminationGracePeriodSeconds"), *depConfig.TerminationGracePeriodSeconds)
+		}
+		if len(depConfig.Lifecycle) > 0 {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "lifecycle"), depConfig.Lifecycle)
 		}
 
 		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)

@@ -145,7 +145,9 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					} else if _, ok, _ := unstructured.NestedMap(vol, "emptyDir"); ok {
 						depParams.Persistence.Enabled = true
 						depParams.Persistence.Ephemeral = true
-					} else if _, ok, _ := unstructured.NestedMap(vol, "persistentVolumeClaim"); ok {
+					} else if pvc, ok, _ := unstructured.NestedMap(vol, "persistentVolumeClaim"); ok {
+						pvcName, _, _ := unstructured.NestedString(pvc, "claimName")
+						volSources[name] = struct{Type, Name string}{"persistentVolumeClaim", pvcName}
 						depParams.Persistence.Enabled = true
 						depParams.Persistence.Ephemeral = false
 					}
@@ -181,7 +183,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 								Config:       &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
 								Secrets:      &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
 							}
-							populateSidecarParams(sidecarParams, containerMap, volSources, envTracker, obj.GetName(), name)
+							populateSidecarParams(sidecarParams, containerMap, containers[0].(map[string]interface{}), volSources, envTracker, obj.GetName(), name)
 							depParams.ExtraContainers[name] = sidecarParams
 						}
 					}
@@ -204,7 +206,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 							Config:       &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
 							Secrets:      &ConfigParams{Env: make(map[string]string), Files: make(map[string]CustomFileParams)},
 						}
-						populateSidecarParams(sidecarParams, containerMap, volSources, envTracker, obj.GetName(), name)
+						populateSidecarParams(sidecarParams, containerMap, containers[0].(map[string]interface{}), volSources, envTracker, obj.GetName(), name)
 						depParams.InitContainers[name] = sidecarParams
 					}
 				}
@@ -230,6 +232,35 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			if tolerations, ok, _ := unstructured.NestedSlice(obj.Object, tolerationsPath...); ok && len(tolerations) > 0 {
 				if depParams.Scheduling == nil { depParams.Scheduling = &SchedulingParams{} }
 				depParams.Scheduling.Tolerations = tolerations
+			}
+			
+			if podSec, ok, _ := unstructured.NestedMap(obj.Object, append(podSpecPath, "securityContext")...); ok && len(podSec) > 0 {
+				depParams.PodSecurityContext = podSec
+			}
+			if hostAliases, ok, _ := unstructured.NestedSlice(obj.Object, append(podSpecPath, "hostAliases")...); ok && len(hostAliases) > 0 {
+				var aliases []map[string]interface{}
+				for _, h := range hostAliases {
+					if ha, ok := h.(map[string]interface{}); ok {
+						aliases = append(aliases, ha)
+					}
+				}
+				depParams.HostAliases = aliases
+			}
+			if tsc, ok, _ := unstructured.NestedSlice(obj.Object, append(podSpecPath, "topologySpreadConstraints")...); ok && len(tsc) > 0 {
+				var spread []map[string]interface{}
+				for _, t := range tsc {
+					if ts, ok := t.(map[string]interface{}); ok {
+						spread = append(spread, ts)
+					}
+				}
+				depParams.TopologySpreadConstraints = spread
+			}
+			if priority, ok, _ := unstructured.NestedString(obj.Object, append(podSpecPath, "priorityClassName")...); ok && priority != "" {
+				depParams.PriorityClassName = priority
+			}
+			if grace, ok, _ := unstructured.NestedInt64(obj.Object, append(podSpecPath, "terminationGracePeriodSeconds")...); ok {
+				var g int64 = grace
+				depParams.TerminationGracePeriodSeconds = &g
 			}
 
 			// Track volume mappings for Pass 2 (Custom Files routing)
@@ -381,6 +412,96 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			return compNames[0]
 		}
 		return ""
+	}
+
+	// Pass 1.5: Process PVCs and map properties to deployments/sidecars
+	for _, obj := range objects {
+		if obj.GetKind() == "PersistentVolumeClaim" {
+			name := obj.GetName()
+			// Find which component uses this PVC
+			var targetComp string
+			var targetSidecar string
+			var isSidecar bool
+			
+			for depName := range params.Deployments {
+				// We don't have volSources globally, but we can check if it matches component name
+				// Helmify PVC naming scheme: {{ compName }} or {{ compName }}-init-{{ sidecar }} or {{ compName }}-{{ sidecar }}
+				
+				// Very basic heuristic for mapping PVC back
+				cleanName := name
+				if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName+"-") {
+					cleanName = strings.TrimPrefix(cleanName, conf.ChartName+"-")
+				} else if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName) {
+					cleanName = strings.TrimPrefix(cleanName, conf.ChartName)
+					cleanName = strings.TrimPrefix(cleanName, "-")
+				}
+				
+				if cleanName == depName {
+					targetComp = depName
+				} else if strings.HasPrefix(cleanName, depName+"-init-") {
+					targetComp = depName
+					targetSidecar = strings.TrimPrefix(cleanName, depName+"-init-")
+					isSidecar = true
+				} else if strings.HasPrefix(cleanName, depName+"-") {
+					targetComp = depName
+					targetSidecar = strings.TrimPrefix(cleanName, depName+"-")
+					isSidecar = true
+				}
+			}
+			
+			if targetComp != "" {
+				depParams := params.Deployments[targetComp]
+				req, found, _ := unstructured.NestedString(obj.Object, "spec", "resources", "requests", "storage")
+				
+				var accessModes []string
+				amSlice, foundAM, _ := unstructured.NestedStringSlice(obj.Object, "spec", "accessModes")
+				if foundAM && len(amSlice) > 0 {
+					accessModes = amSlice
+				}
+				
+				sc, foundSC, _ := unstructured.NestedString(obj.Object, "spec", "storageClassName")
+				
+				if isSidecar {
+					var sidecarParams *SidecarParams
+					if scp, ok := depParams.ExtraContainers[targetSidecar]; ok {
+						sidecarParams = scp
+					} else if scp, ok := depParams.InitContainers[targetSidecar]; ok {
+						sidecarParams = scp
+					}
+					
+					if sidecarParams != nil {
+						if found && req != "" {
+							sidecarParams.Persistence.StorageRequest = req
+						}
+						if foundAM && len(accessModes) > 0 {
+							sidecarParams.Persistence.AccessMode = accessModes[0]
+						}
+						if foundSC {
+							if sc == "" {
+								sidecarParams.Persistence.StorageClass = "-"
+							} else {
+								sidecarParams.Persistence.StorageClass = sc
+							}
+						}
+					}
+				} else {
+					if found && req != "" {
+						depParams.Persistence.StorageRequest = req
+					}
+					if foundAM && len(accessModes) > 0 {
+						depParams.Persistence.AccessMode = accessModes[0]
+					}
+					if foundSC {
+						if sc == "" {
+							depParams.Persistence.StorageClass = "-"
+						} else {
+							depParams.Persistence.StorageClass = sc
+						}
+					}
+				}
+				params.Deployments[targetComp] = depParams
+			}
+		}
 	}
 
 	// Pass 2: Map Services, ConfigMaps, Secrets, Routes
@@ -955,6 +1076,13 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 		}
 	}
 
+	if secCtx, ok, _ := unstructured.NestedMap(container, "securityContext"); ok && len(secCtx) > 0 {
+		depParams.SecurityContext = secCtx
+	}
+	if lc, ok, _ := unstructured.NestedMap(container, "lifecycle"); ok && len(lc) > 0 {
+		depParams.Lifecycle = lc
+	}
+
 	// Extract envFrom for main container
 	envFrom, ok, _ := unstructured.NestedSlice(container, "envFrom")
 	if ok && len(envFrom) > 0 {
@@ -984,7 +1112,7 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 }
 
 
-func populateSidecarParams(depParams *SidecarParams, container map[string]interface{}, volSources map[string]struct{Type string; Name string}, envTracker map[string]*EnvTarget, compName string, sidecarName string) {
+func populateSidecarParams(depParams *SidecarParams, container map[string]interface{}, mainContainer map[string]interface{}, volSources map[string]struct{Type string; Name string}, envTracker map[string]*EnvTarget, compName string, sidecarName string) {
 	// Mark as enabled — if it exists in the input manifest, it's active
 	t := true
 	depParams.Enabled = &t
@@ -1080,6 +1208,13 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 		}
 	}
 
+	if secCtx, ok, _ := unstructured.NestedMap(container, "securityContext"); ok && len(secCtx) > 0 {
+		depParams.SecurityContext = secCtx
+	}
+	if lc, ok, _ := unstructured.NestedMap(container, "lifecycle"); ok && len(lc) > 0 {
+		depParams.Lifecycle = lc
+	}
+
 	// Extract Persistence from volumeMounts
 	mounts, ok, _ := unstructured.NestedSlice(container, "volumeMounts")
 	if ok && len(mounts) > 0 {
@@ -1087,11 +1222,35 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 			mount := m.(map[string]interface{})
 			name, _, _ := unstructured.NestedString(mount, "name")
 
-			_, isConfigMapOrSecret := volSources[name]
+			volSrc, hasVolSrc := volSources[name]
+			isConfigMapOrSecret := hasVolSrc && (volSrc.Type == "configMap" || volSrc.Type == "secret")
 			if !strings.HasPrefix(name, "kube-api") && !strings.Contains(name, "default-token") && !isConfigMapOrSecret {
 				path, _, _ := unstructured.NestedString(mount, "mountPath")
-				depParams.Persistence.Enabled = true
-				depParams.Persistence.MountPath = path
+				
+				isShared := false
+				if mainMounts, ok, _ := unstructured.NestedSlice(mainContainer, "volumeMounts"); ok {
+					for _, mm := range mainMounts {
+						if mainMount, ok := mm.(map[string]interface{}); ok {
+							if mainMountName, _, _ := unstructured.NestedString(mainMount, "name"); mainMountName == name {
+								isShared = true
+								break
+							}
+						}
+					}
+				}
+				
+				if isShared {
+					depParams.SharedVolume.Enabled = true
+					depParams.SharedVolume.MountPath = path
+				} else {
+					depParams.Persistence.Enabled = true
+					depParams.Persistence.MountPath = path
+					if hasVolSrc && volSrc.Type == "persistentVolumeClaim" {
+						depParams.Persistence.Ephemeral = false
+					} else {
+						depParams.Persistence.Ephemeral = true
+					}
+				}
 				break // Take the first meaningful volume for the simple model
 			}
 		}

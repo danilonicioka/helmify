@@ -174,12 +174,56 @@ function toggleWorkloadTypeFields() {
             const connectsToStr = document.getElementById('compConnectsTo').value.trim();
             config.connectsTo = connectsToStr ? connectsToStr.split(',').map(s => s.trim()).filter(Boolean) : [];
             config.runtime = document.getElementById('compRuntime').value.trim();
+            
+            const cmdStr = document.getElementById('compCommand').value.trim();
+            if (cmdStr) { try { config.command = JSON.parse(cmdStr); } catch (e) { config.command = [cmdStr]; } } else { delete config.command; }
+            
+            const argsStr = document.getElementById('compArgs').value.trim();
+            if (argsStr) { try { config.args = JSON.parse(argsStr); } catch (e) { config.args = [argsStr]; } } else { delete config.args; }
+            
+            const cpuReq = document.getElementById('compCpuRequests').value.trim();
+            const memReq = document.getElementById('compMemRequests').value.trim();
+            const cpuLim = document.getElementById('compCpuLimits').value.trim();
+            const memLim = document.getElementById('compMemLimits').value.trim();
+            
+            if (cpuReq || memReq || cpuLim || memLim) {
+                config.resources = { requests: {}, limits: {} };
+                if (cpuReq) config.resources.requests.cpu = cpuReq;
+                if (memReq) config.resources.requests.memory = memReq;
+                if (cpuLim) config.resources.limits.cpu = cpuLim;
+                if (memLim) config.resources.limits.memory = memLim;
+            } else {
+                delete config.resources;
+            }
+            
+            const probes = ['Liveness', 'Readiness', 'Startup'];
+            if (!config.probes) config.probes = {};
+            
+            probes.forEach(p => {
+                const lower = p.toLowerCase();
+                const enabled = document.getElementById('probe' + p + 'Enabled').checked;
+                if (enabled) {
+                    config.probes[lower] = {
+                        httpGet: {
+                            path: document.getElementById('probe' + p + 'Path').value.trim() || '/healthz',
+                            port: parseInt(document.getElementById('probe' + p + 'Port').value, 10) || 8080
+                        },
+                        initialDelaySeconds: 10,
+                        timeoutSeconds: 5
+                    };
+                } else {
+                    delete config.probes[lower];
+                }
+            });
+            if (Object.keys(config.probes).length === 0) delete config.probes;
 
             if (!config.persistence) config.persistence = { enabled: false, ephemeral: false, mountPath: '/var/lib/data' };
             config.persistence.enabled = document.getElementById('persistenceEnabled').checked;
             config.persistence.ephemeral = document.getElementById('persistenceEphemeral').checked;
             config.persistence.mountPath = document.getElementById('persistenceMountPath').value.trim() || '/var/lib/data';
             config.persistence.storageRequest = document.getElementById('persistenceStorage').value.trim() || '1Gi';
+            config.persistence.accessMode = document.getElementById('persistenceAccessMode').value.trim();
+            config.persistence.storageClass = document.getElementById('persistenceStorageClass').value.trim();
 
             if (document.getElementById('truststoreEnabled').checked) {
                 if (!config.initContainers) config.initContainers = {};

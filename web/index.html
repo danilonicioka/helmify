@@ -165,6 +165,16 @@
                             <input type="text" id="compRuntime" placeholder="e.g. spring-boot, nodejs, python">
                         </div>
                     </div>
+                    <div class="form-row" style="margin-top: 1rem;">
+                        <div>
+                            <label for="compCommand">Command (Docker Entrypoint Override)</label>
+                            <input type="text" id="compCommand" placeholder="e.g. ["/bin/sh", "-c"]" oninput="saveAndPreview()">
+                        </div>
+                        <div>
+                            <label for="compArgs">Args (Docker CMD Override)</label>
+                            <input type="text" id="compArgs" placeholder="e.g. ["echo", "hello"]" oninput="saveAndPreview()">
+                        </div>
+                    </div>
 
                     <!-- 2. APPLICATION CONFIGURATION -->
                     <!-- ConfigMap variables -->
@@ -269,6 +279,89 @@
                     </div>
                     <div id="additional-routes-container"></div>
 
+
+                    <!-- 3.5. RESOURCES -->
+                    <div class="section-subtitle" style="margin-top: 1.5rem;">Container Resources</div>
+                    <div class="form-row">
+                        <div>
+                            <label for="compCpuRequests">CPU Requests</label>
+                            <input type="text" id="compCpuRequests" placeholder="e.g. 10m, 100m" oninput="saveAndPreview()">
+                        </div>
+                        <div>
+                            <label for="compMemRequests">Memory Requests</label>
+                            <input type="text" id="compMemRequests" placeholder="e.g. 128Mi, 256Mi" oninput="saveAndPreview()">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div>
+                            <label for="compCpuLimits">CPU Limits</label>
+                            <input type="text" id="compCpuLimits" placeholder="e.g. 500m, 1" oninput="saveAndPreview()">
+                        </div>
+                        <div>
+                            <label for="compMemLimits">Memory Limits</label>
+                            <input type="text" id="compMemLimits" placeholder="e.g. 512Mi, 1Gi" oninput="saveAndPreview()">
+                        </div>
+                    </div>
+
+                    <!-- 3.6. HEALTH PROBES -->
+                    <div class="section-subtitle" style="margin-top: 1.5rem;">Health Probes</div>
+                    
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Liveness Probe</span>
+                            <label class="route-switch">
+                                <input type="checkbox" id="probeLivenessEnabled" onchange="toggleProbeUI('liveness'); saveAndPreview()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div id="liveness-options" style="display: none; padding-top: 1rem;">
+                            <div class="form-row">
+                                <div><label>Path</label><input type="text" id="probeLivenessPath" value="/healthz" oninput="saveAndPreview()"></div>
+                                <div><label>Port</label><input type="number" id="probeLivenessPort" value="8080" oninput="saveAndPreview()"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Readiness Probe</span>
+                            <label class="route-switch">
+                                <input type="checkbox" id="probeReadinessEnabled" onchange="toggleProbeUI('readiness'); saveAndPreview()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div id="readiness-options" style="display: none; padding-top: 1rem;">
+                            <div class="form-row">
+                                <div><label>Path</label><input type="text" id="probeReadinessPath" value="/ready" oninput="saveAndPreview()"></div>
+                                <div><label>Port</label><input type="number" id="probeReadinessPort" value="8080" oninput="saveAndPreview()"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Startup Probe</span>
+                            <label class="route-switch">
+                                <input type="checkbox" id="probeStartupEnabled" onchange="toggleProbeUI('startup'); saveAndPreview()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div id="startup-options" style="display: none; padding-top: 1rem;">
+                            <div class="form-row">
+                                <div><label>Path</label><input type="text" id="probeStartupPath" value="/healthz" oninput="saveAndPreview()"></div>
+                                <div><label>Port</label><input type="number" id="probeStartupPort" value="8080" oninput="saveAndPreview()"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3.7. SIDECARS & INIT CONTAINERS -->
+                    <div class="section-subtitle" style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem;">
+                        <span>Sidecars & InitContainers</span>
+                        <button type="button" class="btn-add-item" onclick="openSidecarModal()">+ Add Container</button>
+                    </div>
+                    <div id="sidecars-container"></div>
+
+
                     <!-- 4. PERSISTENCE -->
                     <div class="section-subtitle" style="margin-top: 1.5rem;">Persistence (PVC/emptyDir)</div>
                     <div class="route-card">
@@ -304,6 +397,21 @@
                                 <label for="persistenceStorage">Storage Size</label>
                                 <input type="text" id="persistenceStorage" placeholder="e.g. 1Gi, 5Gi"
                                     oninput="saveAndPreview()">
+                            </div>
+                        </div>
+                        <div class="form-row" style="margin-top: 1rem;">
+                            <div>
+                                <label for="persistenceAccessMode">Access Mode</label>
+                                <select id="persistenceAccessMode" onchange="saveAndPreview()">
+                                    <option value="">Default (ReadWriteOnce)</option>
+                                    <option value="ReadWriteOnce">ReadWriteOnce</option>
+                                    <option value="ReadWriteMany">ReadWriteMany</option>
+                                    <option value="ReadOnlyMany">ReadOnlyMany</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="persistenceStorageClass">Storage Class</label>
+                                <input type="text" id="persistenceStorageClass" placeholder="e.g. gp2, standard" oninput="saveAndPreview()">
                             </div>
                         </div>
                     </div>
