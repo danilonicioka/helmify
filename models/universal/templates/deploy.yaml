@@ -34,21 +34,17 @@ spec:
         {{- $annotations | nindent 8 }}
         {{- end }}
         # Deterministic Rollouts: SHA256 checksum annotations to trigger automatic restarts
-        {{- $cmApi := include (print $.Template.BasePath "/cm-deploys.yaml") $ | trim }}
-        {{- if $cmApi }}
-        checksum/cm-{{ $compName }}: '{{ $cmApi | sha256sum }}'
+        {{- if $comp.config }}
+        checksum/cm-{{ $compName }}: '{{ toYaml $comp.config | sha256sum }}'
         {{- end }}
-        {{- $secretApi := include (print $.Template.BasePath "/secret-deploys.yaml") $ | trim }}
-        {{- if $secretApi }}
-        checksum/secret-{{ $compName }}: '{{ $secretApi | sha256sum }}'
+        {{- if $comp.secrets }}
+        checksum/secret-{{ $compName }}: '{{ toYaml $comp.secrets | sha256sum }}'
         {{- end }}
-        {{- $cmGlobal := include (print $.Template.BasePath "/cm-global.yaml") $ | trim }}
-        {{- if $cmGlobal }}
-        checksum/cm-global: '{{ $cmGlobal | sha256sum }}'
+        {{- if $.Values.global.config }}
+        checksum/cm-global: '{{ toYaml $.Values.global.config | sha256sum }}'
         {{- end }}
-        {{- $secretGlobal := include (print $.Template.BasePath "/secret-global.yaml") $ | trim }}
-        {{- if $secretGlobal }}
-        checksum/secret-global: '{{ $secretGlobal | sha256sum }}'
+        {{- if $.Values.global.secrets }}
+        checksum/secret-global: '{{ toYaml $.Values.global.secrets | sha256sum }}'
         {{- end }}
       labels:
         {{- include "chart-model-multi.component.selectorLabels" (dict "context" $ "component" $compName) | nindent 8 }}
