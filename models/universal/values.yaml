@@ -218,6 +218,13 @@ deploys:
       #    args: []
       #    env: []
       #    envFrom: []
+      #    resources:
+      #      limits:
+      #        cpu: "100m"
+      #        memory: "128Mi"
+      #      requests:
+      #        cpu: "100m"
+      #        memory: "128Mi"
       #    # To share the main component's data volume:
       #    sharedVolume:
       #      enabled: true

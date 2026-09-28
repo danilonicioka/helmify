@@ -81,6 +81,10 @@ spec:
           args:
             {{- toYaml $config.args | nindent 12 }}
           {{- end }}
+          {{- if $config.resources }}
+          resources:
+            {{- toYaml $config.resources | nindent 12 }}
+          {{- end }}
           {{- if and $config.config $config.config.env }}
           envFrom:
             - configMapRef:
