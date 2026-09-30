@@ -58,7 +58,7 @@ deploys:
       files: {}
         #   sistema.p12:
         #     mountPath: "/app/keystore/sistema.p12"
-        #     b64enc: true # This flag must be true if the content is base64 encoded, otherwise it will be base64 decoded.
+        #     b64enc: true # This flag must be true if the content is base64 encoded, otherwise it will be encoded again.
         #     content: "MIIKrAIB..."
 
     # Vault Secrets Operator configuration -> Openbao
