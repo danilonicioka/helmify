@@ -36,15 +36,35 @@ spec:
         # Deterministic Rollouts: SHA256 checksum annotations to trigger automatic restarts
         {{- if $comp.config }}
         checksum/cm-{{ $compName }}: '{{ toYaml $comp.config | sha256sum }}'
+        {{- if $comp.config.files }}
+        {{- range $filename, $config := $comp.config.files }}
+        {{- if not $config.content }}
+        checksum/file-cm-{{ $filename | replace "." "-" }}: '{{ $.Files.Get (printf "files/%s" $filename) | sha256sum }}'
+        {{- end }}
+        {{- end }}
+        {{- end }}
         {{- end }}
         {{- if $comp.secrets }}
         checksum/secret-{{ $compName }}: '{{ toYaml $comp.secrets | sha256sum }}'
+        {{- if $comp.secrets.files }}
+        {{- range $filename, $config := $comp.secrets.files }}
+        {{- if not $config.content }}
+        checksum/file-secret-{{ $filename | replace "." "-" }}: '{{ $.Files.Get (printf "files/%s" $filename) | sha256sum }}'
+        {{- end }}
+        {{- end }}
+        {{- end }}
         {{- end }}
         {{- if $.Values.global.config }}
         checksum/cm-global: '{{ toYaml $.Values.global.config | sha256sum }}'
         {{- end }}
         {{- if $.Values.global.secrets }}
         checksum/secret-global: '{{ toYaml $.Values.global.secrets | sha256sum }}'
+        {{- end }}
+        {{- if $comp.initContainers }}
+        checksum/init-containers-{{ $compName }}: '{{ toYaml $comp.initContainers | sha256sum }}'
+        {{- end }}
+        {{- if $comp.extraContainers }}
+        checksum/extra-containers-{{ $compName }}: '{{ toYaml $comp.extraContainers | sha256sum }}'
         {{- end }}
       labels:
         {{- include "chart-model-multi.component.selectorLabels" (dict "context" $ "component" $compName) | nindent 8 }}
