@@ -172,15 +172,15 @@ deploys:
         tcpSocket:
           port: http
         initialDelaySeconds: 0
-        periodSeconds: 5
-        failureThreshold: 30
+        periodSeconds: 10
+        failureThreshold: 3
         successThreshold: 1
       readiness:
         tcpSocket:
           port: http
         initialDelaySeconds: 0
-        periodSeconds: 5
-        failureThreshold: 30
+        periodSeconds: 10
+        failureThreshold: 3
         successThreshold: 1
 
     strategy:
