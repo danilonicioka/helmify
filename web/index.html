@@ -206,17 +206,24 @@
                     </div>
 
 
-                    <!-- 3. ROUTING & NETWORKING -->
-                    <div class="section-subtitle">Routing & Networking</div>
+                    <div class="section-subtitle" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Routing & Networking</span>
+                        <button type="button" class="btn-add-item" onclick="toggleEnvVar('comp-ports')" id="btn-add-comp-ports">+ Additional Ports</button>
+                    </div>
                     <div class="form-group row">
                         <div>
-                            <label for="compPort">Service Port</label>
-                            <input type="number" id="compPort" value="8080">
+                            <label for="compPort">Primary Service Port</label>
+                            <input type="number" id="compPort" value="8080" oninput="saveAndPreview()">
                         </div>
                         <div>
                             <label for="compRoutePath">Route Path Prefix</label>
-                            <input type="text" id="compRoutePath" placeholder="e.g. /api">
+                            <input type="text" id="compRoutePath" placeholder="e.g. /api" oninput="saveAndPreview()">
                         </div>
+                    </div>
+                    <div class="form-group" id="comp-ports-container" style="display: none;">
+                        <label>Additional Ports (name:port:protocol)</label>
+                        <textarea id="comp-ports-text" rows="2" placeholder="metrics:9090&#10;udp_port:8125:UDP" oninput="saveAndPreview()"></textarea>
+                        <button type="button" class="btn-remove-item" onclick="removeEnvVar('comp-ports')" style="margin-top: 5px;">Remove</button>
                     </div>
 
                     <!-- Default Route -->
@@ -317,7 +324,7 @@
                         <div id="liveness-options" style="display: none; padding-top: 1rem;">
                             <div class="form-row">
                                 <div><label>Path</label><input type="text" id="probeLivenessPath" value="/healthz" oninput="saveAndPreview()"></div>
-                                <div><label>Port</label><input type="number" id="probeLivenessPort" value="8080" oninput="saveAndPreview()"></div>
+                                <div><label>Port</label><input type="text" id="probeLivenessPort" value="http" oninput="saveAndPreview()"></div>
                             </div>
                         </div>
                     </div>
@@ -333,7 +340,7 @@
                         <div id="readiness-options" style="display: none; padding-top: 1rem;">
                             <div class="form-row">
                                 <div><label>Path</label><input type="text" id="probeReadinessPath" value="/ready" oninput="saveAndPreview()"></div>
-                                <div><label>Port</label><input type="number" id="probeReadinessPort" value="8080" oninput="saveAndPreview()"></div>
+                                <div><label>Port</label><input type="text" id="probeReadinessPort" value="http" oninput="saveAndPreview()"></div>
                             </div>
                         </div>
                     </div>
@@ -349,7 +356,7 @@
                         <div id="startup-options" style="display: none; padding-top: 1rem;">
                             <div class="form-row">
                                 <div><label>Path</label><input type="text" id="probeStartupPath" value="/healthz" oninput="saveAndPreview()"></div>
-                                <div><label>Port</label><input type="number" id="probeStartupPort" value="8080" oninput="saveAndPreview()"></div>
+                                <div><label>Port</label><input type="text" id="probeStartupPort" value="http" oninput="saveAndPreview()"></div>
                             </div>
                         </div>
                     </div>

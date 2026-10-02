@@ -8,9 +8,9 @@
                     tag: (compData.image && compData.image.tag) || ''
                 },
                 service: {
-                    ports: {
+                    ports: (compData.service && compData.service.ports) ? compData.service.ports : {
                         http: {
-                            port: (compData.service && compData.service.ports && compData.service.ports.http && compData.service.ports.http.port) || (compData.service && compData.service.port) || 8080,
+                            port: (compData.service && compData.service.port) || 8080,
                             protocol: 'TCP'
                         }
                     }

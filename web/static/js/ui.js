@@ -164,8 +164,23 @@ function toggleWorkloadTypeFields() {
             config.replicas = 1;
             let svcPort = parseInt(document.getElementById('compPort').value, 10) || 8080;
             if (!config.service.ports) config.service.ports = { http: { protocol: 'TCP' } };
-            if (!config.service.ports.http) config.service.ports.http = { protocol: 'TCP' };
-            config.service.ports.http.port = svcPort;
+            config.service.ports = { http: { port: svcPort, protocol: 'TCP' } };
+            
+            let extraPorts = document.getElementById('comp-ports-text');
+            if (extraPorts && extraPorts.value.trim() !== '') {
+                let lines = extraPorts.value.split('\n');
+                lines.forEach(line => {
+                    let parts = line.split(':');
+                    if (parts.length >= 2) {
+                        let name = parts[0].trim();
+                        let port = parseInt(parts[1].trim(), 10);
+                        let proto = parts.length > 2 ? parts[2].trim() : "TCP";
+                        if (name && !isNaN(port)) {
+                            config.service.ports[name] = { port: port, protocol: proto };
+                        }
+                    }
+                });
+            }
             delete config.service.port;
             config.image.repository = document.getElementById('compRepo').value;
             config.image.tag = document.getElementById('compTag').value;
@@ -206,9 +221,16 @@ function toggleWorkloadTypeFields() {
                     config.probes[lower] = {
                         httpGet: {
                             path: document.getElementById('probe' + p + 'Path').value.trim() || '/healthz',
-                            port: parseInt(document.getElementById('probe' + p + 'Port').value, 10) || 8080
+                            port: (() => {
+                                let val = document.getElementById('probe' + p + 'Port').value || 'http';
+                                let num = parseInt(val, 10);
+                                return isNaN(num) ? val : num;
+                            })()
                         },
-                        initialDelaySeconds: 10,
+                        initialDelaySeconds: 0,
+                        periodSeconds: 5,
+                        failureThreshold: 30,
+                        successThreshold: 1,
                         timeoutSeconds: 5
                     };
                 } else {
@@ -523,6 +545,29 @@ function toggleWorkloadTypeFields() {
                 displayPort = config.service.port;
             }
             document.getElementById('compPort').value = displayPort;
+            let extraPortsContainer = document.getElementById('comp-ports-container');
+            let extraPortsText = document.getElementById('comp-ports-text');
+            let extraPortsBtn = document.getElementById('btn-add-comp-ports');
+            if (extraPortsContainer && extraPortsText) {
+                let extraLines = [];
+                if (config.service && config.service.ports) {
+                    Object.keys(config.service.ports).forEach(k => {
+                        if (k !== 'http') {
+                            let p = config.service.ports[k];
+                            extraLines.push(k + ':' + p.port + (p.protocol && p.protocol !== 'TCP' ? ':' + p.protocol : ''));
+                        }
+                    });
+                }
+                if (extraLines.length > 0) {
+                    extraPortsText.value = extraLines.join('\n');
+                    extraPortsContainer.style.display = 'block';
+                    if (extraPortsBtn) extraPortsBtn.style.display = 'none';
+                } else {
+                    extraPortsText.value = '';
+                    extraPortsContainer.style.display = 'none';
+                    if (extraPortsBtn) extraPortsBtn.style.display = 'block';
+                }
+            }
             document.getElementById('compRepo').value = config.image.repository;
             document.getElementById('compTag').value = config.image.tag || '';
             document.getElementById('compRoutePath').value = config.route.path || '';
