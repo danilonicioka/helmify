@@ -6,18 +6,16 @@ This guide details the physical layout of Helm charts, the structure and merge m
 
 ## 1. Chart File Structure
 
-A Helm chart is packaged as a versioned directory matching the chart name:
+A Helm chart is packaged as a versioned directory matching the chart name. When generating charts through Helmify, we enforce a clean separation of defaults and overrides by extracting custom logic into an external values file:
 
 ```
 mychart/
   Chart.yaml          # Metadata definition
   LICENSE             # Optional plain text license
   README.md           # User documentation
-  values.yaml         # Default configuration values
-  values.schema.json  # Optional JSON schema validation
-  charts/             # Dependency charts directory
-  crds/               # Plain Custom Resource Definitions
+  values.yaml         # Clean base configuration values (no envs, probes, etc)
   templates/          # Go templates directory
+values-env.yaml       # Helmify generated file containing ALL custom overrides
 ```
 
 ---

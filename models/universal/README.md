@@ -4,28 +4,32 @@ This Helm chart is a standardized template designed for applications deployed at
 
 ## Core Architectural Design Rules
 
-This chart enforces a clean separation between the infrastructure blueprint (templates) and the operational overlay (`values.yaml`).
+This chart enforces a clean separation between the infrastructure blueprint (templates), the structural baseline (`values.yaml`), and the operational overlay (`values-env.yaml`).
 
-### Two-Tier Configuration Inheritance
-Enforces a single source of truth using two distinct configuration levels:
-1. **Global (Universal):** Managed in `values.yaml` under the `global` block (e.g., `TZ: "America/Belem"`). Generates a shared configmap and secret.
-2. **Component-Specific:** Managed in `values.yaml` under each application/component block for variables unique to that container, defined in `cm` and `secret`.
+### Dual-File Configuration Architecture
+Helmify generates two separate values files to prevent merge conflicts between base blueprints and environment-specific data:
+1. **`values.yaml` (Clean Base):** Lives inside the chart directory. Contains structural skeleton configurations like `replicas`, base `image.repository`, and route structures. It is completely stripped of environment-specific overrides (like `env`, `probes`, `resources`).
+2. **`values-env.yaml` (Operational Overlay):** Generated outside the chart directory. Contains all highly-customizable and environment-specific data (e.g., `config.env`, `secrets.env`, `probes`, `autoscaling`, `resources`, `scheduling`, `command`, `args`). Use this as the base to create your `values-prd.yaml` or `values-hml.yaml`.
+
+### Environment & Config Management
+Enforces a single source of truth using two distinct configuration levels within the operational overlay:
+1. **Global (Universal):** Managed in `values-env.yaml` under the `global` block (e.g., `TZ: "America/Belem"`). Generates a shared configmap and secret.
+2. **Component-Specific:** Managed in `values-env.yaml` under each application/component block for variables unique to that container, defined in `config.env` and `secrets.env`.
 
 ### Deterministic Rollouts
-**Immutable Config Strategy:** Any change to configurations in `values.yaml` triggers a rolling update using SHA256 checksums in the Pod template annotations:
-- `checksum/global-config`
-- `checksum/global-secret`
-- `checksum/cm-config`
-- `checksum/secret`
+**Immutable Config Strategy:** Any change to configurations in `values-env.yaml` triggers a rolling update using SHA256 checksums in the Pod template annotations:
+- `checksum/configmaps`
+- `checksum/secrets`
 
 ---
 
-## Configuration Structure (`values.yaml`)
+## Configuration Structure
 
-The `values.yaml` is organized into standardized sections for each component:
+The configuration is organized into standardized sections for each component:
 
 ### 1. Core Workload Settings
 Defines the `replicas`, custom `labels`, `annotations`, and the container `image` repository/tag.
+- **Dynamic Image Pull Secrets:** You can automatically generate a `kubernetes.io/dockerconfigjson` secret for your private registry by setting `global.imageCredentials.create: true` and passing the password via CI (`--set global.imageCredentials.password=$PASSWORD`). The chart automatically mounts this generated secret alongside any explicit component-level `pullSecrets`.
 
 ### 2. Application Configuration
 Defines environment variables for the container using two maps:
@@ -34,27 +38,61 @@ Defines environment variables for the container using two maps:
 
 ### 3. Routing & Networking
 Configures the internal Kubernetes `service` (ports and type) and OpenShift routes:
+- **Primary Port:** The main service port (default: 8080).
+- **Additional Ports:** Multiple named ports can be declared with varying protocols (e.g. `metrics:9090:TCP`).
 - **Default Route:** Internal route with self-signed TLS.
-- **Internal Route:** Valid certificate for the internal Organization intranet (`*-{{INTERNAL_DOMAIN}}`).
-- **External Route:** Valid certificate for the external internet (`*{{EXTERNAL_DOMAIN}}`).
+- **Internal Route:** Valid certificate for the internal Organization intranet (`*-internal.example.com`).
+- **External Route:** Valid certificate for the external internet (`*example.com`).
+- **Additional Routes:** A dynamic map allowing arbitrary extra routes to be generated alongside the standard ones.
+
+### 4. Sidecars & Init Containers
+Supports deploying arbitrary sidecars and initialization tasks:
+- `extraContainers`: Dynamically injects sidecar containers into the Pod lifecycle.
+- `initContainers`: Injects initialization containers that run prior to the main workload.
+Both systems use a generic structural mapping that securely scopes `envFrom` (ConfigMap and Secret injection) and `volumeMounts` directly to the specific container, preventing sidecars from leaking configuration into the main global scope.
 
 ### 4. Resources
 Defines CPU and Memory `requests` and `limits`.
 
-### 5. Tiered "Fail-Fast" Health Probes
-Standardized `tcpSocket` or `httpGet` probes with `initialDelaySeconds: 0`. Uses a generous `startupProbe` to allow slow applications to initialize, while keeping `livenessProbe` and `readinessProbe` dormant until ready.
+### 5. Event-Driven Autoscaling (KEDA)
+Optionally configure advanced event-driven autoscaling using KEDA by overriding the standard HPA configuration.
 
-### 6. Lifecycle & HA Strategy
+```yaml
+keda:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 5
+  pollingInterval: 30
+  cooldownPeriod: 300
+  triggers:
+    - type: rabbitmq
+      metadata:
+        queueName: "my-queue"
+        queueLength: "5"
+  triggerAuth:
+    secretTargetRef:
+      - parameter: host
+        name: "my-secret"
+        key: "RABBITMQ_URL"
+```
+
+### 6. Tiered "Fail-Fast" Health Probes
+Standardized `tcpSocket` or `httpGet` probes (defaulting to the `http` named port) with resilient timeouts. Uses a generous `startupProbe` to allow slow applications to initialize, while keeping `livenessProbe` and `readinessProbe` dormant until ready. Default values are hardcoded for high availability (`initialDelaySeconds: 0`, `periodSeconds: 5`, `failureThreshold: 30`, `successThreshold: 1`).
+
+### 7. Lifecycle & HA Strategy
 Deployment strategies such as `RollingUpdate` (stateless apps) or `Recreate` (stateful applications using ReadWriteOnce persistence).
 
-### 7. Persistence
+### 8. Persistence
 Provides dynamic provisioning of PVCs. Supports ephemeral storage via `emptyDir` or persistent volumes via `storageRequest` and `mountPath`.
 
-### 8. Scheduling & Node Assignment
+### 9. Scheduling & Node Assignment
 Manages `imagePullSecrets`, `nodeSelector`, `tolerations`, and `affinity` rules (like podAntiAffinity to ensure pods are scheduled across different nodes).
 
-### 9. Custom Files
+### 10. Custom Files
 Allows mounting arbitrary configuration files (like `nginx.conf` or keystores) directly from ConfigMaps or Secrets into the container via the `files` block.
+
+### 11. OpenTelemetry Auto-Instrumentation
+Natively integrates with the OpenTelemetry Operator. By simply enabling `instrumentation` on the main workload or `extraContainers`, the chart generates `Instrumentation` CRDs and automatically links them to the pod using `container-names` logic, ensuring agents are cleanly injected only to the desired containers.
 
 ---
 

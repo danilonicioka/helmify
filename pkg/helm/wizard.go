@@ -71,7 +71,7 @@ func WriteTarGz(files map[string][]byte, chartName string, w io.Writer) error {
 		}
 
 		var pathStr string
-		if name == ".gitlab-ci.yml" || name == "README.md" {
+		if name == ".gitlab-ci.yml" || name == "README.md" || name == "values-env.yaml" {
 			pathStr = name
 		} else {
 			pathStr = filepath.Join("chart", name)
@@ -465,6 +465,11 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 	_ = setYamlPath(&rootNode, []string{"fullnameOverride"}, params.ChartName)
 
+	var customNode yaml.Node
+	customNode.Kind = yaml.DocumentNode
+	customNode.Content = append(customNode.Content, &yaml.Node{Kind: yaml.MappingNode})
+
+
 	// Collect and sort component keys
 	var compKeys []string
 	for k := range params.Deployments {
@@ -541,13 +546,13 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", "http", "port"), *svcPort)
 		}
 		if depConfig.Autoscaling != nil {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "autoscaling"), depConfig.Autoscaling)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "autoscaling"), depConfig.Autoscaling)
 		}
 		if depConfig.Probes != nil {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "probes"), depConfig.Probes)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "probes"), depConfig.Probes)
 		}
 		if depConfig.Route.Path != "" {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "path"), depConfig.Route.Path)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "path"), depConfig.Route.Path)
 		}
 		if depConfig.Image.Repository != "" {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "repository"), depConfig.Image.Repository)
@@ -556,40 +561,40 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "tag"), depConfig.Image.Tag)
 		}
 		if depConfig.Image.PullSecrets != nil && len(depConfig.Image.PullSecrets) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "pullSecrets"), depConfig.Image.PullSecrets)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "image", "pullSecrets"), depConfig.Image.PullSecrets)
 		}
 		if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "extraContainers"), depConfig.ExtraContainers)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "extraContainers"), depConfig.ExtraContainers)
 		}
 		if depConfig.InitContainers != nil && len(depConfig.InitContainers) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "initContainers"), depConfig.InitContainers)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "initContainers"), depConfig.InitContainers)
 		}
 		if depConfig.Command != nil {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "command"), depConfig.Command)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "command"), depConfig.Command)
 		}
 		if depConfig.Args != nil {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "args"), depConfig.Args)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "args"), depConfig.Args)
 		}
 		if len(depConfig.Annotations) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations"), depConfig.Annotations)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "annotations"), depConfig.Annotations)
 		}
 		if len(depConfig.Labels) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "labels"), depConfig.Labels)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "labels"), depConfig.Labels)
 		}
 		if depConfig.Config != nil {
 			if depConfig.Config.Env != nil {
 				stripQuotesFromMap(depConfig.Config.Env)
 			}
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "config"), depConfig.Config)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "config"), depConfig.Config)
 		}
 		if depConfig.Secrets != nil {
 			if depConfig.Secrets.Env != nil {
 				stripQuotesFromMap(depConfig.Secrets.Env)
 			}
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "secrets"), depConfig.Secrets)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "secrets"), depConfig.Secrets)
 		}
 		if depConfig.Resources != nil {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "resources"), depConfig.Resources)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "resources"), depConfig.Resources)
 		}
 		if depConfig.Scheduling != nil {
 			// Always ensure nodeSelector and tolerations are present so users know they can be set
@@ -599,10 +604,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.Scheduling.Tolerations == nil {
 				depConfig.Scheduling.Tolerations = []interface{}{}
 			}
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "scheduling"), depConfig.Scheduling)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "scheduling"), depConfig.Scheduling)
 		}
 		if depConfig.Strategy != nil && len(depConfig.Strategy) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "strategy"), depConfig.Strategy)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "strategy"), depConfig.Strategy)
 		}
 		
 		for _, sub := range params.Subcomponents {
@@ -619,95 +624,95 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				}
 				connects = append(connects, fmt.Sprintf(`{"apiVersion":"apps/v1","kind":"Deployment","name":"%s"}`, cName))
 			}
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations", "app.openshift.io/connects-to"), "["+strings.Join(connects, ",")+"]")
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "annotations", "app.openshift.io/connects-to"), "["+strings.Join(connects, ",")+"]")
 		}
 		if depConfig.Runtime != "" {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "labels", "app.openshift.io/runtime"), depConfig.Runtime)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "labels", "app.openshift.io/runtime"), depConfig.Runtime)
 		}
 		if depConfig.OverviewAppRoute != "" {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations", "console.alpha.openshift.io/overview-app-route"), depConfig.OverviewAppRoute)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "annotations", "console.alpha.openshift.io/overview-app-route"), depConfig.OverviewAppRoute)
 		}
 
 		if depConfig.Persistence.Enabled {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "enabled"), true)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "enabled"), true)
 			if depConfig.Persistence.Ephemeral {
-				_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "ephemeral"), true)
+				_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "ephemeral"), true)
 			}
 			if depConfig.Persistence.MountPath != "" {
-				_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "mountPath"), depConfig.Persistence.MountPath)
+				_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "mountPath"), depConfig.Persistence.MountPath)
 			}
 			if !depConfig.Persistence.Ephemeral {
 				if depConfig.Persistence.StorageRequest != "" {
-					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "storageRequest"), depConfig.Persistence.StorageRequest)
+					_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "storageRequest"), depConfig.Persistence.StorageRequest)
 				}
 				if depConfig.Persistence.AccessMode != "" {
-					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "accessMode"), depConfig.Persistence.AccessMode)
+					_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "accessMode"), depConfig.Persistence.AccessMode)
 				}
 				if depConfig.Persistence.StorageClass != "" {
-					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "storageClass"), depConfig.Persistence.StorageClass)
+					_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "storageClass"), depConfig.Persistence.StorageClass)
 				}
-				_ = setYamlPath(&rootNode, append(appKeyPrefix, "strategy"), map[string]string{"type": "Recreate"})
+				_ = setYamlPath(&customNode, append(appKeyPrefix, "strategy"), map[string]string{"type": "Recreate"})
 			}
 		}
 		
 		if len(depConfig.PodSecurityContext) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "podSecurityContext"), depConfig.PodSecurityContext)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "podSecurityContext"), depConfig.PodSecurityContext)
 		}
 		if len(depConfig.SecurityContext) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "securityContext"), depConfig.SecurityContext)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "securityContext"), depConfig.SecurityContext)
 		}
 		if len(depConfig.HostAliases) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "hostAliases"), depConfig.HostAliases)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "hostAliases"), depConfig.HostAliases)
 		}
 		if len(depConfig.TopologySpreadConstraints) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "topologySpreadConstraints"), depConfig.TopologySpreadConstraints)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "topologySpreadConstraints"), depConfig.TopologySpreadConstraints)
 		}
 		if depConfig.PriorityClassName != "" {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "priorityClassName"), depConfig.PriorityClassName)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "priorityClassName"), depConfig.PriorityClassName)
 		}
 		if depConfig.TerminationGracePeriodSeconds != nil {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "terminationGracePeriodSeconds"), *depConfig.TerminationGracePeriodSeconds)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "terminationGracePeriodSeconds"), *depConfig.TerminationGracePeriodSeconds)
 		}
 		if len(depConfig.Lifecycle) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "lifecycle"), depConfig.Lifecycle)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "lifecycle"), depConfig.Lifecycle)
 		}
 
 		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "default", "enabled"), depConfig.Route.Default.Enabled)
+		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "default", "enabled"), depConfig.Route.Default.Enabled)
 		if depConfig.Route.Default.Host != "" {
 			defaultHost = depConfig.Route.Default.Host
 		}
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "default", "host"), defaultHost)
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "internal", "enabled"), depConfig.Route.Internal.Enabled)
+		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "default", "host"), defaultHost)
+		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "internal", "enabled"), depConfig.Route.Internal.Enabled)
 		if depConfig.Route.Internal.Host != "" {
 			internalHost = depConfig.Route.Internal.Host
 		}
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "internal", "host"), internalHost)
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "external", "enabled"), depConfig.Route.External.Enabled)
+		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "internal", "host"), internalHost)
+		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "external", "enabled"), depConfig.Route.External.Enabled)
 		if depConfig.Route.External.Host != "" {
 			externalHost = depConfig.Route.External.Host
 		}
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "external", "host"), externalHost)
+		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "external", "host"), externalHost)
 
 		if len(depConfig.Route.Additional) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "additional"), depConfig.Route.Additional)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "additional"), depConfig.Route.Additional)
 		}
 		if depConfig.Config != nil && len(depConfig.Config.Files) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "config", "files"), depConfig.Config.Files)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "config", "files"), depConfig.Config.Files)
 		}
 		if depConfig.Secrets != nil && len(depConfig.Secrets.Files) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "secrets", "files"), depConfig.Secrets.Files)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "secrets", "files"), depConfig.Secrets.Files)
 		}
 	}
 
 	// 4. Set global variables
 	if len(params.GlobalConfig) > 0 {
 		stripQuotesFromMap(params.GlobalConfig)
-		_ = setYamlPath(&rootNode, []string{"global", "config", "env"}, params.GlobalConfig)
+		_ = setYamlPath(&customNode, []string{"global", "config", "env"}, params.GlobalConfig)
 	}
 	if len(params.GlobalSecret) > 0 {
 		stripQuotesFromMap(params.GlobalSecret)
-		_ = setYamlPath(&rootNode, []string{"global", "secrets", "env"}, params.GlobalSecret)
+		_ = setYamlPath(&customNode, []string{"global", "secrets", "env"}, params.GlobalSecret)
 	}
 
 	// Process CronJobs properly
@@ -725,22 +730,22 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "image", "tag"), cj.Image.Tag)
 			}
 			if cj.Command != nil {
-				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "command"), cj.Command)
+				_ = setYamlPath(&customNode, append(cjKeyPrefix, "command"), cj.Command)
 			}
 			if cj.Args != nil {
-				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "args"), cj.Args)
+				_ = setYamlPath(&customNode, append(cjKeyPrefix, "args"), cj.Args)
 			}
 			if cj.Config != nil {
-				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "config"), cj.Config)
+				_ = setYamlPath(&customNode, append(cjKeyPrefix, "config"), cj.Config)
 			}
 			if cj.Secrets != nil {
-				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "secrets"), cj.Secrets)
+				_ = setYamlPath(&customNode, append(cjKeyPrefix, "secrets"), cj.Secrets)
 			}
 			if cj.Suspend != nil {
-				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "suspend"), *cj.Suspend)
+				_ = setYamlPath(&customNode, append(cjKeyPrefix, "suspend"), *cj.Suspend)
 			}
 			if cj.ConcurrencyPolicy != "" {
-				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "concurrencyPolicy"), cj.ConcurrencyPolicy)
+				_ = setYamlPath(&customNode, append(cjKeyPrefix, "concurrencyPolicy"), cj.ConcurrencyPolicy)
 			}
 		}
 	}
@@ -766,6 +771,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 
 	valuesStr = formatValues(valuesStr)
 	outputFiles["values.yaml"] = []byte(valuesStr)
+
+	customData, err := yaml.Marshal(&customNode)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal custom values: %w", err)
+	}
+	outputFiles["values-env.yaml"] = customData
 
 	// Process values-ca.yaml to generate matching components
 	if caData, ok := embeddedFiles["values-ca.yaml"]; ok {

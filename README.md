@@ -4,23 +4,28 @@ This Helm chart is a standardized template designed for applications deployed at
 
 ## Core Architectural Design Rules
 
-This chart enforces a clean separation between the infrastructure blueprint (templates) and the operational overlay (`values.yaml`).
+This chart enforces a clean separation between the infrastructure blueprint (templates), the structural baseline (`values.yaml`), and the operational overlay (`values-env.yaml`).
 
-### Two-Tier Configuration Inheritance
-Enforces a single source of truth using two distinct configuration levels:
-1. **Global (Universal):** Managed in `values.yaml` under the `global` block (e.g., `TZ: "America/Belem"`). Generates a shared configmap and secret.
-2. **Component-Specific:** Managed in `values.yaml` under each application/component block for variables unique to that container, defined in `cm` and `secret`.
+### Dual-File Configuration Architecture
+Helmify generates two separate values files to prevent merge conflicts between base blueprints and environment-specific data:
+1. **`values.yaml` (Clean Base):** Lives inside the chart directory. Contains structural skeleton configurations like `replicas`, base `image.repository`, and route structures. It is completely stripped of environment-specific overrides (like `env`, `probes`, `resources`).
+2. **`values-env.yaml` (Operational Overlay):** Generated outside the chart directory. Contains all highly-customizable and environment-specific data (e.g., `config.env`, `secrets.env`, `probes`, `autoscaling`, `resources`, `scheduling`, `command`, `args`). Use this as the base to create your `values-prd.yaml` or `values-hml.yaml`.
+
+### Environment & Config Management
+Enforces a single source of truth using two distinct configuration levels within the operational overlay:
+1. **Global (Universal):** Managed in `values-env.yaml` under the `global` block (e.g., `TZ: "America/Belem"`). Generates a shared configmap and secret.
+2. **Component-Specific:** Managed in `values-env.yaml` under each application/component block for variables unique to that container, defined in `config.env` and `secrets.env`.
 
 ### Deterministic Rollouts
-**Immutable Config Strategy:** Any change to configurations in `values.yaml` triggers a rolling update using SHA256 checksums in the Pod template annotations:
+**Immutable Config Strategy:** Any change to configurations in `values-env.yaml` triggers a rolling update using SHA256 checksums in the Pod template annotations:
 - `checksum/configmaps`
 - `checksum/secrets`
 
 ---
 
-## Configuration Structure (`values.yaml`)
+## Configuration Structure
 
-The `values.yaml` is organized into standardized sections for each component:
+The configuration is organized into standardized sections for each component:
 
 ### 1. Core Workload Settings
 Defines the `replicas`, custom `labels`, `annotations`, and the container `image` repository/tag.
