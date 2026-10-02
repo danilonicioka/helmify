@@ -239,6 +239,28 @@ function toggleWorkloadTypeFields() {
             });
             if (Object.keys(config.probes).length === 0) delete config.probes;
 
+            if (document.getElementById('instrumentationEnabled')) {
+                config.instrumentation = {
+                    enabled: document.getElementById('instrumentationEnabled').checked,
+                    language: document.getElementById('instrumentationLanguage').value,
+                    exporter: { endpoint: document.getElementById('instrumentationEndpoint').value },
+                    propagators: ['tracecontext', 'baggage', 'b3'],
+                    env: {}
+                };
+                let envText = document.getElementById('instrumentationEnv').value.trim();
+                if (envText) {
+                    envText.split('\n').forEach(line => {
+                        let parts = line.split('=');
+                        if (parts.length >= 2) {
+                            let key = parts[0].trim();
+                            let val = parts.slice(1).join('=').trim();
+                            if (key) config.instrumentation.env[key] = val;
+                        }
+                    });
+                }
+            }
+
+
             if (!config.persistence) config.persistence = { enabled: false, ephemeral: false, mountPath: '/var/lib/data' };
             config.persistence.enabled = document.getElementById('persistenceEnabled').checked;
             config.persistence.ephemeral = document.getElementById('persistenceEphemeral').checked;
@@ -524,6 +546,14 @@ function toggleWorkloadTypeFields() {
             document.getElementById('routeExtHostWrapper').style.display = document.getElementById('routeExtEnabled').checked ? 'block' : 'none';
         }
 
+        function toggleInstrumentationUI() {
+            let chk = document.getElementById('instrumentationEnabled');
+            let opts = document.getElementById('instrumentation-options');
+            if (chk && opts) {
+                opts.style.display = chk.checked ? 'block' : 'none';
+            }
+        }
+
         // Add listeners for route toggles
         document.getElementById('routeDefaultEnabled').addEventListener('change', toggleRouteUI);
         document.getElementById('routeIntEnabled').addEventListener('change', toggleRouteUI);
@@ -573,6 +603,29 @@ function toggleWorkloadTypeFields() {
             document.getElementById('compRoutePath').value = config.route.path || '';
             document.getElementById('compConnectsTo').value = (config.connectsTo || []).join(', ');
             document.getElementById('compRuntime').value = config.runtime || '';
+
+            if (config.instrumentation && document.getElementById('instrumentationEnabled')) {
+                document.getElementById('instrumentationEnabled').checked = config.instrumentation.enabled;
+                document.getElementById('instrumentationLanguage').value = config.instrumentation.language || 'java';
+                if (config.instrumentation.exporter && config.instrumentation.exporter.endpoint) {
+                    document.getElementById('instrumentationEndpoint').value = config.instrumentation.exporter.endpoint;
+                }
+                if (config.instrumentation.env) {
+                    let envLines = [];
+                    Object.entries(config.instrumentation.env).forEach(([k, v]) => {
+                        envLines.push(`${k}=${v}`);
+                    });
+                    document.getElementById('instrumentationEnv').value = envLines.join('\n');
+                } else {
+                    document.getElementById('instrumentationEnv').value = 'OTEL_RESOURCE_ATTRIBUTES=deployment.environment=hml\nOTEL_METRICS_EXPORTER=none';
+                }
+            } else if (document.getElementById('instrumentationEnabled')) {
+                document.getElementById('instrumentationEnabled').checked = false;
+                document.getElementById('instrumentationLanguage').value = 'java';
+                document.getElementById('instrumentationEndpoint').value = 'http://otel-collector-collector.tracing-system.svc.cluster.local:4318';
+                document.getElementById('instrumentationEnv').value = 'OTEL_RESOURCE_ATTRIBUTES=deployment.environment=hml\nOTEL_METRICS_EXPORTER=none';
+            }
+            toggleInstrumentationUI();
 
             if (config.persistence) {
                 document.getElementById('persistenceEnabled').checked = config.persistence.enabled;

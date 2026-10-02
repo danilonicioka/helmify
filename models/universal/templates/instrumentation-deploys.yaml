@@ -1,0 +1,67 @@
+{{- range $compName, $comp := .Values.deploys }}
+{{- if ne $comp.enabled false }}
+
+{{- /* Main component instrumentation */}}
+{{- if and $comp.instrumentation $comp.instrumentation.enabled }}
+---
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-instrumentation
+  labels:
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+spec:
+  {{- if $comp.instrumentation.exporter }}
+  exporter:
+    {{- toYaml $comp.instrumentation.exporter | nindent 4 }}
+  {{- end }}
+  {{- if $comp.instrumentation.propagators }}
+  propagators:
+    {{- toYaml $comp.instrumentation.propagators | nindent 4 }}
+  {{- end }}
+  {{- if and $comp.instrumentation.language $comp.instrumentation.env }}
+  {{ $comp.instrumentation.language }}:
+    env:
+      {{- range $key, $val := $comp.instrumentation.env }}
+      - name: {{ $key }}
+        value: {{ $val | quote }}
+      {{- end }}
+  {{- end }}
+{{- end }}
+
+{{- /* Sidecar instrumentation */}}
+{{- if $comp.extraContainers }}
+{{- range $sidecarName, $sidecar := $comp.extraContainers }}
+{{- if ne ($sidecar.enabled | default true) false }}
+{{- if and $sidecar.instrumentation $sidecar.instrumentation.enabled }}
+---
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $sidecarName | replace "." "-" | lower | trimAll "-" }}-instrumentation
+  labels:
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+spec:
+  {{- if $sidecar.instrumentation.exporter }}
+  exporter:
+    {{- toYaml $sidecar.instrumentation.exporter | nindent 4 }}
+  {{- end }}
+  {{- if $sidecar.instrumentation.propagators }}
+  propagators:
+    {{- toYaml $sidecar.instrumentation.propagators | nindent 4 }}
+  {{- end }}
+  {{- if and $sidecar.instrumentation.language $sidecar.instrumentation.env }}
+  {{ $sidecar.instrumentation.language }}:
+    env:
+      {{- range $key, $val := $sidecar.instrumentation.env }}
+      - name: {{ $key }}
+        value: {{ $val | quote }}
+      {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- end }}
+{{- end }}

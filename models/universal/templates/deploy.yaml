@@ -33,6 +33,25 @@ spec:
         {{- if $annotations }}
         {{- $annotations | nindent 8 }}
         {{- end }}
+        {{- /* OpenTelemetry Instrumentation Logic */}}
+        {{- $instrumentedContainers := list }}
+        {{- if and $comp.instrumentation $comp.instrumentation.enabled }}
+        instrumentation.opentelemetry.io/inject-{{ $comp.instrumentation.language | default "java" }}: "{{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-instrumentation"
+        {{- $instrumentedContainers = append $instrumentedContainers (include "chart-model-multi.componentname" (dict "context" $ "component" $compName)) }}
+        {{- end }}
+        {{- if $comp.extraContainers }}
+        {{- range $sidecarName, $sidecar := $comp.extraContainers }}
+        {{- if ne ($sidecar.enabled | default true) false }}
+        {{- if and $sidecar.instrumentation $sidecar.instrumentation.enabled }}
+        instrumentation.opentelemetry.io/inject-{{ $sidecar.instrumentation.language | default "java" }}: "{{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $sidecarName | replace "." "-" | lower | trimAll "-" }}-instrumentation"
+        {{- $instrumentedContainers = append $instrumentedContainers $sidecarName }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if gt (len $instrumentedContainers) 0 }}
+        instrumentation.opentelemetry.io/container-names: "{{ join "," $instrumentedContainers }}"
+        {{- end }}
         # Deterministic Rollouts: SHA256 checksum annotations to trigger automatic restarts
         {{- if $comp.config }}
         checksum/cm-{{ $compName }}: '{{ toYaml $comp.config | sha256sum }}'

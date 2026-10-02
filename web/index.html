@@ -205,6 +205,40 @@
                             style="margin-top: 5px;">Remove</button>
                     </div>
 
+                    <!-- OpenTelemetry Instrumentation -->
+                    <div class="route-card" style="margin-top: 1.5rem; border-color: var(--accent-color);">
+                        <div class="route-card-header">
+                            <span>OpenTelemetry Auto-Instrumentation</span>
+                            <label class="route-switch">
+                                <input type="checkbox" id="instrumentationEnabled" onchange="toggleInstrumentationUI(); saveAndPreview()">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div id="instrumentation-options" style="display: none; padding-top: 1rem;">
+                            <div class="form-group row">
+                                <div>
+                                    <label>Language</label>
+                                    <select id="instrumentationLanguage" onchange="saveAndPreview()">
+                                        <option value="java">Java</option>
+                                        <option value="nodejs">Node.js</option>
+                                        <option value="python">Python</option>
+                                        <option value="dotnet">.NET</option>
+                                        <option value="go">Go</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label>Exporter Endpoint</label>
+                                    <input type="text" id="instrumentationEndpoint" value="http://otel-collector-collector.tracing-system.svc.cluster.local:4318" oninput="saveAndPreview()">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                    <label style="margin-bottom: 0;">Environment Variables</label>
+                                </div>
+                                <textarea id="instrumentationEnv" rows="3" placeholder="OTEL_RESOURCE_ATTRIBUTES=deployment.environment=hml&#10;OTEL_METRICS_EXPORTER=none" oninput="saveAndPreview()"></textarea>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="section-subtitle" style="display: flex; justify-content: space-between; align-items: center;">
                         <span>Routing & Networking</span>

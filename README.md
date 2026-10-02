@@ -32,6 +32,8 @@ Defines environment variables for the container using two maps:
 
 ### 3. Routing & Networking
 Configures the internal Kubernetes `service` (ports and type) and OpenShift routes:
+- **Primary Port:** The main service port (default: 8080).
+- **Additional Ports:** Multiple named ports can be declared with varying protocols (e.g. `metrics:9090:TCP`).
 - **Default Route:** Internal route with self-signed TLS.
 - **Internal Route:** Valid certificate for the internal Organization intranet (`*-internal.example.com`).
 - **External Route:** Valid certificate for the external internet (`*example.com`).
@@ -69,7 +71,7 @@ keda:
 ```
 
 ### 6. Tiered "Fail-Fast" Health Probes
-Standardized `tcpSocket` or `httpGet` probes with `initialDelaySeconds: 0`. Uses a generous `startupProbe` to allow slow applications to initialize, while keeping `livenessProbe` and `readinessProbe` dormant until ready.
+Standardized `tcpSocket` or `httpGet` probes (defaulting to the `http` named port) with resilient timeouts. Uses a generous `startupProbe` to allow slow applications to initialize, while keeping `livenessProbe` and `readinessProbe` dormant until ready. Default values are hardcoded for high availability (`initialDelaySeconds: 0`, `periodSeconds: 5`, `failureThreshold: 30`, `successThreshold: 1`).
 
 ### 7. Lifecycle & HA Strategy
 Deployment strategies such as `RollingUpdate` (stateless apps) or `Recreate` (stateful applications using ReadWriteOnce persistence).
@@ -82,6 +84,9 @@ Manages `imagePullSecrets`, `nodeSelector`, `tolerations`, and `affinity` rules 
 
 ### 10. Custom Files
 Allows mounting arbitrary configuration files (like `nginx.conf` or keystores) directly from ConfigMaps or Secrets into the container via the `files` block.
+
+### 11. OpenTelemetry Auto-Instrumentation
+Natively integrates with the OpenTelemetry Operator. By simply enabling `instrumentation` on the main workload or `extraContainers`, the chart generates `Instrumentation` CRDs and automatically links them to the pod using `container-names` logic, ensuring agents are cleanly injected only to the desired containers.
 
 ---
 

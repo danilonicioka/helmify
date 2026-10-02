@@ -183,6 +183,22 @@ deploys:
         failureThreshold: 3
         successThreshold: 1
 
+    # OpenTelemetry Auto-Instrumentation Support
+    # Used to automatically inject OTel agents into pods and generate Instrumentation CRDs
+    instrumentation:
+      enabled: false
+      language: java # can be java, python, nodejs, go, dotnet
+      exporter:
+        endpoint: http://otel-collector-collector.tracing-system.svc.cluster.local:4318
+      propagators:
+        - tracecontext
+        - baggage
+        - b3
+      env:
+        OTEL_METRICS_EXPORTER: none
+        OTEL_LOGS_EXPORTER: none
+        OTEL_RESOURCE_ATTRIBUTES: deployment.environment=hml
+
     strategy:
       type: RollingUpdate
       rollingUpdate:
@@ -257,6 +273,9 @@ deploys:
       #      pullPolicy: IfNotPresent
       #    command: []
       #    args: []
+      #    instrumentation:
+      #      enabled: false
+      #      language: python
       #    config:
       #      env:
       #        EXAMPLE_VAR: "value"
