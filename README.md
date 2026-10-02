@@ -24,6 +24,7 @@ The `values.yaml` is organized into standardized sections for each component:
 
 ### 1. Core Workload Settings
 Defines the `replicas`, custom `labels`, `annotations`, and the container `image` repository/tag.
+- **Dynamic Image Pull Secrets:** You can automatically generate a `kubernetes.io/dockerconfigjson` secret for your private registry by setting `global.imageCredentials.create: true` and passing the password via CI (`--set global.imageCredentials.password=$PASSWORD`). The chart automatically mounts this generated secret alongside any explicit component-level `pullSecrets`.
 
 ### 2. Application Configuration
 Defines environment variables for the container using two maps:

@@ -13,6 +13,13 @@ global:
       TZ: "America/Belem"
   secrets:
     env: {}
+  imageCredentials:
+    create: false
+    # name: "my-registry-secret" # Defaults to {release-name}-registry if not set
+    registry: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br"
+    username: ""
+    password: "" # Set this in CI: --set global.imageCredentials.password=$PASSWORD
+    email: ""
 
 # ==============================================================================
 # DEPLOYMENTS CONFIGURATION - Each sub-section is one deployment
