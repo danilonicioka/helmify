@@ -14,9 +14,9 @@ import (
 
 	roothelmify "github.com/danilonicioka/helmify"
 	"github.com/danilonicioka/helmify/pkg/config"
+	"github.com/danilonicioka/helmify/pkg/processor"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v3"
-	"github.com/danilonicioka/helmify/pkg/processor"
 )
 
 // WriteTarGz writes the map of relative file path -> file content into a tar.gz stream.
@@ -124,52 +124,52 @@ func GetModelDefaults() (map[string]interface{}, error) {
 
 // WizardParams defines the JSON request payload for the Chart Generator Wizard.
 type WizardParams struct {
-	ChartName     string                      `json:"chartName" validate:"required"`
-	DevRepoURL    string                      `json:"devRepoUrl" validate:"required"`
-	GlobalConfig  map[string]string           `json:"globalConfig"`
-	GlobalSecret  map[string]string           `json:"globalSecret"`
+	ChartName         string                      `json:"chartName" validate:"required"`
+	DevRepoURL        string                      `json:"devRepoUrl" validate:"required"`
+	GlobalConfig      map[string]string           `json:"globalConfig"`
+	GlobalSecret      map[string]string           `json:"globalSecret"`
 	Deployments       map[string]DeploymentParams `json:"deployments" validate:"required,dive"`
 	CronJobs          map[string]DeploymentParams `json:"cronJobs,omitempty"`
 	Subcomponents     []string                    `json:"subcomponents"`
-	SubcomponentsData map[string]interface{}          `json:"subcomponentsData,omitempty"`
+	SubcomponentsData map[string]interface{}      `json:"subcomponentsData,omitempty"`
 }
 
 // DeploymentParams represents configuration for a component deployment.
 type DeploymentParams struct {
-	WorkloadType     string                      `json:"workloadType,omitempty" validate:"omitempty,oneof=Deployment StatefulSet DaemonSet CronJob"`
-	Schedule         string                      `json:"schedule,omitempty"`
-	Suspend          *bool                       `json:"suspend,omitempty"`
-	ConcurrencyPolicy string                     `json:"concurrencyPolicy,omitempty"`
-	Replicas         *int                        `json:"replicas" validate:"omitempty,min=0"`
-	Image            ImageParams                 `json:"image" validate:"required"`
-	Command          []string                    `json:"command,omitempty"`
-	Args             []string                    `json:"args,omitempty"`
-	Annotations      map[string]string           `json:"annotations,omitempty"`
-	Labels           map[string]string           `json:"labels,omitempty"`
-	Service          ServiceParams               `json:"service"`
-	Config           *ConfigParams               `json:"config,omitempty"`
-	Secrets          *ConfigParams               `json:"secrets,omitempty"`
-	Resources        *ResourceParams             `json:"resources,omitempty"`
-	Persistence      PersistenceParams           `json:"persistence"`
-	Autoscaling      *AutoscalingParams          `json:"autoscaling,omitempty"`
-	Probes           *ProbesParams               `json:"probes,omitempty"`
-	Scheduling       *SchedulingParams           `json:"scheduling,omitempty"`
-	Strategy         map[string]interface{}      `json:"strategy,omitempty" yaml:"strategy,omitempty"`
-	PodSecurityContext map[string]interface{}    `json:"podSecurityContext,omitempty" yaml:"podSecurityContext,omitempty"`
-	SecurityContext    map[string]interface{}    `json:"securityContext,omitempty" yaml:"securityContext,omitempty"`
-	HostAliases        []map[string]interface{}  `json:"hostAliases,omitempty" yaml:"hostAliases,omitempty"`
-	TopologySpreadConstraints []map[string]interface{} `json:"topologySpreadConstraints,omitempty" yaml:"topologySpreadConstraints,omitempty"`
-	PriorityClassName  string                    `json:"priorityClassName,omitempty" yaml:"priorityClassName,omitempty"`
-	TerminationGracePeriodSeconds *int64         `json:"terminationGracePeriodSeconds,omitempty" yaml:"terminationGracePeriodSeconds,omitempty"`
-	Lifecycle        map[string]interface{}      `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
-	Route            RouteParams                 `json:"route"`
-	ConnectsTo       []string                    `json:"connectsTo"`
-	Runtime          string                      `json:"runtime"`
-	RuntimeNamespace string                      `json:"runtimeNamespace"`
-	RuntimeVersion   string                      `json:"runtimeVersion"`
-	OverviewAppRoute string                      `json:"overviewAppRoute"`
-	InitContainers   map[string]*SidecarParams   `json:"initContainers,omitempty"`
-	ExtraContainers  map[string]*SidecarParams   `json:"extraContainers,omitempty"`
+	WorkloadType                  string                    `json:"workloadType,omitempty" validate:"omitempty,oneof=Deployment StatefulSet DaemonSet CronJob"`
+	Schedule                      string                    `json:"schedule,omitempty"`
+	Suspend                       *bool                     `json:"suspend,omitempty"`
+	ConcurrencyPolicy             string                    `json:"concurrencyPolicy,omitempty"`
+	Replicas                      *int                      `json:"replicas" validate:"omitempty,min=0"`
+	Image                         ImageParams               `json:"image" validate:"required"`
+	Command                       []string                  `json:"command,omitempty"`
+	Args                          []string                  `json:"args,omitempty"`
+	Annotations                   map[string]string         `json:"annotations,omitempty"`
+	Labels                        map[string]string         `json:"labels,omitempty"`
+	Service                       ServiceParams             `json:"service"`
+	Config                        *ConfigParams             `json:"config,omitempty"`
+	Secrets                       *ConfigParams             `json:"secrets,omitempty"`
+	Resources                     *ResourceParams           `json:"resources,omitempty"`
+	Persistence                   PersistenceParams         `json:"persistence"`
+	Autoscaling                   *AutoscalingParams        `json:"autoscaling,omitempty"`
+	Probes                        *ProbesParams             `json:"probes,omitempty"`
+	Scheduling                    *SchedulingParams         `json:"scheduling,omitempty"`
+	Strategy                      map[string]interface{}    `json:"strategy,omitempty" yaml:"strategy,omitempty"`
+	PodSecurityContext            map[string]interface{}    `json:"podSecurityContext,omitempty" yaml:"podSecurityContext,omitempty"`
+	SecurityContext               map[string]interface{}    `json:"securityContext,omitempty" yaml:"securityContext,omitempty"`
+	HostAliases                   []map[string]interface{}  `json:"hostAliases,omitempty" yaml:"hostAliases,omitempty"`
+	TopologySpreadConstraints     []map[string]interface{}  `json:"topologySpreadConstraints,omitempty" yaml:"topologySpreadConstraints,omitempty"`
+	PriorityClassName             string                    `json:"priorityClassName,omitempty" yaml:"priorityClassName,omitempty"`
+	TerminationGracePeriodSeconds *int64                    `json:"terminationGracePeriodSeconds,omitempty" yaml:"terminationGracePeriodSeconds,omitempty"`
+	Lifecycle                     map[string]interface{}    `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
+	Route                         RouteParams               `json:"route"`
+	ConnectsTo                    []string                  `json:"connectsTo"`
+	Runtime                       string                    `json:"runtime"`
+	RuntimeNamespace              string                    `json:"runtimeNamespace"`
+	RuntimeVersion                string                    `json:"runtimeVersion"`
+	OverviewAppRoute              string                    `json:"overviewAppRoute"`
+	InitContainers                map[string]*SidecarParams `json:"initContainers,omitempty"`
+	ExtraContainers               map[string]*SidecarParams `json:"extraContainers,omitempty"`
 }
 
 // SidecarPersistenceParams is a simplified persistence config for sidecars.
@@ -181,19 +181,19 @@ type SidecarPersistenceParams struct {
 
 // SidecarParams holds configuration for extra and init containers
 type SidecarParams struct {
-	Enabled     *bool                    `json:"enabled,omitempty" yaml:"enabled,omitempty"`
-	Image       ImageParams              `json:"image" yaml:"image"`
-	Command     []string                 `json:"command,omitempty" yaml:"command,omitempty"`
-	Args        []string                 `json:"args,omitempty" yaml:"args,omitempty"`
-	Config      *ConfigParams            `json:"config,omitempty" yaml:"config,omitempty"`
-	Secrets     *ConfigParams            `json:"secrets,omitempty" yaml:"secrets,omitempty"`
-	Service     ServiceParams            `json:"service,omitempty" yaml:"service,omitempty"`
-	Resources   *ResourceParams          `json:"resources,omitempty" yaml:"resources,omitempty"`
-	Probes      *ProbesParams            `json:"probes,omitempty" yaml:"probes,omitempty"`
-	SecurityContext map[string]interface{} `json:"securityContext,omitempty" yaml:"securityContext,omitempty"`
-	Lifecycle       map[string]interface{} `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
-	SharedVolume  SidecarPersistenceParams `json:"sharedVolume,omitempty" yaml:"sharedVolume,omitempty"`
-	Persistence   PersistenceParams        `json:"persistence,omitempty" yaml:"persistence,omitempty"`
+	Enabled         *bool                    `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+	Image           ImageParams              `json:"image" yaml:"image"`
+	Command         []string                 `json:"command,omitempty" yaml:"command,omitempty"`
+	Args            []string                 `json:"args,omitempty" yaml:"args,omitempty"`
+	Config          *ConfigParams            `json:"config,omitempty" yaml:"config,omitempty"`
+	Secrets         *ConfigParams            `json:"secrets,omitempty" yaml:"secrets,omitempty"`
+	Service         ServiceParams            `json:"service,omitempty" yaml:"service,omitempty"`
+	Resources       *ResourceParams          `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Probes          *ProbesParams            `json:"probes,omitempty" yaml:"probes,omitempty"`
+	SecurityContext map[string]interface{}   `json:"securityContext,omitempty" yaml:"securityContext,omitempty"`
+	Lifecycle       map[string]interface{}   `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
+	SharedVolume    SidecarPersistenceParams `json:"sharedVolume,omitempty" yaml:"sharedVolume,omitempty"`
+	Persistence     PersistenceParams        `json:"persistence,omitempty" yaml:"persistence,omitempty"`
 }
 
 // ConfigParams holds env vars and mounted files
@@ -239,10 +239,10 @@ type ImageParams struct {
 
 // ServiceParams configures the internal service port.
 type ServiceParams struct {
-	Port       *int `json:"port,omitempty" yaml:"port,omitempty"`
-	Ports      map[string]struct {
-		Port       int    `json:"port" yaml:"port"`
-		Protocol   string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+	Port  *int `json:"port,omitempty" yaml:"port,omitempty"`
+	Ports map[string]struct {
+		Port     int    `json:"port" yaml:"port"`
+		Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
 	} `json:"ports,omitempty" yaml:"ports,omitempty"`
 }
 
@@ -330,7 +330,6 @@ type PersistenceParams struct {
 	StorageClass   string `json:"storageClass,omitempty" yaml:"storageClass,omitempty"`
 }
 
-
 // GenerateWizardChart reads single or multi chart templates from the embedded ModelsFS,
 // applies customization overrides to values.yaml preserving comments, renames files and
 // component references, and returns a map of relative file path -> file content.
@@ -386,7 +385,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		params.CronJobs[k] = cj
 	}
 
-
 	basePath := "models/universal"
 
 	// 1. Walk the embedded directory and read all files
@@ -431,7 +429,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 			content = regexp.MustCompile(`(?m)^version:.*$`).ReplaceAllString(content, "version: "+cv)
 			content = regexp.MustCompile(`(?m)^appVersion:.*$`).ReplaceAllString(content, "appVersion: "+cv)
-			
+
 			if params.DevRepoURL != "" {
 				content = strings.Replace(content, "sources: []", "sources:\n  - \""+params.DevRepoURL+"\"", 1)
 			}
@@ -469,7 +467,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	customNode.Kind = yaml.DocumentNode
 	customNode.Content = append(customNode.Content, &yaml.Node{Kind: yaml.MappingNode})
 
-
 	// Collect and sort component keys
 	var compKeys []string
 	for k := range params.Deployments {
@@ -482,7 +479,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	if err := yaml.Unmarshal(valuesData, &origRoot); err != nil {
 		return nil, fmt.Errorf("failed to parse original values.yaml for cloning: %w", err)
 	}
-	
+
 	// Find components mapping inside rootNode
 	var componentsMapping *yaml.Node
 	if rootNode.Kind == yaml.DocumentNode && len(rootNode.Content) > 0 {
@@ -494,7 +491,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 		}
 	}
-	
+
 	if componentsMapping != nil {
 		// Clear default components from rootNode's "deploys" map
 		componentsMapping.Content = []*yaml.Node{}
@@ -531,70 +528,76 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 
 		appKeyPrefix := []string{"deploys", compName}
-		
+
 		if depConfig.Replicas != nil {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "replicas"), *depConfig.Replicas)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "replicas"), *depConfig.Replicas)
 		}
 		if depConfig.Service.Ports != nil && len(depConfig.Service.Ports) > 0 {
 			for pName, pData := range depConfig.Service.Ports {
 				_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "port"), pData.Port)
+				_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "port"), pData.Port)
 				if pData.Protocol != "" && pData.Protocol != "TCP" {
 					_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "protocol"), pData.Protocol)
+					_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "protocol"), pData.Protocol)
 				}
 			}
 		} else if svcPort := depConfig.Service.Port; svcPort != nil && *svcPort > 0 {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", "http", "port"), *svcPort)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", "http", "port"), *svcPort)
 		}
 		if depConfig.Autoscaling != nil {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "autoscaling"), depConfig.Autoscaling)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "autoscaling"), depConfig.Autoscaling)
 		}
 		if depConfig.Probes != nil {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "probes"), depConfig.Probes)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "probes"), depConfig.Probes)
 		}
 		if depConfig.Route.Path != "" {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "path"), depConfig.Route.Path)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "path"), depConfig.Route.Path)
 		}
 		if depConfig.Image.Repository != "" {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "repository"), depConfig.Image.Repository)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "image", "repository"), depConfig.Image.Repository)
 		}
 		if depConfig.Image.Tag != "" {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "tag"), depConfig.Image.Tag)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "image", "tag"), depConfig.Image.Tag)
 		}
 		if depConfig.Image.PullSecrets != nil && len(depConfig.Image.PullSecrets) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "image", "pullSecrets"), depConfig.Image.PullSecrets)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "pullSecrets"), depConfig.Image.PullSecrets)
 		}
 		if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "extraContainers"), depConfig.ExtraContainers)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "extraContainers"), depConfig.ExtraContainers)
 		}
 		if depConfig.InitContainers != nil && len(depConfig.InitContainers) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "initContainers"), depConfig.InitContainers)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "initContainers"), depConfig.InitContainers)
 		}
 		if depConfig.Command != nil {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "command"), depConfig.Command)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "command"), depConfig.Command)
 		}
 		if depConfig.Args != nil {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "args"), depConfig.Args)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "args"), depConfig.Args)
 		}
 		if len(depConfig.Annotations) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "annotations"), depConfig.Annotations)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations"), depConfig.Annotations)
 		}
 		if len(depConfig.Labels) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "labels"), depConfig.Labels)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "labels"), depConfig.Labels)
 		}
 		if depConfig.Config != nil {
 			if depConfig.Config.Env != nil {
 				stripQuotesFromMap(depConfig.Config.Env)
 			}
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "config"), depConfig.Config)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "config"), depConfig.Config)
 		}
 		if depConfig.Secrets != nil {
 			if depConfig.Secrets.Env != nil {
 				stripQuotesFromMap(depConfig.Secrets.Env)
 			}
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "secrets"), depConfig.Secrets)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "secrets"), depConfig.Secrets)
 		}
 		if depConfig.Resources != nil {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "resources"), depConfig.Resources)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "resources"), depConfig.Resources)
 		}
 		if depConfig.Scheduling != nil {
 			// Always ensure nodeSelector and tolerations are present so users know they can be set
@@ -604,12 +607,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			if depConfig.Scheduling.Tolerations == nil {
 				depConfig.Scheduling.Tolerations = []interface{}{}
 			}
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "scheduling"), depConfig.Scheduling)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "scheduling"), depConfig.Scheduling)
 		}
 		if depConfig.Strategy != nil && len(depConfig.Strategy) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "strategy"), depConfig.Strategy)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "strategy"), depConfig.Strategy)
 		}
-		
+
 		for _, sub := range params.Subcomponents {
 			if sub != "cronjob" {
 				depConfig.ConnectsTo = append(depConfig.ConnectsTo, params.ChartName+"-"+sub)
@@ -624,95 +627,95 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				}
 				connects = append(connects, fmt.Sprintf(`{"apiVersion":"apps/v1","kind":"Deployment","name":"%s"}`, cName))
 			}
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "annotations", "app.openshift.io/connects-to"), "["+strings.Join(connects, ",")+"]")
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations", "app.openshift.io/connects-to"), "["+strings.Join(connects, ",")+"]")
 		}
 		if depConfig.Runtime != "" {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "labels", "app.openshift.io/runtime"), depConfig.Runtime)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "labels", "app.openshift.io/runtime"), depConfig.Runtime)
 		}
 		if depConfig.OverviewAppRoute != "" {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "annotations", "console.alpha.openshift.io/overview-app-route"), depConfig.OverviewAppRoute)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations", "console.alpha.openshift.io/overview-app-route"), depConfig.OverviewAppRoute)
 		}
 
 		if depConfig.Persistence.Enabled {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "enabled"), true)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "enabled"), true)
 			if depConfig.Persistence.Ephemeral {
-				_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "ephemeral"), true)
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "ephemeral"), true)
 			}
 			if depConfig.Persistence.MountPath != "" {
-				_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "mountPath"), depConfig.Persistence.MountPath)
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "mountPath"), depConfig.Persistence.MountPath)
 			}
 			if !depConfig.Persistence.Ephemeral {
 				if depConfig.Persistence.StorageRequest != "" {
-					_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "storageRequest"), depConfig.Persistence.StorageRequest)
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "storageRequest"), depConfig.Persistence.StorageRequest)
 				}
 				if depConfig.Persistence.AccessMode != "" {
-					_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "accessMode"), depConfig.Persistence.AccessMode)
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "accessMode"), depConfig.Persistence.AccessMode)
 				}
 				if depConfig.Persistence.StorageClass != "" {
-					_ = setYamlPath(&customNode, append(appKeyPrefix, "persistence", "storageClass"), depConfig.Persistence.StorageClass)
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "storageClass"), depConfig.Persistence.StorageClass)
 				}
-				_ = setYamlPath(&customNode, append(appKeyPrefix, "strategy"), map[string]string{"type": "Recreate"})
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "strategy"), map[string]string{"type": "Recreate"})
 			}
 		}
-		
+
 		if len(depConfig.PodSecurityContext) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "podSecurityContext"), depConfig.PodSecurityContext)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "podSecurityContext"), depConfig.PodSecurityContext)
 		}
 		if len(depConfig.SecurityContext) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "securityContext"), depConfig.SecurityContext)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "securityContext"), depConfig.SecurityContext)
 		}
 		if len(depConfig.HostAliases) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "hostAliases"), depConfig.HostAliases)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "hostAliases"), depConfig.HostAliases)
 		}
 		if len(depConfig.TopologySpreadConstraints) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "topologySpreadConstraints"), depConfig.TopologySpreadConstraints)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "topologySpreadConstraints"), depConfig.TopologySpreadConstraints)
 		}
 		if depConfig.PriorityClassName != "" {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "priorityClassName"), depConfig.PriorityClassName)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "priorityClassName"), depConfig.PriorityClassName)
 		}
 		if depConfig.TerminationGracePeriodSeconds != nil {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "terminationGracePeriodSeconds"), *depConfig.TerminationGracePeriodSeconds)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "terminationGracePeriodSeconds"), *depConfig.TerminationGracePeriodSeconds)
 		}
 		if len(depConfig.Lifecycle) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "lifecycle"), depConfig.Lifecycle)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "lifecycle"), depConfig.Lifecycle)
 		}
 
 		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)
-		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "default", "enabled"), depConfig.Route.Default.Enabled)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "default", "enabled"), depConfig.Route.Default.Enabled)
 		if depConfig.Route.Default.Host != "" {
 			defaultHost = depConfig.Route.Default.Host
 		}
-		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "default", "host"), defaultHost)
-		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "internal", "enabled"), depConfig.Route.Internal.Enabled)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "default", "host"), defaultHost)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "internal", "enabled"), depConfig.Route.Internal.Enabled)
 		if depConfig.Route.Internal.Host != "" {
 			internalHost = depConfig.Route.Internal.Host
 		}
-		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "internal", "host"), internalHost)
-		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "external", "enabled"), depConfig.Route.External.Enabled)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "internal", "host"), internalHost)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "external", "enabled"), depConfig.Route.External.Enabled)
 		if depConfig.Route.External.Host != "" {
 			externalHost = depConfig.Route.External.Host
 		}
-		_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "external", "host"), externalHost)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "external", "host"), externalHost)
 
 		if len(depConfig.Route.Additional) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "route", "additional"), depConfig.Route.Additional)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "additional"), depConfig.Route.Additional)
 		}
 		if depConfig.Config != nil && len(depConfig.Config.Files) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "config", "files"), depConfig.Config.Files)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "config", "files"), depConfig.Config.Files)
 		}
 		if depConfig.Secrets != nil && len(depConfig.Secrets.Files) > 0 {
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "secrets", "files"), depConfig.Secrets.Files)
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "secrets", "files"), depConfig.Secrets.Files)
 		}
 	}
 
 	// 4. Set global variables
 	if len(params.GlobalConfig) > 0 {
 		stripQuotesFromMap(params.GlobalConfig)
-		_ = setYamlPath(&customNode, []string{"global", "config", "env"}, params.GlobalConfig)
+		_ = setYamlPath(&rootNode, []string{"global", "config", "env"}, params.GlobalConfig)
 	}
 	if len(params.GlobalSecret) > 0 {
 		stripQuotesFromMap(params.GlobalSecret)
-		_ = setYamlPath(&customNode, []string{"global", "secrets", "env"}, params.GlobalSecret)
+		_ = setYamlPath(&rootNode, []string{"global", "secrets", "env"}, params.GlobalSecret)
 	}
 
 	// Process CronJobs properly
@@ -720,32 +723,36 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		for cName, cj := range params.CronJobs {
 			cjKeyPrefix := []string{"cronjobs", cName}
 			_ = setYamlPath(&rootNode, append(cjKeyPrefix, "enabled"), true)
+			_ = setYamlPath(&customNode, append(cjKeyPrefix, "enabled"), true)
 			if cj.Schedule != "" {
 				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "schedule"), cj.Schedule)
+				_ = setYamlPath(&customNode, append(cjKeyPrefix, "schedule"), cj.Schedule)
 			}
 			if cj.Image.Repository != "" {
 				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "image", "repository"), cj.Image.Repository)
+				_ = setYamlPath(&customNode, append(cjKeyPrefix, "image", "repository"), cj.Image.Repository)
 			}
 			if cj.Image.Tag != "" {
 				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "image", "tag"), cj.Image.Tag)
+				_ = setYamlPath(&customNode, append(cjKeyPrefix, "image", "tag"), cj.Image.Tag)
 			}
 			if cj.Command != nil {
-				_ = setYamlPath(&customNode, append(cjKeyPrefix, "command"), cj.Command)
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "command"), cj.Command)
 			}
 			if cj.Args != nil {
-				_ = setYamlPath(&customNode, append(cjKeyPrefix, "args"), cj.Args)
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "args"), cj.Args)
 			}
 			if cj.Config != nil {
-				_ = setYamlPath(&customNode, append(cjKeyPrefix, "config"), cj.Config)
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "config"), cj.Config)
 			}
 			if cj.Secrets != nil {
-				_ = setYamlPath(&customNode, append(cjKeyPrefix, "secrets"), cj.Secrets)
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "secrets"), cj.Secrets)
 			}
 			if cj.Suspend != nil {
-				_ = setYamlPath(&customNode, append(cjKeyPrefix, "suspend"), *cj.Suspend)
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "suspend"), *cj.Suspend)
 			}
 			if cj.ConcurrencyPolicy != "" {
-				_ = setYamlPath(&customNode, append(cjKeyPrefix, "concurrencyPolicy"), cj.ConcurrencyPolicy)
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "concurrencyPolicy"), cj.ConcurrencyPolicy)
 			}
 		}
 	}
@@ -770,13 +777,13 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	}
 
 	valuesStr = formatValues(valuesStr)
-	outputFiles["values.yaml"] = []byte(valuesStr)
+	outputFiles["values-env.yaml"] = []byte(valuesStr)
 
 	customData, err := yaml.Marshal(&customNode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal custom values: %w", err)
 	}
-	outputFiles["values-env.yaml"] = customData
+	outputFiles["values.yaml"] = customData
 
 	// Process values-ca.yaml to generate matching components
 	if caData, ok := embeddedFiles["values-ca.yaml"]; ok {
@@ -815,6 +822,18 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 						}
 						caDeploys.Content = append(caDeploys.Content, keyNode, cloned.Content[0])
 					}
+				}
+
+				// Apply custom config envs into caRoot
+				for _, compKey := range compKeys {
+					if depConfig, ok := params.Deployments[compKey]; ok {
+						if depConfig.Config != nil && depConfig.Config.Env != nil {
+							_ = setYamlPath(&caRoot, []string{"deploys", compKey, "config", "env"}, depConfig.Config.Env)
+						}
+					}
+				}
+				if len(params.GlobalConfig) > 0 {
+					_ = setYamlPath(&caRoot, []string{"global", "config", "env"}, params.GlobalConfig)
 				}
 
 				setBlockStyle(&caRoot)

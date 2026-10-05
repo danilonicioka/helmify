@@ -43,3 +43,5 @@ test-helm-merge.yaml
 test.zip
 test-output/
 test-output.yaml
+test-input.yaml
+test_input.yaml
