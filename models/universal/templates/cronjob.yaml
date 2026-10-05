@@ -34,9 +34,18 @@ spec:
           labels:
             {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" $compName) | nindent 12 }}
         spec:
-          {{- with $comp.image.pullSecrets }}
+          {{- $pullSecrets := list }}
+          {{- if $comp.image.pullSecrets }}
+            {{- range $ps := $comp.image.pullSecrets }}
+              {{- $pullSecrets = append $pullSecrets $ps }}
+            {{- end }}
+          {{- end }}
+          {{- if and $.Values.global $.Values.global.imageCredentials $.Values.global.imageCredentials.create }}
+            {{- $pullSecrets = append $pullSecrets (dict "name" (printf "%s-registry" (include "chart-model-multi.fullname" $))) }}
+          {{- end }}
+          {{- if gt (len $pullSecrets) 0 }}
           imagePullSecrets:
-            {{- toYaml . | nindent 12 }}
+            {{- toYaml $pullSecrets | nindent 12 }}
           {{- end }}
           {{- if and $comp.vso $comp.vso.enabled }}
           serviceAccountName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-sa

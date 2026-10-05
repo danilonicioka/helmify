@@ -15,7 +15,6 @@ global:
     env: {}
   imageCredentials:
     create: false
-    # name: "my-registry-secret" # Defaults to {release-name}-registry if not set
     registries: {}
       # tjpa:
       #   registry: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br"
