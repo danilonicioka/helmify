@@ -186,7 +186,7 @@ func handleGenerate(w http.ResponseWriter, r *http.Request) {
 	if valuesOnly {
 		w.Header().Set("Content-Type", "application/x-yaml")
 		w.Header().Set("Content-Disposition", `attachment; filename="values.yaml"`)
-		if valContent, ok := files["values.yaml"]; ok {
+		if valContent, ok := files["values-env.yaml"]; ok {
 			w.Write(valContent)
 		}
 	} else {

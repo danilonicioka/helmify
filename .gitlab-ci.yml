@@ -27,11 +27,15 @@ build:
   extends: .branch_rules
   image: $BUILDER_IMAGE
   cache:
-    key: "build-deps-$CI_COMMIT_REF_SLUG"
+    key:
+      files:
+        - go.sum
+      prefix: "go-cache"
     paths:
       - .go/pkg/mod
       - .gocache
   script:
+    - go mod download
     - go build -buildvcs=false -o helmify ./cmd/helmify
   artifacts:
     paths:
