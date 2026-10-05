@@ -37,7 +37,7 @@ spec:
         {{- $instrumentedContainers := list }}
         {{- if and $comp.instrumentation $comp.instrumentation.enabled }}
         instrumentation.opentelemetry.io/inject-{{ $comp.instrumentation.language | default "java" }}: "{{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-instrumentation"
-        {{- $instrumentedContainers = append $instrumentedContainers (include "chart-model-multi.componentname" (dict "context" $ "component" $compName)) }}
+        {{- $instrumentedContainers = append $instrumentedContainers $compName }}
         {{- end }}
         {{- if $comp.extraContainers }}
         {{- range $sidecarName, $sidecar := $comp.extraContainers }}
