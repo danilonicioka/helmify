@@ -16,10 +16,17 @@ global:
   imageCredentials:
     create: false
     # name: "my-registry-secret" # Defaults to {release-name}-registry if not set
-    registry: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br"
-    username: ""
-    password: "" # Set this in CI: --set global.imageCredentials.password=$PASSWORD
-    email: ""
+    registries: {}
+      # tjpa:
+      #   registry: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br"
+      #   username: ""
+      #   password: "" # Set this in CI: --set global.imageCredentials.registries.tjpa.password=$PASSWORD
+      #   email: ""
+      # extra-registry:
+      #   registry: "docker.io"
+      #   username: "docker-user"
+      #   password: "docker-password"
+      #   email: ""
 
 # ==============================================================================
 # DEPLOYMENTS CONFIGURATION - Each sub-section is one deployment
