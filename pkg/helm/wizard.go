@@ -132,6 +132,12 @@ type WizardParams struct {
 	CronJobs          map[string]DeploymentParams `json:"cronJobs,omitempty"`
 	Subcomponents     []string                    `json:"subcomponents"`
 	SubcomponentsData map[string]interface{}      `json:"subcomponentsData,omitempty"`
+	HasRegistrySecret bool                        `json:"hasRegistrySecret,omitempty"`
+}
+
+type InstrumentationParams struct {
+	Enabled  bool   `json:"enabled,omitempty"`
+	Language string `json:"language,omitempty"`
 }
 
 // DeploymentParams represents configuration for a component deployment.
@@ -170,6 +176,7 @@ type DeploymentParams struct {
 	OverviewAppRoute              string                    `json:"overviewAppRoute"`
 	InitContainers                map[string]*SidecarParams `json:"initContainers,omitempty"`
 	ExtraContainers               map[string]*SidecarParams `json:"extraContainers,omitempty"`
+	Instrumentation               *InstrumentationParams    `json:"instrumentation,omitempty"`
 }
 
 // SidecarPersistenceParams is a simplified persistence config for sidecars.
@@ -578,6 +585,12 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Args != nil {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "args"), depConfig.Args)
 		}
+		if depConfig.Instrumentation != nil && depConfig.Instrumentation.Enabled {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "instrumentation", "enabled"), true)
+			if depConfig.Instrumentation.Language != "" {
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "instrumentation", "language"), depConfig.Instrumentation.Language)
+			}
+		}
 		if len(depConfig.Annotations) > 0 {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations"), depConfig.Annotations)
 		}
@@ -716,6 +729,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	if len(params.GlobalSecret) > 0 {
 		stripQuotesFromMap(params.GlobalSecret)
 		_ = setYamlPath(&rootNode, []string{"global", "secrets", "env"}, params.GlobalSecret)
+	}
+	if params.HasRegistrySecret {
+		_ = setYamlPath(&rootNode, []string{"global", "imageCredentials", "create"}, true)
+		_ = setYamlPath(&customNode, []string{"global", "imageCredentials", "create"}, true)
 	}
 
 	// Process CronJobs properly

@@ -158,7 +158,27 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			if err == nil && found {
 				for _, s := range imagePullSecrets {
 					if secretMap, ok := s.(map[string]interface{}); ok {
+						if name, ok := secretMap["name"].(string); ok && strings.HasSuffix(name, "-registry") {
+							params.HasRegistrySecret = true
+							continue
+						}
 						depParams.Image.PullSecrets = append(depParams.Image.PullSecrets, secretMap)
+					}
+				}
+			}
+
+			podAnnotations, found, _ := unstructured.NestedStringMap(obj.Object, "spec", "template", "metadata", "annotations")
+			if found {
+				for k, v := range podAnnotations {
+					if strings.HasPrefix(k, "instrumentation.opentelemetry.io/inject-") {
+						if depParams.Instrumentation == nil {
+							depParams.Instrumentation = &InstrumentationParams{}
+						}
+						depParams.Instrumentation.Enabled = true
+						if v != "false" {
+							lang := strings.TrimPrefix(k, "instrumentation.opentelemetry.io/inject-")
+							depParams.Instrumentation.Language = lang
+						}
 					}
 				}
 			}
@@ -638,6 +658,12 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			}
 
 		case "Secret":
+			secType, _, _ := unstructured.NestedString(obj.Object, "type")
+			if secType == "kubernetes.io/dockerconfigjson" {
+				params.HasRegistrySecret = true
+				continue
+			}
+
 			stringData, foundStr, _ := unstructured.NestedMap(obj.Object, "stringData")
 			data, foundData, _ := unstructured.NestedMap(obj.Object, "data")
 
