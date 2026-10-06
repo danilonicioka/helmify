@@ -214,6 +214,69 @@ spec:
             {{- end }}
           {{- end }}
 
+          # Tiered "Fail-Fast" Health Probes
+          {{- if and $comp.probes $comp.probes.startup (not (empty $comp.probes.startup)) }}
+          startupProbe:
+            {{- toYaml $comp.probes.startup | nindent 12 }}
+          {{- end }}
+          {{- if and $comp.probes $comp.probes.liveness (not (empty $comp.probes.liveness)) }}
+          livenessProbe:
+            {{- toYaml $comp.probes.liveness | nindent 12 }}
+          {{- end }}
+          {{- if and $comp.probes $comp.probes.readiness (not (empty $comp.probes.readiness)) }}
+          readinessProbe:
+            {{- toYaml $comp.probes.readiness | nindent 12 }}
+          {{- end }}
+
+          {{- if hasKey $comp "lifecycle" }}
+          lifecycle:
+            {{- toYaml $comp.lifecycle | nindent 12 }}
+          {{- end }}
+
+          {{- with $comp.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $comp.args }}
+          args:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+
+          # Resources (Operational Overlay-Only)
+          {{- if and $comp.resources $comp.resources.limits }}
+          resources:
+            {{- toYaml $comp.resources | nindent 12 }}
+          {{- end }}
+
+          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}
+          volumeMounts:
+            {{- if and $comp.persistence $comp.persistence.enabled }}
+            - name: data
+              mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
+            {{- end }}
+            {{- if and $comp.config $comp.config.files }}
+            {{- range $filename, $config := $comp.config.files }}
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+            {{- if and $comp.secrets $comp.secrets.files }}
+            {{- range $filename, $config := $comp.secrets.files }}
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+            {{- if and $comp.vso $comp.vso.enabled $comp.vso.files }}
+            {{- range $filename, $config := $comp.vso.files }}
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+      
         {{- $hasExtra := false }}
         {{- range $name, $sidecar := $comp.extraContainers }}
           {{- if ne ($sidecar.enabled | default true) false }}
@@ -303,69 +366,6 @@ spec:
         {{- end }}
         {{- end }}
 
-          # Tiered "Fail-Fast" Health Probes
-          {{- if and $comp.probes $comp.probes.startup (not (empty $comp.probes.startup)) }}
-          startupProbe:
-            {{- toYaml $comp.probes.startup | nindent 12 }}
-          {{- end }}
-          {{- if and $comp.probes $comp.probes.liveness (not (empty $comp.probes.liveness)) }}
-          livenessProbe:
-            {{- toYaml $comp.probes.liveness | nindent 12 }}
-          {{- end }}
-          {{- if and $comp.probes $comp.probes.readiness (not (empty $comp.probes.readiness)) }}
-          readinessProbe:
-            {{- toYaml $comp.probes.readiness | nindent 12 }}
-          {{- end }}
-
-          {{- if hasKey $comp "lifecycle" }}
-          lifecycle:
-            {{- toYaml $comp.lifecycle | nindent 12 }}
-          {{- end }}
-
-          {{- with $comp.command }}
-          command:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with $comp.args }}
-          args:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-
-          # Resources (Operational Overlay-Only)
-          {{- if and $comp.resources $comp.resources.limits }}
-          resources:
-            {{- toYaml $comp.resources | nindent 12 }}
-          {{- end }}
-
-          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}
-          volumeMounts:
-            {{- if and $comp.persistence $comp.persistence.enabled }}
-            - name: data
-              mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
-            {{- end }}
-            {{- if and $comp.config $comp.config.files }}
-            {{- range $filename, $config := $comp.config.files }}
-            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}
-              mountPath: {{ $config.mountPath }}
-              subPath: {{ $filename }}
-            {{- end }}
-            {{- end }}
-            {{- if and $comp.secrets $comp.secrets.files }}
-            {{- range $filename, $config := $comp.secrets.files }}
-            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
-              mountPath: {{ $config.mountPath }}
-              subPath: {{ $filename }}
-            {{- end }}
-            {{- end }}
-            {{- if and $comp.vso $comp.vso.enabled $comp.vso.files }}
-            {{- range $filename, $config := $comp.vso.files }}
-            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
-              mountPath: {{ $config.mountPath }}
-              subPath: {{ $filename }}
-            {{- end }}
-            {{- end }}
-          {{- end }}
-      
       # Graceful connection draining lifecycle settings
       {{- if $comp.terminationGracePeriodSeconds }}
       terminationGracePeriodSeconds: {{ $comp.terminationGracePeriodSeconds }}
