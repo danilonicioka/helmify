@@ -32,7 +32,7 @@ spec:
 {{- /* Sidecar instrumentation */}}
 {{- if $comp.extraContainers }}
 {{- range $sidecarName, $sidecar := $comp.extraContainers }}
-{{- if ne ($sidecar.enabled | default true) false }}
+{{- if ne $sidecar.enabled false }}
 {{- if and $sidecar.instrumentation $sidecar.instrumentation.enabled }}
 ---
 apiVersion: opentelemetry.io/v1alpha1

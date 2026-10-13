@@ -49,7 +49,7 @@ Configures the internal Kubernetes `service` (ports and type) and OpenShift rout
 Supports deploying arbitrary sidecars and initialization tasks:
 - `extraContainers`: Dynamically injects sidecar containers into the Pod lifecycle.
 - `initContainers`: Injects initialization containers that run prior to the main workload.
-Both systems use a generic structural mapping that securely scopes `envFrom` (ConfigMap and Secret injection) and `volumeMounts` directly to the specific container, preventing sidecars from leaking configuration into the main global scope.
+Both systems use a generic structural mapping that securely scopes `envFrom` (ConfigMap and Secret injection) and `volumeMounts` directly to the specific container, preventing sidecars from leaking configuration into the main global scope. Each container can be conditionally disabled with `enabled: false` (defaults to `true` when omitted), completely suppressing its container definition, associated volumes, PVCs, ConfigMaps, Secrets, and OpenTelemetry Instrumentation CRDs.
 
 ### 4. Resources
 Defines CPU and Memory `requests` and `limits`.

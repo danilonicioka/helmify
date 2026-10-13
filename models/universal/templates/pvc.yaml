@@ -24,7 +24,7 @@ spec:
 {{- end }}
 
 {{- range $name, $config := $comp.initContainers }}
-{{- if and $config.persistence (and $config.persistence.enabled (not $config.persistence.ephemeral)) }}
+{{- if and (ne $config.enabled false) $config.persistence (and $config.persistence.enabled (not $config.persistence.ephemeral)) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -49,7 +49,7 @@ spec:
 {{- end }}
 
 {{- range $name, $config := $comp.extraContainers }}
-{{- if and $config.persistence (and $config.persistence.enabled (not $config.persistence.ephemeral)) }}
+{{- if and (ne $config.enabled false) $config.persistence (and $config.persistence.enabled (not $config.persistence.ephemeral)) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

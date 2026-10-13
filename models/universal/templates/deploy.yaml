@@ -41,7 +41,7 @@ spec:
         {{- end }}
         {{- if $comp.extraContainers }}
         {{- range $sidecarName, $sidecar := $comp.extraContainers }}
-        {{- if ne ($sidecar.enabled | default true) false }}
+        {{- if ne $sidecar.enabled false }}
         {{- if and $sidecar.instrumentation $sidecar.instrumentation.enabled }}
         instrumentation.opentelemetry.io/inject-{{ $sidecar.instrumentation.language | default "java" }}: "{{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $sidecarName | replace "." "-" | lower | trimAll "-" }}-instrumentation"
         {{- $instrumentedContainers = append $instrumentedContainers $sidecarName }}
@@ -108,14 +108,14 @@ spec:
       {{- end }}
       {{- $hasInit := false }}
       {{- range $name, $config := $comp.initContainers }}
-        {{- if ne ($config.enabled | default true) false }}
+        {{- if ne $config.enabled false }}
           {{- $hasInit = true }}
         {{- end }}
       {{- end }}
       {{- if $hasInit }}
       initContainers:
         {{- range $name, $config := $comp.initContainers }}
-        {{- if ne ($config.enabled | default true) false }}
+        {{- if ne $config.enabled false }}
         - name: {{ $name }}
           {{- if and $config.image $config.image.repository }}
           image: "{{ $config.image.repository }}:{{ $config.image.tag | default "latest" }}"
@@ -279,14 +279,14 @@ spec:
       
         {{- $hasExtra := false }}
         {{- range $name, $sidecar := $comp.extraContainers }}
-          {{- if ne ($sidecar.enabled | default true) false }}
+          {{- if ne $sidecar.enabled false }}
             {{- $hasExtra = true }}
           {{- end }}
         {{- end }}
 
         {{- if $hasExtra }}
         {{- range $name, $sidecar := $comp.extraContainers }}
-        {{- if ne ($sidecar.enabled | default true) false }}
+        {{- if ne $sidecar.enabled false }}
         - name: {{ $name }}
           {{- if and $sidecar.image $sidecar.image.repository }}
           image: "{{ $sidecar.image.repository }}:{{ $sidecar.image.tag | default "latest" }}"
@@ -392,12 +392,12 @@ spec:
 
       {{- $hasVols := false }}
       {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasVols = true }}{{ end }}
-      {{- range $name, $config := $comp.initContainers }}{{ if or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}{{ $hasVols = true }}{{ end }}{{ end }}
-      {{- range $name, $config := $comp.extraContainers }}{{ if or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}{{ $hasVols = true }}{{ end }}{{ end }}
+      {{- range $name, $config := $comp.initContainers }}{{ if and (ne $config.enabled false) (or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files)) }}{{ $hasVols = true }}{{ end }}{{ end }}
+      {{- range $name, $config := $comp.extraContainers }}{{ if and (ne $config.enabled false) (or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files)) }}{{ $hasVols = true }}{{ end }}{{ end }}
       {{- if $hasVols }}
       volumes:
         {{- range $name, $config := $comp.initContainers }}
-        {{- if ne ($config.enabled | default true) false }}
+        {{- if ne $config.enabled false }}
         {{- if and $config.config $config.config.files }}
         {{- range $filename, $fileconf := $config.config.files }}
         - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
@@ -415,7 +415,7 @@ spec:
         {{- end }}
         {{- end }}
         {{- range $name, $config := $comp.extraContainers }}
-        {{- if ne ($config.enabled | default true) false }}
+        {{- if ne $config.enabled false }}
         {{- if and $config.config $config.config.files }}
         {{- range $filename, $fileconf := $config.config.files }}
         - name: sidecar-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}
@@ -433,7 +433,7 @@ spec:
         {{- end }}
         {{- end }}
         {{- range $name, $config := $comp.initContainers }}
-        {{- if and $config.persistence $config.persistence.enabled }}
+        {{- if and (ne $config.enabled false) $config.persistence $config.persistence.enabled }}
         - name: init-{{ $name }}-data
           {{- if $config.persistence.ephemeral }}
           emptyDir: {}
@@ -444,7 +444,7 @@ spec:
         {{- end }}
         {{- end }}
         {{- range $name, $config := $comp.extraContainers }}
-        {{- if and $config.persistence $config.persistence.enabled }}
+        {{- if and (ne $config.enabled false) $config.persistence $config.persistence.enabled }}
         - name: sidecar-{{ $name }}-data
           {{- if $config.persistence.ephemeral }}
           emptyDir: {}
