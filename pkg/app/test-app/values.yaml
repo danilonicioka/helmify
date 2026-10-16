@@ -1,7 +1,3 @@
-# Standardized Helm Chart values.yaml
-# Designed in compliance with OpenShift Security Context Constraints (SCC)
-# and the 6 Core Architectural Rules.
-
 # ==============================================================================
 # CHART-WIDE OPTIONS
 # ==============================================================================
@@ -10,12 +6,25 @@ kubernetesClusterDomain: cluster.local
 # -- Overrides the default name/fullname.
 nameOverride: ""
 fullnameOverride: test-app
-# -- Global configuration shared across all deployments in the chart.
+# -- Global env vars shared across all deployments in the chart.
 global:
   config:
     env: {}
   secrets:
     env: {}
+  imageCredentials:
+    create: false
+    registries: {}
+    # tjpa:
+    #   registry: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br"
+    #   username: ""
+    #   password: "" # Set this in CI: --set global.imageCredentials.registries.tjpa.password=$PASSWORD
+    #   email: ""
+    # extra-registry:
+    #   registry: "docker.io"
+    #   username: "docker-user"
+    #   password: "docker-password"
+    #   email: ""
 api:
   annotations: {}
   #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
@@ -72,16 +81,56 @@ app:
     www:
       requests:
         storage: 1Gi
+cronjobs: {}
+#   my-cronjob:
+#     enabled: true
+#     schedule: "*/5 * * * *"
+#     suspend: false
+#     concurrencyPolicy: Allow
+#     successfulJobsHistoryLimit: 3
+#     failedJobsHistoryLimit: 1
+#     restartPolicy: OnFailure
+#     image:
+#       repository: my-repo/my-cronjob
+#       tag: latest
+#       pullPolicy: IfNotPresent
+#       pullSecrets: []
+#     command: []
+#     args: []
+#     config:
+#       env: {}
+#       files: {}
+#     secrets:
+#       env: {}
+#       files: {}
+#     vso:
+#       enabled: false
+#       role: my-role
+#       path: /path/to/secret
+#       secretFiles: {}
+#     resources:
+#       limits:
+#         cpu: "100m"
+#         memory: "128Mi"
+#       requests:
+#         cpu: "10m"
+#         memory: "64Mi"
+#     persistence:
+#       enabled: false
+#       mountPath: /var/lib/data
+#       ephemeral: false
+#     scheduling:
+#       nodeSelector: {}
+#       affinity: {}
+#       tolerations: []
+#     extraContainers: []
+
 # ==============================================================================
-# COMPONENT CONFIGURATION
+# DEPLOYMENTS CONFIGURATION - Each sub-section is one deployment
 # ==============================================================================
 deploys:
   api:
-    # -- Enable or disable this component
     enabled: true
-    # ----------------------------------------------------------------------------
-    # IMAGE & WORKLOAD
-    # ----------------------------------------------------------------------------
     image:
       repository: "{{REGISTRY}}/test-app-api"
       tag: "latest"
@@ -99,15 +148,12 @@ deploys:
     # Example for OpenShift Topology View integration:
     # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"test-app-app"}]'
 
-    # ----------------------------------------------------------------------------
-    # APPLICATION CONFIGURATION & SECRETS
-    # ----------------------------------------------------------------------------
+    # Env vars and files for configmaps
     config:
       env: {}
-      # Define files to be mounted as a ConfigMap into the container.
-      # If 'content' is provided, the file is embedded directly here.
-      # If 'content' is omitted, the chart will automatically load the file from the 'files/' directory.
+      # Each line will be one env
       files: {}
+      # Each subsection will be one file. The keys (eg. application.properties) will be the filename.
       #   application.properties:
       #     mountPath: "/deployments/config/application.properties"
       #     content: |
@@ -115,15 +161,16 @@ deploys:
       #   nginx.conf:
       #     mountPath: "/etc/nginx/nginx.conf"
       #     # 'content' is intentionally omitted here, so the chart automatically loads from files/nginx.conf
+    # Env vars and files for secrets - similar logic to config
     secrets:
       env: {}
-      # Define sensitive files to be mounted as a Secret into the container.
-      # Identical fallback behavior: omit 'content' to load from the 'files/' directory.
       files: {}
       #   sistema.p12:
       #     mountPath: "/app/keystore/sistema.p12"
-      #     b64enc: true
+      #     b64enc: true # This flag must be true if the content is base64 encoded, otherwise it will be encoded again.
       #     content: "MIIKrAIB..."
+    # Vault Secrets Operator configuration -> Openbao
+    # Note: Be careful to not set the same var at the local secrets to avoid conflicts
     vso:
       enabled: false
       role: "test-app-api-role"
@@ -131,10 +178,6 @@ deploys:
       files: {}
       #   my_vault_key.p12:
       #     mountPath: "/app/certs/my_vault_key.p12"
-    # ----------------------------------------------------------------------------
-    # RESOURCES
-    # ----------------------------------------------------------------------------
-    # Baseline resource allocation overlay. Adjust to application requirements.
     resources:
       limits:
         cpu: 100m
@@ -148,14 +191,14 @@ deploys:
       keda:
         minReplicas: 3
         maxReplicas: 20
-        pollingInterval: 30
-        cooldownPeriod: 300
+        pollingInterval: 30 # f.e. frequency to check the queue
+        cooldownPeriod: 300 # f.e. delay to scale down after queue decrease
         triggers:
           - type: rabbitmq
             metadata:
               queueName: "jurisprudencia.celery.knowledge"
               queueLength: "200"
-        triggerAuth:
+        triggerAuth: # if the verification needs an auth
           secretTargetRef:
             - parameter: host
               name: "iande-global-secret"
@@ -167,7 +210,7 @@ deploys:
           - resource:
               name: memory
               target:
-                averageUtilization: 180
+                averageUtilization: 180 # the field checked for hpa is the request
                 type: Utilization
             type: Resource
         behavior:
@@ -179,9 +222,7 @@ deploys:
                 type: Percent
                 value: 100
             stabilizationWindowSeconds: 0
-    # ----------------------------------------------------------------------------
-    # ROUTING & NETWORKING
-    # ----------------------------------------------------------------------------
+
     route:
       annotations: {}
       #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
@@ -220,9 +261,7 @@ deploys:
         http:
           # Note: The 'port' defined here applies to BOTH the Kubernetes Service port and the underlying Container port.
           port: 8080
-    # ----------------------------------------------------------------------------
-    # PERSISTENCE
-    # ----------------------------------------------------------------------------
+
     persistence:
       enabled: false
       ephemeral: false
@@ -230,9 +269,6 @@ deploys:
       storageRequest: 1Gi
       accessMode: ReadWriteOnce
       storageClass: ""
-    # ----------------------------------------------------------------------------
-    # PROBES & LIFECYCLE
-    # ----------------------------------------------------------------------------
     probes:
       startup:
         tcpSocket:
@@ -255,6 +291,21 @@ deploys:
         periodSeconds: 10
         failureThreshold: 3
         successThreshold: 1
+    # OpenTelemetry Auto-Instrumentation Support
+    # Used to automatically inject OTel agents into pods and generate Instrumentation CRDs
+    instrumentation:
+      enabled: false
+      language: java # can be java, python, nodejs, go, dotnet
+      exporter:
+        endpoint: http://otel-collector-collector.tracing-system.svc.cluster.local:4318
+      propagators:
+        - tracecontext
+        - baggage
+        - b3
+      env:
+        OTEL_METRICS_EXPORTER: none
+        OTEL_LOGS_EXPORTER: none
+        OTEL_RESOURCE_ATTRIBUTES: deployment.environment=hml
 
     strategy:
       type: RollingUpdate
@@ -263,9 +314,6 @@ deploys:
         maxUnavailable: 25%
 
     terminationGracePeriodSeconds: 30
-    # ----------------------------------------------------------------------------
-    # SCHEDULING & NODE ASSIGNMENT
-    # ----------------------------------------------------------------------------
     scheduling:
       nodeSelector: {}
 
@@ -283,10 +331,6 @@ deploys:
                       values:
                         - test-app-api
                 topologyKey: kubernetes.io/hostname
-    # ----------------------------------------------------------------------------
-    # INIT CONTAINERS
-    # ----------------------------------------------------------------------------
-    # You can inject initialization containers into the pod.
     initContainers: {}
     #  init-example:
     #    enabled: true
@@ -298,9 +342,22 @@ deploys:
     #    args: []
     #    env: []
     #    envFrom: []
-    #    persistence:
+    #    resources:
+    #      limits:
+    #        cpu: "100m"
+    #        memory: "128Mi"
+    #      requests:
+    #        cpu: "100m"
+    #        memory: "128Mi"
+    #    # To share the main component's data volume:
+    #    sharedVolume:
     #      enabled: true
     #      mountPath: /var/lib/data
+    #    # Or, to create an independent volume just for this init container:
+    #    persistence:
+    #      enabled: false
+    #      ephemeral: true
+    #      mountPath: /opt/init-data
     #    config:
     #      files:
     #        example.txt:
@@ -315,11 +372,6 @@ deploys:
     #          content: |
     #            secret world
 
-    # ----------------------------------------------------------------------------
-    # EXTRA CONTAINERS
-    # ----------------------------------------------------------------------------
-    # You can inject additional sidecar containers into the pod.
-    # The key (e.g. 'sidecar-example') will be used as the container name.
     extraContainers: {}
     #  sidecar-example:
     #    enabled: true
@@ -329,6 +381,9 @@ deploys:
     #      pullPolicy: IfNotPresent
     #    command: []
     #    args: []
+    #    instrumentation:
+    #      enabled: false
+    #      language: python
     #    config:
     #      env:
     #        EXAMPLE_VAR: "value"
@@ -355,9 +410,15 @@ deploys:
     #      startup: {}
     #      liveness: {}
     #      readiness: {}
-    #    persistence:
+    #    # To share the main component's data volume:
+    #    sharedVolume:
     #      enabled: true
     #      mountPath: /var/lib/data
+    #    # Or, to create an independent volume just for this sidecar:
+    #    persistence:
+    #      enabled: false
+    #      ephemeral: true
+    #      mountPath: /opt/sidecar-data
     #        example.txt:
     #          mountPath: /etc/config/example.txt
     #          content: |
@@ -371,15 +432,8 @@ deploys:
     #          b64enc: false
     #          content: |
     #            secret world
-  # ==============================================================================
-  # COMPONENT CONFIGURATION
-  # ==============================================================================
   app:
-    # -- Enable or disable this component
     enabled: true
-    # ----------------------------------------------------------------------------
-    # IMAGE & WORKLOAD
-    # ----------------------------------------------------------------------------
     image:
       repository: "{{REGISTRY}}/test-app-app"
       tag: "latest"
@@ -397,9 +451,6 @@ deploys:
     # Example for OpenShift Topology View integration:
     # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"test-app-api"}]'
 
-    # ----------------------------------------------------------------------------
-    # APPLICATION CONFIGURATION & SECRETS
-    # ----------------------------------------------------------------------------
     config:
       env: {}
       files: {}
@@ -420,10 +471,7 @@ deploys:
       role: "test-app-app-role"
       path: "kv/data/test-app/app"
       files: {}
-    # ----------------------------------------------------------------------------
-    # RESOURCES
-    # ----------------------------------------------------------------------------
-    # Baseline resource allocation overlay. Adjust to application requirements.
+
     resources:
       limits:
         cpu: 100m
@@ -468,9 +516,7 @@ deploys:
                 type: Percent
                 value: 100
             stabilizationWindowSeconds: 0
-    # ----------------------------------------------------------------------------
-    # ROUTING & NETWORKING
-    # ----------------------------------------------------------------------------
+
     route:
       annotations: {}
       #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
@@ -507,11 +553,8 @@ deploys:
       type: ClusterIP
       ports:
         http:
-          # Note: The 'port' defined here applies to BOTH the Kubernetes Service port and the underlying Container port.
           port: 8080
-    # ----------------------------------------------------------------------------
-    # PERSISTENCE
-    # ----------------------------------------------------------------------------
+
     persistence:
       enabled: false
       ephemeral: false
@@ -519,9 +562,6 @@ deploys:
       storageRequest: 1Gi
       accessMode: ReadWriteOnce
       storageClass: ""
-    # ----------------------------------------------------------------------------
-    # PROBES & LIFECYCLE
-    # ----------------------------------------------------------------------------
     probes:
       startup:
         tcpSocket:
@@ -552,9 +592,6 @@ deploys:
         maxUnavailable: 25%
 
     terminationGracePeriodSeconds: 30
-    # ----------------------------------------------------------------------------
-    # SCHEDULING & NODE ASSIGNMENT
-    # ----------------------------------------------------------------------------
     scheduling:
       nodeSelector: {}
 
@@ -572,10 +609,6 @@ deploys:
                       values:
                         - test-app-app
                 topologyKey: kubernetes.io/hostname
-    # ----------------------------------------------------------------------------
-    # INIT CONTAINERS
-    # ----------------------------------------------------------------------------
-    # You can inject initialization containers into the pod.
     initContainers: {}
     #  init-example:
     #    enabled: true
@@ -587,9 +620,15 @@ deploys:
     #    args: []
     #    env: []
     #    envFrom: []
-    #    persistence:
+    #    # To share the main component's data volume:
+    #    sharedVolume:
     #      enabled: true
     #      mountPath: /var/lib/data
+    #    # Or, to create an independent volume just for this init container:
+    #    persistence:
+    #      enabled: false
+    #      ephemeral: true
+    #      mountPath: /opt/init-data
     #    config:
     #      files:
     #        example.txt:
@@ -604,11 +643,6 @@ deploys:
     #          content: |
     #            secret world
 
-    # ----------------------------------------------------------------------------
-    # EXTRA CONTAINERS
-    # ----------------------------------------------------------------------------
-    # You can inject additional sidecar containers into the pod.
-    # The key (e.g. 'sidecar-example') will be used as the container name.
     extraContainers: {}
     #  sidecar-example:
     #    enabled: true
@@ -618,6 +652,25 @@ deploys:
     #      pullPolicy: IfNotPresent
     #    command: []
     #    args: []
+    #
+    #    config:
+    #      env:
+    #        EXAMPLE_VAR: "value"
+    #      files:
+    #        example.txt:
+    #          mountPath: /etc/config/example.txt
+    #          content: |
+    #            hello world
+    #    secrets:
+    #      env:
+    #        SECRET_VAR: "secret-value"
+    #      files:
+    #        secret.txt:
+    #          mountPath: /etc/secret/secret.txt
+    #          b64enc: false
+    #          content: |
+    #            secret world
+    #
     #    service:
     #      ports:
     #        http:
@@ -636,23 +689,6 @@ deploys:
     #    persistence:
     #      enabled: true
     #      mountPath: /var/lib/data
-    #    config:
-    #      env:
-    #        EXAMPLE_VAR: "value"
-    #      files:
-    #        example.txt:
-    #          mountPath: /etc/config/example.txt
-    #          content: |
-    #            hello world
-    #    secrets:
-    #      env:
-    #        SECRET_VAR: "secret-value"
-    #      files:
-    #        secret.txt:
-    #          mountPath: /etc/secret/secret.txt
-    #          b64enc: false
-    #          content: |
-    #            secret world
 myapp:
   annotations: {}
   #   app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'

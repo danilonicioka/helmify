@@ -73,10 +73,10 @@ spec:
         {{- end }}
         {{- end }}
         {{- end }}
-        {{- if $.Values.global.config }}
+        {{- if and $.Values.global $.Values.global.config }}
         checksum/cm-global: '{{ toYaml $.Values.global.config | sha256sum }}'
         {{- end }}
-        {{- if $.Values.global.secrets }}
+        {{- if and $.Values.global $.Values.global.secrets }}
         checksum/secret-global: '{{ toYaml $.Values.global.secrets | sha256sum }}'
         {{- end }}
         {{- if $comp.initContainers }}
