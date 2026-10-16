@@ -275,31 +275,48 @@ function toggleWorkloadTypeFields() {
                 const cert = document.getElementById('truststoreCert').value.trim();
                 
                 config.initContainers['build-truststore'] = {
+                    enabled: true,
                     image: {
-                        repository: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/ca/devops/third-party/pje-light/pje-binarios-light",
-                        tag: "latest"
+                        repository: config.image?.repository || "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/ca/devops/third-party/pje-light/pje-binarios-light",
+                        tag: config.image?.tag || "latest"
                     },
                     command: [
                         "sh",
                         "-c",
-                        "DEFAULT_CACERTS=$(find /usr /opt /etc /java -name cacerts -type f 2>/dev/null | head -n 1)\nif [ -z \"$DEFAULT_CACERTS\" ]; then\n  echo \"Error: Could not find default cacerts file!\"\n  exit 1\nfi\necho \"Copying default cacerts from $DEFAULT_CACERTS to /custom-truststore/cacerts\"\ncp \"$DEFAULT_CACERTS\" /custom-truststore/cacerts\nchmod +w /custom-truststore/cacerts\n\nfor cert in /certs/*.pem /certs/*.crt; do\n  if [ -f \"$cert\" ]; then\n    alias_name=$(basename \"$cert\")\n    echo \"Importing certificate $cert with alias $alias_name...\"\n    keytool -importcert -trustcacerts -keystore /custom-truststore/cacerts \\\n      -storepass changeit -noprompt -alias \"$alias_name\" -file \"$cert\"\n  fi\ndone\necho \"All certificates imported successfully!\""
+                        "DEFAULT_CACERTS=$(find /usr /opt /etc /java -name cacerts -type f 2>/dev/null | head -n 1)\nif [ -z \"$DEFAULT_CACERTS\" ]; then\n  DEFAULT_CACERTS=$(find / -name cacerts -type f 2>/dev/null | head -n 1)\nfi\nif [ -z \"$DEFAULT_CACERTS\" ]; then\n  echo \"Error: Could not find default cacerts file!\"\n  exit 1\nfi\necho \"Copying default cacerts from $DEFAULT_CACERTS to " + mountPath + "/cacerts\"\ncp \"$DEFAULT_CACERTS\" " + mountPath + "/cacerts\nchmod +w " + mountPath + "/cacerts\n\nfor cert in /certs/*.pem /certs/*.crt; do\n  if [ -f \"$cert\" ]; then\n    alias_name=$(basename \"$cert\" | sed 's/\\.[^.]*$//')\n    echo \"Importing certificate $cert with alias $alias_name...\"\n    keytool -importcert -trustcacerts -keystore " + mountPath + "/cacerts \\\n      -storepass changeit -noprompt -alias \"$alias_name\" -file \"$cert\"\n  fi\ndone\necho \"All certificates imported successfully!\""
                     ],
-                    persistence: {
+                    config: {
+                        env: {},
+                        files: {}
+                    },
+                    secrets: {
+                        env: {},
+                        files: cert ? {
+                            'ca.crt': {
+                                mountPath: '/certs/ca.crt',
+                                b64enc: false,
+                                content: cert
+                            }
+                        } : {}
+                    },
+                    sharedVolume: {
                         enabled: true,
-                        ephemeral: false,
-                        mountPath: mountPath,
-                        storageRequest: ""
+                        mountPath: mountPath
                     }
                 };
-                
-                if (cert) {
-                    if (!config.files) config.files = { cm: {}, secret: {} };
-                    if (!config.files.secret) config.files.secret = {};
-                    config.files.secret['cert.pem'] = {
-                        mountPath: "/certs",
-                        content: cert
-                    };
-                } else if (config.files && config.files.secret && config.files.secret['cert.pem']) {
+
+                // Ensure the main container component mounts the shared data volume at mountPath
+                if (!config.persistence) config.persistence = {};
+                config.persistence.enabled = true;
+                config.persistence.ephemeral = true;
+                config.persistence.mountPath = mountPath;
+
+                // Configure JAVA_TOOL_OPTIONS in secrets.env
+                if (!config.secrets) config.secrets = {};
+                if (!config.secrets.env) config.secrets.env = {};
+                config.secrets.env['JAVA_TOOL_OPTIONS'] = `-Djavax.net.ssl.trustStore=${mountPath}/cacerts -Djavax.net.ssl.trustStorePassword=changeit`;
+
+                if (config.files && config.files.secret && config.files.secret['cert.pem']) {
                     delete config.files.secret['cert.pem'];
                 }
             } else {
@@ -308,6 +325,12 @@ function toggleWorkloadTypeFields() {
                 }
                 if (config.files && config.files.secret && config.files.secret['cert.pem']) {
                     delete config.files.secret['cert.pem'];
+                }
+                if (config.secrets && config.secrets.env && config.secrets.env['JAVA_TOOL_OPTIONS'] && config.secrets.env['JAVA_TOOL_OPTIONS'].includes('-Djavax.net.ssl.trustStore=')) {
+                    delete config.secrets.env['JAVA_TOOL_OPTIONS'];
+                }
+                if (config.persistence && config.persistence.mountPath === '/custom-truststore') {
+                    config.persistence.enabled = false;
                 }
             }
 
@@ -642,10 +665,16 @@ function toggleWorkloadTypeFields() {
             if (config.initContainers && config.initContainers['build-truststore']) {
                 const ts = config.initContainers['build-truststore'];
                 document.getElementById('truststoreEnabled').checked = true;
-                document.getElementById('truststorePath').value = (ts.persistence && ts.persistence.mountPath) ? ts.persistence.mountPath : '/custom-truststore';
+                document.getElementById('truststorePath').value = (ts.sharedVolume && ts.sharedVolume.mountPath) 
+                    ? ts.sharedVolume.mountPath 
+                    : ((ts.persistence && ts.persistence.mountPath) ? ts.persistence.mountPath : '/custom-truststore');
                 
                 let cert = '';
-                if (config.files && config.files.secret && config.files.secret['cert.pem']) {
+                if (ts.secrets && ts.secrets.files && ts.secrets.files['certificate.pem']) {
+                    cert = ts.secrets.files['certificate.pem'].content || '';
+                } else if (config.secrets && config.secrets.files && config.secrets.files['certificate.pem']) {
+                    cert = config.secrets.files['certificate.pem'].content || '';
+                } else if (config.files && config.files.secret && config.files.secret['cert.pem']) {
                     cert = config.files.secret['cert.pem'].content || '';
                 }
                 document.getElementById('truststoreCert').value = cert;
