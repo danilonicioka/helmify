@@ -73,7 +73,7 @@ spec:
           ports:
             {{- range $key, $val := .Values.redis.service.ports }}
             - name: {{ $key }}
-              containerPort: {{ $val.port }}
+              containerPort: {{ $val.containerPort | default $val.port }}
               {{- if $val.protocol }}
               protocol: {{ $val.protocol }}
               {{- end }}

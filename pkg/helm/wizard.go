@@ -248,8 +248,9 @@ type ImageParams struct {
 type ServiceParams struct {
 	Port  *int `json:"port,omitempty" yaml:"port,omitempty"`
 	Ports map[string]struct {
-		Port     int    `json:"port" yaml:"port"`
-		Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+		Port          int    `json:"port" yaml:"port"`
+		ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
+		Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
 	} `json:"ports,omitempty" yaml:"ports,omitempty"`
 }
 
@@ -544,6 +545,10 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			for pName, pData := range depConfig.Service.Ports {
 				_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "port"), pData.Port)
 				_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "port"), pData.Port)
+				if pData.ContainerPort > 0 && pData.ContainerPort != pData.Port {
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "containerPort"), pData.ContainerPort)
+					_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "containerPort"), pData.ContainerPort)
+				}
 				if pData.Protocol != "" && pData.Protocol != "TCP" {
 					_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "protocol"), pData.Protocol)
 					_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "protocol"), pData.Protocol)

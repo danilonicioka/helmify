@@ -540,8 +540,9 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			if err == nil && found && len(ports) > 0 {
 				if depParams.Service.Ports == nil {
 					depParams.Service.Ports = make(map[string]struct {
-						Port     int    `json:"port" yaml:"port"`
-						Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+						Port          int    `json:"port" yaml:"port"`
+						ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
+						Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
 					})
 				}
 				for _, p := range ports {
@@ -556,6 +557,13 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 						portVal = int(portFloat)
 					}
 
+					var targetPortVal int
+					if tpInt, ok := portMap["targetPort"].(int64); ok {
+						targetPortVal = int(tpInt)
+					} else if tpFloat, ok := portMap["targetPort"].(float64); ok {
+						targetPortVal = int(tpFloat)
+					}
+
 					if portVal > 0 {
 						if name == "" {
 							name = fmt.Sprintf("%d-%s", portVal, strings.ToLower(protocol))
@@ -563,10 +571,28 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 								name = fmt.Sprintf("%d-tcp", portVal)
 							}
 						}
-						depParams.Service.Ports[name] = struct {
-							Port     int    `json:"port" yaml:"port"`
-							Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+
+						var containerPortVal int
+						if existing, ok := depParams.Service.Ports[name]; ok {
+							containerPortVal = existing.ContainerPort
+							if containerPortVal == 0 && existing.Port != portVal {
+								containerPortVal = existing.Port
+							}
+						}
+						if targetPortVal > 0 {
+							containerPortVal = targetPortVal
+						}
+
+						pEntry := struct {
+							Port          int    `json:"port" yaml:"port"`
+							ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
+							Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
 						}{Port: portVal, Protocol: protocol}
+						if containerPortVal > 0 && containerPortVal != portVal {
+							pEntry.ContainerPort = containerPortVal
+						}
+
+						depParams.Service.Ports[name] = pEntry
 						
 						// Maintain backward compatibility for single-port fields
 						if depParams.Service.Port == nil || name == "http" {
@@ -1019,7 +1045,11 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 
 	if ports, found, _ := unstructured.NestedSlice(container, "ports"); found && len(ports) > 0 {
 		if depParams.Service.Ports == nil {
-			depParams.Service.Ports = make(map[string]struct{Port int `json:"port" yaml:"port"`; Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`})
+			depParams.Service.Ports = make(map[string]struct {
+				Port          int    `json:"port" yaml:"port"`
+				ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
+				Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+			})
 		}
 		for _, p := range ports {
 			portMap := p.(map[string]interface{})
@@ -1029,8 +1059,13 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 			if name == "" {
 				name = fmt.Sprintf("%d-tcp", containerPort)
 			}
-			depParams.Service.Ports[name] = struct{Port int `json:"port" yaml:"port"`; Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`}{
-				Port:     int(containerPort),
+			depParams.Service.Ports[name] = struct {
+				Port          int    `json:"port" yaml:"port"`
+				ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
+				Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+			}{
+				Port:          int(containerPort),
+				ContainerPort: int(containerPort),
 			}
 		}
 	}
@@ -1168,7 +1203,11 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 
 	if ports, found, _ := unstructured.NestedSlice(container, "ports"); found && len(ports) > 0 {
 		if depParams.Service.Ports == nil {
-			depParams.Service.Ports = make(map[string]struct{Port int `json:"port" yaml:"port"`; Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`})
+			depParams.Service.Ports = make(map[string]struct {
+				Port          int    `json:"port" yaml:"port"`
+				ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
+				Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+			})
 		}
 		for _, p := range ports {
 			portMap := p.(map[string]interface{})
@@ -1178,8 +1217,13 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 			if name == "" {
 				name = fmt.Sprintf("%d-tcp", containerPort)
 			}
-			depParams.Service.Ports[name] = struct{Port int `json:"port" yaml:"port"`; Protocol string `json:"protocol,omitempty" yaml:"protocol,omitempty"`}{
-				Port:     int(containerPort),
+			depParams.Service.Ports[name] = struct {
+				Port          int    `json:"port" yaml:"port"`
+				ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
+				Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+			}{
+				Port:          int(containerPort),
+				ContainerPort: int(containerPort),
 			}
 		}
 	}

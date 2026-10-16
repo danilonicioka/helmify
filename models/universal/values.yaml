@@ -162,8 +162,9 @@ deploys:
       type: ClusterIP
       ports:
         http:
-          # Note: The 'port' defined here applies to BOTH the Kubernetes Service port and the underlying Container port.
+          # Note: 'port' defines the Kubernetes Service port. 'containerPort' sets the underlying Container port (defaults to 'port').
           port: 8080
+          # containerPort: 8080
 
     persistence:
       enabled: false

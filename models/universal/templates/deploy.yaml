@@ -181,7 +181,7 @@ spec:
           ports:
             {{- range $key, $val := $comp.service.ports }}
             - name: {{ $key }}
-              containerPort: {{ $val.port }}
+              containerPort: {{ $val.containerPort | default $val.port }}
               {{- if $val.protocol }}
               protocol: {{ $val.protocol }}
               {{- end }}
@@ -304,7 +304,7 @@ spec:
           ports:
             {{- range $key, $val := $sidecar.service.ports }}
             - name: {{ $key }}
-              containerPort: {{ $val.port }}
+              containerPort: {{ $val.containerPort | default $val.port }}
               {{- if $val.protocol }}
               protocol: {{ $val.protocol }}
               {{- end }}

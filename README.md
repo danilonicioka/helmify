@@ -39,6 +39,7 @@ Defines environment variables for the container using two maps:
 ### 3. Routing & Networking
 Configures the internal Kubernetes `service` (ports and type) and OpenShift routes:
 - **Primary Port:** The main service port (default: 8080).
+- **Decoupled Container Port:** By default, `port` configures both the Service port and the underlying container port. To expose a different port on the Service (e.g. `port: 80`) while keeping the container listening on another (e.g. `containerPort: 8080`), define `containerPort` inside `service.ports.<name>`.
 - **Additional Ports:** Multiple named ports can be declared with varying protocols (e.g. `metrics:9090:TCP`).
 - **Default Route:** Internal route with self-signed TLS.
 - **Internal Route:** Valid certificate for the internal Organization intranet (`*-internal.example.com`).
