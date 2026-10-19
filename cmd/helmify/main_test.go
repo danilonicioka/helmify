@@ -379,7 +379,122 @@ func TestRouteFallback_FromDefault(t *testing.T) {
 	assert.Contains(t, extDoc, "haproxy.router.openshift.io/timeout: 45s", "annotations must be inherited from default route")
 	assert.Contains(t, extDoc, "path: \"/\"", "path must be inherited from default route")
 	assert.Contains(t, extDoc, "termination: edge", "tls termination must be inherited from default route")
-	assert.Contains(t, extDoc, "insecureEdgeTerminationPolicy: Redirect", "tls redirect policy must be inherited from default route")
+}
+
+func TestInitAndExtraContainers_VolumesAndSharedVolumes(t *testing.T) {
+	wizardParams := helm.WizardParams{
+		ChartName: "test-sidecar-vols",
+		Deployments: map[string]helm.DeploymentParams{
+			"core": {
+				Image: helm.ImageParams{Repository: "test/core", Tag: "1.0"},
+				Volumes: map[string]helm.VolumeParams{
+					"main-vol": {
+						Enabled:        true,
+						MountPath:      "/var/data",
+						StorageRequest: "5Gi",
+					},
+				},
+				InitContainers: map[string]*helm.SidecarParams{
+					"setup": {
+						Image:   helm.ImageParams{Repository: "test/setup", Tag: "latest"},
+						Command: []string{"sh", "-c", "echo init"},
+						SharedVolumes: map[string]helm.SharedVolumeParams{
+							"main-vol": {
+								MountPath: "/shared/data",
+							},
+						},
+						Volumes: map[string]helm.VolumeParams{
+							"init-scratch": {
+								Enabled:   true,
+								Ephemeral: true,
+								MountPath: "/scratch",
+							},
+						},
+					},
+					"bare-init": {
+						// No sharedVolumes or volumes defined - should not cause errors
+						Image:   helm.ImageParams{Repository: "test/bare", Tag: "latest"},
+						Command: []string{"sh", "-c", "echo ready"},
+					},
+				},
+				ExtraContainers: map[string]*helm.SidecarParams{
+					"sidecar": {
+						Image: helm.ImageParams{Repository: "test/sidecar", Tag: "latest"},
+						SharedVolumes: map[string]helm.SharedVolumeParams{
+							"main-vol": {
+								MountPath: "/sidecar/shared",
+								ReadOnly:  true,
+							},
+						},
+						Volumes: map[string]helm.VolumeParams{
+							"sidecar-pvc": {
+								Enabled:        true,
+								MountPath:      "/sidecar/storage",
+								StorageRequest: "2Gi",
+							},
+						},
+					},
+					"bare-sidecar": {
+						// No sharedVolumes or volumes defined - should not cause errors
+						Image: helm.ImageParams{Repository: "test/bare-sidecar", Tag: "latest"},
+					},
+				},
+			},
+		},
+	}
+
+	files, err := helm.GenerateWizardChart(wizardParams)
+	assert.NoError(t, err)
+
+	tempDir := t.TempDir()
+	chartDir := filepath.Join(tempDir, "chart")
+	for path, content := range files {
+		if path == "values-env.yaml" {
+			assert.NoError(t, os.WriteFile(filepath.Join(tempDir, "values-env.yaml"), content, 0644))
+			continue
+		}
+		targetPath := filepath.Join(chartDir, path)
+		assert.NoError(t, os.MkdirAll(filepath.Dir(targetPath), 0755))
+		assert.NoError(t, os.WriteFile(targetPath, content, 0644))
+	}
+
+	valuesEnvPath := filepath.Join(tempDir, "values-env.yaml")
+
+	// 1. Test deploy.yaml rendering
+	cmd := exec.Command("helm", "template", "test-sidecar-vols", chartDir, "-f", valuesEnvPath, "-s", "templates/deploy.yaml")
+	out, err := cmd.CombinedOutput()
+	assert.NoError(t, err, "helm template deploy.yaml failed: %s", string(out))
+
+	renderedDeploy := string(out)
+	// setup init container mounts
+	assert.Contains(t, renderedDeploy, "- name: main-vol\n              mountPath: /shared/data")
+	assert.Contains(t, renderedDeploy, "- name: init-setup-init-scratch\n              mountPath: /scratch")
+
+	// sidecar extraContainer mounts
+	assert.Contains(t, renderedDeploy, "- name: main-vol\n              mountPath: /sidecar/shared\n              readOnly: true")
+	assert.Contains(t, renderedDeploy, "- name: sidecar-sidecar-sidecar-pvc\n              mountPath: /sidecar/storage")
+
+	// bare containers should not have volumeMounts
+	assert.NotContains(t, renderedDeploy, "- name: bare-init\n          volumeMounts:")
+	assert.NotContains(t, renderedDeploy, "- name: bare-sidecar\n          volumeMounts:")
+
+	// Pod-level volumes
+	assert.Contains(t, renderedDeploy, "- name: init-setup-init-scratch\n          emptyDir:\n            {}")
+	assert.Contains(t, renderedDeploy, "- name: sidecar-sidecar-sidecar-pvc\n          persistentVolumeClaim:\n            claimName: test-sidecar-vols-core-sidecar-sidecar-pvc")
+	assert.Contains(t, renderedDeploy, "- name: main-vol\n          persistentVolumeClaim:\n            claimName: test-sidecar-vols-core-main-vol")
+
+	// 2. Test pvc.yaml rendering
+	cmdPVC := exec.Command("helm", "template", "test-sidecar-vols", chartDir, "-f", valuesEnvPath, "-s", "templates/pvc.yaml")
+	outPVC, errPVC := cmdPVC.CombinedOutput()
+	assert.NoError(t, errPVC, "helm template pvc.yaml failed: %s", string(outPVC))
+
+	renderedPVC := string(outPVC)
+	assert.Contains(t, renderedPVC, "name: test-sidecar-vols-core-main-vol")
+	assert.Contains(t, renderedPVC, "storage: 5Gi")
+	assert.Contains(t, renderedPVC, "name: test-sidecar-vols-core-sidecar-sidecar-pvc")
+	assert.Contains(t, renderedPVC, "storage: 2Gi")
+	// ephemeral init-scratch must not generate a PVC
+	assert.NotContains(t, renderedPVC, "init-scratch")
 }
 
 

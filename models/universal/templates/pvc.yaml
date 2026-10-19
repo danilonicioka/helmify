@@ -49,52 +49,64 @@ spec:
 {{- end }}
 
 {{- range $name, $config := $comp.initContainers }}
-{{- if and (ne $config.enabled false) $config.persistence (and $config.persistence.enabled (not $config.persistence.ephemeral)) }}
+{{- if ne $config.enabled false }}
+{{- if $config.volumes }}
+{{- range $volName, $volConfig := $config.volumes }}
+{{- if and (ne $volConfig.enabled false) (not $volConfig.ephemeral) (not $volConfig.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $volName | replace "." "-" | lower | trimAll "-" }}
   labels:
     {{- include "chart-model-multi.labels" $ | nindent 4 }}
 spec:
   accessModes:
-    - {{ $config.persistence.accessMode | default "ReadWriteOnce" }}
-  {{- if $config.persistence.storageClass }}
-  {{- if (eq "-" $config.persistence.storageClass) }}
+    - {{ $volConfig.accessMode | default "ReadWriteOnce" }}
+  {{- if $volConfig.storageClass }}
+  {{- if (eq "-" $volConfig.storageClass) }}
   storageClassName: ""
   {{- else }}
-  storageClassName: "{{ $config.persistence.storageClass }}"
+  storageClassName: "{{ $volConfig.storageClass }}"
   {{- end }}
   {{- end }}
   resources:
     requests:
-      storage: {{ $config.persistence.storageRequest | default "1Gi" }}
+      storage: {{ $volConfig.storageRequest | default "1Gi" }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 
 {{- range $name, $config := $comp.extraContainers }}
-{{- if and (ne $config.enabled false) $config.persistence (and $config.persistence.enabled (not $config.persistence.ephemeral)) }}
+{{- if ne $config.enabled false }}
+{{- if $config.volumes }}
+{{- range $volName, $volConfig := $config.volumes }}
+{{- if and (ne $volConfig.enabled false) (not $volConfig.ephemeral) (not $volConfig.existingClaim) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $volName | replace "." "-" | lower | trimAll "-" }}
   labels:
     {{- include "chart-model-multi.labels" $ | nindent 4 }}
 spec:
   accessModes:
-    - {{ $config.persistence.accessMode | default "ReadWriteOnce" }}
-  {{- if $config.persistence.storageClass }}
-  {{- if (eq "-" $config.persistence.storageClass) }}
+    - {{ $volConfig.accessMode | default "ReadWriteOnce" }}
+  {{- if $volConfig.storageClass }}
+  {{- if (eq "-" $volConfig.storageClass) }}
   storageClassName: ""
   {{- else }}
-  storageClassName: "{{ $config.persistence.storageClass }}"
+  storageClassName: "{{ $volConfig.storageClass }}"
   {{- end }}
   {{- end }}
   resources:
     requests:
-      storage: {{ $config.persistence.storageRequest | default "1Gi" }}
+      storage: {{ $volConfig.storageRequest | default "1Gi" }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 

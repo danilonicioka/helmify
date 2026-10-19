@@ -143,15 +143,39 @@ spec:
             - secretRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
           {{- end }}
-          {{- if or (and $config.persistence $config.persistence.enabled) (and $config.sharedVolume $config.sharedVolume.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}
+          {{- $hasInitVols := false }}
+          {{- if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) $config.volumeMounts }}{{ $hasInitVols = true }}{{ end }}
+          {{- if $config.volumes }}{{ range $vName, $v := $config.volumes }}{{ if ne $v.enabled false }}{{ $hasInitVols = true }}{{ end }}{{ end }}{{ end }}
+          {{- if $config.sharedVolumes }}{{ range $vName, $v := $config.sharedVolumes }}{{ if ne $v.enabled false }}{{ $hasInitVols = true }}{{ end }}{{ end }}{{ end }}
+          {{- if $hasInitVols }}
           volumeMounts:
-            {{- if and $config.persistence $config.persistence.enabled }}
-            - name: init-{{ $name }}-data
-              mountPath: {{ $config.persistence.mountPath | default "/var/lib/data" }}
+            {{- if $config.sharedVolumes }}
+            {{- range $vName, $v := $config.sharedVolumes }}
+            {{- if ne $v.enabled false }}
+            - name: {{ $vName }}
+              mountPath: {{ $v.mountPath | default (and $comp.volumes (hasKey $comp.volumes $vName) (index $comp.volumes $vName).mountPath) | default (printf "/var/lib/%s" $vName) }}
+              {{- if $v.subPath }}
+              subPath: {{ $v.subPath }}
+              {{- end }}
+              {{- if $v.readOnly }}
+              readOnly: {{ $v.readOnly }}
+              {{- end }}
             {{- end }}
-            {{- if and $config.sharedVolume $config.sharedVolume.enabled }}
-            - name: data
-              mountPath: {{ $config.sharedVolume.mountPath | default "/var/lib/data" }}
+            {{- end }}
+            {{- end }}
+            {{- if $config.volumes }}
+            {{- range $vName, $v := $config.volumes }}
+            {{- if ne $v.enabled false }}
+            - name: init-{{ $name }}-{{ $vName | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $v.mountPath }}
+              {{- if $v.subPath }}
+              subPath: {{ $v.subPath }}
+              {{- end }}
+              {{- if $v.readOnly }}
+              readOnly: {{ $v.readOnly }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
             {{- end }}
             {{- if and $config.config $config.config.files }}
             {{- range $filename, $fileconf := $config.config.files }}
@@ -172,6 +196,7 @@ spec:
             {{- end }}
           {{- end }}
         {{- end }}
+
       {{- end }}
         {{- end }}
       containers:
@@ -356,15 +381,39 @@ spec:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
             {{- end }}
           {{- end }}
-          {{- if or (and $sidecar.persistence $sidecar.persistence.enabled) (and $sidecar.sharedVolume $sidecar.sharedVolume.enabled) (and $sidecar.config $sidecar.config.files) (and $sidecar.secrets $sidecar.secrets.files) }}
+          {{- $hasExtraVols := false }}
+          {{- if or (and $sidecar.config $sidecar.config.files) (and $sidecar.secrets $sidecar.secrets.files) $sidecar.volumeMounts }}{{ $hasExtraVols = true }}{{ end }}
+          {{- if $sidecar.volumes }}{{ range $vName, $v := $sidecar.volumes }}{{ if ne $v.enabled false }}{{ $hasExtraVols = true }}{{ end }}{{ end }}{{ end }}
+          {{- if $sidecar.sharedVolumes }}{{ range $vName, $v := $sidecar.sharedVolumes }}{{ if ne $v.enabled false }}{{ $hasExtraVols = true }}{{ end }}{{ end }}{{ end }}
+          {{- if $hasExtraVols }}
           volumeMounts:
-            {{- if and $sidecar.persistence $sidecar.persistence.enabled }}
-            - name: sidecar-{{ $name }}-data
-              mountPath: {{ $sidecar.persistence.mountPath | default "/var/lib/data" }}
+            {{- if $sidecar.sharedVolumes }}
+            {{- range $vName, $v := $sidecar.sharedVolumes }}
+            {{- if ne $v.enabled false }}
+            - name: {{ $vName }}
+              mountPath: {{ $v.mountPath | default (and $comp.volumes (hasKey $comp.volumes $vName) (index $comp.volumes $vName).mountPath) | default (printf "/var/lib/%s" $vName) }}
+              {{- if $v.subPath }}
+              subPath: {{ $v.subPath }}
+              {{- end }}
+              {{- if $v.readOnly }}
+              readOnly: {{ $v.readOnly }}
+              {{- end }}
             {{- end }}
-            {{- if and $sidecar.sharedVolume $sidecar.sharedVolume.enabled }}
-            - name: data
-              mountPath: {{ $sidecar.sharedVolume.mountPath | default "/var/lib/data" }}
+            {{- end }}
+            {{- end }}
+            {{- if $sidecar.volumes }}
+            {{- range $vName, $v := $sidecar.volumes }}
+            {{- if ne $v.enabled false }}
+            - name: sidecar-{{ $name }}-{{ $vName | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $v.mountPath }}
+              {{- if $v.subPath }}
+              subPath: {{ $v.subPath }}
+              {{- end }}
+              {{- if $v.readOnly }}
+              readOnly: {{ $v.readOnly }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
             {{- end }}
             {{- if and $sidecar.config $sidecar.config.files }}
             {{- range $filename, $config := $sidecar.config.files }}
@@ -413,10 +462,20 @@ spec:
       {{- end }}
 
       {{- $hasVols := false }}
-      {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasVols = true }}{{ end }}
+      {{- if or (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasVols = true }}{{ end }}
       {{- if $comp.volumes }}{{ range $vName, $v := $comp.volumes }}{{ if ne $v.enabled false }}{{ $hasVols = true }}{{ end }}{{ end }}{{ end }}
-      {{- range $name, $config := $comp.initContainers }}{{ if and (ne $config.enabled false) (or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files)) }}{{ $hasVols = true }}{{ end }}{{ end }}
-      {{- range $name, $config := $comp.extraContainers }}{{ if and (ne $config.enabled false) (or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files)) }}{{ $hasVols = true }}{{ end }}{{ end }}
+      {{- range $name, $config := $comp.initContainers }}
+        {{- if ne $config.enabled false }}
+          {{- if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}{{ $hasVols = true }}{{ end }}
+          {{- if $config.volumes }}{{ range $vName, $v := $config.volumes }}{{ if ne $v.enabled false }}{{ $hasVols = true }}{{ end }}{{ end }}{{ end }}
+        {{- end }}
+      {{- end }}
+      {{- range $name, $config := $comp.extraContainers }}
+        {{- if ne $config.enabled false }}
+          {{- if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) }}{{ $hasVols = true }}{{ end }}
+          {{- if $config.volumes }}{{ range $vName, $v := $config.volumes }}{{ if ne $v.enabled false }}{{ $hasVols = true }}{{ end }}{{ end }}{{ end }}
+        {{- end }}
+      {{- end }}
       {{- if $hasVols }}
       volumes:
         {{- range $name, $config := $comp.initContainers }}
@@ -433,6 +492,23 @@ spec:
         - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
           secret:
             secretName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
+        {{- end }}
+        {{- end }}
+        {{- if $config.volumes }}
+        {{- range $volName, $vol := $config.volumes }}
+        {{- if ne $vol.enabled false }}
+        - name: init-{{ $name }}-{{ $volName | replace "." "-" | lower | trimAll "-" }}
+          {{- if $vol.ephemeral }}
+          emptyDir:
+            {{- toYaml ($vol.emptyDir | default dict) | nindent 12 }}
+          {{- else if $vol.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $vol.existingClaim }}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $volName | replace "." "-" | lower | trimAll "-" }}
+          {{- end }}
+        {{- end }}
         {{- end }}
         {{- end }}
         {{- end }}
@@ -453,30 +529,26 @@ spec:
             secretName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
         {{- end }}
         {{- end }}
-        {{- end }}
-        {{- end }}
-        {{- range $name, $config := $comp.initContainers }}
-        {{- if and (ne $config.enabled false) $config.persistence $config.persistence.enabled }}
-        - name: init-{{ $name }}-data
-          {{- if $config.persistence.ephemeral }}
-          emptyDir: {}
+        {{- if $config.volumes }}
+        {{- range $volName, $vol := $config.volumes }}
+        {{- if ne $vol.enabled false }}
+        - name: sidecar-{{ $name }}-{{ $volName | replace "." "-" | lower | trimAll "-" }}
+          {{- if $vol.ephemeral }}
+          emptyDir:
+            {{- toYaml ($vol.emptyDir | default dict) | nindent 12 }}
+          {{- else if $vol.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $vol.existingClaim }}
           {{- else }}
           persistentVolumeClaim:
-            claimName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}
+            claimName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-{{ $volName | replace "." "-" | lower | trimAll "-" }}
           {{- end }}
         {{- end }}
         {{- end }}
-        {{- range $name, $config := $comp.extraContainers }}
-        {{- if and (ne $config.enabled false) $config.persistence $config.persistence.enabled }}
-        - name: sidecar-{{ $name }}-data
-          {{- if $config.persistence.ephemeral }}
-          emptyDir: {}
-          {{- else }}
-          persistentVolumeClaim:
-            claimName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}
-          {{- end }}
         {{- end }}
         {{- end }}
+        {{- end }}
+
         {{- if $comp.volumes }}
         {{- range $volName, $vol := $comp.volumes }}
         {{- if ne $vol.enabled false }}

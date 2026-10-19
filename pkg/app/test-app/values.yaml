@@ -341,15 +341,17 @@ deploys:
     #      requests:
     #        cpu: "100m"
     #        memory: "128Mi"
-    #    # To share the main component's data volume:
-    #    sharedVolume:
-    #      enabled: true
-    #      mountPath: /var/lib/data
-    #    # Or, to create an independent volume just for this init container:
-    #    persistence:
-    #      enabled: false
-    #      ephemeral: true
-    #      mountPath: /opt/init-data
+    #    # To share one or more of the main component's volumes:
+    #    sharedVolumes:
+    #      data:
+    #        mountPath: /var/lib/data
+    #        # subPath: ""
+    #        # readOnly: false
+    #    # Dedicated volume(s) created specifically for this init container:
+    #    volumes:
+    #      init-data:
+    #        ephemeral: true
+    #        mountPath: /opt/init-data
     #    config:
     #      files:
     #        example.txt:
@@ -402,15 +404,17 @@ deploys:
     #      startup: {}
     #      liveness: {}
     #      readiness: {}
-    #    # To share the main component's data volume:
-    #    sharedVolume:
-    #      enabled: true
-    #      mountPath: /var/lib/data
-    #    # Or, to create an independent volume just for this sidecar:
-    #    persistence:
-    #      enabled: false
-    #      ephemeral: true
-    #      mountPath: /opt/sidecar-data
+    #    # To share one or more of the main component's volumes:
+    #    sharedVolumes:
+    #      data:
+    #        mountPath: /var/lib/data
+    #        # subPath: ""
+    #        # readOnly: false
+    #    # Dedicated volume(s) created specifically for this sidecar:
+    #    volumes:
+    #      sidecar-data:
+    #        ephemeral: true
+    #        mountPath: /opt/sidecar-data
     #        example.txt:
     #          mountPath: /etc/config/example.txt
     #          content: |

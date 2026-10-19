@@ -500,19 +500,28 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					}
 
 					if sidecarParams != nil {
+						if targetVolName == "" {
+							targetVolName = "data"
+						}
+						if sidecarParams.Volumes == nil {
+							sidecarParams.Volumes = make(map[string]VolumeParams)
+						}
+						vParam := sidecarParams.Volumes[targetVolName]
+						vParam.Enabled = true
 						if found && req != "" {
-							sidecarParams.Persistence.StorageRequest = req
+							vParam.StorageRequest = req
 						}
 						if foundAM && len(accessModes) > 0 {
-							sidecarParams.Persistence.AccessMode = accessModes[0]
+							vParam.AccessMode = accessModes[0]
 						}
 						if foundSC {
 							if sc == "" {
-								sidecarParams.Persistence.StorageClass = "-"
+								vParam.StorageClass = "-"
 							} else {
-								sidecarParams.Persistence.StorageClass = sc
+								vParam.StorageClass = sc
 							}
 						}
+						sidecarParams.Volumes[targetVolName] = vParam
 					}
 				} else {
 					if targetVolName == "" {
@@ -1350,7 +1359,7 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 		depParams.Lifecycle = lc
 	}
 
-	// Extract Persistence from volumeMounts
+	// Extract Volumes and SharedVolumes from volumeMounts
 	mounts, ok, _ := unstructured.NestedSlice(container, "volumeMounts")
 	if ok && len(mounts) > 0 {
 		for _, m := range mounts {
@@ -1361,7 +1370,9 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 			isConfigMapOrSecret := hasVolSrc && (volSrc.Type == "configMap" || volSrc.Type == "secret")
 			if !strings.HasPrefix(name, "kube-api") && !strings.Contains(name, "default-token") && !isConfigMapOrSecret {
 				path, _, _ := unstructured.NestedString(mount, "mountPath")
-				
+				subPath, _, _ := unstructured.NestedString(mount, "subPath")
+				readOnly, _, _ := unstructured.NestedBool(mount, "readOnly")
+
 				isShared := false
 				if mainMounts, ok, _ := unstructured.NestedSlice(mainContainer, "volumeMounts"); ok {
 					for _, mm := range mainMounts {
@@ -1373,20 +1384,32 @@ func populateSidecarParams(depParams *SidecarParams, container map[string]interf
 						}
 					}
 				}
-				
+
 				if isShared {
-					depParams.SharedVolume.Enabled = true
-					depParams.SharedVolume.MountPath = path
+					if depParams.SharedVolumes == nil {
+						depParams.SharedVolumes = make(map[string]SharedVolumeParams)
+					}
+					depParams.SharedVolumes[name] = SharedVolumeParams{
+						MountPath: path,
+						SubPath:   subPath,
+						ReadOnly:  readOnly,
+					}
 				} else {
-					depParams.Persistence.Enabled = true
-					depParams.Persistence.MountPath = path
+					if depParams.Volumes == nil {
+						depParams.Volumes = make(map[string]VolumeParams)
+					}
+					isEphemeral := true
 					if hasVolSrc && volSrc.Type == "persistentVolumeClaim" {
-						depParams.Persistence.Ephemeral = false
-					} else {
-						depParams.Persistence.Ephemeral = true
+						isEphemeral = false
+					}
+					depParams.Volumes[name] = VolumeParams{
+						Enabled:   true,
+						MountPath: path,
+						Ephemeral: isEphemeral,
+						SubPath:   subPath,
+						ReadOnly:  readOnly,
 					}
 				}
-				break // Take the first meaningful volume for the simple model
 			}
 		}
 	}

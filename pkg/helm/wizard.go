@@ -181,28 +181,29 @@ type DeploymentParams struct {
 	Instrumentation               *InstrumentationParams    `json:"instrumentation,omitempty"`
 }
 
-// SidecarPersistenceParams is a simplified persistence config for sidecars.
-// Sidecars share the pod's PVC — they cannot create their own. Only enabled and mountPath are relevant.
-type SidecarPersistenceParams struct {
-	Enabled   bool   `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+// SharedVolumeParams configures a reference to a shared pod volume.
+type SharedVolumeParams struct {
+	Enabled   *bool  `json:"enabled,omitempty" yaml:"enabled,omitempty"`
 	MountPath string `json:"mountPath,omitempty" yaml:"mountPath,omitempty"`
+	SubPath   string `json:"subPath,omitempty" yaml:"subPath,omitempty"`
+	ReadOnly  bool   `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`
 }
 
 // SidecarParams holds configuration for extra and init containers
 type SidecarParams struct {
-	Enabled         *bool                    `json:"enabled,omitempty" yaml:"enabled,omitempty"`
-	Image           ImageParams              `json:"image" yaml:"image"`
-	Command         []string                 `json:"command,omitempty" yaml:"command,omitempty"`
-	Args            []string                 `json:"args,omitempty" yaml:"args,omitempty"`
-	Config          *ConfigParams            `json:"config,omitempty" yaml:"config,omitempty"`
-	Secrets         *ConfigParams            `json:"secrets,omitempty" yaml:"secrets,omitempty"`
-	Service         ServiceParams            `json:"service,omitempty" yaml:"service,omitempty"`
-	Resources       *ResourceParams          `json:"resources,omitempty" yaml:"resources,omitempty"`
-	Probes          *ProbesParams            `json:"probes,omitempty" yaml:"probes,omitempty"`
-	SecurityContext map[string]interface{}   `json:"securityContext,omitempty" yaml:"securityContext,omitempty"`
-	Lifecycle       map[string]interface{}   `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
-	SharedVolume    SidecarPersistenceParams `json:"sharedVolume,omitempty" yaml:"sharedVolume,omitempty"`
-	Persistence     PersistenceParams        `json:"persistence,omitempty" yaml:"persistence,omitempty"`
+	Enabled         *bool                         `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+	Image           ImageParams                   `json:"image" yaml:"image"`
+	Command         []string                      `json:"command,omitempty" yaml:"command,omitempty"`
+	Args            []string                      `json:"args,omitempty" yaml:"args,omitempty"`
+	Config          *ConfigParams                 `json:"config,omitempty" yaml:"config,omitempty"`
+	Secrets         *ConfigParams                 `json:"secrets,omitempty" yaml:"secrets,omitempty"`
+	Service         ServiceParams                 `json:"service,omitempty" yaml:"service,omitempty"`
+	Resources       *ResourceParams               `json:"resources,omitempty" yaml:"resources,omitempty"`
+	Probes          *ProbesParams                 `json:"probes,omitempty" yaml:"probes,omitempty"`
+	SecurityContext map[string]interface{}        `json:"securityContext,omitempty" yaml:"securityContext,omitempty"`
+	Lifecycle       map[string]interface{}        `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
+	SharedVolumes   map[string]SharedVolumeParams `json:"sharedVolumes,omitempty" yaml:"sharedVolumes,omitempty"`
+	Volumes         map[string]VolumeParams       `json:"volumes,omitempty" yaml:"volumes,omitempty"`
 }
 
 // ConfigParams holds env vars and mounted files
@@ -339,6 +340,8 @@ type VolumeParams struct {
 	StorageRequest string `json:"storageRequest,omitempty" yaml:"storageRequest,omitempty"`
 	AccessMode     string `json:"accessMode,omitempty" yaml:"accessMode,omitempty"`
 	StorageClass   string `json:"storageClass,omitempty" yaml:"storageClass,omitempty"`
+	SubPath        string `json:"subPath,omitempty" yaml:"subPath,omitempty"`
+	ReadOnly       bool   `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`
 }
 
 // PersistenceParams configures PVC persistence.
