@@ -497,5 +497,91 @@ func TestInitAndExtraContainers_VolumesAndSharedVolumes(t *testing.T) {
 	assert.NotContains(t, renderedPVC, "init-scratch")
 }
 
+func TestHandleGenerate_ReleaseNamePrefixStripping(t *testing.T) {
+	manifests := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-smd-roles
+  labels:
+    app.kubernetes.io/name: smd
+    app.kubernetes.io/instance: release-name
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smd
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smd
+    spec:
+      containers:
+      - name: roles
+        image: quay.io/seplan/smd:roles-1.0
+        ports:
+        - containerPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: release-name-smd-web
+  labels:
+    app.kubernetes.io/name: smd
+    app.kubernetes.io/instance: release-name
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: smd
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: smd
+    spec:
+      containers:
+      - name: web
+        image: quay.io/seplan/smd:web-1.0
+        ports:
+        - containerPort: 80
+`
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/generate", bytes.NewBufferString(manifests))
+	req.Header.Set("X-Chart-Name", "smd")
+	w := httptest.NewRecorder()
+
+	handleGenerate(w, req)
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	gr, err := gzip.NewReader(resp.Body)
+	assert.NoError(t, err)
+	defer gr.Close()
+
+	tr := tar.NewReader(gr)
+	files := make(map[string]string)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		buf := new(bytes.Buffer)
+		_, _ = io.Copy(buf, tr)
+		files[hdr.Name] = buf.String()
+	}
+
+	valuesEnv := files["values-env.yaml"]
+	// Component names should be stripped cleanly to 'roles' and 'web', NOT 'release-name-smd-roles'
+	assert.Contains(t, valuesEnv, "  roles:\n")
+	assert.Contains(t, valuesEnv, "  web:\n")
+	assert.NotContains(t, valuesEnv, "release-name-smd")
+
+	chartValues := files["chart/values.yaml"]
+	assert.Contains(t, chartValues, "    roles:\n")
+	assert.Contains(t, chartValues, "    web:\n")
+	assert.NotContains(t, chartValues, "release-name-smd")
+}
+
 
 

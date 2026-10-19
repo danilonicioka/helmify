@@ -73,8 +73,12 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 		if kind == "Deployment" || kind == "StatefulSet" || kind == "DaemonSet" || kind == "CronJob" {
 			name := obj.GetName()
 
-			// Strip chart name prefix to cleanly determine component names (e.g. 'entremanas-api' -> 'api')
+			// Strip default Helm release name prefixes ('release-name-' / 'RELEASE-NAME-')
 			cleanName := name
+			if strings.HasPrefix(strings.ToLower(cleanName), "release-name-") {
+				cleanName = cleanName[len("release-name-"):]
+			}
+			// Strip chart name prefix to cleanly determine component names (e.g. 'entremanas-api' -> 'api')
 			if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName+"-") {
 				cleanName = strings.TrimPrefix(cleanName, conf.ChartName+"-")
 			} else if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName) {
@@ -425,6 +429,16 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			return ""
 		}
 		if comp, ok := labels["app.kubernetes.io/component"]; ok {
+			cleanComp := comp
+			if strings.HasPrefix(strings.ToLower(cleanComp), "release-name-") {
+				cleanComp = cleanComp[len("release-name-"):]
+			}
+			if conf.ChartName != "" && strings.HasPrefix(cleanComp, conf.ChartName+"-") {
+				cleanComp = strings.TrimPrefix(cleanComp, conf.ChartName+"-")
+			}
+			if _, exists := params.Deployments[cleanComp]; exists {
+				return cleanComp
+			}
 			if _, exists := params.Deployments[comp]; exists {
 				return comp
 			}
@@ -458,6 +472,9 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			if targetComp == "" {
 				for depName := range params.Deployments {
 					cleanName := name
+					if strings.HasPrefix(strings.ToLower(cleanName), "release-name-") {
+						cleanName = cleanName[len("release-name-"):]
+					}
 					if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName+"-") {
 						cleanName = strings.TrimPrefix(cleanName, conf.ChartName+"-")
 					} else if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName) {

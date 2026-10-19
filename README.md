@@ -116,3 +116,28 @@ To lint and render templates during local development:
 helm lint ./<CHART_NAME>
 helm template ./<CHART_NAME>
 ```
+
+### Generating Charts via Helmify API
+
+To convert an existing Helm chart or Kubernetes manifests into a standardized chart using the Helmify endpoint:
+
+```bash
+# 1. From raw Kubernetes manifests:
+cat manifests.yaml | curl -k -X POST "https://helmify.apps.ocp-dev.i.tj.pa.gov.br/v1/generate" \
+  -H "X-Chart-Name: myapp" \
+  -H "X-Generate-All-Templates: true" \
+  -H "Content-Type: text/yaml" \
+  --data-binary @- \
+  --output chart.tar.gz
+
+# 2. From an existing Helm chart using helm template:
+# IMPORTANT: Always provide the chart name as the release name (e.g., 'helm template myapp ./chart').
+# If you omit the release name ('helm template ./chart'), Helm defaults the release name to 'release-name',
+# which prepends 'release-name-' to all generated component manifests.
+helm template myapp ./chart | curl -k -X POST "https://helmify.apps.ocp-dev.i.tj.pa.gov.br/v1/generate" \
+  -H "X-Chart-Name: myapp" \
+  -H "X-Generate-All-Templates: true" \
+  -H "Content-Type: text/yaml" \
+  --data-binary @- \
+  --output chart.tar.gz
+```
