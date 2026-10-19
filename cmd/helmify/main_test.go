@@ -11,8 +11,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/danilonicioka/helmify/pkg/helm"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -317,5 +319,68 @@ spec:
 	assert.Contains(t, rendered, "storage: 20Gi")
 	assert.Contains(t, rendered, "storageClassName: \"ocs-storagecluster-ceph-rbd\"")
 }
+
+func TestRouteFallback_FromDefault(t *testing.T) {
+	wizardParams := helm.WizardParams{
+		ChartName: "test-route-fallback",
+		Deployments: map[string]helm.DeploymentParams{
+			"app": {
+				Image: helm.ImageParams{Repository: "test/app", Tag: "latest"},
+				Routes: map[string]helm.SubRouteParams{
+					"default": {
+						Enabled: true,
+						Host:    "app.default.domain",
+						Path:    "/",
+					},
+					"external": {
+						Enabled: true,
+						Host:    "app.external.domain",
+						// Path, annotations, and TLS omitted, should inherit from default
+					},
+				},
+			},
+		},
+	}
+
+	files, err := helm.GenerateWizardChart(wizardParams)
+	assert.NoError(t, err)
+
+	tempDir := t.TempDir()
+	chartDir := filepath.Join(tempDir, "chart")
+	for path, content := range files {
+		if path == "values-env.yaml" {
+			envStr := string(content)
+			envStr = strings.Replace(envStr, "        annotations: {}", "        annotations:\n          haproxy.router.openshift.io/timeout: 45s", 1)
+			assert.NoError(t, os.WriteFile(filepath.Join(tempDir, "values-env.yaml"), []byte(envStr), 0644))
+			continue
+		}
+		targetPath := filepath.Join(chartDir, path)
+		assert.NoError(t, os.MkdirAll(filepath.Dir(targetPath), 0755))
+		assert.NoError(t, os.WriteFile(targetPath, content, 0644))
+	}
+
+
+	chartPath := filepath.Join(tempDir, "chart")
+	valuesEnvPath := filepath.Join(tempDir, "values-env.yaml")
+	cmd := exec.Command("helm", "template", "test-route-fallback", chartPath, "-f", valuesEnvPath, "-s", "templates/route.yaml")
+	out, err := cmd.CombinedOutput()
+	assert.NoError(t, err, "helm template failed: %s", string(out))
+
+	rendered := string(out)
+	docs := strings.Split(rendered, "---")
+	var extDoc string
+	for _, doc := range docs {
+		if strings.Contains(doc, "app.external.domain") {
+			extDoc = doc
+			break
+		}
+	}
+	assert.NotEmpty(t, extDoc, "external route must be rendered")
+	assert.Contains(t, extDoc, "haproxy.router.openshift.io/timeout: 45s", "annotations must be inherited from default route")
+	assert.Contains(t, extDoc, "path: \"/\"", "path must be inherited from default route")
+	assert.Contains(t, extDoc, "termination: edge", "tls termination must be inherited from default route")
+	assert.Contains(t, extDoc, "insecureEdgeTerminationPolicy: Redirect", "tls redirect policy must be inherited from default route")
+}
+
 
 

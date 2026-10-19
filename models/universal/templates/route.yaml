@@ -29,6 +29,13 @@
   {{- end }}
 {{- end }}
 
+{{- $defaultRoute := dict }}
+{{- if and $comp.routes (hasKey $comp.routes "default") }}
+  {{- $defaultRoute = index $comp.routes "default" }}
+{{- else if and $comp.route $comp.route.default }}
+  {{- $defaultRoute = $comp.route.default }}
+{{- end }}
+
 {{- $baseCompName := include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
 {{- range $routeName, $routeConfig := $routes }}
 ---
@@ -39,9 +46,10 @@ metadata:
   labels:
     {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
   {{- $annotations := dict }}
-  {{- if and $comp.route $comp.route.annotations }}{{ $annotations = merge $annotations $comp.route.annotations }}{{ end }}
-  {{- if and $comp.routesDefaults $comp.routesDefaults.annotations }}{{ $annotations = merge $annotations $comp.routesDefaults.annotations }}{{ end }}
-  {{- if $routeConfig.annotations }}{{ $annotations = merge $routeConfig.annotations $annotations }}{{ end }}
+  {{- if and $comp.route $comp.route.annotations }}{{ $annotations = mergeOverwrite $annotations $comp.route.annotations }}{{ end }}
+  {{- if and $comp.routesDefaults $comp.routesDefaults.annotations }}{{ $annotations = mergeOverwrite $annotations $comp.routesDefaults.annotations }}{{ end }}
+  {{- if and $defaultRoute $defaultRoute.annotations }}{{ $annotations = mergeOverwrite $annotations $defaultRoute.annotations }}{{ end }}
+  {{- if $routeConfig.annotations }}{{ $annotations = mergeOverwrite $annotations $routeConfig.annotations }}{{ end }}
   {{- if $annotations }}
   annotations:
     {{- toYaml $annotations | nindent 4 }}
@@ -50,24 +58,43 @@ spec:
   {{- if $routeConfig.host }}
   host: {{ $routeConfig.host | quote }}
   {{- end }}
-  {{- $path := $routeConfig.path | default (and $comp.route $comp.route.path) | default (and $comp.routesDefaults $comp.routesDefaults.path) }}
+  {{- $path := "" }}
+  {{- if hasKey $routeConfig "path" }}
+    {{- $path = $routeConfig.path }}
+  {{- else if and $defaultRoute (hasKey $defaultRoute "path") }}
+    {{- $path = $defaultRoute.path }}
+  {{- else if and $comp.route $comp.route.path }}
+    {{- $path = $comp.route.path }}
+  {{- else if and $comp.routesDefaults $comp.routesDefaults.path }}
+    {{- $path = $comp.routesDefaults.path }}
+  {{- end }}
   {{- if $path }}
   path: {{ $path | quote }}
   {{- end }}
-  {{- $tls := $routeConfig.tls | default (and $comp.route $comp.route.tls) | default (and $comp.routesDefaults $comp.routesDefaults.tls) }}
-  {{- if $tls }}
+  {{- $tls := "" }}
+  {{- if hasKey $routeConfig "tls" }}
+    {{- $tls = $routeConfig.tls }}
+  {{- else if and $defaultRoute (hasKey $defaultRoute "tls") }}
+    {{- $tls = $defaultRoute.tls }}
+  {{- else if and $comp.route $comp.route.tls }}
+    {{- $tls = $comp.route.tls }}
+  {{- else if and $comp.routesDefaults $comp.routesDefaults.tls }}
+    {{- $tls = $comp.routesDefaults.tls }}
+  {{- end }}
+  {{- if and $tls (not (eq (toString $tls) "false")) }}
   tls:
     {{- toYaml $tls | nindent 4 }}
   {{- end }}
   to:
     kind: Service
-    name: {{ $routeConfig.serviceName | default $baseCompName }}
-    weight: {{ $routeConfig.weight | default 100 }}
+    name: {{ $routeConfig.serviceName | default (and $defaultRoute $defaultRoute.serviceName) | default $baseCompName }}
+    weight: {{ $routeConfig.weight | default (and $defaultRoute $defaultRoute.weight) | default 100 }}
   port:
-    targetPort: {{ if $routeConfig.targetPort }}{{ $routeConfig.targetPort }}{{ else if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
-  wildcardPolicy: {{ $routeConfig.wildcardPolicy | default "None" }}
+    targetPort: {{ if $routeConfig.targetPort }}{{ $routeConfig.targetPort }}{{ else if and $defaultRoute $defaultRoute.targetPort }}{{ $defaultRoute.targetPort }}{{ else if and $comp.service $comp.service.ports }}{{ if hasKey $comp.service.ports "http" }}http{{ else }}{{ keys $comp.service.ports | first | default "http" }}{{ end }}{{ else }}http{{ end }}
+  wildcardPolicy: {{ $routeConfig.wildcardPolicy | default (and $defaultRoute $defaultRoute.wildcardPolicy) | default "None" }}
 {{- end }}
 
 {{- end }}
 {{- end }}
 {{- end }}
+
