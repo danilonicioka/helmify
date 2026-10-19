@@ -131,6 +131,7 @@ deploys:
             stabilizationWindowSeconds: 0
 
     service:
+      enabled: true # Set to false for backend workers, queue consumers, or non-network workloads
       type: ClusterIP
       ports:
         http:
@@ -433,6 +434,7 @@ deploys:
             stabilizationWindowSeconds: 0
             
     service:
+      enabled: true
       type: ClusterIP
       ports:
         http:

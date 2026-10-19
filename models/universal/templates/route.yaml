@@ -1,6 +1,6 @@
 {{- range $compName, $comp := .Values.deploys }}
 {{- if ne $comp.enabled false }}
-{{- if ne $comp.workloadType "CronJob" }}
+{{- if and (ne $comp.workloadType "CronJob") (or (not $comp.service) (ne $comp.service.enabled false)) }}
 
 {{- /* Resolve routes map: prefer $comp.routes, fallback to legacy $comp.route */}}
 {{- $routes := dict }}

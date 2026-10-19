@@ -68,10 +68,11 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	assert.Contains(t, envStr, "internal.host.com")
 	assert.Contains(t, envStr, "TZ: America/Sao_Paulo")
 	assert.Contains(t, envStr, "fullnameOverride: test-single-app")
-
-		
-
-	}
+	assert.Contains(t, envStr, `role: "test-single-app-role"`)
+	assert.Contains(t, envStr, `path: "kv/data/test-single-app"`)
+	assert.NotContains(t, envStr, "test-single-app-test-single-app")
+	assert.NotContains(t, envStr, "kv/data/test-single-app/test-single-app")
+}
 
 func TestGenerateWizardChart_Multi(t *testing.T) {
 	params := WizardParams{

@@ -249,8 +249,10 @@ type ImageParams struct {
 
 // ServiceParams configures the internal service port.
 type ServiceParams struct {
-	Port  *int `json:"port,omitempty" yaml:"port,omitempty"`
-	Ports map[string]struct {
+	Enabled *bool  `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+	Type    string `json:"type,omitempty" yaml:"type,omitempty"`
+	Port    *int   `json:"port,omitempty" yaml:"port,omitempty"`
+	Ports   map[string]struct {
 		Port          int    `json:"port" yaml:"port"`
 		ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
 		Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
@@ -546,7 +548,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if baseNode != nil && componentsMapping != nil {
 			cloned := cloneYamlNode(baseNode)
 			// Replace any nested references to 'api' (if we had any)
-			replaceNodeComponent(cloned, "api", compName)
+			replaceNodeComponent(cloned, "api", compName, params.ChartName)
 			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: compName}
 			componentsMapping.Content = append(componentsMapping.Content, keyNode, cloned)
 		}
@@ -557,22 +559,36 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "replicas"), *depConfig.Replicas)
 			_ = setYamlPath(&customNode, append(appKeyPrefix, "replicas"), *depConfig.Replicas)
 		}
-		if depConfig.Service.Ports != nil && len(depConfig.Service.Ports) > 0 {
-			for pName, pData := range depConfig.Service.Ports {
-				_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "port"), pData.Port)
-				_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "port"), pData.Port)
-				if pData.ContainerPort > 0 && pData.ContainerPort != pData.Port {
-					_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "containerPort"), pData.ContainerPort)
-					_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "containerPort"), pData.ContainerPort)
-				}
-				if pData.Protocol != "" && pData.Protocol != "TCP" {
-					_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "protocol"), pData.Protocol)
-					_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "protocol"), pData.Protocol)
-				}
+		if depConfig.Service.Enabled != nil {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "enabled"), *depConfig.Service.Enabled)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "enabled"), *depConfig.Service.Enabled)
+			if !*depConfig.Service.Enabled {
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports"), map[string]interface{}{})
+				_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports"), map[string]interface{}{})
 			}
-		} else if svcPort := depConfig.Service.Port; svcPort != nil && *svcPort > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", "http", "port"), *svcPort)
-			_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", "http", "port"), *svcPort)
+		}
+		if depConfig.Service.Type != "" {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "type"), depConfig.Service.Type)
+			_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "type"), depConfig.Service.Type)
+		}
+		if depConfig.Service.Enabled == nil || *depConfig.Service.Enabled {
+			if depConfig.Service.Ports != nil && len(depConfig.Service.Ports) > 0 {
+				for pName, pData := range depConfig.Service.Ports {
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "port"), pData.Port)
+					_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "port"), pData.Port)
+					if pData.ContainerPort > 0 && pData.ContainerPort != pData.Port {
+						_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "containerPort"), pData.ContainerPort)
+						_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "containerPort"), pData.ContainerPort)
+					}
+					if pData.Protocol != "" && pData.Protocol != "TCP" {
+						_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", pName, "protocol"), pData.Protocol)
+						_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", pName, "protocol"), pData.Protocol)
+					}
+				}
+			} else if svcPort := depConfig.Service.Port; svcPort != nil && *svcPort > 0 {
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "service", "ports", "http", "port"), *svcPort)
+				_ = setYamlPath(&customNode, append(appKeyPrefix, "service", "ports", "http", "port"), *svcPort)
+			}
 		}
 		if depConfig.Autoscaling != nil {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "autoscaling"), depConfig.Autoscaling)
@@ -1014,6 +1030,16 @@ func replaceChartName(content string, oldChartName, newChartName string) string 
 	res = strings.ReplaceAll(res, "chart-model-multi", newChartName)
 	res = strings.ReplaceAll(res, "chart-model", newChartName)
 	res = strings.ReplaceAll(res, "<CHART_NAME>", newChartName)
+
+	chartKebab := processor.NormalizeComponentName(newChartName)
+	// Deduplicate any repeated chart names like "smd-smd-role" or "kv/data/smd/smd"
+	res = strings.ReplaceAll(res, chartKebab+"-"+chartKebab+"-role", chartKebab+"-role")
+	res = strings.ReplaceAll(res, "kv/data/"+chartKebab+"/"+chartKebab, "kv/data/"+chartKebab)
+	res = strings.ReplaceAll(res, "kv/data/"+newChartName+"/"+newChartName, "kv/data/"+newChartName)
+	if newChartName != chartKebab {
+		res = strings.ReplaceAll(res, newChartName+"-"+newChartName+"-role", newChartName+"-role")
+	}
+
 	return res
 }
 
@@ -1040,19 +1066,27 @@ func replaceComponent(content string, oldComp, newComp string) string {
 	return res
 }
 
-func replaceNodeComponent(node *yaml.Node, oldComp, newComp string) {
+func replaceNodeComponent(node *yaml.Node, oldComp, newComp, chartName string) {
 	if node == nil {
 		return
 	}
 	if node.Kind == yaml.ScalarNode {
 		newCompKebab := processor.NormalizeComponentName(newComp)
+		chartKebab := processor.NormalizeComponentName(chartName)
 		val := node.Value
-		val = strings.ReplaceAll(val, "-"+oldComp, "-"+newCompKebab)
-		val = strings.ReplaceAll(val, "/"+oldComp, "/"+newCompKebab)
+		if newCompKebab == chartKebab {
+			// Single component named after the chart: omit duplicate component suffixes
+			val = strings.ReplaceAll(val, "-"+oldComp+"-role", "-role")
+			val = strings.ReplaceAll(val, "/"+oldComp, "")
+			val = strings.ReplaceAll(val, "-"+oldComp, "")
+		} else {
+			val = strings.ReplaceAll(val, "-"+oldComp, "-"+newCompKebab)
+			val = strings.ReplaceAll(val, "/"+oldComp, "/"+newCompKebab)
+		}
 		node.Value = val
 	}
 	for _, child := range node.Content {
-		replaceNodeComponent(child, oldComp, newComp)
+		replaceNodeComponent(child, oldComp, newComp, chartName)
 	}
 }
 

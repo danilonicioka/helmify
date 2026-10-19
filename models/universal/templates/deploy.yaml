@@ -205,7 +205,7 @@ spec:
           image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default $.Chart.AppVersion }}"
           imagePullPolicy: {{ $comp.image.pullPolicy }}
         {{- end }}
-          {{- if and $comp.service $comp.service.ports }}
+          {{- if and $comp.service (ne $comp.service.enabled false) $comp.service.ports }}
           ports:
             {{- range $key, $val := $comp.service.ports }}
             - name: {{ $key }}
@@ -344,7 +344,7 @@ spec:
           args:
             {{- toYaml $sidecar.args | nindent 12 }}
           {{- end }}
-          {{- if and $sidecar.service $sidecar.service.ports }}
+          {{- if and $sidecar.service (ne $sidecar.service.enabled false) $sidecar.service.ports }}
           ports:
             {{- range $key, $val := $sidecar.service.ports }}
             - name: {{ $key }}
@@ -604,5 +604,4 @@ spec:
       {{- end }}
 
 {{- end }}
----
 {{- end }}

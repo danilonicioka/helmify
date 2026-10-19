@@ -1072,6 +1072,16 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			delete(params.Deployments, compName)
 		}
 	}
+
+	// Auto-detect components without ports or services and disable service
+	for compName, depParams := range params.Deployments {
+		if len(depParams.Service.Ports) == 0 && (depParams.Service.Port == nil || *depParams.Service.Port == 0) {
+			disabled := false
+			depParams.Service.Enabled = &disabled
+			params.Deployments[compName] = depParams
+		}
+	}
+
 	// Auto-detect type and normalize naming if single
 	if len(params.Deployments) == 1 {
 		// If there is only one component, the wizard expects it to be named the same as the chart

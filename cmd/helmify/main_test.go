@@ -583,5 +583,152 @@ spec:
 	assert.NotContains(t, chartValues, "release-name-smd")
 }
 
+func TestServiceEnabled_WorkerWithoutService(t *testing.T) {
+	disabled := false
+	enabled := true
+	wizardParams := helm.WizardParams{
+		ChartName: "test-svc-enabled",
+		Deployments: map[string]helm.DeploymentParams{
+			"web": {
+				Image: helm.ImageParams{Repository: "test/web", Tag: "1.0"},
+				Service: helm.ServiceParams{
+					Enabled: &enabled,
+					Ports: map[string]struct {
+						Port          int    `json:"port" yaml:"port"`
+						ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
+						Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+					}{
+						"http": {Port: 8080},
+					},
+				},
+				Routes: map[string]helm.SubRouteParams{
+					"default": {Enabled: true, Host: "web.example.com"},
+				},
+			},
+			"worker": {
+				// Pure background worker with service.enabled: false and no ports
+				Image: helm.ImageParams{Repository: "test/worker", Tag: "1.0"},
+				Service: helm.ServiceParams{
+					Enabled: &disabled,
+				},
+				Routes: map[string]helm.SubRouteParams{
+					"default": {Enabled: true, Host: "worker.example.com"},
+				},
+			},
+		},
+	}
 
+	files, err := helm.GenerateWizardChart(wizardParams)
+	assert.NoError(t, err)
 
+	tempDir := t.TempDir()
+	chartDir := filepath.Join(tempDir, "chart")
+	for path, content := range files {
+		if path == "values-env.yaml" {
+			assert.NoError(t, os.WriteFile(filepath.Join(tempDir, "values-env.yaml"), content, 0644))
+			continue
+		}
+		targetPath := filepath.Join(chartDir, path)
+		assert.NoError(t, os.MkdirAll(filepath.Dir(targetPath), 0755))
+		assert.NoError(t, os.WriteFile(targetPath, content, 0644))
+	}
+
+	valuesEnvPath := filepath.Join(tempDir, "values-env.yaml")
+
+	// 1. Verify svc.yaml: 'web' must have a Service; 'worker' must NOT have a Service
+	cmdSVC := exec.Command("helm", "template", "test-svc-enabled", chartDir, "-f", valuesEnvPath, "-s", "templates/svc.yaml")
+	outSVC, errSVC := cmdSVC.CombinedOutput()
+	assert.NoError(t, errSVC, "helm template svc.yaml failed: %s", string(outSVC))
+
+	renderedSVC := string(outSVC)
+	assert.Contains(t, renderedSVC, "test-svc-enabled-web")
+	assert.NotContains(t, renderedSVC, "test-svc-enabled-worker")
+
+	// 2. Verify deploy.yaml: 'web' must have ports; 'worker' must NOT have ports
+	cmdDeploy := exec.Command("helm", "template", "test-svc-enabled", chartDir, "-f", valuesEnvPath, "-s", "templates/deploy.yaml")
+	outDeploy, errDeploy := cmdDeploy.CombinedOutput()
+	assert.NoError(t, errDeploy, "helm template deploy.yaml failed: %s", string(outDeploy))
+
+	renderedDeploy := string(outDeploy)
+	assert.Contains(t, renderedDeploy, "containerPort: 8080")
+	// worker deployment should not render container ports
+	docs := strings.Split(renderedDeploy, "---")
+	var workerDeploy string
+	for _, doc := range docs {
+		if strings.Contains(doc, "name: test-svc-enabled-worker") {
+			workerDeploy = doc
+			break
+		}
+	}
+	assert.NotEmpty(t, workerDeploy, "rendered deploy:\n%s", renderedDeploy)
+	assert.NotContains(t, workerDeploy, "ports:")
+
+	// 3. Verify route.yaml: 'web' must have a Route; 'worker' must NOT have a Route
+	cmdRoute := exec.Command("helm", "template", "test-svc-enabled", chartDir, "-f", valuesEnvPath, "-s", "templates/route.yaml")
+	outRoute, errRoute := cmdRoute.CombinedOutput()
+	assert.NoError(t, errRoute, "helm template route.yaml failed: %s", string(outRoute))
+
+	renderedRoute := string(outRoute)
+	assert.Contains(t, renderedRoute, "host: \"web.example.com\"")
+	assert.NotContains(t, renderedRoute, "worker.example.com")
+}
+
+func TestSingleDeployment_NoDuplicateChartSuffix(t *testing.T) {
+	manifests := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: smd
+  labels:
+    app: smd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: smd
+  template:
+    metadata:
+      labels:
+        app: smd
+    spec:
+      containers:
+      - name: smd
+        image: quay.io/tjpa/smd:1.0.0
+        ports:
+        - containerPort: 8080
+`
+	req := httptest.NewRequest(http.MethodPost, "/v1/generate", bytes.NewBufferString(manifests))
+	req.Header.Set("X-Chart-Name", "smd")
+	w := httptest.NewRecorder()
+
+	handleGenerate(w, req)
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	gr, err := gzip.NewReader(resp.Body)
+	assert.NoError(t, err)
+	defer gr.Close()
+
+	tr := tar.NewReader(gr)
+	files := make(map[string]string)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		buf := new(bytes.Buffer)
+		_, _ = io.Copy(buf, tr)
+		files[hdr.Name] = buf.String()
+	}
+
+	valuesEnv := files["values-env.yaml"]
+	// Verify VSO role and path are NOT duplicated as smd-smd-role or kv/data/smd/smd
+	assert.Contains(t, valuesEnv, `role: "smd-role"`)
+	assert.Contains(t, valuesEnv, `path: "kv/data/smd"`)
+	assert.NotContains(t, valuesEnv, "smd-smd-role")
+	assert.NotContains(t, valuesEnv, "kv/data/smd/smd")
+
+	// Verify podAntiAffinity does not duplicate name
+	assert.NotContains(t, valuesEnv, "- smd-smd")
+}

@@ -38,6 +38,7 @@ Defines environment variables for the container using two maps:
 
 ### 3. Routing & Networking
 Configures the internal Kubernetes `service` (ports and type) and OpenShift routes:
+- **Service Toggle (`service.enabled`):** Enabled by default (`true`). Setting `service.enabled: false` completely suppresses the Kubernetes `Service`, container `ports:` in the Deployment, and OpenShift `Route` generation for background workers, queue consumers (e.g. Celery workers), or components that do not expose network endpoints.
 - **Primary Port:** The main service port (default: 8080).
 - **Decoupled Container Port:** By default, `port` configures both the Service port and the underlying container port. To expose a different port on the Service (e.g. `port: 80`) while keeping the container listening on another (e.g. `containerPort: 8080`), define `containerPort` inside `service.ports.<name>`.
 - **Additional Ports:** Multiple named ports can be declared with varying protocols (e.g. `metrics:9090:TCP`).

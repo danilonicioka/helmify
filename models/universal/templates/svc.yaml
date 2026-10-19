@@ -1,6 +1,6 @@
 {{- range $compName, $comp := .Values.deploys }}
 {{- if ne $comp.enabled false }}
-{{- if and $comp $comp.service }}
+{{- if and $comp.service (ne $comp.service.enabled false) $comp.service.ports }}
 ---
 apiVersion: v1
 kind: Service
