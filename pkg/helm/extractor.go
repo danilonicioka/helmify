@@ -64,6 +64,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 	envTracker := make(map[string]*EnvTarget)
 
 	volMappings := make(map[string][]VolumeMapping)
+	pvcToComp := make(map[string]struct{CompName, VolName string})
 
 	// Pass 1: Discover all Deployments/StatefulSets/DaemonSets
 	var compNames []string
@@ -84,6 +85,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 				name = cleanName
 			}
 			compNames = append(compNames, name)
+			compName := name
 
 			var depParams DeploymentParams
 			if kind == "CronJob" {
@@ -135,21 +137,25 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			if vOk && len(volumes) > 0 {
 				for _, v := range volumes {
 					vol := v.(map[string]interface{})
-					name, _, _ := unstructured.NestedString(vol, "name")
+					vName, _, _ := unstructured.NestedString(vol, "name")
 					if cm, ok, _ := unstructured.NestedMap(vol, "configMap"); ok {
 						cmName, _, _ := unstructured.NestedString(cm, "name")
-						volSources[name] = struct{Type, Name string}{"configMap", cmName}
+						volSources[vName] = struct{Type, Name string}{"configMap", cmName}
 					} else if secret, ok, _ := unstructured.NestedMap(vol, "secret"); ok {
 						secName, _, _ := unstructured.NestedString(secret, "secretName")
-						volSources[name] = struct{Type, Name string}{"secret", secName}
+						volSources[vName] = struct{Type, Name string}{"secret", secName}
 					} else if _, ok, _ := unstructured.NestedMap(vol, "emptyDir"); ok {
+						volSources[vName] = struct{Type, Name string}{"emptyDir", ""}
 						depParams.Persistence.Enabled = true
 						depParams.Persistence.Ephemeral = true
 					} else if pvc, ok, _ := unstructured.NestedMap(vol, "persistentVolumeClaim"); ok {
 						pvcName, _, _ := unstructured.NestedString(pvc, "claimName")
-						volSources[name] = struct{Type, Name string}{"persistentVolumeClaim", pvcName}
+						volSources[vName] = struct{Type, Name string}{"persistentVolumeClaim", pvcName}
 						depParams.Persistence.Enabled = true
 						depParams.Persistence.Ephemeral = false
+						if pvcName != "" {
+							pvcToComp[pvcName] = struct{CompName, VolName string}{compName, vName}
+						}
 					}
 				}
 			}
@@ -442,45 +448,49 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			var targetComp string
 			var targetSidecar string
 			var isSidecar bool
-			
-			for depName := range params.Deployments {
-				// We don't have volSources globally, but we can check if it matches component name
-				// Helmify PVC naming scheme: {{ compName }} or {{ compName }}-init-{{ sidecar }} or {{ compName }}-{{ sidecar }}
-				
-				// Very basic heuristic for mapping PVC back
-				cleanName := name
-				if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName+"-") {
-					cleanName = strings.TrimPrefix(cleanName, conf.ChartName+"-")
-				} else if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName) {
-					cleanName = strings.TrimPrefix(cleanName, conf.ChartName)
-					cleanName = strings.TrimPrefix(cleanName, "-")
-				}
-				
-				if cleanName == depName {
-					targetComp = depName
-				} else if strings.HasPrefix(cleanName, depName+"-init-") {
-					targetComp = depName
-					targetSidecar = strings.TrimPrefix(cleanName, depName+"-init-")
-					isSidecar = true
-				} else if strings.HasPrefix(cleanName, depName+"-") {
-					targetComp = depName
-					targetSidecar = strings.TrimPrefix(cleanName, depName+"-")
-					isSidecar = true
+			var targetVolName string
+
+			if usage, ok := pvcToComp[name]; ok {
+				targetComp = usage.CompName
+				targetVolName = usage.VolName
+			}
+
+			if targetComp == "" {
+				for depName := range params.Deployments {
+					cleanName := name
+					if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName+"-") {
+						cleanName = strings.TrimPrefix(cleanName, conf.ChartName+"-")
+					} else if conf.ChartName != "" && strings.HasPrefix(cleanName, conf.ChartName) {
+						cleanName = strings.TrimPrefix(cleanName, conf.ChartName)
+						cleanName = strings.TrimPrefix(cleanName, "-")
+					}
+
+					if cleanName == depName {
+						targetComp = depName
+					} else if strings.HasPrefix(cleanName, depName+"-init-") {
+						targetComp = depName
+						targetSidecar = strings.TrimPrefix(cleanName, depName+"-init-")
+						isSidecar = true
+					} else if strings.HasPrefix(cleanName, depName+"-") {
+						targetComp = depName
+						targetSidecar = strings.TrimPrefix(cleanName, depName+"-")
+						isSidecar = true
+					}
 				}
 			}
-			
+
 			if targetComp != "" {
 				depParams := params.Deployments[targetComp]
 				req, found, _ := unstructured.NestedString(obj.Object, "spec", "resources", "requests", "storage")
-				
+
 				var accessModes []string
 				amSlice, foundAM, _ := unstructured.NestedStringSlice(obj.Object, "spec", "accessModes")
 				if foundAM && len(amSlice) > 0 {
 					accessModes = amSlice
 				}
-				
+
 				sc, foundSC, _ := unstructured.NestedString(obj.Object, "spec", "storageClassName")
-				
+
 				if isSidecar {
 					var sidecarParams *SidecarParams
 					if scp, ok := depParams.ExtraContainers[targetSidecar]; ok {
@@ -488,7 +498,7 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 					} else if scp, ok := depParams.InitContainers[targetSidecar]; ok {
 						sidecarParams = scp
 					}
-					
+
 					if sidecarParams != nil {
 						if found && req != "" {
 							sidecarParams.Persistence.StorageRequest = req
@@ -505,19 +515,33 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 						}
 					}
 				} else {
+					if targetVolName == "" {
+						targetVolName = "data"
+					}
+					if depParams.Volumes == nil {
+						depParams.Volumes = make(map[string]VolumeParams)
+					}
+					vParam := depParams.Volumes[targetVolName]
+					vParam.Enabled = true
+
 					if found && req != "" {
+						vParam.StorageRequest = req
 						depParams.Persistence.StorageRequest = req
 					}
 					if foundAM && len(accessModes) > 0 {
+						vParam.AccessMode = accessModes[0]
 						depParams.Persistence.AccessMode = accessModes[0]
 					}
 					if foundSC {
 						if sc == "" {
+							vParam.StorageClass = "-"
 							depParams.Persistence.StorageClass = "-"
 						} else {
+							vParam.StorageClass = sc
 							depParams.Persistence.StorageClass = sc
 						}
 					}
+					depParams.Volumes[targetVolName] = vParam
 				}
 				params.Deployments[targetComp] = depParams
 			}
@@ -842,24 +866,49 @@ func ExtractWizardParams(reader io.Reader, conf config.Config) (WizardParams, er
 			host, _, _ := unstructured.NestedString(obj.Object, "spec", "host")
 			path, _, _ := unstructured.NestedString(obj.Object, "spec", "path")
 
+			var routeKey string
 			if host == "" || strings.HasSuffix(host, config.GlobalEnvConfig.DefaultDomain) || strings.Contains(host, "apps.ocp-") {
 				depParams.Route.Default.Enabled = true
 				if host != "" {
 					depParams.Route.Default.Host = host
 				}
+				routeKey = "default"
 			} else if strings.HasSuffix(host, config.GlobalEnvConfig.InternalDomain) {
 				depParams.Route.Internal.Enabled = true
 				depParams.Route.Internal.Host = host
+				routeKey = "internal"
 			} else if strings.HasSuffix(host, config.GlobalEnvConfig.ExternalDomain) {
 				depParams.Route.External.Enabled = true
 				depParams.Route.External.Host = host
+				routeKey = "external"
 			} else {
 				// Fallback to external if unknown
 				depParams.Route.External.Enabled = true
 				depParams.Route.External.Host = host
+				routeKey = "external"
 			}
 			if path != "" {
 				depParams.Route.Path = path
+			}
+
+			if depParams.Routes == nil {
+				depParams.Routes = make(map[string]SubRouteParams)
+			}
+			if existing, exists := depParams.Routes[routeKey]; exists && existing.Host != host && host != "" {
+				routeKey = name // Use resource name for additional routes
+				if depParams.Route.Additional == nil {
+					depParams.Route.Additional = make(map[string]SubRouteParams)
+				}
+				depParams.Route.Additional[routeKey] = SubRouteParams{
+					Enabled: true,
+					Host:    host,
+					Path:    path,
+				}
+			}
+			depParams.Routes[routeKey] = SubRouteParams{
+				Enabled: true,
+				Host:    host,
+				Path:    path,
 			}
 			params.Deployments[compName] = depParams
 
@@ -1120,19 +1169,35 @@ func populateContainerParams(depParams *DeploymentParams, container map[string]i
 		}
 	}
 
-	// Extract Persistence from volumeMounts
+	// Extract Persistence / Volumes from volumeMounts
 	mounts, ok, _ := unstructured.NestedSlice(container, "volumeMounts")
 	if ok && len(mounts) > 0 {
+		if depParams.Volumes == nil {
+			depParams.Volumes = make(map[string]VolumeParams)
+		}
 		for _, m := range mounts {
 			mount := m.(map[string]interface{})
 			name, _, _ := unstructured.NestedString(mount, "name")
 
-			_, isConfigMapOrSecret := volSources[name]
+			volSrc, hasVolSrc := volSources[name]
+			isConfigMapOrSecret := hasVolSrc && (volSrc.Type == "configMap" || volSrc.Type == "secret")
 			if !strings.HasPrefix(name, "kube-api") && !strings.Contains(name, "default-token") && !isConfigMapOrSecret {
 				path, _, _ := unstructured.NestedString(mount, "mountPath")
-				depParams.Persistence.Enabled = true
-				depParams.Persistence.MountPath = path
-				break // Take the first meaningful volume for the simple model
+				vParam := depParams.Volumes[name]
+				vParam.Enabled = true
+				vParam.MountPath = path
+				if hasVolSrc && volSrc.Type == "emptyDir" {
+					vParam.Ephemeral = true
+				}
+				depParams.Volumes[name] = vParam
+
+				if !depParams.Persistence.Enabled {
+					depParams.Persistence.Enabled = true
+					depParams.Persistence.MountPath = path
+					if hasVolSrc && volSrc.Type == "emptyDir" {
+						depParams.Persistence.Ephemeral = true
+					}
+				}
 			}
 		}
 	}

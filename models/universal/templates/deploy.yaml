@@ -167,6 +167,9 @@ spec:
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
+            {{- with $config.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
         {{- end }}
       {{- end }}
@@ -248,9 +251,25 @@ spec:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
 
-          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}
+          {{- $hasMainVols := false }}
+          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasMainVols = true }}{{ end }}
+          {{- if $comp.volumes }}{{ range $vName, $v := $comp.volumes }}{{ if ne $v.enabled false }}{{ $hasMainVols = true }}{{ end }}{{ end }}{{ end }}
+          {{- if $hasMainVols }}
           volumeMounts:
-            {{- if and $comp.persistence $comp.persistence.enabled }}
+            {{- if $comp.volumes }}
+            {{- range $volName, $vol := $comp.volumes }}
+            {{- if ne $vol.enabled false }}
+            - name: {{ $volName }}
+              mountPath: {{ $vol.mountPath }}
+              {{- if $vol.subPath }}
+              subPath: {{ $vol.subPath }}
+              {{- end }}
+              {{- if $vol.readOnly }}
+              readOnly: {{ $vol.readOnly }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- else if and $comp.persistence $comp.persistence.enabled }}
             - name: data
               mountPath: {{ $comp.persistence.mountPath | default "/var/lib/data" }}
             {{- end }}
@@ -361,6 +380,9 @@ spec:
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
+            {{- with $sidecar.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           {{- end }}
         {{- end }}
         {{- end }}
@@ -392,6 +414,7 @@ spec:
 
       {{- $hasVols := false }}
       {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasVols = true }}{{ end }}
+      {{- if $comp.volumes }}{{ range $vName, $v := $comp.volumes }}{{ if ne $v.enabled false }}{{ $hasVols = true }}{{ end }}{{ end }}{{ end }}
       {{- range $name, $config := $comp.initContainers }}{{ if and (ne $config.enabled false) (or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files)) }}{{ $hasVols = true }}{{ end }}{{ end }}
       {{- range $name, $config := $comp.extraContainers }}{{ if and (ne $config.enabled false) (or (and $config.persistence $config.persistence.enabled) (and $config.config $config.config.files) (and $config.secrets $config.secrets.files)) }}{{ $hasVols = true }}{{ end }}{{ end }}
       {{- if $hasVols }}
@@ -454,7 +477,23 @@ spec:
           {{- end }}
         {{- end }}
         {{- end }}
-        {{- if and $comp.persistence $comp.persistence.enabled }}
+        {{- if $comp.volumes }}
+        {{- range $volName, $vol := $comp.volumes }}
+        {{- if ne $vol.enabled false }}
+        - name: {{ $volName }}
+          {{- if $vol.ephemeral }}
+          emptyDir:
+            {{- toYaml ($vol.emptyDir | default dict) | nindent 12 }}
+          {{- else if $vol.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $vol.existingClaim }}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ if eq $volName "data" }}{{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}{{ else }}{{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $volName | replace "." "-" | lower | trimAll "-" }}{{ end }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- else if and $comp.persistence $comp.persistence.enabled }}
         - name: data
           {{- if $comp.persistence.ephemeral }}
           emptyDir: {}

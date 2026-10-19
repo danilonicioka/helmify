@@ -56,13 +56,18 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	assert.Contains(t, valuesStr, "repository: quay.io/my-org/my-app")
 	assert.Contains(t, valuesStr, "tag: v2.1.0")
 	assert.Contains(t, valuesStr, "port: 9090")
-	assert.Contains(t, valuesStr, "TZ: America/Belem")
-	assert.Contains(t, valuesStr, "API_KEY:")
-	assert.Contains(t, valuesStr, "path: /prefix")
-	assert.Contains(t, valuesStr, "default.host.com")
-	assert.Contains(t, valuesStr, "internal.host.com")
-	assert.Contains(t, valuesStr, "TZ: America/Sao_Paulo")
-	assert.Contains(t, valuesStr, "fullnameOverride: test-single-app")
+
+	// Check if values-env.yaml contains operational overlay
+	envBytes, ok := files["values-env.yaml"]
+	assert.True(t, ok)
+	envStr := string(envBytes)
+	assert.Contains(t, envStr, "TZ: America/Belem")
+	assert.Contains(t, envStr, "API_KEY:")
+	assert.Contains(t, envStr, "path: /prefix")
+	assert.Contains(t, envStr, "default.host.com")
+	assert.Contains(t, envStr, "internal.host.com")
+	assert.Contains(t, envStr, "TZ: America/Sao_Paulo")
+	assert.Contains(t, envStr, "fullnameOverride: test-single-app")
 
 		
 
@@ -118,12 +123,10 @@ func TestGenerateWizardChart_Multi(t *testing.T) {
 	assert.Contains(t, valuesStr, "backend:")
 	assert.Contains(t, valuesStr, "bff:")
 	assert.NotContains(t, valuesStr, "frontend:") // frontend should be deleted because it wasn't requested
-	assert.Contains(t, valuesStr, "fullnameOverride: test-multi-app")
 
-	// Check if bff templates are created
-	
-	
-	 // frontend templates should be deleted
+	envBytes, ok := files["values-env.yaml"]
+	assert.True(t, ok)
+	assert.Contains(t, string(envBytes), "fullnameOverride: test-multi-app")
 }
 
 func TestGetModelDefaults(t *testing.T) {
@@ -186,6 +189,7 @@ func TestWriteTarGzStructure(t *testing.T) {
 	mockFiles := map[string][]byte{
 		"README.md":        []byte("readme content"),
 		".gitlab-ci.yml":   []byte("ci content"),
+		"values-env.yaml":  []byte("env content"),
 		"Chart.yaml":       []byte("chart content"),
 		"values.yaml":      []byte("values content"),
 		"templates/d.yaml": []byte("deploy content"),
@@ -213,6 +217,8 @@ func TestWriteTarGzStructure(t *testing.T) {
 
 	assert.True(t, paths["README.md"])
 	assert.True(t, paths[".gitlab-ci.yml"])
+	assert.True(t, paths["values-env.yaml"])
+	assert.False(t, paths["chart/values-env.yaml"])
 	assert.True(t, paths["chart/Chart.yaml"])
 	assert.True(t, paths["chart/values.yaml"])
 	assert.True(t, paths["chart/templates/d.yaml"])

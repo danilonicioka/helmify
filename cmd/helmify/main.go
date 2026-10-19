@@ -1,8 +1,6 @@
 package main
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"context"
 	_ "embed"
 	"encoding/json"
@@ -11,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"strconv"
 	"syscall"
 	"time"
@@ -258,31 +255,13 @@ func handleDownload(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/x-tar")
 	w.Header().Set("Content-Disposition", `attachment; filename="chart.tar.gz"`)
 
-	gw := gzip.NewWriter(w)
-	defer gw.Close()
-	tw := tar.NewWriter(gw)
-	defer tw.Close()
-
+	byteFiles := make(map[string][]byte, len(req.Files))
 	for name, content := range req.Files {
-		var path string
-		if name == ".gitlab-ci.yml" || name == "README.md" {
-			path = name
-		} else {
-			path = filepath.Join("chart", name)
-		}
-		header := &tar.Header{
-			Name: path,
-			Mode: 0644,
-			Size: int64(len(content)),
-		}
-		if err := tw.WriteHeader(header); err != nil {
-			logrus.WithError(err).Error("Failed to write tar header")
-			return
-		}
-		if _, err := tw.Write([]byte(content)); err != nil {
-			logrus.WithError(err).Error("Failed to write tar content")
-			return
-		}
+		byteFiles[name] = []byte(content)
+	}
+
+	if err := helm.WriteTarGz(byteFiles, req.ChartName, w); err != nil {
+		logrus.WithError(err).Error("TarGz streaming failed")
 	}
 }
 

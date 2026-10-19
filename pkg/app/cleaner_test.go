@@ -266,8 +266,11 @@ func TestUserManifestConversion(t *testing.T) {
 	valuesStr := string(valuesBytes)
 
 	assert.Contains(t, valuesStr, "global:")
-	assert.Contains(t, valuesStr, "  cm:")
-	assert.Contains(t, valuesStr, "    JURISPRUDENCIA_AGENT_LLM: azure")
-	assert.Contains(t, valuesStr, "  secret:")
-	assert.Contains(t, valuesStr, "    JURISPRUDENCIA_QDRANT_API_KEY: agDxQwYzpIV1w#Vnf")
+	assert.Contains(t, valuesStr, "  config:")
+	assert.Contains(t, valuesStr, "    env:")
+	assert.Contains(t, valuesStr, "      JURISPRUDENCIA_AGENT_LLM: azure")
+	assert.Contains(t, valuesStr, "  secrets:")
+	assert.Contains(t, valuesStr, "    env:")
+	assert.Contains(t, valuesStr, "      JURISPRUDENCIA_QDRANT_API_KEY: agDxQwYzpIV1w#Vnf")
 }
+

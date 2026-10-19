@@ -41,21 +41,31 @@ Configures the internal Kubernetes `service` (ports and type) and OpenShift rout
 - **Primary Port:** The main service port (default: 8080).
 - **Decoupled Container Port:** By default, `port` configures both the Service port and the underlying container port. To expose a different port on the Service (e.g. `port: 80`) while keeping the container listening on another (e.g. `containerPort: 8080`), define `containerPort` inside `service.ports.<name>`.
 - **Additional Ports:** Multiple named ports can be declared with varying protocols (e.g. `metrics:9090:TCP`).
-- **Default Route:** Internal route with self-signed TLS.
-- **Internal Route:** Valid certificate for the internal Organization intranet (`*-internal.example.com`).
-- **External Route:** Valid certificate for the external internet (`*example.com`).
-- **Additional Routes:** A dynamic map allowing arbitrary extra routes to be generated alongside the standard ones.
+- **Unified Routes Map (`routes:`):** Define arbitrary named OpenShift Routes under `routes.<name>`.
+  - Special conventions: `default` creates Route `{{ component }}`, `internal` creates `{{ component }}-int`, `external` creates `{{ component }}-ext`. Any other key creates `{{ component }}-<name>`.
+  - Legacy `route:` structure (`default`, `internal`, `external`, `additional`) is fully supported for backward compatibility.
 
-### 4. Sidecars & Init Containers
+### 4. Volumes & Storage
+Flexible multi-volume definition under `volumes:`:
+- **Unified Volumes Map (`volumes:`):** Define multiple persistent or ephemeral volumes under `volumes.<name>`.
+  - `mountPath`: Mount location inside the container.
+  - `storageRequest`: Storage size for PVC (default: 1Gi).
+  - `accessMode` & `storageClass`: Standard PVC parameters.
+  - `ephemeral: true`: Mounts an `emptyDir` scratch disk without creating a PVC.
+  - `existingClaim`: Mounts a pre-existing PVC by claim name.
+  - `enabled: false`: Selectively disables the volume and its mounts.
+- Legacy `persistence:` structure is fully supported for backward compatibility.
+
+### 5. Sidecars & Init Containers
 Supports deploying arbitrary sidecars and initialization tasks:
 - `extraContainers`: Dynamically injects sidecar containers into the Pod lifecycle.
 - `initContainers`: Injects initialization containers that run prior to the main workload.
 Both systems use a generic structural mapping that securely scopes `envFrom` (ConfigMap and Secret injection) and `volumeMounts` directly to the specific container, preventing sidecars from leaking configuration into the main global scope. Each container can be conditionally disabled with `enabled: false` (defaults to `true` when omitted), completely suppressing its container definition, associated volumes, PVCs, ConfigMaps, Secrets, and OpenTelemetry Instrumentation CRDs.
 
-### 4. Resources
+### 6. Resources
 Defines CPU and Memory `requests` and `limits`.
 
-### 5. Event-Driven Autoscaling (KEDA)
+### 7. Event-Driven Autoscaling (KEDA)
 Optionally configure advanced event-driven autoscaling using KEDA by overriding the standard HPA configuration.
 
 ```yaml

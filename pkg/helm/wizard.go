@@ -169,6 +169,8 @@ type DeploymentParams struct {
 	TerminationGracePeriodSeconds *int64                    `json:"terminationGracePeriodSeconds,omitempty" yaml:"terminationGracePeriodSeconds,omitempty"`
 	Lifecycle                     map[string]interface{}    `json:"lifecycle,omitempty" yaml:"lifecycle,omitempty"`
 	Route                         RouteParams               `json:"route"`
+	Routes                        map[string]SubRouteParams `json:"routes,omitempty"`
+	Volumes                       map[string]VolumeParams   `json:"volumes,omitempty"`
 	ConnectsTo                    []string                  `json:"connectsTo"`
 	Runtime                       string                    `json:"runtime"`
 	RuntimeNamespace              string                    `json:"runtimeNamespace"`
@@ -326,6 +328,17 @@ type RouteParams struct {
 type SubRouteParams struct {
 	Enabled bool   `json:"enabled" yaml:"enabled"`
 	Host    string `json:"host" yaml:"host"`
+	Path    string `json:"path,omitempty" yaml:"path,omitempty"`
+}
+
+// VolumeParams configures a volume mount and underlying storage.
+type VolumeParams struct {
+	Enabled        bool   `json:"enabled" yaml:"enabled"`
+	Ephemeral      bool   `json:"ephemeral,omitempty" yaml:"ephemeral,omitempty"`
+	MountPath      string `json:"mountPath" yaml:"mountPath"`
+	StorageRequest string `json:"storageRequest,omitempty" yaml:"storageRequest,omitempty"`
+	AccessMode     string `json:"accessMode,omitempty" yaml:"accessMode,omitempty"`
+	StorageClass   string `json:"storageClass,omitempty" yaml:"storageClass,omitempty"`
 }
 
 // PersistenceParams configures PVC persistence.
@@ -564,9 +577,6 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		if depConfig.Probes != nil {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "probes"), depConfig.Probes)
 		}
-		if depConfig.Route.Path != "" {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "path"), depConfig.Route.Path)
-		}
 		if depConfig.Image.Repository != "" {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "repository"), depConfig.Image.Repository)
 			_ = setYamlPath(&customNode, append(appKeyPrefix, "image", "repository"), depConfig.Image.Repository)
@@ -654,25 +664,44 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "annotations", "console.alpha.openshift.io/overview-app-route"), depConfig.OverviewAppRoute)
 		}
 
-		if depConfig.Persistence.Enabled {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "enabled"), true)
-			if depConfig.Persistence.Ephemeral {
-				_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "ephemeral"), true)
+		// Process Volumes
+		volumesToSet := make(map[string]VolumeParams)
+		if len(depConfig.Volumes) > 0 {
+			for vName, vConfig := range depConfig.Volumes {
+				volumesToSet[vName] = vConfig
 			}
-			if depConfig.Persistence.MountPath != "" {
-				_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "mountPath"), depConfig.Persistence.MountPath)
+		} else if depConfig.Persistence.Enabled {
+			volumesToSet["data"] = VolumeParams{
+				Enabled:        depConfig.Persistence.Enabled,
+				Ephemeral:      depConfig.Persistence.Ephemeral,
+				MountPath:      depConfig.Persistence.MountPath,
+				StorageRequest: depConfig.Persistence.StorageRequest,
+				AccessMode:     depConfig.Persistence.AccessMode,
+				StorageClass:   depConfig.Persistence.StorageClass,
 			}
-			if !depConfig.Persistence.Ephemeral {
-				if depConfig.Persistence.StorageRequest != "" {
-					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "storageRequest"), depConfig.Persistence.StorageRequest)
+		}
+
+		if len(volumesToSet) > 0 {
+			for vName, vConfig := range volumesToSet {
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "volumes", vName, "enabled"), vConfig.Enabled)
+				if vConfig.Ephemeral {
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "volumes", vName, "ephemeral"), true)
 				}
-				if depConfig.Persistence.AccessMode != "" {
-					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "accessMode"), depConfig.Persistence.AccessMode)
+				if vConfig.MountPath != "" {
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "volumes", vName, "mountPath"), vConfig.MountPath)
 				}
-				if depConfig.Persistence.StorageClass != "" {
-					_ = setYamlPath(&rootNode, append(appKeyPrefix, "persistence", "storageClass"), depConfig.Persistence.StorageClass)
+				if !vConfig.Ephemeral {
+					if vConfig.StorageRequest != "" {
+						_ = setYamlPath(&rootNode, append(appKeyPrefix, "volumes", vName, "storageRequest"), vConfig.StorageRequest)
+					}
+					if vConfig.AccessMode != "" {
+						_ = setYamlPath(&rootNode, append(appKeyPrefix, "volumes", vName, "accessMode"), vConfig.AccessMode)
+					}
+					if vConfig.StorageClass != "" {
+						_ = setYamlPath(&rootNode, append(appKeyPrefix, "volumes", vName, "storageClass"), vConfig.StorageClass)
+					}
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "strategy"), map[string]string{"type": "Recreate"})
 				}
-				_ = setYamlPath(&rootNode, append(appKeyPrefix, "strategy"), map[string]string{"type": "Recreate"})
 			}
 		}
 
@@ -699,24 +728,79 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		}
 
 		defaultHost, internalHost, externalHost := computeRouteHosts(params.ChartName, params.ChartName, depConfig.Route.Path, false)
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "default", "enabled"), depConfig.Route.Default.Enabled)
-		if depConfig.Route.Default.Host != "" {
+
+		defaultEnabled := depConfig.Route.Default.Enabled
+		defaultPath := depConfig.Route.Path
+		if r, ok := depConfig.Routes["default"]; ok {
+			defaultEnabled = r.Enabled
+			if r.Host != "" {
+				defaultHost = r.Host
+			}
+			if r.Path != "" {
+				defaultPath = r.Path
+			}
+		} else if depConfig.Route.Default.Host != "" {
 			defaultHost = depConfig.Route.Default.Host
 		}
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "default", "host"), defaultHost)
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "internal", "enabled"), depConfig.Route.Internal.Enabled)
-		if depConfig.Route.Internal.Host != "" {
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", "default", "enabled"), defaultEnabled)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", "default", "host"), defaultHost)
+		if defaultPath != "" {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", "default", "path"), defaultPath)
+		}
+
+		internalEnabled := depConfig.Route.Internal.Enabled
+		internalPath := ""
+		if r, ok := depConfig.Routes["internal"]; ok {
+			internalEnabled = r.Enabled
+			if r.Host != "" {
+				internalHost = r.Host
+			}
+			internalPath = r.Path
+		} else if depConfig.Route.Internal.Host != "" {
 			internalHost = depConfig.Route.Internal.Host
 		}
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "internal", "host"), internalHost)
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "external", "enabled"), depConfig.Route.External.Enabled)
-		if depConfig.Route.External.Host != "" {
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", "internal", "enabled"), internalEnabled)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", "internal", "host"), internalHost)
+		if internalPath != "" {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", "internal", "path"), internalPath)
+		}
+
+		externalEnabled := depConfig.Route.External.Enabled
+		externalPath := ""
+		if r, ok := depConfig.Routes["external"]; ok {
+			externalEnabled = r.Enabled
+			if r.Host != "" {
+				externalHost = r.Host
+			}
+			externalPath = r.Path
+		} else if depConfig.Route.External.Host != "" {
 			externalHost = depConfig.Route.External.Host
 		}
-		_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "external", "host"), externalHost)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", "external", "enabled"), externalEnabled)
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", "external", "host"), externalHost)
+		if externalPath != "" {
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", "external", "path"), externalPath)
+		}
 
+		for rName, rConfig := range depConfig.Routes {
+			if rName == "default" || rName == "internal" || rName == "external" {
+				continue
+			}
+			_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", rName, "enabled"), rConfig.Enabled)
+			if rConfig.Host != "" {
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", rName, "host"), rConfig.Host)
+			}
+			if rConfig.Path != "" {
+				_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", rName, "path"), rConfig.Path)
+			}
+		}
 		if len(depConfig.Route.Additional) > 0 {
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "route", "additional"), depConfig.Route.Additional)
+			for addName, addRoute := range depConfig.Route.Additional {
+				if _, exists := depConfig.Routes[addName]; !exists {
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", addName, "enabled"), addRoute.Enabled)
+					_ = setYamlPath(&rootNode, append(appKeyPrefix, "routes", addName, "host"), addRoute.Host)
+				}
+			}
 		}
 		if depConfig.Config != nil && len(depConfig.Config.Files) > 0 {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "config", "files"), depConfig.Config.Files)
@@ -876,7 +960,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	return outputFiles, nil
 }
 
-var formatBlocks = []string{"imagePullSecrets:", "replicas:", "labels:", "cm:", "secret:", "vso:", "resources:", "route:", "service:", "persistence:", "startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "nodeSelector:", "tolerations:", "affinity:"}
+var formatBlocks = []string{"imagePullSecrets:", "replicas:", "labels:", "cm:", "secret:", "vso:", "resources:", "route:", "routes:", "service:", "persistence:", "volumes:", "startupProbe:", "livenessProbe:", "readinessProbe:", "strategy:", "terminationGracePeriodSeconds:", "nodeSelector:", "tolerations:", "affinity:"}
 var formatRegexes []*regexp.Regexp
 var topologyRegex1 = regexp.MustCompile(`(?m)^\s+app\.openshift\.io/connects-to:\s`)
 var topologyRegex2 = regexp.MustCompile(`(?m)^\s*# Example for OpenShift Topology View integration:\s*\n\s*# app\.openshift\.io/connects-to:.*\n`)

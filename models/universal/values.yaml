@@ -130,34 +130,6 @@ deploys:
                 value: 100
             stabilizationWindowSeconds: 0
 
-    route:
-      annotations: {}
-      tls:
-        termination: edge
-        insecureEdgeTerminationPolicy: Redirect
-      path: "/"
-      default:
-        enabled: true
-        host: chart-model-multi-api{{DEFAULT_DOMAIN}}
-        annotations: {}
-      internal:
-        enabled: false
-        host: chart-model-multi-api{{INTERNAL_DOMAIN}}
-        annotations: {}
-      external:
-        enabled: false
-        host: chart-model-api{{EXTERNAL_DOMAIN}}
-        annotations: {}
-      additional: {}
-        #   custom-route:
-        #     enabled: true
-        #     host: custom-route.domain.com
-        #     path: "/custom"
-        #     annotations: {}
-        #     tls:
-        #       termination: edge
-        #       insecureEdgeTerminationPolicy: Redirect
-
     service:
       type: ClusterIP
       ports:
@@ -166,13 +138,42 @@ deploys:
           port: 8080
           # containerPort: 8080
 
-    persistence:
-      enabled: false
-      ephemeral: false
-      mountPath: "/var/lib/data"
-      storageRequest: 1Gi
-      accessMode: ReadWriteOnce
-      storageClass: ""
+    routes:
+      default:
+        enabled: true
+        host: chart-model-multi-api{{DEFAULT_DOMAIN}}
+        path: "/"
+        annotations: {}
+        tls:
+          termination: edge
+          insecureEdgeTerminationPolicy: Redirect
+      internal:
+        enabled: false
+        host: chart-model-multi-api{{INTERNAL_DOMAIN}}
+      external:
+        enabled: false
+        host: chart-model-api{{EXTERNAL_DOMAIN}}
+      # custom-route:
+      #   enabled: true
+      #   host: custom-route.domain.com
+      #   path: "/custom"
+      #   annotations: {}
+      #   tls:
+      #     termination: edge
+      #     insecureEdgeTerminationPolicy: Redirect
+
+    volumes: {}
+      # data:
+      #   enabled: true
+      #   mountPath: "/var/lib/data"
+      #   storageRequest: 1Gi
+      #   accessMode: ReadWriteOnce
+      #   storageClass: ""
+      #   ephemeral: false
+      # logs:
+      #   enabled: true
+      #   mountPath: "/var/log"
+      #   ephemeral: true # emptyDir: {}
 
     probes:
       startup:
@@ -427,47 +428,48 @@ deploys:
                 value: 100
             stabilizationWindowSeconds: 0
             
-    route:
-      annotations: {}
-      tls:
-        termination: edge
-        insecureEdgeTerminationPolicy: Redirect
-      path: "/"
-      default:
-        enabled: true
-        host: chart-model-multi-app{{DEFAULT_DOMAIN}}
-        annotations: {}
-      internal:
-        enabled: false
-        host: chart-model-multi-app{{INTERNAL_DOMAIN}}
-        annotations: {}
-      external:
-        enabled: false
-        host: chart-model-app{{EXTERNAL_DOMAIN}}
-        annotations: {}
-      additional: {}
-        #   custom-route:
-        #     enabled: true
-        #     host: custom-route.domain.com
-        #     path: "/custom"
-        #     annotations: {}
-        #     tls:
-        #       termination: edge
-        #       insecureEdgeTerminationPolicy: Redirect
-
     service:
       type: ClusterIP
       ports:
         http:
           port: 8080
 
-    persistence:
-      enabled: false
-      ephemeral: false
-      mountPath: "/var/lib/data"
-      storageRequest: 1Gi
-      accessMode: ReadWriteOnce
-      storageClass: ""
+    routes:
+      default:
+        enabled: true
+        host: chart-model-multi-app{{DEFAULT_DOMAIN}}
+        path: "/"
+        annotations: {}
+        tls:
+          termination: edge
+          insecureEdgeTerminationPolicy: Redirect
+      internal:
+        enabled: false
+        host: chart-model-multi-app{{INTERNAL_DOMAIN}}
+      external:
+        enabled: false
+        host: chart-model-app{{EXTERNAL_DOMAIN}}
+      # custom-route:
+      #   enabled: true
+      #   host: custom-route.domain.com
+      #   path: "/custom"
+      #   annotations: {}
+      #   tls:
+      #     termination: edge
+      #     insecureEdgeTerminationPolicy: Redirect
+
+    volumes: {}
+      # data:
+      #   enabled: true
+      #   mountPath: "/var/lib/data"
+      #   storageRequest: 1Gi
+      #   accessMode: ReadWriteOnce
+      #   storageClass: ""
+      #   ephemeral: false
+      # logs:
+      #   enabled: true
+      #   mountPath: "/var/log"
+      #   ephemeral: true # emptyDir: {}
 
     probes:
       startup:
