@@ -838,9 +838,24 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		stripQuotesFromMap(params.GlobalSecret)
 		_ = setYamlPath(&rootNode, []string{"global", "secrets", "env"}, params.GlobalSecret)
 	}
+	_ = setYamlPath(&customNode, []string{"global", "config", "env"}, map[string]interface{}{})
+	_ = setYamlPath(&customNode, []string{"global", "secrets", "env"}, map[string]interface{}{})
 	if params.HasRegistrySecret {
 		_ = setYamlPath(&rootNode, []string{"global", "imageCredentials", "create"}, true)
 		_ = setYamlPath(&customNode, []string{"global", "imageCredentials", "create"}, true)
+	}
+
+	for _, sub := range params.Subcomponents {
+		if sub != "cronjob" {
+			_ = setYamlPath(&customNode, []string{sub, "enabled"}, true)
+			if sub == "postgres" {
+				_ = setYamlPath(&customNode, []string{sub, "image", "repository"}, "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/postgres")
+				_ = setYamlPath(&customNode, []string{sub, "image", "tag"}, "16-alpine")
+			} else if sub == "redis" {
+				_ = setYamlPath(&customNode, []string{sub, "image", "repository"}, "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/redis")
+				_ = setYamlPath(&customNode, []string{sub, "image", "tag"}, "8.4.0")
+			}
+		}
 	}
 
 	// Process CronJobs properly

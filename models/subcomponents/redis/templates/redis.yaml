@@ -1,4 +1,5 @@
-{{ if and .Values.redis .Values.redis.config .Values.redis.config.env (not (empty .Values.redis.config.env)) }}
+{{ if and .Values.redis .Values.redis.enabled }}
+{{ if and .Values.redis.config .Values.redis.config.env (not (empty .Values.redis.config.env)) }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -14,8 +15,6 @@ data:
   {{ $key }}: {{ $val | quote }}
   {{- end }}
 {{- end }}
-
-{{ if .Values.redis.enabled }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -39,10 +38,12 @@ metadata:
 spec:
   {{- if hasKey .Values.redis "replicas" }}
   replicas: {{ .Values.redis.replicas }}
+  {{- else }}
+  replicas: 1
   {{- end }}
-  {{- if .Values.redis.strategy }}
+  {{- with .Values.redis.strategy }}
   strategy:
-    {{- toYaml .Values.redis.strategy | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
   selector:
     matchLabels:
@@ -62,54 +63,103 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.redis.image.pullSecrets }}
+      {{- $pullSecrets := list }}
+      {{- with .Values.redis.image }}
+        {{- range $ps := .pullSecrets }}
+          {{- $pullSecrets = append $pullSecrets $ps }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.global }}
+      {{- if and .imageCredentials .imageCredentials.create }}
+        {{- $pullSecrets = append $pullSecrets (dict "name" (printf "%s-registry" (include "<CHART_NAME>.fullname" $))) }}
+      {{- end }}
+      {{- end }}
+      {{- if gt (len $pullSecrets) 0 }}
       imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml $pullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if and .Values.redis.vso .Values.redis.vso.enabled }}
+      serviceAccountName: {{ include "<CHART_NAME>.fullname" . }}-redis-sa
+      {{- else if .Values.serviceAccount }}
+      serviceAccountName: {{ include "<CHART_NAME>.serviceAccountName" . }}
       {{- end }}
       containers:
         - name: redis
-          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
-          imagePullPolicy: {{ .Values.redis.image.pullPolicy | default "IfNotPresent" }}
+          {{- with .Values.redis.image }}
+          image: "{{ .repository }}:{{ .tag | default "8.4.0" }}"
+          imagePullPolicy: {{ .pullPolicy | default "IfNotPresent" }}
+          {{- end }}
+          {{- with .Values.redis.service }}
+          {{- if and (ne .enabled false) .ports }}
           ports:
-            {{- range $key, $val := .Values.redis.service.ports }}
+            {{- range $key, $val := .ports }}
             - name: {{ $key }}
               containerPort: {{ $val.containerPort | default $val.port }}
               {{- if $val.protocol }}
               protocol: {{ $val.protocol }}
               {{- end }}
             {{- end }}
-          
-          {{- if or (and .Values.redis.config .Values.redis.config.env (not (empty .Values.redis.config.env))) (and .Values.redis.secrets .Values.redis.secrets.env (not (empty .Values.redis.secrets.env))) (and .Values.global (not (empty .Values.global))) }}
+          {{- end }}
+          {{- end }}
+
+          # Clean Configuration Management: Full Decoupling via envFrom
+          {{- $hasGlobalCM := false }}
+          {{- $hasGlobalSecret := false }}
+          {{- with .Values.global }}
+            {{- with .config }}
+              {{- if and .env (not (empty .env)) }}{{ $hasGlobalCM = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .env (not (empty .env)) }}{{ $hasGlobalSecret = true }}{{ end }}
+            {{- end }}
+          {{- end }}
+          {{- $hasCompCM := false }}
+          {{- with .Values.redis.config }}
+            {{- if and .env (not (empty .env)) }}{{ $hasCompCM = true }}{{ end }}
+          {{- end }}
+          {{- $hasCompSecret := false }}
+          {{- with .Values.redis.secrets }}
+            {{- if and .env (not (empty .env)) }}{{ $hasCompSecret = true }}{{ end }}
+          {{- end }}
+          {{- $hasVSO := and .Values.redis.vso .Values.redis.vso.enabled }}
+          {{- if or $hasGlobalCM $hasGlobalSecret $hasCompCM $hasCompSecret $hasVSO }}
           envFrom:
-            {{- if and .Values.redis.config .Values.redis.config.env (not (empty .Values.redis.config.env)) }}
-            - configMapRef:
-                name: {{ include "<CHART_NAME>.fullname" . }}-redis-cm
-            {{- end }}
-            {{- if and .Values.redis.secrets .Values.redis.secrets.env (not (empty .Values.redis.secrets.env)) }}
-            - secretRef:
-                name: {{ include "<CHART_NAME>.fullname" . }}-redis-secret
-            {{- end }}
-            {{- if and .Values.global .Values.global.config .Values.global.config.env (not (empty .Values.global.config.env)) }}
+            {{- if $hasGlobalCM }}
             - configMapRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-global-cm
             {{- end }}
-            {{- if and .Values.global .Values.global.secrets .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
+            {{- if $hasGlobalSecret }}
             - secretRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-global-secret
             {{- end }}
+            {{- if $hasCompCM }}
+            - configMapRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-redis-cm
+            {{- end }}
+            {{- if $hasCompSecret }}
+            - secretRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-redis-secret
+            {{- end }}
+            {{- if $hasVSO }}
+            - secretRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-redis-vso-secret
+            {{- end }}
           {{- end }}
 
-          {{- if and .Values.redis.probes .Values.redis.probes.startup (not (empty .Values.redis.probes.startup)) }}
+          # Tiered "Fail-Fast" Health Probes
+          {{- with .Values.redis.probes }}
+          {{- if and .startup (not (empty .startup)) }}
           startupProbe:
-            {{- toYaml .Values.redis.probes.startup | nindent 12 }}
+            {{- toYaml .startup | nindent 12 }}
           {{- end }}
-          {{- if and .Values.redis.probes .Values.redis.probes.liveness (not (empty .Values.redis.probes.liveness)) }}
+          {{- if and .liveness (not (empty .liveness)) }}
           livenessProbe:
-            {{- toYaml .Values.redis.probes.liveness | nindent 12 }}
+            {{- toYaml .liveness | nindent 12 }}
           {{- end }}
-          {{- if and .Values.redis.probes .Values.redis.probes.readiness (not (empty .Values.redis.probes.readiness)) }}
+          {{- if and .readiness (not (empty .readiness)) }}
           readinessProbe:
-            {{- toYaml .Values.redis.probes.readiness | nindent 12 }}
+            {{- toYaml .readiness | nindent 12 }}
+          {{- end }}
           {{- end }}
 
           {{- with .Values.redis.command }}
@@ -121,63 +171,112 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 
-          {{- if and .Values.redis.resources .Values.redis.resources.limits }}
+          {{- with .Values.redis.resources }}
+          {{- if .limits }}
           resources:
-            {{- toYaml .Values.redis.resources | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- end }}
 
-          {{- if or (and .Values.redis.persistence .Values.redis.persistence.enabled) (and .Values.redis.config .Values.redis.config.files) (and .Values.redis.secrets .Values.redis.secrets.files) (and .Values.redis.vso .Values.redis.vso.enabled .Values.redis.vso.files) }}
+          {{- $hasConfigFiles := and .Values.redis.config .Values.redis.config.files }}
+          {{- $hasSecretFiles := and .Values.redis.secrets .Values.redis.secrets.files }}
+          {{- $hasVsoFiles := and .Values.redis.vso .Values.redis.vso.enabled .Values.redis.vso.files }}
+          {{- $hasVolumes := false }}
+          {{- with .Values.redis.volumes }}
+            {{- range $vName, $v := . }}
+              {{- if ne $v.enabled false }}{{ $hasVolumes = true }}{{ end }}
+            {{- end }}
+          {{- end }}
+          {{- $hasPersistence := and .Values.redis.persistence .Values.redis.persistence.enabled }}
+          {{- $hasMainVols := or $hasConfigFiles $hasSecretFiles $hasVsoFiles $hasVolumes $hasPersistence .Values.redis.volumeMounts }}
+          {{- if $hasMainVols }}
           volumeMounts:
-          {{- if and .Values.redis.persistence .Values.redis.persistence.enabled }}
+            {{- if $hasVolumes }}
+            {{- range $volName, $vol := .Values.redis.volumes }}
+            {{- if ne $vol.enabled false }}
+            - name: {{ $volName }}
+              mountPath: {{ $vol.mountPath }}
+              {{- if $vol.subPath }}
+              subPath: {{ $vol.subPath }}
+              {{- end }}
+              {{- if $vol.readOnly }}
+              readOnly: {{ $vol.readOnly }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- else if $hasPersistence }}
             - name: data
               mountPath: {{ .Values.redis.persistence.mountPath | default "/data" }}
-          {{- end }}
-          {{- if and .Values.redis.config .Values.redis.config.files }}
-          {{- range $filename, $config := .Values.redis.config.files }}
+            {{- end }}
+            {{- with .Values.redis.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if $hasConfigFiles }}
+            {{- range $filename, $config := .Values.redis.config.files }}
             - name: config-files
               mountPath: {{ $config.mountPath | default (printf "/etc/config/%s" $filename) }}
               subPath: {{ $filename }}
-          {{- end }}
-          {{- end }}
-          {{- if and .Values.redis.secrets .Values.redis.secrets.files }}
-          {{- range $filename, $config := .Values.redis.secrets.files }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasSecretFiles }}
+            {{- range $filename, $config := .Values.redis.secrets.files }}
             - name: secret-files
               mountPath: {{ $config.mountPath | default (printf "/etc/secret/%s" $filename) }}
               subPath: {{ $filename }}
-          {{- end }}
-          {{- end }}
-          {{- if and .Values.redis.vso .Values.redis.vso.enabled .Values.redis.vso.files }}
-          {{- range $filename, $config := .Values.redis.vso.files }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasVsoFiles }}
+            {{- range $filename, $config := .Values.redis.vso.files }}
             - name: vso-files
               mountPath: {{ $config.mountPath | default (printf "/etc/vso/%s" $filename) }}
               subPath: {{ $filename }}
-          {{- end }}
-          {{- end }}
+            {{- end }}
+            {{- end }}
           {{- end }}
       
-      {{- if .Values.redis.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ .Values.redis.terminationGracePeriodSeconds }}
+      {{- with .Values.redis.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
       {{- end }}
 
-      {{- with .Values.redis.scheduling.nodeSelector }}
+      {{- with .Values.redis.scheduling }}
+      {{- with .nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.redis.scheduling.affinity }}
+      {{- with .affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.redis.scheduling.tolerations }}
+      {{- with .tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.redis.topologySpreadConstraints }}
+      {{- end }}
+      {{- with .Values.redis.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml .Values.redis.topologySpreadConstraints | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
 
-      {{- if and .Values.redis.persistence .Values.redis.persistence.enabled }}
+      {{- $hasVols := or $hasConfigFiles $hasSecretFiles $hasVsoFiles $hasVolumes $hasPersistence }}
+      {{- if $hasVols }}
       volumes:
+        {{- if $hasVolumes }}
+        {{- range $volName, $vol := .Values.redis.volumes }}
+        {{- if ne $vol.enabled false }}
+        - name: {{ $volName }}
+          {{- if $vol.ephemeral }}
+          emptyDir:
+            {{- toYaml ($vol.emptyDir | default dict) | nindent 12 }}
+          {{- else if $vol.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $vol.existingClaim }}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ if eq $volName "data" }}{{ include "<CHART_NAME>.fullname" $ }}-redis{{ else }}{{ include "<CHART_NAME>.fullname" $ }}-redis-{{ $volName | replace "." "-" | lower | trimAll "-" }}{{ end }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- else if $hasPersistence }}
         - name: data
           {{- if .Values.redis.persistence.ephemeral }}
           emptyDir: {}
@@ -185,25 +284,53 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "<CHART_NAME>.fullname" $ }}-redis
           {{- end }}
-      {{- if and .Values.redis.config .Values.redis.config.files }}
+        {{- end }}
+        {{- if $hasConfigFiles }}
         - name: config-files
           configMap:
             name: {{ include "<CHART_NAME>.fullname" . }}-redis-files-cm
-      {{- end }}
-      {{- if and .Values.redis.secrets .Values.redis.secrets.files }}
+        {{- end }}
+        {{- if $hasSecretFiles }}
         - name: secret-files
           secret:
             secretName: {{ include "<CHART_NAME>.fullname" . }}-redis-files-secret
-      {{- end }}
-      {{- if and .Values.redis.vso .Values.redis.vso.enabled }}
+        {{- end }}
+        {{- if and .Values.redis.vso .Values.redis.vso.enabled }}
         - name: vso-files
           secret:
             secretName: {{ include "<CHART_NAME>.fullname" . }}-redis-vso-secret
+        {{- end }}
       {{- end }}
-      {{- end }}
-{{- end -}}
 
-{{ if and .Values.redis.enabled (and .Values.redis.persistence.enabled (not .Values.redis.persistence.ephemeral)) }}
+{{- if .Values.redis.volumes }}
+{{- range $volName, $volConfig := .Values.redis.volumes }}
+{{- if and (ne $volConfig.enabled false) (not $volConfig.ephemeral) (not $volConfig.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ if eq $volName "data" }}{{ include "<CHART_NAME>.fullname" $ }}-redis{{ else }}{{ include "<CHART_NAME>.fullname" $ }}-redis-{{ $volName | replace "." "-" | lower | trimAll "-" }}{{ end }}
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" "redis") | nindent 4 }}
+    {{- with $.Values.redis.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  accessModes:
+    - {{ $volConfig.accessMode | default "ReadWriteOnce" }}
+  {{- if $volConfig.storageClass }}
+  {{- if (eq "-" $volConfig.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ $volConfig.storageClass }}"
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $volConfig.storageRequest | default "1Gi" }}
+{{- end }}
+{{- end }}
+{{- else if and .Values.redis.persistence .Values.redis.persistence.enabled (not .Values.redis.persistence.ephemeral) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -227,9 +354,9 @@ spec:
   storageClassName: "{{ .Values.redis.persistence.storageClass }}"
   {{- end }}
   {{- end }}
-{{- end -}}
+{{- end }}
 
-{{ if and .Values.redis .Values.redis.secrets .Values.redis.secrets.env (not (empty .Values.redis.secrets.env)) }}
+{{- if and .Values.redis.secrets .Values.redis.secrets.env (not (empty .Values.redis.secrets.env)) }}
 ---
 apiVersion: v1
 kind: Secret
@@ -247,33 +374,35 @@ data:
   {{- end }}
 {{- end }}
 
-{{ if .Values.redis.enabled }}
+{{- with .Values.redis.service }}
+{{- if and (ne .enabled false) .ports }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" . }}-redis
+  name: {{ include "<CHART_NAME>.fullname" $ }}-redis
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
-    {{- with .Values.redis.labels }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" "redis") | nindent 4 }}
+    {{- with $.Values.redis.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  type: {{ .Values.redis.service.type | default "ClusterIP" }}
+  type: {{ .type | default "ClusterIP" }}
   ports:
-    {{- range $key, $val := .Values.redis.service.ports }}
+    {{- range $key, $val := .ports }}
   - name: {{ $key }}
     port: {{ $val.port }}
-    targetPort: {{ $key }}
+    targetPort: {{ $val.containerPort | default $val.port }}
     {{- if $val.protocol }}
     protocol: {{ $val.protocol }}
     {{- end }}
   {{- end }}
   selector:
-    {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "redis") | nindent 4 }}
-{{- end -}}
+    {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" $ "component" "redis") | nindent 4 }}
+{{- end }}
+{{- end }}
 
-{{- if and .Values.redis .Values.redis.config .Values.redis.config.files }}
+{{- if and .Values.redis.config .Values.redis.config.files }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -291,7 +420,7 @@ data:
 {{- end }}
 {{- end }}
 
-{{- if and .Values.redis .Values.redis.secrets .Values.redis.secrets.files }}
+{{- if and .Values.redis.secrets .Values.redis.secrets.files }}
 ---
 apiVersion: v1
 kind: Secret
@@ -309,24 +438,48 @@ data:
 {{- end }}
 {{- end }}
 
-{{- if and .Values.redis .Values.redis.vso .Values.redis.vso.enabled }}
+{{- if and .Values.redis.vso .Values.redis.vso.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis-sa
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis-vault-auth
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
+spec:
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: {{ .Values.redis.vso.role | quote }}
+    serviceAccount: {{ include "<CHART_NAME>.fullname" . }}-redis-sa
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" . }}-redis-vso
+  name: {{ include "<CHART_NAME>.fullname" . }}-redis-vso-secret-obj
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "redis") | nindent 4 }}
     {{- with .Values.redis.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  vaultAuthRef: {{ include "<CHART_NAME>.fullname" . }}-redis-vault-auth
   type: kv-v2
   mount: kv
-  path: {{ .Values.redis.vso.path }}
+  path: {{ .Values.redis.vso.path | quote }}
   destination:
     name: {{ include "<CHART_NAME>.fullname" . }}-redis-vso-secret
     create: true
   refreshAfter: 60s
-  vaultAuthRef: {{ .Values.redis.vso.role | default (printf "%s-%s-role" (include "<CHART_NAME>.fullname" .) "redis") }}
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: {{ include "<CHART_NAME>.fullname" . }}-redis
+{{- end }}
 {{- end }}

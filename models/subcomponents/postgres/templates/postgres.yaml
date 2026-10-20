@@ -1,4 +1,5 @@
-{{ if and .Values.postgres .Values.postgres.config .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
+{{ if and .Values.postgres .Values.postgres.enabled }}
+{{ if and .Values.postgres.config .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -14,8 +15,6 @@ data:
   {{ $key }}: {{ $val | quote }}
   {{- end }}
 {{- end }}
-
-{{ if .Values.postgres.enabled }}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -39,10 +38,12 @@ metadata:
 spec:
   {{- if hasKey .Values.postgres "replicas" }}
   replicas: {{ .Values.postgres.replicas }}
+  {{- else }}
+  replicas: 1
   {{- end }}
-  {{- if .Values.postgres.strategy }}
+  {{- with .Values.postgres.strategy }}
   strategy:
-    {{- toYaml .Values.postgres.strategy | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
   selector:
     matchLabels:
@@ -62,54 +63,103 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
-      {{- with .Values.postgres.image.pullSecrets }}
+      {{- $pullSecrets := list }}
+      {{- with .Values.postgres.image }}
+        {{- range $ps := .pullSecrets }}
+          {{- $pullSecrets = append $pullSecrets $ps }}
+        {{- end }}
+      {{- end }}
+      {{- with .Values.global }}
+      {{- if and .imageCredentials .imageCredentials.create }}
+        {{- $pullSecrets = append $pullSecrets (dict "name" (printf "%s-registry" (include "<CHART_NAME>.fullname" $))) }}
+      {{- end }}
+      {{- end }}
+      {{- if gt (len $pullSecrets) 0 }}
       imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml $pullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if and .Values.postgres.vso .Values.postgres.vso.enabled }}
+      serviceAccountName: {{ include "<CHART_NAME>.fullname" . }}-postgres-sa
+      {{- else if .Values.serviceAccount }}
+      serviceAccountName: {{ include "<CHART_NAME>.serviceAccountName" . }}
       {{- end }}
       containers:
         - name: postgres
-          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
-          imagePullPolicy: {{ .Values.postgres.image.pullPolicy | default "IfNotPresent" }}
+          {{- with .Values.postgres.image }}
+          image: "{{ .repository }}:{{ .tag | default "16-alpine" }}"
+          imagePullPolicy: {{ .pullPolicy | default "IfNotPresent" }}
+          {{- end }}
+          {{- with .Values.postgres.service }}
+          {{- if and (ne .enabled false) .ports }}
           ports:
-            {{- range $key, $val := .Values.postgres.service.ports }}
+            {{- range $key, $val := .ports }}
             - name: {{ $key }}
               containerPort: {{ $val.containerPort | default $val.port }}
               {{- if $val.protocol }}
               protocol: {{ $val.protocol }}
               {{- end }}
             {{- end }}
-          
-          {{- if or (and .Values.postgres.config .Values.postgres.config.env (not (empty .Values.postgres.config.env))) (and .Values.postgres.secrets .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env))) (and .Values.global (not (empty .Values.global))) }}
+          {{- end }}
+          {{- end }}
+
+          # Clean Configuration Management: Full Decoupling via envFrom
+          {{- $hasGlobalCM := false }}
+          {{- $hasGlobalSecret := false }}
+          {{- with .Values.global }}
+            {{- with .config }}
+              {{- if and .env (not (empty .env)) }}{{ $hasGlobalCM = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .env (not (empty .env)) }}{{ $hasGlobalSecret = true }}{{ end }}
+            {{- end }}
+          {{- end }}
+          {{- $hasCompCM := false }}
+          {{- with .Values.postgres.config }}
+            {{- if and .env (not (empty .env)) }}{{ $hasCompCM = true }}{{ end }}
+          {{- end }}
+          {{- $hasCompSecret := false }}
+          {{- with .Values.postgres.secrets }}
+            {{- if and .env (not (empty .env)) }}{{ $hasCompSecret = true }}{{ end }}
+          {{- end }}
+          {{- $hasVSO := and .Values.postgres.vso .Values.postgres.vso.enabled }}
+          {{- if or $hasGlobalCM $hasGlobalSecret $hasCompCM $hasCompSecret $hasVSO }}
           envFrom:
-            {{- if and .Values.postgres.config .Values.postgres.config.env (not (empty .Values.postgres.config.env)) }}
-            - configMapRef:
-                name: {{ include "<CHART_NAME>.fullname" . }}-postgres-cm
-            {{- end }}
-            {{- if and .Values.postgres.secrets .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
-            - secretRef:
-                name: {{ include "<CHART_NAME>.fullname" . }}-postgres-secret
-            {{- end }}
-            {{- if and .Values.global .Values.global.config .Values.global.config.env (not (empty .Values.global.config.env)) }}
+            {{- if $hasGlobalCM }}
             - configMapRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-global-cm
             {{- end }}
-            {{- if and .Values.global .Values.global.secrets .Values.global.secrets.env (not (empty .Values.global.secrets.env)) }}
+            {{- if $hasGlobalSecret }}
             - secretRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-global-secret
             {{- end }}
+            {{- if $hasCompCM }}
+            - configMapRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-postgres-cm
+            {{- end }}
+            {{- if $hasCompSecret }}
+            - secretRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-postgres-secret
+            {{- end }}
+            {{- if $hasVSO }}
+            - secretRef:
+                name: {{ include "<CHART_NAME>.fullname" . }}-postgres-vso-secret
+            {{- end }}
           {{- end }}
 
-          {{- if and .Values.postgres.probes .Values.postgres.probes.startup (not (empty .Values.postgres.probes.startup)) }}
+          # Tiered "Fail-Fast" Health Probes
+          {{- with .Values.postgres.probes }}
+          {{- if and .startup (not (empty .startup)) }}
           startupProbe:
-            {{- toYaml .Values.postgres.probes.startup | nindent 12 }}
+            {{- toYaml .startup | nindent 12 }}
           {{- end }}
-          {{- if and .Values.postgres.probes .Values.postgres.probes.liveness (not (empty .Values.postgres.probes.liveness)) }}
+          {{- if and .liveness (not (empty .liveness)) }}
           livenessProbe:
-            {{- toYaml .Values.postgres.probes.liveness | nindent 12 }}
+            {{- toYaml .liveness | nindent 12 }}
           {{- end }}
-          {{- if and .Values.postgres.probes .Values.postgres.probes.readiness (not (empty .Values.postgres.probes.readiness)) }}
+          {{- if and .readiness (not (empty .readiness)) }}
           readinessProbe:
-            {{- toYaml .Values.postgres.probes.readiness | nindent 12 }}
+            {{- toYaml .readiness | nindent 12 }}
+          {{- end }}
           {{- end }}
 
           {{- with .Values.postgres.command }}
@@ -121,63 +171,112 @@ spec:
             {{- toYaml . | nindent 12 }}
           {{- end }}
 
-          {{- if and .Values.postgres.resources .Values.postgres.resources.limits }}
+          {{- with .Values.postgres.resources }}
+          {{- if .limits }}
           resources:
-            {{- toYaml .Values.postgres.resources | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- end }}
 
-          {{- if or (and .Values.postgres.persistence .Values.postgres.persistence.enabled) (and .Values.postgres.config .Values.postgres.config.files) (and .Values.postgres.secrets .Values.postgres.secrets.files) (and .Values.postgres.vso .Values.postgres.vso.enabled .Values.postgres.vso.files) }}
+          {{- $hasConfigFiles := and .Values.postgres.config .Values.postgres.config.files }}
+          {{- $hasSecretFiles := and .Values.postgres.secrets .Values.postgres.secrets.files }}
+          {{- $hasVsoFiles := and .Values.postgres.vso .Values.postgres.vso.enabled .Values.postgres.vso.files }}
+          {{- $hasVolumes := false }}
+          {{- with .Values.postgres.volumes }}
+            {{- range $vName, $v := . }}
+              {{- if ne $v.enabled false }}{{ $hasVolumes = true }}{{ end }}
+            {{- end }}
+          {{- end }}
+          {{- $hasPersistence := and .Values.postgres.persistence .Values.postgres.persistence.enabled }}
+          {{- $hasMainVols := or $hasConfigFiles $hasSecretFiles $hasVsoFiles $hasVolumes $hasPersistence .Values.postgres.volumeMounts }}
+          {{- if $hasMainVols }}
           volumeMounts:
-          {{- if and .Values.postgres.persistence .Values.postgres.persistence.enabled }}
+            {{- if $hasVolumes }}
+            {{- range $volName, $vol := .Values.postgres.volumes }}
+            {{- if ne $vol.enabled false }}
+            - name: {{ $volName }}
+              mountPath: {{ $vol.mountPath }}
+              {{- if $vol.subPath }}
+              subPath: {{ $vol.subPath }}
+              {{- end }}
+              {{- if $vol.readOnly }}
+              readOnly: {{ $vol.readOnly }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- else if $hasPersistence }}
             - name: data
               mountPath: {{ .Values.postgres.persistence.mountPath | default "/var/lib/postgresql/data" }}
-          {{- end }}
-          {{- if and .Values.postgres.config .Values.postgres.config.files }}
-          {{- range $filename, $config := .Values.postgres.config.files }}
+            {{- end }}
+            {{- with .Values.postgres.volumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- if $hasConfigFiles }}
+            {{- range $filename, $config := .Values.postgres.config.files }}
             - name: config-files
               mountPath: {{ $config.mountPath | default (printf "/etc/config/%s" $filename) }}
               subPath: {{ $filename }}
-          {{- end }}
-          {{- end }}
-          {{- if and .Values.postgres.secrets .Values.postgres.secrets.files }}
-          {{- range $filename, $config := .Values.postgres.secrets.files }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasSecretFiles }}
+            {{- range $filename, $config := .Values.postgres.secrets.files }}
             - name: secret-files
               mountPath: {{ $config.mountPath | default (printf "/etc/secret/%s" $filename) }}
               subPath: {{ $filename }}
-          {{- end }}
-          {{- end }}
-          {{- if and .Values.postgres.vso .Values.postgres.vso.enabled .Values.postgres.vso.files }}
-          {{- range $filename, $config := .Values.postgres.vso.files }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasVsoFiles }}
+            {{- range $filename, $config := .Values.postgres.vso.files }}
             - name: vso-files
               mountPath: {{ $config.mountPath | default (printf "/etc/vso/%s" $filename) }}
               subPath: {{ $filename }}
-          {{- end }}
-          {{- end }}
+            {{- end }}
+            {{- end }}
           {{- end }}
       
-      {{- if .Values.postgres.terminationGracePeriodSeconds }}
-      terminationGracePeriodSeconds: {{ .Values.postgres.terminationGracePeriodSeconds }}
+      {{- with .Values.postgres.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ . }}
       {{- end }}
 
-      {{- with .Values.postgres.scheduling.nodeSelector }}
+      {{- with .Values.postgres.scheduling }}
+      {{- with .nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.postgres.scheduling.affinity }}
+      {{- with .affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.postgres.scheduling.tolerations }}
+      {{- with .tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if .Values.postgres.topologySpreadConstraints }}
+      {{- end }}
+      {{- with .Values.postgres.topologySpreadConstraints }}
       topologySpreadConstraints:
-        {{- toYaml .Values.postgres.topologySpreadConstraints | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
       {{- end }}
 
-      {{- if and .Values.postgres.persistence .Values.postgres.persistence.enabled }}
+      {{- $hasVols := or $hasConfigFiles $hasSecretFiles $hasVsoFiles $hasVolumes $hasPersistence }}
+      {{- if $hasVols }}
       volumes:
+        {{- if $hasVolumes }}
+        {{- range $volName, $vol := .Values.postgres.volumes }}
+        {{- if ne $vol.enabled false }}
+        - name: {{ $volName }}
+          {{- if $vol.ephemeral }}
+          emptyDir:
+            {{- toYaml ($vol.emptyDir | default dict) | nindent 12 }}
+          {{- else if $vol.existingClaim }}
+          persistentVolumeClaim:
+            claimName: {{ $vol.existingClaim }}
+          {{- else }}
+          persistentVolumeClaim:
+            claimName: {{ if eq $volName "data" }}{{ include "<CHART_NAME>.fullname" $ }}-postgres{{ else }}{{ include "<CHART_NAME>.fullname" $ }}-postgres-{{ $volName | replace "." "-" | lower | trimAll "-" }}{{ end }}
+          {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- else if $hasPersistence }}
         - name: data
           {{- if .Values.postgres.persistence.ephemeral }}
           emptyDir: {}
@@ -185,25 +284,53 @@ spec:
           persistentVolumeClaim:
             claimName: {{ include "<CHART_NAME>.fullname" $ }}-postgres
           {{- end }}
-      {{- if and .Values.postgres.config .Values.postgres.config.files }}
+        {{- end }}
+        {{- if $hasConfigFiles }}
         - name: config-files
           configMap:
             name: {{ include "<CHART_NAME>.fullname" . }}-postgres-files-cm
-      {{- end }}
-      {{- if and .Values.postgres.secrets .Values.postgres.secrets.files }}
+        {{- end }}
+        {{- if $hasSecretFiles }}
         - name: secret-files
           secret:
             secretName: {{ include "<CHART_NAME>.fullname" . }}-postgres-files-secret
-      {{- end }}
-      {{- if and .Values.postgres.vso .Values.postgres.vso.enabled }}
+        {{- end }}
+        {{- if and .Values.postgres.vso .Values.postgres.vso.enabled }}
         - name: vso-files
           secret:
             secretName: {{ include "<CHART_NAME>.fullname" . }}-postgres-vso-secret
+        {{- end }}
       {{- end }}
-      {{- end }}
-{{- end -}}
 
-{{ if and .Values.postgres.enabled (and .Values.postgres.persistence.enabled (not .Values.postgres.persistence.ephemeral)) }}
+{{- if .Values.postgres.volumes }}
+{{- range $volName, $volConfig := .Values.postgres.volumes }}
+{{- if and (ne $volConfig.enabled false) (not $volConfig.ephemeral) (not $volConfig.existingClaim) }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ if eq $volName "data" }}{{ include "<CHART_NAME>.fullname" $ }}-postgres{{ else }}{{ include "<CHART_NAME>.fullname" $ }}-postgres-{{ $volName | replace "." "-" | lower | trimAll "-" }}{{ end }}
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" "postgres") | nindent 4 }}
+    {{- with $.Values.postgres.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  accessModes:
+    - {{ $volConfig.accessMode | default "ReadWriteOnce" }}
+  {{- if $volConfig.storageClass }}
+  {{- if (eq "-" $volConfig.storageClass) }}
+  storageClassName: ""
+  {{- else }}
+  storageClassName: "{{ $volConfig.storageClass }}"
+  {{- end }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $volConfig.storageRequest | default "1Gi" }}
+{{- end }}
+{{- end }}
+{{- else if and .Values.postgres.persistence .Values.postgres.persistence.enabled (not .Values.postgres.persistence.ephemeral) }}
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -227,9 +354,9 @@ spec:
   storageClassName: "{{ .Values.postgres.persistence.storageClass }}"
   {{- end }}
   {{- end }}
-{{- end -}}
+{{- end }}
 
-{{ if and .Values.postgres .Values.postgres.secrets .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
+{{- if and .Values.postgres.secrets .Values.postgres.secrets.env (not (empty .Values.postgres.secrets.env)) }}
 ---
 apiVersion: v1
 kind: Secret
@@ -247,33 +374,35 @@ data:
   {{- end }}
 {{- end }}
 
-{{ if .Values.postgres.enabled }}
+{{- with .Values.postgres.service }}
+{{- if and (ne .enabled false) .ports }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" . }}-postgres
+  name: {{ include "<CHART_NAME>.fullname" $ }}-postgres
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
-    {{- with .Values.postgres.labels }}
+    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" "postgres") | nindent 4 }}
+    {{- with $.Values.postgres.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
-  type: {{ .Values.postgres.service.type | default "ClusterIP" }}
+  type: {{ .type | default "ClusterIP" }}
   ports:
-    {{- range $key, $val := .Values.postgres.service.ports }}
+    {{- range $key, $val := .ports }}
   - name: {{ $key }}
     port: {{ $val.port }}
-    targetPort: {{ $key }}
+    targetPort: {{ $val.containerPort | default $val.port }}
     {{- if $val.protocol }}
     protocol: {{ $val.protocol }}
     {{- end }}
   {{- end }}
   selector:
-    {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" "postgres") | nindent 4 }}
-{{- end -}}
+    {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" $ "component" "postgres") | nindent 4 }}
+{{- end }}
+{{- end }}
 
-{{- if and .Values.postgres .Values.postgres.config .Values.postgres.config.files }}
+{{- if and .Values.postgres.config .Values.postgres.config.files }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -291,7 +420,7 @@ data:
 {{- end }}
 {{- end }}
 
-{{- if and .Values.postgres .Values.postgres.secrets .Values.postgres.secrets.files }}
+{{- if and .Values.postgres.secrets .Values.postgres.secrets.files }}
 ---
 apiVersion: v1
 kind: Secret
@@ -309,24 +438,48 @@ data:
 {{- end }}
 {{- end }}
 
-{{- if and .Values.postgres .Values.postgres.vso .Values.postgres.vso.enabled }}
+{{- if and .Values.postgres.vso .Values.postgres.vso.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-sa
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultAuth
+metadata:
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-vault-auth
+  labels:
+    {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
+spec:
+  method: kubernetes
+  mount: kubernetes
+  kubernetes:
+    role: {{ .Values.postgres.vso.role | quote }}
+    serviceAccount: {{ include "<CHART_NAME>.fullname" . }}-postgres-sa
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
-  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-vso
+  name: {{ include "<CHART_NAME>.fullname" . }}-postgres-vso-secret-obj
   labels:
     {{- include "<CHART_NAME>.component.labels" (dict "context" . "component" "postgres") | nindent 4 }}
     {{- with .Values.postgres.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
+  vaultAuthRef: {{ include "<CHART_NAME>.fullname" . }}-postgres-vault-auth
   type: kv-v2
   mount: kv
-  path: {{ .Values.postgres.vso.path }}
+  path: {{ .Values.postgres.vso.path | quote }}
   destination:
     name: {{ include "<CHART_NAME>.fullname" . }}-postgres-vso-secret
     create: true
   refreshAfter: 60s
-  vaultAuthRef: {{ .Values.postgres.vso.role | default (printf "%s-%s-role" (include "<CHART_NAME>.fullname" .) "postgres") }}
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: {{ include "<CHART_NAME>.fullname" . }}-postgres
+{{- end }}
 {{- end }}

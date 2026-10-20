@@ -73,11 +73,13 @@ spec:
         {{- end }}
         {{- end }}
         {{- end }}
-        {{- if and $.Values.global $.Values.global.config }}
-        checksum/cm-global: '{{ toYaml $.Values.global.config | sha256sum }}'
+        {{- with $.Values.global }}
+        {{- if .config }}
+        checksum/cm-global: '{{ toYaml .config | sha256sum }}'
         {{- end }}
-        {{- if and $.Values.global $.Values.global.secrets }}
-        checksum/secret-global: '{{ toYaml $.Values.global.secrets | sha256sum }}'
+        {{- if .secrets }}
+        checksum/secret-global: '{{ toYaml .secrets | sha256sum }}'
+        {{- end }}
         {{- end }}
         {{- if $comp.initContainers }}
         checksum/init-containers-{{ $compName }}: '{{ toYaml $comp.initContainers | sha256sum }}'
@@ -94,8 +96,10 @@ spec:
           {{- $pullSecrets = append $pullSecrets $ps }}
         {{- end }}
       {{- end }}
-      {{- if and $.Values.global $.Values.global.imageCredentials $.Values.global.imageCredentials.create }}
+      {{- with $.Values.global }}
+      {{- if and .imageCredentials .imageCredentials.create }}
         {{- $pullSecrets = append $pullSecrets (dict "name" (printf "%s-registry" (include "chart-model-multi.fullname" $))) }}
+      {{- end }}
       {{- end }}
       {{- if gt (len $pullSecrets) 0 }}
       imagePullSecrets:
@@ -218,25 +222,44 @@ spec:
           
 
           # Clean Configuration Management: Full Decoupling via envFrom
-          {{- if or (and $.Values.global (not (empty $.Values.global))) (and $comp.config $comp.config.env (not (empty $comp.config.env))) (and $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env))) }}
+          {{- $hasGlobalCM := false }}
+          {{- $hasGlobalSecret := false }}
+          {{- with $.Values.global }}
+            {{- with .config }}
+              {{- if and .env (not (empty .env)) }}{{ $hasGlobalCM = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .env (not (empty .env)) }}{{ $hasGlobalSecret = true }}{{ end }}
+            {{- end }}
+          {{- end }}
+          {{- $hasCompCM := false }}
+          {{- with $comp.config }}
+            {{- if and .env (not (empty .env)) }}{{ $hasCompCM = true }}{{ end }}
+          {{- end }}
+          {{- $hasCompSecret := false }}
+          {{- with $comp.secrets }}
+            {{- if and .env (not (empty .env)) }}{{ $hasCompSecret = true }}{{ end }}
+          {{- end }}
+          {{- $hasVSO := and $comp.vso $comp.vso.enabled }}
+          {{- if or $hasGlobalCM $hasGlobalSecret $hasCompCM $hasCompSecret $hasVSO }}
           envFrom:
-            {{- if and $.Values.global $.Values.global.config $.Values.global.config.env (not (empty $.Values.global.config.env)) }}
+            {{- if $hasGlobalCM }}
             - configMapRef:
                 name: {{ include "chart-model-multi.fullname" $ }}-global-cm
             {{- end }}
-            {{- if and $.Values.global $.Values.global.secrets $.Values.global.secrets.env (not (empty $.Values.global.secrets.env)) }}
+            {{- if $hasGlobalSecret }}
             - secretRef:
                 name: {{ include "chart-model-multi.fullname" $ }}-global-secret
             {{- end }}
-            {{- if and $comp.config $comp.config.env (not (empty $comp.config.env)) }}
+            {{- if $hasCompCM }}
             - configMapRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-cm
             {{- end }}
-            {{- if and $comp.secrets $comp.secrets.env (not (empty $comp.secrets.env)) }}
+            {{- if $hasCompSecret }}
             - secretRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-secret
             {{- end }}
-            {{- if and $comp.vso $comp.vso.enabled }}
+            {{- if $hasVSO }}
             - secretRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-secret
             {{- end }}

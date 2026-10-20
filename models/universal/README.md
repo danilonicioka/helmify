@@ -106,6 +106,11 @@ Allows mounting arbitrary configuration files (like `nginx.conf` or keystores) d
 ### 11. OpenTelemetry Auto-Instrumentation
 Natively integrates with the OpenTelemetry Operator. By simply enabling `instrumentation` on the main workload or `extraContainers`, the chart generates `Instrumentation` CRDs and automatically links them to the pod using `container-names` logic, ensuring agents are cleanly injected only to the desired containers.
 
+### 12. Subcomponents (Postgres & Redis)
+Specialized subcomponents (`postgres`, `redis`) can be optionally generated into the chart (`templates/postgres.yaml`, `templates/redis.yaml`).
+- **Defensive Rendering:** Templates safely guard all access against `nil` values so that charts can be linted or rendered cleanly with default `values.yaml` (`helm lint` and `helm template`) even when subcomponents are not explicitly enabled or configured.
+- **Parity with Universal Model:** Subcomponents support `service.enabled` (to disable external service exposition), decoupled `containerPort`, unified multi-volume management (`volumes:`), global private registry pull secrets (`global.imageCredentials`), and modern Vault Secrets Operator (VSO) integration with automated `ServiceAccount` and `VaultAuth` generation. Legacy `persistence:` remains supported in templates for backward-compatibility.
+
 ---
 
 ## Usage

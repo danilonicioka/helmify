@@ -2,14 +2,9 @@
 # SUBCOMPONENT DEPLOYMENT CONFIGURATION (redis)
 # ==============================================================================
 redis:
-  # ----------------------------------------------------------------------------
-  # 1. CORE WORKLOAD SETTINGS (Most Frequently Modified)
-  # ----------------------------------------------------------------------------
   enabled: true
   image:
-    # -- Quay Registry is used to avoid Docker Hub rate limiting.
     repository: "{{REGISTRY}}/devops/redis"
-    # -- Defaults to Chart.appVersion if not specified.
     tag: "8.4.0"
     pullPolicy: IfNotPresent
     pullSecrets: []
@@ -17,24 +12,16 @@ redis:
   command: []
   args: []
 
-  # -- Number of replica pods.
   replicas: 1
 
-  # -- Custom labels to add to the deployment/pods
   labels:
     app.openshift.io/runtime: redis
 
-  # -- Custom annotations to add to the deployment 
   annotations: {}
 
-  # ----------------------------------------------------------------------------
-  # 2. APPLICATION CONFIGURATION (Variables & Credentials)
-  # ----------------------------------------------------------------------------
-  # ConfigMaps unique to this service container.
   config:
     env: {}
     files: {}
-  # Sensitive variables unique to this service container (Secrets).
   secrets:
     env: {}
     files: {}
@@ -45,20 +32,13 @@ redis:
     path: "kv/data/<CHART_NAME>/redis"
     files: {}
 
-  # ----------------------------------------------------------------------------
-  # 3. ROUTING & NETWORKING
-  # ----------------------------------------------------------------------------
-  # -- Internal Kubernetes Service Configuration.
   service:
+    enabled: true
     type: ClusterIP
     ports:
       redis:
         port: 6379
 
-  # ----------------------------------------------------------------------------
-  # 4. RESOURCES (Operational Overlay-Only)
-  # ----------------------------------------------------------------------------
-  # Baseline resource allocation overlay. Adjust to application requirements.
   resources:
     limits:
       cpu: 200m
@@ -67,10 +47,6 @@ redis:
       cpu: 30m
       memory: 64Mi
 
-  # ----------------------------------------------------------------------------
-  # 5. TIERED "FAIL-FAST" HEALTH PROBES (tcpSocket & Zero-Delay)
-  # ----------------------------------------------------------------------------
-  # Probes are empty by default; the recommended tcpSocket configuration is commented below.
   probes:
     startup:
       tcpSocket:
@@ -96,32 +72,22 @@ redis:
       failureThreshold: 3
       successThreshold: 1
 
-  # ----------------------------------------------------------------------------
-  # 6. LIFECYCLE & HA STRATEGY
-  # ----------------------------------------------------------------------------
-  # -- Deployment strategy. Use 'RollingUpdate' or 'Recreate' (e.g. for RWO volume claims).
   strategy:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 25%
-  # -- Connection draining grace period for graceful shutdowns.
   terminationGracePeriodSeconds: 30
 
-  # ----------------------------------------------------------------------------
-  # 7. PERSISTENCE
-  # ----------------------------------------------------------------------------
-  persistence:
-    enabled: true
-    ephemeral: true
-    mountPath: "/data"
-    storageRequest: 1Gi
-    accessMode: ReadWriteOnce
-    storageClass: ""
+  volumes:
+    data:
+      enabled: true
+      mountPath: "/data"
+      storageRequest: 1Gi
+      accessMode: ReadWriteOnce
+      storageClass: ""
+      ephemeral: true
 
-  # ----------------------------------------------------------------------------
-  # 8. SCHEDULING & NODE ASSIGNMENT
-  # ----------------------------------------------------------------------------
   scheduling:
     nodeSelector: {}
     tolerations: []

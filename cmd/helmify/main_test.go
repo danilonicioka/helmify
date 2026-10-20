@@ -731,4 +731,195 @@ spec:
 
 	// Verify podAntiAffinity does not duplicate name
 	assert.NotContains(t, valuesEnv, "- smd-smd")
+	t.Logf("chart/values.yaml:\n%s", files["chart/values.yaml"])
+
+	// Verify that the chart renders cleanly with ONLY default values.yaml (without values-env.yaml)
+	tempDir := t.TempDir()
+	for path, content := range files {
+		targetPath := filepath.Join(tempDir, path)
+		if strings.HasSuffix(path, "/") {
+			_ = os.MkdirAll(targetPath, 0755)
+			continue
+		}
+		if len(content) == 0 && (path == "chart" || path == "chart/templates" || path == "chart/files") {
+			_ = os.MkdirAll(targetPath, 0755)
+			continue
+		}
+		assert.NoError(t, os.MkdirAll(filepath.Dir(targetPath), 0755))
+		assert.NoError(t, os.WriteFile(targetPath, []byte(content), 0644))
+	}
+	cmd := exec.Command("helm", "template", "smd", filepath.Join(tempDir, "chart"))
+	out, err := cmd.CombinedOutput()
+	assert.NoError(t, err, "helm template with default values failed: %s", string(out))
 }
+
+func TestGenerate_IntegracaoPjeTpu_AllTemplates_DefaultValues(t *testing.T) {
+	manifests := `
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: integracao-pje-tpu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: integracao-pje-tpu
+  template:
+    metadata:
+      labels:
+        app: integracao-pje-tpu
+    spec:
+      containers:
+        - name: integracao-pje-tpu
+          image: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/ca/sistemas-judiciais/satelites/integracao-pje-tpu:hml-34111dbd
+          ports:
+            - name: http
+              containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: integracao-pje-tpu
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+  selector:
+    app: integracao-pje-tpu
+`
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/generate", strings.NewReader(manifests))
+	req.Header.Set("Content-Type", "text/yaml")
+	req.Header.Set("X-Chart-Name", "integracao-pje-tpu")
+	req.Header.Set("X-Generate-All-Templates", "true")
+	w := httptest.NewRecorder()
+
+	handleGenerate(w, req)
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	gr, err := gzip.NewReader(resp.Body)
+	assert.NoError(t, err)
+	defer gr.Close()
+
+	tr := tar.NewReader(gr)
+	files := make(map[string]string)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		buf := new(bytes.Buffer)
+		_, _ = io.Copy(buf, tr)
+		files[hdr.Name] = buf.String()
+	}
+
+	// Verify chart/values.yaml has the global baseline
+	valuesYaml := files["chart/values.yaml"]
+	assert.Contains(t, valuesYaml, "global:")
+	assert.Contains(t, valuesYaml, "config:")
+	assert.Contains(t, valuesYaml, "secrets:")
+
+	// Verify that the chart renders cleanly with ONLY default values.yaml (no values-env.yaml)
+	tempDir := t.TempDir()
+	for path, content := range files {
+		targetPath := filepath.Join(tempDir, path)
+		if strings.HasSuffix(path, "/") {
+			_ = os.MkdirAll(targetPath, 0755)
+			continue
+		}
+		if len(content) == 0 && (path == "chart" || path == "chart/templates" || path == "chart/files") {
+			_ = os.MkdirAll(targetPath, 0755)
+			continue
+		}
+		assert.NoError(t, os.MkdirAll(filepath.Dir(targetPath), 0755))
+		assert.NoError(t, os.WriteFile(targetPath, []byte(content), 0644))
+	}
+
+	cmd := exec.Command("helm", "template", "integracao-pje-tpu", filepath.Join(tempDir, "chart"))
+	out, err := cmd.CombinedOutput()
+	assert.NoError(t, err, "helm template with default values failed: %s", string(out))
+}
+
+func TestSubcomponents_ParityAndDefaultValues(t *testing.T) {
+	wizardParams := helm.WizardParams{
+		ChartName:  "myapp",
+		DevRepoURL: "https://gitlab.example.com/myapp.git",
+		Deployments: map[string]helm.DeploymentParams{
+			"myapp": {
+				Image: helm.ImageParams{
+					Repository: "quay.io/tjpa/myapp",
+					Tag:        "latest",
+				},
+				Service: helm.ServiceParams{
+					Type: "ClusterIP",
+					Port: func() *int { p := 8080; return &p }(),
+				},
+			},
+		},
+		Subcomponents: []string{"postgres", "redis"},
+	}
+
+	files, err := helm.GenerateWizardChart(wizardParams)
+	assert.NoError(t, err)
+
+	// Verify values.yaml has subcomponents enabled
+	valuesYaml := string(files["values.yaml"])
+	assert.Contains(t, valuesYaml, "postgres:")
+	assert.Contains(t, valuesYaml, "redis:")
+	assert.Contains(t, valuesYaml, "global:")
+
+	// Verify values-env.yaml has modern volumes structure and no legacy persistence in subcomponents
+	valuesEnv := string(files["values-env.yaml"])
+	assert.NotContains(t, valuesEnv, "postgres:\n  persistence:")
+	assert.NotContains(t, valuesEnv, "redis:\n  persistence:")
+	assert.Contains(t, valuesEnv, "volumes:\n    data:\n      enabled: true\n      mountPath: \"/var/lib/postgresql/data\"")
+	assert.Contains(t, valuesEnv, "volumes:\n    data:\n      enabled: true\n      mountPath: \"/data\"")
+
+	// Verify templates exist
+	postgresTmpl, hasPg := files["templates/postgres.yaml"]
+	assert.True(t, hasPg)
+	assert.Contains(t, string(postgresTmpl), "(ne .enabled false)")
+	assert.Contains(t, string(postgresTmpl), "-postgres-sa")
+	assert.Contains(t, string(postgresTmpl), "-postgres-vault-auth")
+
+	redisTmpl, hasRedis := files["templates/redis.yaml"]
+	assert.True(t, hasRedis)
+	assert.Contains(t, string(redisTmpl), "(ne .enabled false)")
+	assert.Contains(t, string(redisTmpl), "-redis-sa")
+	assert.Contains(t, string(redisTmpl), "-redis-vault-auth")
+
+	// Render with helm template using default values.yaml
+	tempDir := t.TempDir()
+	chartDir := filepath.Join(tempDir, "chart")
+	assert.NoError(t, os.MkdirAll(chartDir, 0755))
+	for path, content := range files {
+		targetPath := filepath.Join(chartDir, path)
+		assert.NoError(t, os.MkdirAll(filepath.Dir(targetPath), 0755))
+		assert.NoError(t, os.WriteFile(targetPath, content, 0644))
+	}
+
+	cmd := exec.Command("helm", "template", "myapp", chartDir)
+	out, err := cmd.CombinedOutput()
+	assert.NoError(t, err, "helm template on chart with default values failed: %s", string(out))
+
+	// Render with helm template using values-env.yaml (which includes subcomponents values-snippets)
+	cmdEnv := exec.Command("helm", "template", "myapp", chartDir, "-f", filepath.Join(chartDir, "values-env.yaml"))
+	outEnv, err := cmdEnv.CombinedOutput()
+	assert.NoError(t, err, "helm template with values-env.yaml failed: %s", string(outEnv))
+
+	renderedEnv := string(outEnv)
+	assert.Contains(t, renderedEnv, "name: myapp-postgres")
+	assert.Contains(t, renderedEnv, "mountPath: /var/lib/postgresql/data")
+	assert.Contains(t, renderedEnv, "mountPath: /data")
+
+	// Verify that subcomponent templates render safely when disabled or missing from values
+	cmdDisabled := exec.Command("helm", "template", "myapp", chartDir, "--set", "postgres.enabled=false", "--set", "redis.enabled=false")
+	outDisabled, errDisabled := cmdDisabled.CombinedOutput()
+	assert.NoError(t, errDisabled, "helm template with subcomponents disabled failed: %s", string(outDisabled))
+}
+
+
