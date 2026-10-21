@@ -23,7 +23,7 @@ spec:
   jobTemplate:
     metadata:
       labels:
-        {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" $compName) | nindent 8 }}
+        {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" $ "component" $compName) | nindent 8 }}
     spec:
       template:
         metadata:
@@ -32,7 +32,7 @@ spec:
             {{- $annotations | nindent 12 }}
             {{- end }}
           labels:
-            {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" . "component" $compName) | nindent 12 }}
+            {{- include "<CHART_NAME>.component.selectorLabels" (dict "context" $ "component" $compName) | nindent 12 }}
         spec:
           {{- $pullSecrets := list }}
           {{- if $comp.image.pullSecrets }}
@@ -51,12 +51,12 @@ spec:
           {{- end }}
           {{- if and $comp.vso $comp.vso.enabled }}
           serviceAccountName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-sa
-          {{- else if .Values.serviceAccount }}
-          serviceAccountName: {{ include "chart-model-multi.serviceAccountName" . }}
+          {{- else if $.Values.serviceAccount }}
+          serviceAccountName: {{ include "chart-model-multi.serviceAccountName" $ }}
           {{- end }}
           containers:
             - name: cronjob
-              image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default .Chart.AppVersion }}"
+              image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default $.Chart.AppVersion }}"
               imagePullPolicy: {{ $comp.image.pullPolicy }}
               {{- if $comp.command }}
               command:
