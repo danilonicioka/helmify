@@ -1,3 +1,4 @@
+{{- include "chart-model-multi.validateWorkloads" . -}}
 {{- range $compName, $comp := .Values.deploys }}
 {{- if ne $comp.enabled false }}
 ---
@@ -137,18 +138,53 @@ spec:
           resources:
             {{- toYaml $config.resources | nindent 12 }}
           {{- end }}
-          {{- if and $config.config $config.config.env }}
+          {{- $hasInitSharedCMEnv := false }}
+          {{- $hasInitSharedSecEnv := false }}
+          {{- with $config.shared }}
+            {{- with .config }}
+              {{- if and .env (not (empty .env)) }}{{ $hasInitSharedCMEnv = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .env (not (empty .env)) }}{{ $hasInitSharedSecEnv = true }}{{ end }}
+            {{- end }}
+          {{- end }}
+          {{- if or (and $config.config $config.config.env) (and $config.secrets $config.secrets.env) $hasInitSharedCMEnv $hasInitSharedSecEnv }}
           envFrom:
+            {{- if and $config.config $config.config.env }}
             - configMapRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
-          {{- end }}
-          {{- if and $config.secrets $config.secrets.env }}
-          envFrom:
+            {{- end }}
+            {{- if and $config.secrets $config.secrets.env }}
             - secretRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-init-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
+            {{- end }}
+            {{- if $hasInitSharedCMEnv }}
+            {{- range $item := $config.shared.config.env }}
+            {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+            - configMapRef:
+                name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $iName | replace "." "-" | lower | trimAll "-" }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasInitSharedSecEnv }}
+            {{- range $item := $config.shared.secrets.env }}
+            {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+            - secretRef:
+                name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $iName | replace "." "-" | lower | trimAll "-" }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- $hasInitSharedCMFiles := false }}
+          {{- $hasInitSharedSecFiles := false }}
+          {{- with $config.shared }}
+            {{- with .config }}
+              {{- if and .files (not (empty .files)) }}{{ $hasInitSharedCMFiles = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .files (not (empty .files)) }}{{ $hasInitSharedSecFiles = true }}{{ end }}
+            {{- end }}
           {{- end }}
           {{- $hasInitVols := false }}
-          {{- if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) $config.volumeMounts }}{{ $hasInitVols = true }}{{ end }}
+          {{- if or (and $config.config $config.config.files) (and $config.secrets $config.secrets.files) $hasInitSharedCMFiles $hasInitSharedSecFiles $config.volumeMounts }}{{ $hasInitVols = true }}{{ end }}
           {{- if $config.volumes }}{{ range $vName, $v := $config.volumes }}{{ if ne $v.enabled false }}{{ $hasInitVols = true }}{{ end }}{{ end }}{{ end }}
           {{- if $config.sharedVolumes }}{{ range $vName, $v := $config.sharedVolumes }}{{ if ne $v.enabled false }}{{ $hasInitVols = true }}{{ end }}{{ end }}{{ end }}
           {{- if $hasInitVols }}
@@ -193,6 +229,52 @@ spec:
             - name: init-{{ $name }}-{{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
               mountPath: {{ $fileconf.mountPath }}
               subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasInitSharedCMFiles }}
+            {{- range $item := $config.shared.config.files }}
+            {{- $sName := $item }}
+            {{- $customPath := "" }}
+            {{- $customSubPath := "" }}
+            {{- if kindIs "map" $item }}
+              {{- $sName = $item.name }}
+              {{- $customPath = $item.mountPath }}
+              {{- $customSubPath = $item.subPath }}
+            {{- end }}
+            {{- $def := index ($.Values.shared.config.files | default dict) $sName | default dict }}
+            {{- $mntPath := $customPath | default $def.mountPath }}
+            {{- if $mntPath }}
+            - name: shared-cm-{{ $sName | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $mntPath }}
+              {{- if $customSubPath }}
+              subPath: {{ $customSubPath }}
+              {{- else if not $def.files }}
+              subPath: {{ $def.filename | default $sName }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasInitSharedSecFiles }}
+            {{- range $item := $config.shared.secrets.files }}
+            {{- $sName := $item }}
+            {{- $customPath := "" }}
+            {{- $customSubPath := "" }}
+            {{- if kindIs "map" $item }}
+              {{- $sName = $item.name }}
+              {{- $customPath = $item.mountPath }}
+              {{- $customSubPath = $item.subPath }}
+            {{- end }}
+            {{- $def := index ($.Values.shared.secrets.files | default dict) $sName | default dict }}
+            {{- $mntPath := $customPath | default $def.mountPath }}
+            {{- if $mntPath }}
+            - name: shared-sec-{{ $sName | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $mntPath }}
+              {{- if $customSubPath }}
+              subPath: {{ $customSubPath }}
+              {{- else if not $def.files }}
+              subPath: {{ $def.filename | default $sName }}
+              {{- end }}
+            {{- end }}
             {{- end }}
             {{- end }}
             {{- with $config.volumeMounts }}
@@ -240,8 +322,18 @@ spec:
           {{- with $comp.secrets }}
             {{- if and .env (not (empty .env)) }}{{ $hasCompSecret = true }}{{ end }}
           {{- end }}
+          {{- $hasSharedCMEnv := false }}
+          {{- $hasSharedSecEnv := false }}
+          {{- with $comp.shared }}
+            {{- with .config }}
+              {{- if and .env (not (empty .env)) }}{{ $hasSharedCMEnv = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .env (not (empty .env)) }}{{ $hasSharedSecEnv = true }}{{ end }}
+            {{- end }}
+          {{- end }}
           {{- $hasVSO := and $comp.vso $comp.vso.enabled }}
-          {{- if or $hasGlobalCM $hasGlobalSecret $hasCompCM $hasCompSecret $hasVSO }}
+          {{- if or $hasGlobalCM $hasGlobalSecret $hasCompCM $hasCompSecret $hasSharedCMEnv $hasSharedSecEnv $hasVSO }}
           envFrom:
             {{- if $hasGlobalCM }}
             - configMapRef:
@@ -258,6 +350,20 @@ spec:
             {{- if $hasCompSecret }}
             - secretRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-secret
+            {{- end }}
+            {{- if $hasSharedCMEnv }}
+            {{- range $item := $comp.shared.config.env }}
+            {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+            - configMapRef:
+                name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $iName | replace "." "-" | lower | trimAll "-" }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasSharedSecEnv }}
+            {{- range $item := $comp.shared.secrets.env }}
+            {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+            - secretRef:
+                name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $iName | replace "." "-" | lower | trimAll "-" }}
+            {{- end }}
             {{- end }}
             {{- if $hasVSO }}
             - secretRef:
@@ -299,8 +405,18 @@ spec:
             {{- toYaml $comp.resources | nindent 12 }}
           {{- end }}
 
+          {{- $hasSharedCMFiles := false }}
+          {{- $hasSharedSecFiles := false }}
+          {{- with $comp.shared }}
+            {{- with .config }}
+              {{- if and .files (not (empty .files)) }}{{ $hasSharedCMFiles = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .files (not (empty .files)) }}{{ $hasSharedSecFiles = true }}{{ end }}
+            {{- end }}
+          {{- end }}
           {{- $hasMainVols := false }}
-          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasMainVols = true }}{{ end }}
+          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) $hasSharedCMFiles $hasSharedSecFiles (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasMainVols = true }}{{ end }}
           {{- if $comp.volumes }}{{ range $vName, $v := $comp.volumes }}{{ if ne $v.enabled false }}{{ $hasMainVols = true }}{{ end }}{{ end }}{{ end }}
           {{- if $hasMainVols }}
           volumeMounts:
@@ -333,6 +449,52 @@ spec:
             - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-secret
               mountPath: {{ $config.mountPath }}
               subPath: {{ $filename }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasSharedCMFiles }}
+            {{- range $item := $comp.shared.config.files }}
+            {{- $name := $item }}
+            {{- $customPath := "" }}
+            {{- $customSubPath := "" }}
+            {{- if kindIs "map" $item }}
+              {{- $name = $item.name }}
+              {{- $customPath = $item.mountPath }}
+              {{- $customSubPath = $item.subPath }}
+            {{- end }}
+            {{- $def := index ($.Values.shared.config.files | default dict) $name | default dict }}
+            {{- $mntPath := $customPath | default $def.mountPath }}
+            {{- if $mntPath }}
+            - name: shared-cm-{{ $name | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $mntPath }}
+              {{- if $customSubPath }}
+              subPath: {{ $customSubPath }}
+              {{- else if not $def.files }}
+              subPath: {{ $def.filename | default $name }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasSharedSecFiles }}
+            {{- range $item := $comp.shared.secrets.files }}
+            {{- $name := $item }}
+            {{- $customPath := "" }}
+            {{- $customSubPath := "" }}
+            {{- if kindIs "map" $item }}
+              {{- $name = $item.name }}
+              {{- $customPath = $item.mountPath }}
+              {{- $customSubPath = $item.subPath }}
+            {{- end }}
+            {{- $def := index ($.Values.shared.secrets.files | default dict) $name | default dict }}
+            {{- $mntPath := $customPath | default $def.mountPath }}
+            {{- if $mntPath }}
+            - name: shared-sec-{{ $name | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $mntPath }}
+              {{- if $customSubPath }}
+              subPath: {{ $customSubPath }}
+              {{- else if not $def.files }}
+              subPath: {{ $def.filename | default $name }}
+              {{- end }}
+            {{- end }}
             {{- end }}
             {{- end }}
             {{- if and $comp.vso $comp.vso.enabled $comp.vso.files }}
@@ -393,7 +555,17 @@ spec:
           readinessProbe:
             {{- toYaml $sidecar.probes.readiness | nindent 12 }}
           {{- end }}
-          {{- if or (and $sidecar.config $sidecar.config.env) (and $sidecar.secrets $sidecar.secrets.env) }}
+          {{- $hasSidecarSharedCMEnv := false }}
+          {{- $hasSidecarSharedSecEnv := false }}
+          {{- with $sidecar.shared }}
+            {{- with .config }}
+              {{- if and .env (not (empty .env)) }}{{ $hasSidecarSharedCMEnv = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .env (not (empty .env)) }}{{ $hasSidecarSharedSecEnv = true }}{{ end }}
+            {{- end }}
+          {{- end }}
+          {{- if or (and $sidecar.config $sidecar.config.env) (and $sidecar.secrets $sidecar.secrets.env) $hasSidecarSharedCMEnv $hasSidecarSharedSecEnv }}
           envFrom:
             {{- if and $sidecar.config $sidecar.config.env }}
             - configMapRef:
@@ -403,9 +575,33 @@ spec:
             - secretRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-secret
             {{- end }}
+            {{- if $hasSidecarSharedCMEnv }}
+            {{- range $item := $sidecar.shared.config.env }}
+            {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+            - configMapRef:
+                name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $iName | replace "." "-" | lower | trimAll "-" }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasSidecarSharedSecEnv }}
+            {{- range $item := $sidecar.shared.secrets.env }}
+            {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+            - secretRef:
+                name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $iName | replace "." "-" | lower | trimAll "-" }}
+            {{- end }}
+            {{- end }}
+          {{- end }}
+          {{- $hasSidecarSharedCMFiles := false }}
+          {{- $hasSidecarSharedSecFiles := false }}
+          {{- with $sidecar.shared }}
+            {{- with .config }}
+              {{- if and .files (not (empty .files)) }}{{ $hasSidecarSharedCMFiles = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .files (not (empty .files)) }}{{ $hasSidecarSharedSecFiles = true }}{{ end }}
+            {{- end }}
           {{- end }}
           {{- $hasExtraVols := false }}
-          {{- if or (and $sidecar.config $sidecar.config.files) (and $sidecar.secrets $sidecar.secrets.files) $sidecar.volumeMounts }}{{ $hasExtraVols = true }}{{ end }}
+          {{- if or (and $sidecar.config $sidecar.config.files) (and $sidecar.secrets $sidecar.secrets.files) $hasSidecarSharedCMFiles $hasSidecarSharedSecFiles $sidecar.volumeMounts }}{{ $hasExtraVols = true }}{{ end }}
           {{- if $sidecar.volumes }}{{ range $vName, $v := $sidecar.volumes }}{{ if ne $v.enabled false }}{{ $hasExtraVols = true }}{{ end }}{{ end }}{{ end }}
           {{- if $sidecar.sharedVolumes }}{{ range $vName, $v := $sidecar.sharedVolumes }}{{ if ne $v.enabled false }}{{ $hasExtraVols = true }}{{ end }}{{ end }}{{ end }}
           {{- if $hasExtraVols }}
@@ -452,6 +648,52 @@ spec:
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
+            {{- if $hasSidecarSharedCMFiles }}
+            {{- range $item := $sidecar.shared.config.files }}
+            {{- $sName := $item }}
+            {{- $customPath := "" }}
+            {{- $customSubPath := "" }}
+            {{- if kindIs "map" $item }}
+              {{- $sName = $item.name }}
+              {{- $customPath = $item.mountPath }}
+              {{- $customSubPath = $item.subPath }}
+            {{- end }}
+            {{- $def := index ($.Values.shared.config.files | default dict) $sName | default dict }}
+            {{- $mntPath := $customPath | default $def.mountPath }}
+            {{- if $mntPath }}
+            - name: shared-cm-{{ $sName | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $mntPath }}
+              {{- if $customSubPath }}
+              subPath: {{ $customSubPath }}
+              {{- else if not $def.files }}
+              subPath: {{ $def.filename | default $sName }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasSidecarSharedSecFiles }}
+            {{- range $item := $sidecar.shared.secrets.files }}
+            {{- $sName := $item }}
+            {{- $customPath := "" }}
+            {{- $customSubPath := "" }}
+            {{- if kindIs "map" $item }}
+              {{- $sName = $item.name }}
+              {{- $customPath = $item.mountPath }}
+              {{- $customSubPath = $item.subPath }}
+            {{- end }}
+            {{- $def := index ($.Values.shared.secrets.files | default dict) $sName | default dict }}
+            {{- $mntPath := $customPath | default $def.mountPath }}
+            {{- if $mntPath }}
+            - name: shared-sec-{{ $sName | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $mntPath }}
+              {{- if $customSubPath }}
+              subPath: {{ $customSubPath }}
+              {{- else if not $def.files }}
+              subPath: {{ $def.filename | default $sName }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
             {{- with $sidecar.volumeMounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
@@ -484,8 +726,63 @@ spec:
         {{- toYaml $comp.topologySpreadConstraints | nindent 8 }}
       {{- end }}
 
+      {{- $allSharedCMFiles := dict }}
+      {{- $allSharedSecFiles := dict }}
+      {{- with $comp.shared }}
+        {{- with .config }}
+          {{- range $item := .files }}
+            {{- $name := $item }}
+            {{- if kindIs "map" $item }}{{ $name = $item.name }}{{ end }}
+            {{- $_ := set $allSharedCMFiles $name true }}
+          {{- end }}
+        {{- end }}
+        {{- with .secrets }}
+          {{- range $item := .files }}
+            {{- $name := $item }}
+            {{- if kindIs "map" $item }}{{ $name = $item.name }}{{ end }}
+            {{- $_ := set $allSharedSecFiles $name true }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- range $name, $config := $comp.initContainers }}
+        {{- with $config.shared }}
+          {{- with .config }}
+            {{- range $item := .files }}
+              {{- $sName := $item }}
+              {{- if kindIs "map" $item }}{{ $sName = $item.name }}{{ end }}
+              {{- $_ := set $allSharedCMFiles $sName true }}
+            {{- end }}
+          {{- end }}
+          {{- with .secrets }}
+            {{- range $item := .files }}
+              {{- $sName := $item }}
+              {{- if kindIs "map" $item }}{{ $sName = $item.name }}{{ end }}
+              {{- $_ := set $allSharedSecFiles $sName true }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- range $name, $config := $comp.extraContainers }}
+        {{- with $config.shared }}
+          {{- with .config }}
+            {{- range $item := .files }}
+              {{- $sName := $item }}
+              {{- if kindIs "map" $item }}{{ $sName = $item.name }}{{ end }}
+              {{- $_ := set $allSharedCMFiles $sName true }}
+            {{- end }}
+          {{- end }}
+          {{- with .secrets }}
+            {{- range $item := .files }}
+              {{- $sName := $item }}
+              {{- if kindIs "map" $item }}{{ $sName = $item.name }}{{ end }}
+              {{- $_ := set $allSharedSecFiles $sName true }}
+            {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+
       {{- $hasVols := false }}
-      {{- if or (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasVols = true }}{{ end }}
+      {{- if or (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (gt (len $allSharedCMFiles) 0) (gt (len $allSharedSecFiles) 0) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasVols = true }}{{ end }}
       {{- if $comp.volumes }}{{ range $vName, $v := $comp.volumes }}{{ if ne $v.enabled false }}{{ $hasVols = true }}{{ end }}{{ end }}{{ end }}
       {{- range $name, $config := $comp.initContainers }}
         {{- if ne $config.enabled false }}
@@ -623,6 +920,16 @@ spec:
               - key: {{ $filename }}
                 path: {{ $filename }}
         {{- end }}
+        {{- end }}
+        {{- range $name, $_ := $allSharedCMFiles }}
+        - name: shared-cm-{{ $name | replace "." "-" | lower | trimAll "-" }}
+          configMap:
+            name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $name | replace "." "-" | lower | trimAll "-" }}
+        {{- end }}
+        {{- range $name, $_ := $allSharedSecFiles }}
+        - name: shared-sec-{{ $name | replace "." "-" | lower | trimAll "-" }}
+          secret:
+            secretName: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $name | replace "." "-" | lower | trimAll "-" }}
         {{- end }}
       {{- end }}
 

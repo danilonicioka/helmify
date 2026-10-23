@@ -1,6 +1,3 @@
-# ==============================================================================
-# SUBCOMPONENT DEPLOYMENT CONFIGURATION (redis)
-# ==============================================================================
 redis:
   enabled: true
   image:
@@ -25,6 +22,14 @@ redis:
   secrets:
     env: {}
     files: {}
+
+  shared:
+    config:
+      env: []
+      files: []
+    secrets:
+      env: []
+      files: []
 
   vso:
     enabled: false

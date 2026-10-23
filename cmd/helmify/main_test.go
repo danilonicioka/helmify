@@ -920,6 +920,181 @@ func TestSubcomponents_ParityAndDefaultValues(t *testing.T) {
 	cmdDisabled := exec.Command("helm", "template", "myapp", chartDir, "--set", "postgres.enabled=false", "--set", "redis.enabled=false")
 	outDisabled, errDisabled := cmdDisabled.CombinedOutput()
 	assert.NoError(t, errDisabled, "helm template with subcomponents disabled failed: %s", string(outDisabled))
+
+	// Verify that subcomponents consume shared resources properly
+	cmdShared := exec.Command("helm", "template", "myapp", chartDir,
+		"--set", "shared.config.env.common-tuning.MAX_CONN=200",
+		"--set", "shared.secrets.files.shared-ca.content=rootCA",
+		"--set", "shared.secrets.files.shared-ca.mountPath=/etc/ssl/certs/ca-bundle.crt",
+		"--set", "postgres.shared.config.env[0]=common-tuning",
+		"--set", "postgres.shared.secrets.files[0]=shared-ca",
+		"--set", "redis.shared.config.env[0]=common-tuning",
+		"--set", "redis.shared.secrets.files[0]=shared-ca",
+	)
+	outShared, errShared := cmdShared.CombinedOutput()
+	assert.NoError(t, errShared, "helm template with subcomponents shared resources failed: %s", string(outShared))
+	renderedShared := string(outShared)
+	assert.Contains(t, renderedShared, "name: myapp-shared-common-tuning")
+	assert.Contains(t, renderedShared, "name: shared-sec-shared-ca")
+	assert.Contains(t, renderedShared, "mountPath: /etc/ssl/certs/ca-bundle.crt")
 }
+
+func TestWorkloadGovernance_SecurityViolationGuards(t *testing.T) {
+	wizardParams := helm.WizardParams{
+		ChartName:  "secureapp",
+		DevRepoURL: "https://gitlab.example.com/secureapp.git",
+		Deployments: map[string]helm.DeploymentParams{
+			"secureapp": {
+				Image: helm.ImageParams{Repository: "quay.io/tjpa/secureapp", Tag: "1.0.0"},
+				ExtraContainers: map[string]*helm.SidecarParams{
+					"authorized-sidecar": {
+						Image: helm.ImageParams{Repository: "quay.io/tjpa/sidecar", Tag: "latest"},
+					},
+				},
+				InitContainers: map[string]*helm.SidecarParams{
+					"authorized-init": {
+						Image: helm.ImageParams{Repository: "quay.io/tjpa/init", Tag: "latest"},
+					},
+				},
+			},
+		},
+		CronJobs: map[string]helm.DeploymentParams{
+			"authorized-cron": {
+				Schedule: "0 0 * * *",
+				Image:    helm.ImageParams{Repository: "quay.io/tjpa/cron", Tag: "latest"},
+			},
+		},
+	}
+
+	files, err := helm.GenerateWizardChart(wizardParams)
+	assert.NoError(t, err)
+
+	tempDir := t.TempDir()
+	chartDir := filepath.Join(tempDir, "chart")
+	assert.NoError(t, os.MkdirAll(chartDir, 0755))
+	for path, content := range files {
+		targetPath := filepath.Join(chartDir, path)
+		assert.NoError(t, os.MkdirAll(filepath.Dir(targetPath), 0755))
+		assert.NoError(t, os.WriteFile(targetPath, content, 0644))
+	}
+
+	// 1. Authorized configuration should pass
+	cmdPass := exec.Command("helm", "template", "secureapp", chartDir)
+	outPass, errPass := cmdPass.CombinedOutput()
+	assert.NoError(t, errPass, "helm template should succeed with authorized components: %s", string(outPass))
+
+	// 2. Unauthorized deployment should fail with SECURITY VIOLATION
+	cmdRogueDeploy := exec.Command("helm", "template", "secureapp", chartDir, "--set", "deploys.rogue-deploy.image.repository=evil/miner")
+	outRogueDeploy, errRogueDeploy := cmdRogueDeploy.CombinedOutput()
+	assert.Error(t, errRogueDeploy)
+	assert.Contains(t, string(outRogueDeploy), "SECURITY VIOLATION")
+	assert.Contains(t, string(outRogueDeploy), "Deployment 'rogue-deploy' is not authorized in chart 'secureapp'")
+
+	// 3. Unauthorized extraContainer should fail with SECURITY VIOLATION
+	cmdRogueSidecar := exec.Command("helm", "template", "secureapp", chartDir, "--set", "deploys.secureapp.extraContainers.rogue-sidecar.image.repository=evil/miner")
+	outRogueSidecar, errRogueSidecar := cmdRogueSidecar.CombinedOutput()
+	assert.Error(t, errRogueSidecar)
+	assert.Contains(t, string(outRogueSidecar), "SECURITY VIOLATION")
+	assert.Contains(t, string(outRogueSidecar), "ExtraContainer (sidecar) 'rogue-sidecar' is not authorized in deployment 'secureapp'")
+
+	// 4. Unauthorized initContainer should fail with SECURITY VIOLATION
+	cmdRogueInit := exec.Command("helm", "template", "secureapp", chartDir, "--set", "deploys.secureapp.initContainers.rogue-init.image.repository=evil/miner")
+	outRogueInit, errRogueInit := cmdRogueInit.CombinedOutput()
+	assert.Error(t, errRogueInit)
+	assert.Contains(t, string(outRogueInit), "SECURITY VIOLATION")
+	assert.Contains(t, string(outRogueInit), "InitContainer 'rogue-init' is not authorized in deployment 'secureapp'")
+
+	// 5. Unauthorized cronjob should fail with SECURITY VIOLATION
+	cmdRogueCron := exec.Command("helm", "template", "secureapp", chartDir, "--set", "cronjobs.rogue-cron.schedule=* * * * *")
+	outRogueCron, errRogueCron := cmdRogueCron.CombinedOutput()
+	assert.Error(t, errRogueCron)
+	assert.Contains(t, string(outRogueCron), "SECURITY VIOLATION")
+	assert.Contains(t, string(outRogueCron), "CronJob 'rogue-cron' is not authorized in chart 'secureapp'")
+}
+
+func TestUniversalModelSharedResources(t *testing.T) {
+	chartDir := "../../models/universal"
+
+	testValues := `
+allowedWorkloads:
+  deploys:
+    - api
+    - app
+  cronjobs: []
+
+shared:
+  config:
+    env:
+      timezone-cm:
+        env:
+          TZ: "America/Belem"
+    files:
+      app-props:
+        mountPath: /app/config/application.properties
+        content: "timeout=5000"
+  secrets:
+    env:
+      pje-db:
+        env:
+          DB_USER: "smd_app"
+          DB_PASSWORD: "secretpassword"
+    files:
+      pje-cert:
+        mountPath: /app/certs/cert.p12
+        content: "Y2VydGlmaWNhdGUtZGF0YQ=="
+        b64enc: true
+
+deploys:
+  api:
+    shared:
+      config:
+        env:
+          - name: timezone-cm
+        files:
+          - name: app-props
+      secrets:
+        env:
+          - name: pje-db
+        files:
+          - name: pje-cert
+
+  app:
+    shared:
+      secrets:
+        files:
+          - name: pje-cert
+            mountPath: /opt/custom/cert.p12
+`
+
+	valuesFile := filepath.Join(t.TempDir(), "values-test.yaml")
+	assert.NoError(t, os.WriteFile(valuesFile, []byte(testValues), 0644))
+
+	cmd := exec.Command("helm", "template", "myrelease", chartDir, "-f", valuesFile)
+	out, err := cmd.CombinedOutput()
+	assert.NoError(t, err, "helm template should succeed: %s", string(out))
+
+	outStr := string(out)
+
+	// Verify shared Secret & ConfigMap manifests are rendered
+	assert.Contains(t, outStr, "name: myrelease-chart-model-multi-shared-pje-db")
+	assert.Contains(t, outStr, "DB_USER: \"smd_app\"")
+	assert.Contains(t, outStr, "name: myrelease-chart-model-multi-shared-pje-cert")
+	assert.Contains(t, outStr, "pje-cert: \"Y2VydGlmaWNhdGUtZGF0YQ==\"")
+	assert.Contains(t, outStr, "name: myrelease-chart-model-multi-shared-timezone-cm")
+	assert.Contains(t, outStr, "TZ: \"America/Belem\"")
+	assert.Contains(t, outStr, "name: myrelease-chart-model-multi-shared-app-props")
+	assert.Contains(t, outStr, "timeout=5000")
+
+	// Verify API deployment envFrom & mounts
+	assert.Contains(t, outStr, "name: myrelease-chart-model-multi-shared-timezone-cm")
+	assert.Contains(t, outStr, "name: myrelease-chart-model-multi-shared-pje-db")
+	assert.Contains(t, outStr, "mountPath: /app/certs/cert.p12")
+	assert.Contains(t, outStr, "mountPath: /app/config/application.properties")
+
+	// Verify APP deployment mounts the same shared secret at the overridden path
+	assert.Contains(t, outStr, "mountPath: /opt/custom/cert.p12")
+	assert.Contains(t, outStr, "secretName: myrelease-chart-model-multi-shared-pje-cert")
+}
+
 
 

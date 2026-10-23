@@ -1,0 +1,55 @@
+{{- with .Values.shared }}
+{{- with .config }}
+{{- range $name, $conf := .env }}
+{{- if and $conf (ne $conf.enabled false) }}
+{{- $data := $conf.env | default $conf.data | default dict }}
+{{- if not (empty $data) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $name | replace "." "-" | lower | trimAll "-" }}
+  labels:
+    {{- include "chart-model-multi.labels" $ | nindent 4 }}
+data:
+  {{- range $key, $val := $data }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{- range $name, $conf := .files }}
+{{- if and $conf (ne $conf.enabled false) }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $name | replace "." "-" | lower | trimAll "-" }}
+  labels:
+    {{- include "chart-model-multi.labels" $ | nindent 4 }}
+data:
+  {{- if $conf.files }}
+  {{- range $filename, $fileconf := $conf.files }}
+  {{- if $fileconf.content }}
+  {{ $filename }}: |-
+    {{- $fileconf.content | nindent 4 }}
+  {{- else }}
+  {{ $filename }}: |-
+{{ $.Files.Get (printf "files/%s" $filename) | indent 4 }}
+  {{- end }}
+  {{- end }}
+  {{- else }}
+  {{- $filename := $conf.filename | default $name }}
+  {{- if $conf.content }}
+  {{ $filename }}: |-
+    {{- $conf.content | nindent 4 }}
+  {{- else }}
+  {{ $filename }}: |-
+{{ $.Files.Get (printf "files/%s" $filename) | indent 4 }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

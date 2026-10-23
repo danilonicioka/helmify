@@ -1,3 +1,4 @@
+{{- include "chart-model-multi.validateWorkloads" . -}}
 {{- range $compName, $comp := .Values.cronjobs }}
 {{- if ne $comp.enabled false }}
 ---
@@ -85,7 +86,17 @@ spec:
                 {{- if and .env (not (empty .env)) }}{{ $hasCompSecret = true }}{{ end }}
               {{- end }}
               {{- $hasVSO := and $comp.vso $comp.vso.enabled }}
-              {{- if or $hasGlobalCM $hasGlobalSecret $hasCompCM $hasCompSecret $hasVSO }}
+              {{- $hasSharedCMEnv := false }}
+              {{- $hasSharedSecEnv := false }}
+              {{- with $comp.shared }}
+                {{- with .config }}
+                  {{- if and .env (not (empty .env)) }}{{ $hasSharedCMEnv = true }}{{ end }}
+                {{- end }}
+                {{- with .secrets }}
+                  {{- if and .env (not (empty .env)) }}{{ $hasSharedSecEnv = true }}{{ end }}
+                {{- end }}
+              {{- end }}
+              {{- if or $hasGlobalCM $hasGlobalSecret $hasCompCM $hasCompSecret $hasSharedCMEnv $hasSharedSecEnv $hasVSO }}
               envFrom:
                 {{- if $hasGlobalCM }}
                 - configMapRef:
@@ -103,6 +114,20 @@ spec:
                 - secretRef:
                     name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-secret
                 {{- end }}
+                {{- if $hasSharedCMEnv }}
+                {{- range $item := $comp.shared.config.env }}
+                {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+                - configMapRef:
+                    name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $iName | replace "." "-" | lower | trimAll "-" }}
+                {{- end }}
+                {{- end }}
+                {{- if $hasSharedSecEnv }}
+                {{- range $item := $comp.shared.secrets.env }}
+                {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+                - secretRef:
+                    name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $iName | replace "." "-" | lower | trimAll "-" }}
+                {{- end }}
+                {{- end }}
                 {{- if $hasVSO }}
                 - secretRef:
                     name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-secret
@@ -111,6 +136,16 @@ spec:
               {{- if $comp.resources }}
               resources:
                 {{- toYaml $comp.resources | nindent 16 }}
+              {{- end }}
+              {{- $hasSharedCMFiles := false }}
+              {{- $hasSharedSecFiles := false }}
+              {{- with $comp.shared }}
+                {{- with .config }}
+                  {{- if and .files (not (empty .files)) }}{{ $hasSharedCMFiles = true }}{{ end }}
+                {{- end }}
+                {{- with .secrets }}
+                  {{- if and .files (not (empty .files)) }}{{ $hasSharedSecFiles = true }}{{ end }}
+                {{- end }}
               {{- end }}
               volumeMounts:
                 {{- if and $comp.persistence $comp.persistence.enabled }}
@@ -134,6 +169,52 @@ spec:
                   mountPath: {{ $val.path }}
                   subPath: {{ $key | replace "." "-" }}
                   readOnly: true
+                {{- end }}
+                {{- end }}
+                {{- if $hasSharedCMFiles }}
+                {{- range $item := $comp.shared.config.files }}
+                {{- $name := $item }}
+                {{- $customPath := "" }}
+                {{- $customSubPath := "" }}
+                {{- if kindIs "map" $item }}
+                  {{- $name = $item.name }}
+                  {{- $customPath = $item.mountPath }}
+                  {{- $customSubPath = $item.subPath }}
+                {{- end }}
+                {{- $def := index ($.Values.shared.config.files | default dict) $name | default dict }}
+                {{- $mntPath := $customPath | default $def.mountPath }}
+                {{- if $mntPath }}
+                - name: shared-cm-{{ $name | replace "." "-" | lower | trimAll "-" }}
+                  mountPath: {{ $mntPath }}
+                  {{- if $customSubPath }}
+                  subPath: {{ $customSubPath }}
+                  {{- else if not $def.files }}
+                  subPath: {{ $def.filename | default $name }}
+                  {{- end }}
+                {{- end }}
+                {{- end }}
+                {{- end }}
+                {{- if $hasSharedSecFiles }}
+                {{- range $item := $comp.shared.secrets.files }}
+                {{- $name := $item }}
+                {{- $customPath := "" }}
+                {{- $customSubPath := "" }}
+                {{- if kindIs "map" $item }}
+                  {{- $name = $item.name }}
+                  {{- $customPath = $item.mountPath }}
+                  {{- $customSubPath = $item.subPath }}
+                {{- end }}
+                {{- $def := index ($.Values.shared.secrets.files | default dict) $name | default dict }}
+                {{- $mntPath := $customPath | default $def.mountPath }}
+                {{- if $mntPath }}
+                - name: shared-sec-{{ $name | replace "." "-" | lower | trimAll "-" }}
+                  mountPath: {{ $mntPath }}
+                  {{- if $customSubPath }}
+                  subPath: {{ $customSubPath }}
+                  {{- else if not $def.files }}
+                  subPath: {{ $def.filename | default $name }}
+                  {{- end }}
+                {{- end }}
                 {{- end }}
                 {{- end }}
                 {{- if and $comp.vso $comp.vso.enabled $comp.vso.secretFiles }}
@@ -167,7 +248,26 @@ spec:
               secret:
                 secretName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-files-secret
             {{- end }}
+            {{- if $hasSharedCMFiles }}
+            {{- range $item := $comp.shared.config.files }}
+            {{- $name := $item }}
+            {{- if kindIs "map" $item }}{{ $name = $item.name }}{{ end }}
+            - name: shared-cm-{{ $name | replace "." "-" | lower | trimAll "-" }}
+              configMap:
+                name: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $name | replace "." "-" | lower | trimAll "-" }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasSharedSecFiles }}
+            {{- range $item := $comp.shared.secrets.files }}
+            {{- $name := $item }}
+            {{- if kindIs "map" $item }}{{ $name = $item.name }}{{ end }}
+            - name: shared-sec-{{ $name | replace "." "-" | lower | trimAll "-" }}
+              secret:
+                secretName: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $name | replace "." "-" | lower | trimAll "-" }}
+            {{- end }}
+            {{- end }}
           restartPolicy: {{ default "OnFailure" $comp.restartPolicy }}
+          {{- if $comp.scheduling }}
           {{- with $comp.scheduling.nodeSelector }}
           nodeSelector:
             {{- toYaml . | nindent 12 }}
@@ -179,6 +279,7 @@ spec:
           {{- with $comp.scheduling.tolerations }}
           tolerations:
             {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- end }}
 {{- end }}
 

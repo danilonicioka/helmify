@@ -1,4 +1,4 @@
-# Standardized Standardized Helm Chart
+# Standardized Helm Chart
 
 This Helm chart is a standardized template designed for applications deployed at **Organization**, especially when targeting **Red Hat OpenShift**. It serves as a base blueprint for developers, incorporating container security best practices and strict compliance with core architectural rules.
 
@@ -13,7 +13,7 @@ Helmify generates two separate values files to prevent merge conflicts between b
 
 ### Environment & Config Management
 Enforces a single source of truth using two distinct configuration levels within the operational overlay:
-1. **Global (Universal):** Managed in `values-env.yaml` under the `global` block (e.g., `TZ: "America/Belem"`). Generates a shared configmap and secret.
+1. **Global:** Managed in `values-env.yaml` under the `global` block (e.g., `TZ: "America/Belem"`). Generates a shared configmap and secret.
 2. **Component-Specific:** Managed in `values-env.yaml` under each application/component block for variables unique to that container, defined in `config.env` and `secrets.env`.
 
 ### Deterministic Rollouts

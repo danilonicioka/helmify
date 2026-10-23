@@ -1,6 +1,3 @@
-# ==============================================================================
-# SUBCOMPONENT DEPLOYMENT CONFIGURATION (postgres)
-# ==============================================================================
 postgres:
   enabled: true
   image:
@@ -30,6 +27,14 @@ postgres:
       POSTGRES_PASSWORD: app_password
       POSTGRES_USER: app_user
     files: {}
+
+  shared:
+    config:
+      env: []
+      files: []
+    secrets:
+      env: []
+      files: []
 
   vso:
     enabled: false

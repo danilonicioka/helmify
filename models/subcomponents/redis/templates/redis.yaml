@@ -121,8 +121,18 @@ spec:
           {{- with .Values.redis.secrets }}
             {{- if and .env (not (empty .env)) }}{{ $hasCompSecret = true }}{{ end }}
           {{- end }}
+          {{- $hasSharedCMEnv := false }}
+          {{- $hasSharedSecEnv := false }}
+          {{- with .Values.redis.shared }}
+            {{- with .config }}
+              {{- if and .env (not (empty .env)) }}{{ $hasSharedCMEnv = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .env (not (empty .env)) }}{{ $hasSharedSecEnv = true }}{{ end }}
+            {{- end }}
+          {{- end }}
           {{- $hasVSO := and .Values.redis.vso .Values.redis.vso.enabled }}
-          {{- if or $hasGlobalCM $hasGlobalSecret $hasCompCM $hasCompSecret $hasVSO }}
+          {{- if or $hasGlobalCM $hasGlobalSecret $hasCompCM $hasCompSecret $hasSharedCMEnv $hasSharedSecEnv $hasVSO }}
           envFrom:
             {{- if $hasGlobalCM }}
             - configMapRef:
@@ -139,6 +149,20 @@ spec:
             {{- if $hasCompSecret }}
             - secretRef:
                 name: {{ include "<CHART_NAME>.fullname" . }}-redis-secret
+            {{- end }}
+            {{- if $hasSharedCMEnv }}
+            {{- range $item := .Values.redis.shared.config.env }}
+            {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+            - configMapRef:
+                name: {{ include "<CHART_NAME>.fullname" $ }}-shared-{{ $iName | replace "." "-" | lower | trimAll "-" }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasSharedSecEnv }}
+            {{- range $item := .Values.redis.shared.secrets.env }}
+            {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+            - secretRef:
+                name: {{ include "<CHART_NAME>.fullname" $ }}-shared-{{ $iName | replace "." "-" | lower | trimAll "-" }}
+            {{- end }}
             {{- end }}
             {{- if $hasVSO }}
             - secretRef:
@@ -180,6 +204,16 @@ spec:
 
           {{- $hasConfigFiles := and .Values.redis.config .Values.redis.config.files }}
           {{- $hasSecretFiles := and .Values.redis.secrets .Values.redis.secrets.files }}
+          {{- $hasSharedCMFiles := false }}
+          {{- $hasSharedSecFiles := false }}
+          {{- with .Values.redis.shared }}
+            {{- with .config }}
+              {{- if and .files (not (empty .files)) }}{{ $hasSharedCMFiles = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .files (not (empty .files)) }}{{ $hasSharedSecFiles = true }}{{ end }}
+            {{- end }}
+          {{- end }}
           {{- $hasVsoFiles := and .Values.redis.vso .Values.redis.vso.enabled .Values.redis.vso.files }}
           {{- $hasVolumes := false }}
           {{- with .Values.redis.volumes }}
@@ -188,7 +222,7 @@ spec:
             {{- end }}
           {{- end }}
           {{- $hasPersistence := and .Values.redis.persistence .Values.redis.persistence.enabled }}
-          {{- $hasMainVols := or $hasConfigFiles $hasSecretFiles $hasVsoFiles $hasVolumes $hasPersistence .Values.redis.volumeMounts }}
+          {{- $hasMainVols := or $hasConfigFiles $hasSecretFiles $hasSharedCMFiles $hasSharedSecFiles $hasVsoFiles $hasVolumes $hasPersistence .Values.redis.volumeMounts }}
           {{- if $hasMainVols }}
           volumeMounts:
             {{- if $hasVolumes }}
@@ -225,6 +259,52 @@ spec:
               subPath: {{ $filename }}
             {{- end }}
             {{- end }}
+            {{- if $hasSharedCMFiles }}
+            {{- range $item := .Values.redis.shared.config.files }}
+            {{- $name := $item }}
+            {{- $customPath := "" }}
+            {{- $customSubPath := "" }}
+            {{- if kindIs "map" $item }}
+              {{- $name = $item.name }}
+              {{- $customPath = $item.mountPath }}
+              {{- $customSubPath = $item.subPath }}
+            {{- end }}
+            {{- $def := index ($.Values.shared.config.files | default dict) $name | default dict }}
+            {{- $mntPath := $customPath | default $def.mountPath }}
+            {{- if $mntPath }}
+            - name: shared-cm-{{ $name | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $mntPath }}
+              {{- if $customSubPath }}
+              subPath: {{ $customSubPath }}
+              {{- else if not $def.files }}
+              subPath: {{ $def.filename | default $name }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if $hasSharedSecFiles }}
+            {{- range $item := .Values.redis.shared.secrets.files }}
+            {{- $name := $item }}
+            {{- $customPath := "" }}
+            {{- $customSubPath := "" }}
+            {{- if kindIs "map" $item }}
+              {{- $name = $item.name }}
+              {{- $customPath = $item.mountPath }}
+              {{- $customSubPath = $item.subPath }}
+            {{- end }}
+            {{- $def := index ($.Values.shared.secrets.files | default dict) $name | default dict }}
+            {{- $mntPath := $customPath | default $def.mountPath }}
+            {{- if $mntPath }}
+            - name: shared-sec-{{ $name | replace "." "-" | lower | trimAll "-" }}
+              mountPath: {{ $mntPath }}
+              {{- if $customSubPath }}
+              subPath: {{ $customSubPath }}
+              {{- else if not $def.files }}
+              subPath: {{ $def.filename | default $name }}
+              {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
             {{- if $hasVsoFiles }}
             {{- range $filename, $config := .Values.redis.vso.files }}
             - name: vso-files
@@ -257,7 +337,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
 
-      {{- $hasVols := or $hasConfigFiles $hasSecretFiles $hasVsoFiles $hasVolumes $hasPersistence }}
+      {{- $hasVols := or $hasConfigFiles $hasSecretFiles $hasSharedCMFiles $hasSharedSecFiles $hasVsoFiles $hasVolumes $hasPersistence }}
       {{- if $hasVols }}
       volumes:
         {{- if $hasVolumes }}
@@ -294,6 +374,24 @@ spec:
         - name: secret-files
           secret:
             secretName: {{ include "<CHART_NAME>.fullname" . }}-redis-files-secret
+        {{- end }}
+        {{- if $hasSharedCMFiles }}
+        {{- range $item := .Values.redis.shared.config.files }}
+        {{- $name := $item }}
+        {{- if kindIs "map" $item }}{{ $name = $item.name }}{{ end }}
+        - name: shared-cm-{{ $name | replace "." "-" | lower | trimAll "-" }}
+          configMap:
+            name: {{ include "<CHART_NAME>.fullname" $ }}-shared-{{ $name | replace "." "-" | lower | trimAll "-" }}
+        {{- end }}
+        {{- end }}
+        {{- if $hasSharedSecFiles }}
+        {{- range $item := .Values.redis.shared.secrets.files }}
+        {{- $name := $item }}
+        {{- if kindIs "map" $item }}{{ $name = $item.name }}{{ end }}
+        - name: shared-sec-{{ $name | replace "." "-" | lower | trimAll "-" }}
+          secret:
+            secretName: {{ include "<CHART_NAME>.fullname" $ }}-shared-{{ $name | replace "." "-" | lower | trimAll "-" }}
+        {{- end }}
         {{- end }}
         {{- if and .Values.redis.vso .Values.redis.vso.enabled }}
         - name: vso-files
