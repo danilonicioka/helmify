@@ -120,7 +120,7 @@ update-chart:
       if git diff-index --quiet HEAD --; then
         echo "ℹ️ No changes detected. Tag is already up to date: ${TAG}"
       else
-        git commit -m "chore(image): update helmify image tag to ${TAG} [skip ci]"
+        git commit -m "chore(image): update helmify image tag to ${TAG}"
         git push origin HEAD:main
         echo "✅ Successfully updated and pushed tag ${TAG} to ${CHART_REPO}"
 
