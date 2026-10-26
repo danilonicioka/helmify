@@ -29,7 +29,7 @@ kubernetesClusterDomain: cluster.local
 nameOverride: ""
 fullnameOverride: ""
 
-# Tamper-proof workload governance: only listed workloads are permitted to deploy
+# Declarative workload governance: only listed workloads are permitted to deploy
 allowedWorkloads:
   deploys:
     - api
@@ -490,14 +490,23 @@ Specialized subcomponents (`postgres`, `redis`) can be optionally generated into
 
 ---
 
-### 14. Workload Governance & Tamper-Proof Allowlist
-To prevent developers from spinning up unauthorized workloads in GitOps environments where developers control their own `values` files (e.g., via ArgoCD pointing to developer Git repositories), Helmify automatically embeds an **immutable workload allowlist** into `templates/_helpers.tpl`:
+### 14. Workload Governance & Declarative Allowlist
+To prevent developers from spinning up rogue workloads in GitOps environments (e.g., via ArgoCD values injection), Helmify automatically populates an explicit **`allowedWorkloads`** allowlist in `values.yaml` and `values-env.yaml`:
+- **Automated Discovery:** When Helmify generates the chart, it automatically extracts all detected deployment and cronjob names and generates the `allowedWorkloads` block:
+  ```yaml
+  allowedWorkloads:
+    deploys:
+      - api
+      - worker
+    cronjobs:
+      - cleanup-cron
+  ```
+- **Declarative & Transparent:** Rather than embedding hidden rules in templates, the allowlist is explicit and fully transparent in values, maintaining GitOps best practices and standard Helm behavior.
 - **Scope of Enforcement:**
-  - **Deployments:** Restricts `.Values.deploys` strictly to components authorized during chart generation.
-  - **CronJobs:** Restricts `.Values.cronjobs` strictly to scheduled jobs authorized during chart generation.
-  - **InitContainers & Sidecars:** Restricts `.Values.deploys.<comp>.initContainers` and `.Values.deploys.<comp>.extraContainers` strictly to containers declared at chart generation.
-- **Tamper-Proof Design:** The allowlist is encoded directly within the template layer (`<CHART_NAME>.workloadGovernance` helper) in the DevOps repository. Because it is not stored in `.Values`, it cannot be overridden, replaced, or bypassed by developer values files.
-- **Fail-Fast Enforcement:** If an unauthorized workload or container is declared, Helm template rendering immediately halts with a `[SECURITY VIOLATION]` error, turning the ArgoCD synchronization status red and blocking OpenShift deployment.
+  - **Deployments:** Restricts `.Values.deploys` strictly to components listed in `allowedWorkloads.deploys`.
+  - **CronJobs:** Restricts `.Values.cronjobs` strictly to scheduled jobs listed in `allowedWorkloads.cronjobs`.
+  - **Optional Container Granularity:** Also supports mapping format (e.g. `deploys.api.initContainers` / `extraContainers`) if granular container-level lockdown is required.
+- **Fail-Fast Enforcement:** If an unauthorized deployment or cronjob is injected, Helm template rendering immediately halts with a `[SECURITY VIOLATION]` error, preventing rogue workloads from deploying onto OpenShift.
 
 ---
 

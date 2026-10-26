@@ -10,6 +10,7 @@ variables:
 stages:
   - build
   - containerize
+  - deploy
   - release
 
 # Reusable rule for standard branch-only jobs
@@ -74,6 +75,69 @@ push-to-quay:
     - podman login $QUAY_URL -u $QUAY_USER -p $QUAY_PASS --tls-verify=false
     - podman build --tls-verify=false -f Containerfile -t "$IMAGE" .
     - podman push "$IMAGE" --tls-verify=false
+
+# ---------------------------------------------------------------------------
+# Stage: Deploy (Direct GitOps Update for ArgoCD)
+# ---------------------------------------------------------------------------
+update-chart:
+  stage: deploy
+  extends: .branch_rules
+  image: tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/devops/runner-images:quay-integration
+  needs:
+    - job: push-to-quay
+    - job: setup-vars
+      artifacts: true
+  variables:
+    CHART_REPO: "argocd/helm/helmify"
+    TARGET_ENV: "dev"
+  before_script:
+    - git config --global http.sslVerify false
+    - git config --global user.name "gitlab CICD"
+    - git config --global user.email "gitlab-cicd@tjpa.jus.br"
+  script:
+    - |
+      AUTH_TOKEN="${GITLAB_TOKEN:-$GITLAB_AUTH_TOKEN}"
+      if [ -z "$AUTH_TOKEN" ]; then
+        echo "❌ ERROR: Neither GITLAB_TOKEN nor GITLAB_AUTH_TOKEN is defined."
+        exit 1
+      fi
+
+      echo "Cloning target Helm repository: ${CHART_REPO}..."
+      rm -rf chart_repo
+      git clone "http://gitlab-ci:${AUTH_TOKEN}@${CI_SERVER_HOST}/${CHART_REPO}.git" chart_repo
+      cd chart_repo
+
+      TARGET_VALUES="values-${TARGET_ENV}.yaml"
+      if [ ! -f "$TARGET_VALUES" ]; then
+        echo "❌ ERROR: $TARGET_VALUES not found in ${CHART_REPO}."
+        exit 1
+      fi
+
+      echo "Updating helmify image tag to ${TAG} in ${TARGET_VALUES}..."
+      yq e -i ".deploys.helmify.image.tag = \"${TAG}\"" "$TARGET_VALUES"
+
+      git add "$TARGET_VALUES"
+      if git diff-index --quiet HEAD --; then
+        echo "ℹ️ No changes detected. Tag is already up to date: ${TAG}"
+      else
+        git commit -m "chore(image): update helmify image tag to ${TAG} [skip ci]"
+        git push origin HEAD:main
+        echo "✅ Successfully updated and pushed tag ${TAG} to ${CHART_REPO}"
+
+        if [ -n "$ARGOCD_TOKEN" ]; then
+          ARGOCD_APP_NAME="helmify-${TARGET_ENV}"
+          ARGOCD_SERVER="https://openshift-gitops-server-openshift-gitops.apps.ocp-hub.i.tj.pa.gov.br"
+          echo "Triggering OpenShift GitOps (ArgoCD) sync for ${ARGOCD_APP_NAME}..."
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" -k -X POST "${ARGOCD_SERVER}/api/v1/applications/${ARGOCD_APP_NAME}/sync" \
+            -H "Authorization: Bearer ${ARGOCD_TOKEN}" \
+            -H "Content-Type: application/json")
+          if [ "$HTTP_STATUS" -eq 200 ]; then
+            echo "✅ ArgoCD sync triggered successfully for ${ARGOCD_APP_NAME}!"
+          else
+            echo "⚠️ ArgoCD sync call returned HTTP ${HTTP_STATUS} (ArgoCD will auto-sync via Git polling)."
+          fi
+        fi
+      fi
 
 release-version:
   stage: release

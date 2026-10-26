@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -449,10 +448,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			continue // handled separately
 		}
 		content := replaceChartName(string(data), oldChartName, params.ChartName)
-		if filepath.Clean(relPath) == filepath.Join("templates", "_helpers.tpl") {
-			govJSON := buildWorkloadGovernance(params)
-			content = strings.Replace(content, "{{- /* HELMIFY_WORKLOAD_GOVERNANCE */ -}}\n{}", govJSON, 1)
-		}
+
 		if relPath == "Chart.yaml" {
 			cv := config.GlobalEnvConfig.ChartVersion
 			if cv == "" {
@@ -504,6 +500,26 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 		compKeys = append(compKeys, k)
 	}
 	sort.Strings(compKeys)
+
+	var cronKeys []string
+	for k := range params.CronJobs {
+		cronKeys = append(cronKeys, k)
+	}
+	sort.Strings(cronKeys)
+
+	allowedDeploys := compKeys
+	if allowedDeploys == nil {
+		allowedDeploys = []string{}
+	}
+	allowedCronjobs := cronKeys
+	if allowedCronjobs == nil {
+		allowedCronjobs = []string{}
+	}
+
+	_ = setYamlPath(&rootNode, []string{"allowedWorkloads", "deploys"}, allowedDeploys)
+	_ = setYamlPath(&rootNode, []string{"allowedWorkloads", "cronjobs"}, allowedCronjobs)
+	_ = setYamlPath(&customNode, []string{"allowedWorkloads", "deploys"}, allowedDeploys)
+	_ = setYamlPath(&customNode, []string{"allowedWorkloads", "cronjobs"}, allowedCronjobs)
 
 	// Parse un-mutated values for cloning the "api" dummy block
 	var origRoot yaml.Node
@@ -1288,65 +1304,5 @@ func stripQuotesFromMap(m map[string]string) {
 			}
 		}
 	}
-}
-
-// ComponentGovernance stores the authorized init and extra container names for a component.
-type ComponentGovernance struct {
-	InitContainers  []string `json:"initContainers"`
-	ExtraContainers []string `json:"extraContainers"`
-}
-
-// WorkloadGovernance defines the immutable workload allowlist embedded in the chart.
-type WorkloadGovernance struct {
-	Deployments map[string]ComponentGovernance `json:"deploys"`
-	CronJobs    map[string]ComponentGovernance `json:"cronjobs"`
-}
-
-func buildWorkloadGovernance(params WizardParams) string {
-	gov := WorkloadGovernance{
-		Deployments: make(map[string]ComponentGovernance),
-		CronJobs:    make(map[string]ComponentGovernance),
-	}
-
-	for compName, dep := range params.Deployments {
-		initList := make([]string, 0)
-		for ic := range dep.InitContainers {
-			initList = append(initList, ic)
-		}
-		sort.Strings(initList)
-
-		extraList := make([]string, 0)
-		for ec := range dep.ExtraContainers {
-			extraList = append(extraList, ec)
-		}
-		sort.Strings(extraList)
-
-		gov.Deployments[compName] = ComponentGovernance{
-			InitContainers:  initList,
-			ExtraContainers: extraList,
-		}
-	}
-
-	for cronName, cj := range params.CronJobs {
-		initList := make([]string, 0)
-		for ic := range cj.InitContainers {
-			initList = append(initList, ic)
-		}
-		sort.Strings(initList)
-
-		extraList := make([]string, 0)
-		for ec := range cj.ExtraContainers {
-			extraList = append(extraList, ec)
-		}
-		sort.Strings(extraList)
-
-		gov.CronJobs[cronName] = ComponentGovernance{
-			InitContainers:  initList,
-			ExtraContainers: extraList,
-		}
-	}
-
-	b, _ := json.Marshal(gov)
-	return string(b)
 }
 

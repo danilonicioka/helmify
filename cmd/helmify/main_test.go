@@ -978,6 +978,10 @@ func TestWorkloadGovernance_SecurityViolationGuards(t *testing.T) {
 		assert.NoError(t, os.WriteFile(targetPath, content, 0644))
 	}
 
+	// Verify generated values contain allowedWorkloads
+	assert.Contains(t, string(files["values.yaml"]), "allowedWorkloads:")
+	assert.Contains(t, string(files["values-env.yaml"]), "allowedWorkloads:")
+
 	// 1. Authorized configuration should pass
 	cmdPass := exec.Command("helm", "template", "secureapp", chartDir)
 	outPass, errPass := cmdPass.CombinedOutput()
@@ -990,26 +994,41 @@ func TestWorkloadGovernance_SecurityViolationGuards(t *testing.T) {
 	assert.Contains(t, string(outRogueDeploy), "SECURITY VIOLATION")
 	assert.Contains(t, string(outRogueDeploy), "Deployment 'rogue-deploy' is not authorized in chart 'secureapp'")
 
-	// 3. Unauthorized extraContainer should fail with SECURITY VIOLATION
-	cmdRogueSidecar := exec.Command("helm", "template", "secureapp", chartDir, "--set", "deploys.secureapp.extraContainers.rogue-sidecar.image.repository=evil/miner")
-	outRogueSidecar, errRogueSidecar := cmdRogueSidecar.CombinedOutput()
-	assert.Error(t, errRogueSidecar)
-	assert.Contains(t, string(outRogueSidecar), "SECURITY VIOLATION")
-	assert.Contains(t, string(outRogueSidecar), "ExtraContainer (sidecar) 'rogue-sidecar' is not authorized in deployment 'secureapp'")
-
-	// 4. Unauthorized initContainer should fail with SECURITY VIOLATION
-	cmdRogueInit := exec.Command("helm", "template", "secureapp", chartDir, "--set", "deploys.secureapp.initContainers.rogue-init.image.repository=evil/miner")
-	outRogueInit, errRogueInit := cmdRogueInit.CombinedOutput()
-	assert.Error(t, errRogueInit)
-	assert.Contains(t, string(outRogueInit), "SECURITY VIOLATION")
-	assert.Contains(t, string(outRogueInit), "InitContainer 'rogue-init' is not authorized in deployment 'secureapp'")
-
-	// 5. Unauthorized cronjob should fail with SECURITY VIOLATION
+	// 3. Unauthorized cronjob should fail with SECURITY VIOLATION
 	cmdRogueCron := exec.Command("helm", "template", "secureapp", chartDir, "--set", "cronjobs.rogue-cron.schedule=* * * * *")
 	outRogueCron, errRogueCron := cmdRogueCron.CombinedOutput()
 	assert.Error(t, errRogueCron)
 	assert.Contains(t, string(outRogueCron), "SECURITY VIOLATION")
 	assert.Contains(t, string(outRogueCron), "CronJob 'rogue-cron' is not authorized in chart 'secureapp'")
+
+	// 4. Granular container governance (map format in allowedWorkloads)
+	containerGovValues := `
+allowedWorkloads:
+  deploys:
+    secureapp:
+      extraContainers:
+        - authorized-sidecar
+      initContainers:
+        - authorized-init
+  cronjobs:
+    - authorized-cron
+`
+	valuesFile := filepath.Join(tempDir, "values-container-gov.yaml")
+	assert.NoError(t, os.WriteFile(valuesFile, []byte(containerGovValues), 0644))
+
+	// Unauthorized extraContainer should fail with SECURITY VIOLATION
+	cmdRogueSidecar := exec.Command("helm", "template", "secureapp", chartDir, "-f", valuesFile, "--set", "deploys.secureapp.extraContainers.rogue-sidecar.image.repository=evil/miner")
+	outRogueSidecar, errRogueSidecar := cmdRogueSidecar.CombinedOutput()
+	assert.Error(t, errRogueSidecar)
+	assert.Contains(t, string(outRogueSidecar), "SECURITY VIOLATION")
+	assert.Contains(t, string(outRogueSidecar), "ExtraContainer (sidecar) 'rogue-sidecar' is not authorized in deployment 'secureapp'")
+
+	// Unauthorized initContainer should fail with SECURITY VIOLATION
+	cmdRogueInit := exec.Command("helm", "template", "secureapp", chartDir, "-f", valuesFile, "--set", "deploys.secureapp.initContainers.rogue-init.image.repository=evil/miner")
+	outRogueInit, errRogueInit := cmdRogueInit.CombinedOutput()
+	assert.Error(t, errRogueInit)
+	assert.Contains(t, string(outRogueInit), "SECURITY VIOLATION")
+	assert.Contains(t, string(outRogueInit), "InitContainer 'rogue-init' is not authorized in deployment 'secureapp'")
 }
 
 func TestUniversalModelSharedResources(t *testing.T) {
