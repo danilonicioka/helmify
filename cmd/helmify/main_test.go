@@ -1115,5 +1115,19 @@ deploys:
 	assert.Contains(t, outStr, "secretName: myrelease-chart-model-multi-shared-pje-cert")
 }
 
+func TestUniversalModelEphemeralStorage(t *testing.T) {
+	chartDir := "../../models/universal"
+
+	cmd := exec.Command("helm", "template", "test-storage", chartDir)
+	out, err := cmd.CombinedOutput()
+	assert.NoError(t, err, "helm template should succeed: %s", string(out))
+
+	outStr := string(out)
+
+	// Verify that deploy.yaml renders limits and requests for ephemeral-storage
+	assert.Contains(t, outStr, "ephemeral-storage: 1Gi")
+	assert.Contains(t, outStr, "ephemeral-storage: 500Mi")
+}
+
 
 

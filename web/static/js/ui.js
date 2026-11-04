@@ -198,15 +198,19 @@ function toggleWorkloadTypeFields() {
             
             const cpuReq = document.getElementById('compCpuRequests').value.trim();
             const memReq = document.getElementById('compMemRequests').value.trim();
+            const ephReq = document.getElementById('compEphemeralRequests') ? document.getElementById('compEphemeralRequests').value.trim() : '';
             const cpuLim = document.getElementById('compCpuLimits').value.trim();
             const memLim = document.getElementById('compMemLimits').value.trim();
+            const ephLim = document.getElementById('compEphemeralLimits') ? document.getElementById('compEphemeralLimits').value.trim() : '';
             
-            if (cpuReq || memReq || cpuLim || memLim) {
+            if (cpuReq || memReq || ephReq || cpuLim || memLim || ephLim) {
                 config.resources = { requests: {}, limits: {} };
                 if (cpuReq) config.resources.requests.cpu = cpuReq;
                 if (memReq) config.resources.requests.memory = memReq;
+                if (ephReq) config.resources.requests['ephemeral-storage'] = ephReq;
                 if (cpuLim) config.resources.limits.cpu = cpuLim;
                 if (memLim) config.resources.limits.memory = memLim;
+                if (ephLim) config.resources.limits['ephemeral-storage'] = ephLim;
             } else {
                 delete config.resources;
             }
@@ -626,6 +630,26 @@ function toggleWorkloadTypeFields() {
             document.getElementById('compRoutePath').value = config.route.path || '';
             document.getElementById('compConnectsTo').value = (config.connectsTo || []).join(', ');
             document.getElementById('compRuntime').value = config.runtime || '';
+
+            if (config.resources) {
+                document.getElementById('compCpuRequests').value = config.resources.requests?.cpu || '';
+                document.getElementById('compMemRequests').value = config.resources.requests?.memory || '';
+                if (document.getElementById('compEphemeralRequests')) {
+                    document.getElementById('compEphemeralRequests').value = config.resources.requests?.['ephemeral-storage'] || '';
+                }
+                document.getElementById('compCpuLimits').value = config.resources.limits?.cpu || '';
+                document.getElementById('compMemLimits').value = config.resources.limits?.memory || '';
+                if (document.getElementById('compEphemeralLimits')) {
+                    document.getElementById('compEphemeralLimits').value = config.resources.limits?.['ephemeral-storage'] || '';
+                }
+            } else {
+                document.getElementById('compCpuRequests').value = '';
+                document.getElementById('compMemRequests').value = '';
+                if (document.getElementById('compEphemeralRequests')) document.getElementById('compEphemeralRequests').value = '';
+                document.getElementById('compCpuLimits').value = '';
+                document.getElementById('compMemLimits').value = '';
+                if (document.getElementById('compEphemeralLimits')) document.getElementById('compEphemeralLimits').value = '';
+            }
 
             if (config.instrumentation && document.getElementById('instrumentationEnabled')) {
                 document.getElementById('instrumentationEnabled').checked = config.instrumentation.enabled;

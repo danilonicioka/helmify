@@ -262,7 +262,31 @@ Supports persistent volume claims (PVC), ephemeral scratch storage (`emptyDir`),
 
 ---
 
-### 7. Tiered "Fail-Fast" Health Probes
+### 7. Resource Management & Ephemeral Storage Enforcement
+Defines container CPU, Memory, and Ephemeral Storage `requests` and `limits`.
+
+```yaml
+    resources:
+      limits:
+        cpu: "100m"
+        memory: "512Mi"
+        ephemeral-storage: "1Gi"
+      requests:
+        cpu: "30m"
+        memory: "256Mi"
+        ephemeral-storage: "500Mi"
+```
+
+#### Ephemeral Storage Limits (Node Protection & Eviction Prevention)
+Ephemeral storage covers the container rootfs writable layer (such as `/tmp`), stdout/stderr container logs written to disk, and all `emptyDir` scratch volumes (`volumes.<name>.ephemeral: true`).
+- **The Problem:** Without explicit ephemeral storage limits, a rogue container filling `/tmp` or generating unbuffered logs can exhaust the underlying node disk, triggering a cluster-wide `NodeDiskPressure` condition that causes the Kubelet to evict arbitrary healthy neighbor pods from the node.
+- **The Solution:** By defining `limits.ephemeral-storage: "1Gi"`, the Kubelet monitors the container's scratch footprint and evicts **only the offending pod** when it exceeds the limit, protecting the node and other workloads.
+- **Scheduling Protection:** Defining `requests.ephemeral-storage: "500Mi"` guarantees that Kubernetes schedules the pod only onto nodes with sufficient allocatable disk space, preventing silent disk overcommitment.
+- **Customization:** Workloads requiring larger scratch space (such as batch report generation, large PDF processing, or document conversion) can safely override these limits in their operational overlay (`values-dev.yaml`, `values-prd.yaml`).
+
+---
+
+### 8. Tiered "Fail-Fast" Health Probes
 Configured with zero initial delay and aggressive timeouts. A generous `startupProbe` allows slow applications (like Java/Spring Boot) to initialize without failing, while `livenessProbe` and `readinessProbe` remain dormant until startup succeeds.
 
 ```yaml
@@ -292,7 +316,7 @@ Configured with zero initial delay and aggressive timeouts. A generous `startupP
 
 ---
 
-### 8. Autoscaling (HPA & KEDA)
+### 9. Autoscaling (HPA & KEDA)
 Supports standard Horizontal Pod Autoscaler (CPU/Memory) or event-driven autoscaling with KEDA (e.g. RabbitMQ queues).
 
 ```yaml
@@ -333,7 +357,7 @@ Supports standard Horizontal Pod Autoscaler (CPU/Memory) or event-driven autosca
 
 ---
 
-### 9. Init Containers (`initContainers`)
+### 10. Init Containers (`initContainers`)
 Initialization containers that execute sequentially before application containers start. Supports sharing the main component's volumes, dedicated scratch volumes, and scoped configs/secrets.
 
 ```yaml
@@ -349,9 +373,11 @@ Initialization containers that execute sequentially before application container
           limits:
             cpu: "100m"
             memory: "128Mi"
+            ephemeral-storage: "500Mi"
           requests:
             cpu: "10m"
             memory: "64Mi"
+            ephemeral-storage: "250Mi"
         # Share the main container's data volume:
         sharedVolumes:
           data:
@@ -371,7 +397,7 @@ Initialization containers that execute sequentially before application container
 
 ---
 
-### 10. Sidecars (`extraContainers`)
+### 11. Sidecars (`extraContainers`)
 Auxiliary containers running alongside the main application pod (e.g., logging agents, proxies, workers). Scoped with independent ports, probes, and volumes.
 
 ```yaml
@@ -392,9 +418,11 @@ Auxiliary containers running alongside the main application pod (e.g., logging a
           limits:
             cpu: "200m"
             memory: "256Mi"
+            ephemeral-storage: "500Mi"
           requests:
             cpu: "30m"
             memory: "64Mi"
+            ephemeral-storage: "250Mi"
         probes:
           liveness:
             httpGet:
@@ -421,7 +449,7 @@ Auxiliary containers running alongside the main application pod (e.g., logging a
 
 ---
 
-### 11. Scheduled Batch Jobs (`cronjobs`)
+### 12. Scheduled Batch Jobs (`cronjobs`)
 Automated periodic batch workloads running via Kubernetes `CronJob`.
 
 ```yaml
@@ -450,9 +478,11 @@ cronjobs:
       limits:
         cpu: "500m"
         memory: "1Gi"
+        ephemeral-storage: "1Gi"
       requests:
         cpu: "100m"
         memory: "256Mi"
+        ephemeral-storage: "500Mi"
     volumes:
       backup-storage:
         mountPath: "/mnt/backups"
@@ -462,7 +492,7 @@ cronjobs:
 
 ---
 
-### 12. OpenTelemetry Auto-Instrumentation
+### 13. OpenTelemetry Auto-Instrumentation
 Integrates directly with the OpenTelemetry Operator to inject tracing agents without modifying application code.
 
 ```yaml
@@ -483,14 +513,14 @@ Integrates directly with the OpenTelemetry Operator to inject tracing agents wit
 
 ---
 
-### 13. Subcomponents (Postgres & Redis)
+### 14. Subcomponents (Postgres & Redis)
 Specialized subcomponents (`postgres`, `redis`) can be optionally generated into the chart (`templates/postgres.yaml`, `templates/redis.yaml`).
 - **Defensive Rendering:** Templates safely guard all access against `nil` values so that charts can be linted or rendered cleanly with default `values.yaml` (`helm lint` and `helm template`) even when subcomponents are not explicitly enabled or configured.
 - **Parity with Standardized Model:** Subcomponents support `shared:` resource opt-in (allowing database pods to consume shared ConfigMap/Secret environment variables and certificates/files), `service.enabled` (to disable external service exposition), decoupled `containerPort`, unified multi-volume management (`volumes:`), global private registry pull secrets (`global.imageCredentials`), and modern Vault Secrets Operator (VSO) integration with automated `ServiceAccount` and `VaultAuth` generation. Legacy `persistence:` remains supported in templates for backward-compatibility.
 
 ---
 
-### 14. Workload Governance & Declarative Allowlist
+### 15. Workload Governance & Declarative Allowlist
 To prevent developers from spinning up rogue workloads in GitOps environments (e.g., via ArgoCD values injection), Helmify automatically populates an explicit **`allowedWorkloads`** allowlist in `values.yaml` and `values-env.yaml`:
 - **Automated Discovery:** When Helmify generates the chart, it automatically extracts all detected deployment and cronjob names and generates the `allowedWorkloads` block:
   ```yaml

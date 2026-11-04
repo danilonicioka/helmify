@@ -63,8 +63,9 @@ Supports deploying arbitrary sidecars and initialization tasks:
 - `initContainers`: Injects initialization containers that run prior to the main workload.
 Both systems use a generic structural mapping that securely scopes `envFrom` (ConfigMap and Secret injection) and `volumeMounts` directly to the specific container, preventing sidecars from leaking configuration into the main global scope. Each container can be conditionally disabled with `enabled: false` (defaults to `true` when omitted), completely suppressing its container definition, associated volumes, PVCs, ConfigMaps, Secrets, and OpenTelemetry Instrumentation CRDs.
 
-### 6. Resources
-Defines CPU and Memory `requests` and `limits`.
+### 6. Resources & Ephemeral Storage Enforcement
+Defines CPU, Memory, and Ephemeral Storage `requests` and `limits`.
+- **Ephemeral Storage Limits (Eviction Prevention):** Enforces `limits.ephemeral-storage: "1Gi"` and `requests.ephemeral-storage: "500Mi"`. When a rogue container produces excessive temporary files in `/tmp`, logs, or `emptyDir` scratch volumes, the Kubelet evicts only that specific pod instead of triggering node-wide disk pressure evictions across other neighbor pods.
 
 ### 7. Event-Driven Autoscaling (KEDA)
 Optionally configure advanced event-driven autoscaling using KEDA by overriding the standard HPA configuration.

@@ -94,15 +94,17 @@ The following keys inside `values.yaml` must always include commented-out exampl
     annotations: {}
       # app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"db"}]'
   ```
-- **Operational Resources**: Showing standard CPU/Memory requests and limits:
+- **Operational Resources**: Showing standard CPU, Memory, and Ephemeral Storage requests and limits:
   ```yaml
     resources: {}
       # limits:
       #   cpu: 500m
       #   memory: 512Mi
+      #   ephemeral-storage: "1Gi"
       # requests:
       #   cpu: 100m
       #   memory: 256Mi
+      #   ephemeral-storage: "500Mi"
   ```
 - **Health Probes**: Demonstrating zero-delay `tcpSocket` specifications:
   ```yaml
