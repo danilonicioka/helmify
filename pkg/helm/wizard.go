@@ -629,9 +629,19 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "pullSecrets"), depConfig.Image.PullSecrets)
 		}
 		if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
+			for _, sidecar := range depConfig.ExtraContainers {
+				if sidecar != nil && sidecar.Resources != nil {
+					ensureEphemeralStorageDefaults(sidecar.Resources)
+				}
+			}
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "extraContainers"), depConfig.ExtraContainers)
 		}
 		if depConfig.InitContainers != nil && len(depConfig.InitContainers) > 0 {
+			for _, initc := range depConfig.InitContainers {
+				if initc != nil && initc.Resources != nil {
+					ensureEphemeralStorageDefaults(initc.Resources)
+				}
+			}
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "initContainers"), depConfig.InitContainers)
 		}
 		if depConfig.Command != nil {
@@ -665,6 +675,7 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "secrets"), depConfig.Secrets)
 		}
 		if depConfig.Resources != nil {
+			ensureEphemeralStorageDefaults(depConfig.Resources)
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "resources"), depConfig.Resources)
 		}
 		if depConfig.Scheduling != nil {
@@ -914,6 +925,26 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			}
 			if cj.ConcurrencyPolicy != "" {
 				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "concurrencyPolicy"), cj.ConcurrencyPolicy)
+			}
+			if cj.Resources != nil {
+				ensureEphemeralStorageDefaults(cj.Resources)
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "resources"), cj.Resources)
+			}
+			if cj.ExtraContainers != nil && len(cj.ExtraContainers) > 0 {
+				for _, sidecar := range cj.ExtraContainers {
+					if sidecar != nil && sidecar.Resources != nil {
+						ensureEphemeralStorageDefaults(sidecar.Resources)
+					}
+				}
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "extraContainers"), cj.ExtraContainers)
+			}
+			if cj.InitContainers != nil && len(cj.InitContainers) > 0 {
+				for _, initc := range cj.InitContainers {
+					if initc != nil && initc.Resources != nil {
+						ensureEphemeralStorageDefaults(initc.Resources)
+					}
+				}
+				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "initContainers"), cj.InitContainers)
 			}
 		}
 	}
@@ -1302,6 +1333,27 @@ func stripQuotesFromMap(m map[string]string) {
 			if len(val) >= 2 {
 				m[k] = val[1 : len(val)-1]
 			}
+		}
+	}
+}
+
+// ensureEphemeralStorageDefaults ensures that if resources are defined,
+// ephemeral-storage limits and requests have safe defaults to prevent node-wide evictions.
+func ensureEphemeralStorageDefaults(res *ResourceParams) {
+	if res == nil {
+		return
+	}
+	if res.Limits == nil && res.Requests != nil {
+		res.Limits = make(map[string]interface{})
+	}
+	if res.Limits != nil {
+		if _, ok := res.Limits["ephemeral-storage"]; !ok {
+			res.Limits["ephemeral-storage"] = "1Gi"
+		}
+	}
+	if res.Requests != nil {
+		if _, ok := res.Requests["ephemeral-storage"]; !ok {
+			res.Requests["ephemeral-storage"] = "500Mi"
 		}
 	}
 }

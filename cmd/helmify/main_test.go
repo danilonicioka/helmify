@@ -1129,5 +1129,99 @@ func TestUniversalModelEphemeralStorage(t *testing.T) {
 	assert.Contains(t, outStr, "ephemeral-storage: 500Mi")
 }
 
+func TestHandleGenerate_EphemeralStorageBackfill(t *testing.T) {
+	manifests := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: legacy-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: legacy-app
+  template:
+    metadata:
+      labels:
+        app: legacy-app
+    spec:
+      containers:
+      - name: legacy-app
+        image: quay.io/tjpa/legacy-app:1.0.0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: custom-storage-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: custom-storage-app
+  template:
+    metadata:
+      labels:
+        app: custom-storage-app
+    spec:
+      containers:
+      - name: custom-storage-app
+        image: quay.io/tjpa/custom-app:1.0.0
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+            ephemeral-storage: 4Gi
+          requests:
+            cpu: 100m
+            memory: 256Mi
+            ephemeral-storage: 2Gi
+`
+
+	req := httptest.NewRequest(http.MethodPost, "/v1/generate", bytes.NewBufferString(manifests))
+	req.Header.Set("X-Chart-Name", "storage-test")
+	w := httptest.NewRecorder()
+
+	handleGenerate(w, req)
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	gr, err := gzip.NewReader(resp.Body)
+	assert.NoError(t, err)
+	defer gr.Close()
+
+	tr := tar.NewReader(gr)
+	files := make(map[string]string)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		buf := new(bytes.Buffer)
+		_, _ = io.Copy(buf, tr)
+		files[hdr.Name] = buf.String()
+	}
+
+	valuesEnv := files["values-env.yaml"]
+
+	// 1. Verify legacy-app without ephemeral-storage had it backfilled automatically
+	assert.Contains(t, valuesEnv, "legacy-app:")
+	assert.Contains(t, valuesEnv, "ephemeral-storage: 1Gi")
+	assert.Contains(t, valuesEnv, "ephemeral-storage: 500Mi")
+
+	// 2. Verify custom-storage-app preserved its explicit values (4Gi and 2Gi)
+	assert.Contains(t, valuesEnv, "custom-storage-app:")
+	assert.Contains(t, valuesEnv, "ephemeral-storage: 4Gi")
+	assert.Contains(t, valuesEnv, "ephemeral-storage: 2Gi")
+}
+
+
 
 
