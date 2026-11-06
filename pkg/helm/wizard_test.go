@@ -14,7 +14,7 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	params := WizardParams{
 		ChartName: "test-single-app",
 		GlobalConfig: map[string]string{
-			"TZ": "America/Sao_Paulo",
+			"APP_ENV": "production",
 		},
 		Deployments: map[string]DeploymentParams{
 			"test-single-app": {
@@ -66,7 +66,7 @@ func TestGenerateWizardChart_Single(t *testing.T) {
 	assert.Contains(t, envStr, "path: /prefix")
 	assert.Contains(t, envStr, "default.host.com")
 	assert.Contains(t, envStr, "internal.host.com")
-	assert.Contains(t, envStr, "TZ: America/Sao_Paulo")
+	assert.Contains(t, envStr, "APP_ENV: production")
 	assert.Contains(t, envStr, "fullnameOverride: test-single-app")
 	assert.Contains(t, envStr, `role: "test-single-app-role"`)
 	assert.Contains(t, envStr, `path: "kv/data/test-single-app"`)
@@ -224,4 +224,254 @@ func TestWriteTarGzStructure(t *testing.T) {
 	assert.True(t, paths["chart/values.yaml"])
 	assert.True(t, paths["chart/templates/d.yaml"])
 	assert.False(t, paths["mychart/Chart.yaml"])
+}
+
+func TestTZPlacement_SingleDeploy_Default(t *testing.T) {
+	params := WizardParams{
+		ChartName: "test-single-tz",
+		Deployments: map[string]DeploymentParams{
+			"app": {
+				Image: ImageParams{
+					Repository: "quay.io/my-org/my-app",
+					Tag:        "v1.0.0",
+				},
+			},
+		},
+	}
+
+	files, err := GenerateWizardChart(params)
+	assert.NoError(t, err)
+
+	envStr := string(files["values-env.yaml"])
+	caStr := string(files["values-ca.yaml"])
+
+	// In values-env.yaml, TZ must be under deploys.app.config.env, and global.config.env must be empty
+	assert.Contains(t, envStr, "global:\n  config:\n    env: {}")
+	assert.Contains(t, envStr, "TZ: America/Belem")
+
+	// In values-ca.yaml, TZ must also be under deploys.app.config.env, and global.config.env must be empty
+	assert.Contains(t, caStr, "global:\n  config:\n    env: {}")
+	assert.Contains(t, caStr, "TZ: America/Belem")
+}
+
+func TestTZPlacement_SingleDeploy_FromGlobal(t *testing.T) {
+	params := WizardParams{
+		ChartName: "test-single-tz-custom",
+		GlobalConfig: map[string]string{
+			"TZ": "America/Manaus",
+		},
+		Deployments: map[string]DeploymentParams{
+			"api": {
+				Image: ImageParams{
+					Repository: "quay.io/my-org/my-api",
+					Tag:        "v1.0.0",
+				},
+			},
+		},
+	}
+
+	files, err := GenerateWizardChart(params)
+	assert.NoError(t, err)
+
+	envStr := string(files["values-env.yaml"])
+	assert.Contains(t, envStr, "global:\n  config:\n    env: {}")
+	assert.Contains(t, envStr, "TZ: America/Manaus")
+}
+
+func TestTZPlacement_MultiDeploy_Default(t *testing.T) {
+	params := WizardParams{
+		ChartName: "test-multi-tz",
+		Deployments: map[string]DeploymentParams{
+			"api": {
+				Image: ImageParams{
+					Repository: "quay.io/my-org/api",
+					Tag:        "v1.0.0",
+				},
+			},
+			"worker": {
+				Image: ImageParams{
+					Repository: "quay.io/my-org/worker",
+					Tag:        "v1.0.0",
+				},
+			},
+		},
+	}
+
+	files, err := GenerateWizardChart(params)
+	assert.NoError(t, err)
+
+	envStr := string(files["values-env.yaml"])
+	caStr := string(files["values-ca.yaml"])
+
+	// In values-env.yaml: global has TZ, deploys have empty env
+	assert.Contains(t, envStr, "global:\n  config:\n    env:\n      TZ: America/Belem")
+	assert.NotContains(t, envStr, "    config:\n      env:\n        TZ:")
+
+	// In values-ca.yaml: global has TZ, deploys have empty env
+	assert.Contains(t, caStr, "global:\n  config:\n    env:\n      TZ: America/Belem")
+	assert.NotContains(t, caStr, "    config:\n      env:\n        TZ:")
+}
+
+func TestTZPlacement_MultiDeploy_Deduplicate(t *testing.T) {
+	params := WizardParams{
+		ChartName: "test-multi-tz-dedup",
+		Deployments: map[string]DeploymentParams{
+			"api": {
+				Image: ImageParams{
+					Repository: "quay.io/my-org/api",
+					Tag:        "v1.0.0",
+				},
+				Config: &ConfigParams{
+					Env: map[string]string{
+						"TZ":       "America/Belem",
+						"APP_PORT": "8080",
+					},
+				},
+			},
+			"worker": {
+				Image: ImageParams{
+					Repository: "quay.io/my-org/worker",
+					Tag:        "v1.0.0",
+				},
+			},
+		},
+	}
+
+	files, err := GenerateWizardChart(params)
+	assert.NoError(t, err)
+
+	envStr := string(files["values-env.yaml"])
+
+	// Global has TZ
+	assert.Contains(t, envStr, "global:\n  config:\n    env:\n      TZ: America/Belem")
+	// API has APP_PORT but not duplicate TZ
+	assert.Contains(t, envStr, "APP_PORT: \"8080\"")
+	assert.NotContains(t, envStr, "      env:\n        TZ:")
+}
+
+func TestPodAntiAffinity_PreservedWithNodeSelector(t *testing.T) {
+	params := WizardParams{
+		ChartName: "my-service",
+		Deployments: map[string]DeploymentParams{
+			"my-service": {
+				Image: ImageParams{
+					Repository: "quay.io/tjpa/my-service",
+					Tag:        "v1.0.0",
+				},
+				Scheduling: &SchedulingParams{
+					NodeSelector: map[string]interface{}{
+						"node-role.kubernetes.io/worker": "",
+						"topology.kubernetes.io/zone":   "zone-a",
+					},
+				},
+			},
+		},
+	}
+
+	files, err := GenerateWizardChart(params)
+	assert.NoError(t, err)
+
+	envStr := string(files["values-env.yaml"])
+
+	// 1. Verify custom nodeSelector is retained
+	assert.Contains(t, envStr, "node-role.kubernetes.io/worker:")
+	assert.Contains(t, envStr, "topology.kubernetes.io/zone: zone-a")
+
+	// 2. Verify tolerations are initialized
+	assert.Contains(t, envStr, "tolerations: []")
+
+	// 3. Verify podAntiAffinity was backfilled / preserved
+	assert.Contains(t, envStr, "affinity:")
+	assert.Contains(t, envStr, "podAntiAffinity:")
+	assert.Contains(t, envStr, "topologyKey: kubernetes.io/hostname")
+	assert.Contains(t, envStr, "key: app.kubernetes.io/component")
+	assert.Contains(t, envStr, "- my-service")
+}
+
+func TestPodAntiAffinity_BackfilledWithNodeAffinity(t *testing.T) {
+	params := WizardParams{
+		ChartName: "multi-svc",
+		Deployments: map[string]DeploymentParams{
+			"api": {
+				Image: ImageParams{
+					Repository: "quay.io/tjpa/api",
+					Tag:        "v1.0.0",
+				},
+				Scheduling: &SchedulingParams{
+					Affinity: &AffinityParams{
+						NodeAffinity: map[string]interface{}{
+							"requiredDuringSchedulingIgnoredDuringExecution": map[string]interface{}{
+								"nodeSelectorTerms": []interface{}{
+									map[string]interface{}{
+										"matchExpressions": []interface{}{
+											map[string]interface{}{
+												"key":      "kubernetes.io/arch",
+												"operator": "In",
+												"values":   []interface{}{"amd64"},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	files, err := GenerateWizardChart(params)
+	assert.NoError(t, err)
+
+	envStr := string(files["values-env.yaml"])
+
+	// Custom nodeAffinity must be preserved
+	assert.Contains(t, envStr, "nodeAffinity:")
+	assert.Contains(t, envStr, "kubernetes.io/arch")
+
+	// podAntiAffinity must be backfilled with component name
+	assert.Contains(t, envStr, "podAntiAffinity:")
+	assert.Contains(t, envStr, "- multi-svc-api")
+}
+
+func TestPodAntiAffinity_PreservesCustomPodAntiAffinity(t *testing.T) {
+	params := WizardParams{
+		ChartName: "custom-ha",
+		Deployments: map[string]DeploymentParams{
+			"app": {
+				Image: ImageParams{
+					Repository: "quay.io/tjpa/app",
+					Tag:        "v1.0.0",
+				},
+				Scheduling: &SchedulingParams{
+					Affinity: &AffinityParams{
+						PodAntiAffinity: map[string]interface{}{
+							"requiredDuringSchedulingIgnoredDuringExecution": []interface{}{
+								map[string]interface{}{
+									"labelSelector": map[string]interface{}{
+										"matchLabels": map[string]interface{}{
+											"custom-app": "strict",
+										},
+									},
+									"topologyKey": "topology.kubernetes.io/zone",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	files, err := GenerateWizardChart(params)
+	assert.NoError(t, err)
+
+	envStr := string(files["values-env.yaml"])
+
+	// Custom requiredDuringSchedulingIgnoredDuringExecution must NOT be overwritten
+	assert.Contains(t, envStr, "requiredDuringSchedulingIgnoredDuringExecution:")
+	assert.Contains(t, envStr, "custom-app: strict")
+	assert.Contains(t, envStr, "topology.kubernetes.io/zone")
+	// Must not have preferredDuringSchedulingIgnoredDuringExecution injected
+	assert.NotContains(t, envStr, "preferredDuringSchedulingIgnoredDuringExecution:")
 }

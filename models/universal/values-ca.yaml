@@ -5,5 +5,4 @@ global:
 deploys:
   api:
     config:
-      env:
-        TZ: "America/Belem"
+      env: {}

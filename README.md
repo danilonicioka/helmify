@@ -13,8 +13,8 @@ Helmify generates two separate values files to prevent merge conflicts between b
 
 ### Environment & Config Management
 Enforces a single source of truth using two distinct configuration levels within the operational overlay:
-1. **Global:** Managed in `values-env.yaml` under the `global` block (e.g., `TZ: "America/Belem"`). Generates a shared configmap and secret.
-2. **Component-Specific:** Managed in `values-env.yaml` under each application/component block for variables unique to that container, defined in `config.env` and `secrets.env`.
+1. **Global (`global.config.env`):** Used in multi-deployment charts for shared variables across all components (e.g., `TZ: "America/Belem"`). Generates a shared configmap (`<chart>-global-cm`) mounted across workloads.
+2. **Component-Specific (`deploys.<name>.config.env`):** Variables unique to that specific workload. In single-deployment charts, `TZ: "America/Belem"` is automatically placed directly in the component's `config.env`, keeping `global.config.env` empty to avoid creating an unnecessary separate global ConfigMap.
 
 ### Deterministic Rollouts
 **Immutable Config Strategy:** Any change to configurations in `values-env.yaml` triggers a rolling update using SHA256 checksums in the Pod template annotations:

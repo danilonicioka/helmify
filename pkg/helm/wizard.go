@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	roothelmify "github.com/danilonicioka/helmify"
+	"github.com/danilonicioka/helmify/pkg/cluster"
 	"github.com/danilonicioka/helmify/pkg/config"
 	"github.com/danilonicioka/helmify/pkg/processor"
 	"github.com/sirupsen/logrus"
@@ -507,6 +508,69 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	}
 	sort.Strings(cronKeys)
 
+	// Adjust TZ placement:
+	// - Unique deploy (len(compKeys) == 1): add TZ to deploy config.env and strip from global config.env
+	// - Multi deploys (len(compKeys) > 1): add TZ to global config.env and remove duplicate from deploy config.env
+	if len(compKeys) == 1 {
+		singleComp := compKeys[0]
+		depConfig := params.Deployments[singleComp]
+		if depConfig.Config == nil {
+			depConfig.Config = &ConfigParams{Env: make(map[string]string)}
+		} else if depConfig.Config.Env == nil {
+			depConfig.Config.Env = make(map[string]string)
+		}
+
+		tzVal := cluster.DefaultTZ
+		if gTz, ok := params.GlobalConfig[cluster.TZKey]; ok && gTz != "" {
+			tzVal = gTz
+		}
+		if cTz, ok := depConfig.Config.Env[cluster.TZKey]; ok && cTz != "" {
+			tzVal = cTz
+		}
+
+		depConfig.Config.Env[cluster.TZKey] = tzVal
+		params.Deployments[singleComp] = depConfig
+
+		if params.GlobalConfig != nil {
+			delete(params.GlobalConfig, cluster.TZKey)
+		}
+	} else if len(compKeys) > 1 {
+		if params.GlobalConfig == nil {
+			params.GlobalConfig = make(map[string]string)
+		}
+		tzVal := params.GlobalConfig[cluster.TZKey]
+		if tzVal == "" {
+			tzVal = cluster.DefaultTZ
+			for _, compName := range compKeys {
+				dep := params.Deployments[compName]
+				if dep.Config != nil && dep.Config.Env != nil {
+					if v, ok := dep.Config.Env[cluster.TZKey]; ok && v != "" {
+						tzVal = v
+						break
+					}
+				}
+			}
+			params.GlobalConfig[cluster.TZKey] = tzVal
+		}
+
+		for _, compName := range compKeys {
+			dep := params.Deployments[compName]
+			if dep.Config != nil && dep.Config.Env != nil {
+				if dep.Config.Env[cluster.TZKey] == params.GlobalConfig[cluster.TZKey] || dep.Config.Env[cluster.TZKey] == cluster.DefaultTZ {
+					delete(dep.Config.Env, cluster.TZKey)
+					params.Deployments[compName] = dep
+				}
+			}
+		}
+	} else {
+		if params.GlobalConfig == nil {
+			params.GlobalConfig = make(map[string]string)
+		}
+		if params.GlobalConfig[cluster.TZKey] == "" {
+			params.GlobalConfig[cluster.TZKey] = cluster.DefaultTZ
+		}
+	}
+
 	allowedDeploys := compKeys
 	if allowedDeploys == nil {
 		allowedDeploys = []string{}
@@ -678,16 +742,26 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			ensureEphemeralStorageDefaults(depConfig.Resources)
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "resources"), depConfig.Resources)
 		}
-		if depConfig.Scheduling != nil {
-			// Always ensure nodeSelector and tolerations are present so users know they can be set
-			if depConfig.Scheduling.NodeSelector == nil {
-				depConfig.Scheduling.NodeSelector = map[string]interface{}{}
-			}
-			if depConfig.Scheduling.Tolerations == nil {
-				depConfig.Scheduling.Tolerations = []interface{}{}
-			}
-			_ = setYamlPath(&rootNode, append(appKeyPrefix, "scheduling"), depConfig.Scheduling)
+		if depConfig.Scheduling == nil {
+			depConfig.Scheduling = &SchedulingParams{}
 		}
+		// Always ensure nodeSelector and tolerations are present so users know they can be set
+		if depConfig.Scheduling.NodeSelector == nil {
+			depConfig.Scheduling.NodeSelector = map[string]interface{}{}
+		}
+		if depConfig.Scheduling.Tolerations == nil {
+			depConfig.Scheduling.Tolerations = []interface{}{}
+		}
+		targetComp := getComponentTargetLabel(params.ChartName, compName)
+		if depConfig.Scheduling.Affinity == nil {
+			depConfig.Scheduling.Affinity = &AffinityParams{
+				PodAntiAffinity: defaultPodAntiAffinity(targetComp),
+			}
+		} else if depConfig.Scheduling.Affinity.PodAntiAffinity == nil {
+			depConfig.Scheduling.Affinity.PodAntiAffinity = defaultPodAntiAffinity(targetComp)
+		}
+		params.Deployments[compName] = depConfig
+		_ = setYamlPath(&rootNode, append(appKeyPrefix, "scheduling"), depConfig.Scheduling)
 		if depConfig.Strategy != nil && len(depConfig.Strategy) > 0 {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "strategy"), depConfig.Strategy)
 		}
@@ -865,6 +939,8 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 	if len(params.GlobalConfig) > 0 {
 		stripQuotesFromMap(params.GlobalConfig)
 		_ = setYamlPath(&rootNode, []string{"global", "config", "env"}, params.GlobalConfig)
+	} else {
+		_ = setYamlPath(&rootNode, []string{"global", "config", "env"}, map[string]interface{}{})
 	}
 	if len(params.GlobalSecret) > 0 {
 		stripQuotesFromMap(params.GlobalSecret)
@@ -1021,11 +1097,15 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 					if depConfig, ok := params.Deployments[compKey]; ok {
 						if depConfig.Config != nil && depConfig.Config.Env != nil {
 							_ = setYamlPath(&caRoot, []string{"deploys", compKey, "config", "env"}, depConfig.Config.Env)
+						} else {
+							_ = setYamlPath(&caRoot, []string{"deploys", compKey, "config", "env"}, map[string]interface{}{})
 						}
 					}
 				}
 				if len(params.GlobalConfig) > 0 {
 					_ = setYamlPath(&caRoot, []string{"global", "config", "env"}, params.GlobalConfig)
+				} else {
+					_ = setYamlPath(&caRoot, []string{"global", "config", "env"}, map[string]interface{}{})
 				}
 
 				setBlockStyle(&caRoot)
@@ -1355,6 +1435,40 @@ func ensureEphemeralStorageDefaults(res *ResourceParams) {
 		if _, ok := res.Requests["ephemeral-storage"]; !ok {
 			res.Requests["ephemeral-storage"] = "500Mi"
 		}
+	}
+}
+
+func getComponentTargetLabel(chartName, compName string) string {
+	chartKebab := processor.NormalizeComponentName(chartName)
+	compKebab := processor.NormalizeComponentName(compName)
+	if compKebab == chartKebab || compKebab == "" {
+		return chartKebab
+	}
+	if strings.HasPrefix(compKebab, chartKebab+"-") {
+		return compKebab
+	}
+	return chartKebab + "-" + compKebab
+}
+
+func defaultPodAntiAffinity(targetComp string) map[string]interface{} {
+	return map[string]interface{}{
+		"preferredDuringSchedulingIgnoredDuringExecution": []interface{}{
+			map[string]interface{}{
+				"weight": 100,
+				"podAffinityTerm": map[string]interface{}{
+					"labelSelector": map[string]interface{}{
+						"matchExpressions": []interface{}{
+							map[string]interface{}{
+								"key":      "app.kubernetes.io/component",
+								"operator": "In",
+								"values":   []interface{}{targetComp},
+							},
+						},
+					},
+					"topologyKey": "kubernetes.io/hostname",
+				},
+			},
+		},
 	}
 }
 

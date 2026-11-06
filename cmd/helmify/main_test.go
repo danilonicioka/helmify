@@ -1222,6 +1222,204 @@ spec:
 	assert.Contains(t, valuesEnv, "ephemeral-storage: 2Gi")
 }
 
+func TestGenerateWizardChart_TZPlacement_HelmTemplate(t *testing.T) {
+	// 1. Single deployment scenario
+	singleParams := helm.WizardParams{
+		ChartName: "test-single-tz",
+		Deployments: map[string]helm.DeploymentParams{
+			"app": {
+				Image: helm.ImageParams{
+					Repository: "quay.io/my-org/my-app",
+					Tag:        "v1.0.0",
+				},
+				Service: helm.ServiceParams{
+					Ports: map[string]struct {
+						Port          int    `json:"port" yaml:"port"`
+						ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
+						Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+					}{
+						"http": {Port: 8080, ContainerPort: 8080, Protocol: "TCP"},
+					},
+				},
+			},
+		},
+	}
+
+	singleFiles, err := helm.GenerateWizardChart(singleParams)
+	assert.NoError(t, err)
+
+	tempDirSingle := t.TempDir()
+	chartDirSingle := filepath.Join(tempDirSingle, "chart")
+	for path, content := range singleFiles {
+		if path == "values-env.yaml" {
+			assert.NoError(t, os.WriteFile(filepath.Join(tempDirSingle, "values-env.yaml"), content, 0644))
+			continue
+		}
+		targetPath := filepath.Join(chartDirSingle, path)
+		assert.NoError(t, os.MkdirAll(filepath.Dir(targetPath), 0755))
+		assert.NoError(t, os.WriteFile(targetPath, content, 0644))
+	}
+
+	cmdSingle := exec.Command("helm", "template", "release-single", chartDirSingle, "-f", filepath.Join(tempDirSingle, "values-env.yaml"))
+	outSingle, err := cmdSingle.CombinedOutput()
+	assert.NoError(t, err, "helm template should succeed for single-deploy chart: %s", string(outSingle))
+	outSingleStr := string(outSingle)
+
+	// Single deploy should render app-cm with TZ: "America/Belem"
+	assert.Contains(t, outSingleStr, "name: test-single-tz-app-cm")
+	assert.Contains(t, outSingleStr, "TZ: \"America/Belem\"")
+	// Single deploy should NOT render global-cm
+	assert.NotContains(t, outSingleStr, "test-single-tz-global-cm")
+	// Deployment should mount app-cm in envFrom
+	assert.Contains(t, outSingleStr, "name: test-single-tz-app-cm")
+
+	// 2. Multi deployment scenario
+	multiParams := helm.WizardParams{
+		ChartName: "test-multi-tz",
+		Deployments: map[string]helm.DeploymentParams{
+			"api": {
+				Image: helm.ImageParams{
+					Repository: "quay.io/my-org/api",
+					Tag:        "v1.0.0",
+				},
+				Service: helm.ServiceParams{
+					Ports: map[string]struct {
+						Port          int    `json:"port" yaml:"port"`
+						ContainerPort int    `json:"containerPort,omitempty" yaml:"containerPort,omitempty"`
+						Protocol      string `json:"protocol,omitempty" yaml:"protocol,omitempty"`
+					}{
+						"http": {Port: 8080, ContainerPort: 8080, Protocol: "TCP"},
+					},
+				},
+			},
+			"worker": {
+				Image: helm.ImageParams{
+					Repository: "quay.io/my-org/worker",
+					Tag:        "v1.0.0",
+				},
+			},
+		},
+	}
+
+	multiFiles, err := helm.GenerateWizardChart(multiParams)
+	assert.NoError(t, err)
+
+	tempDirMulti := t.TempDir()
+	chartDirMulti := filepath.Join(tempDirMulti, "chart")
+	for path, content := range multiFiles {
+		if path == "values-env.yaml" {
+			assert.NoError(t, os.WriteFile(filepath.Join(tempDirMulti, "values-env.yaml"), content, 0644))
+			continue
+		}
+		targetPath := filepath.Join(chartDirMulti, path)
+		assert.NoError(t, os.MkdirAll(filepath.Dir(targetPath), 0755))
+		assert.NoError(t, os.WriteFile(targetPath, content, 0644))
+	}
+
+	cmdMulti := exec.Command("helm", "template", "release-multi", chartDirMulti, "-f", filepath.Join(tempDirMulti, "values-env.yaml"))
+	outMulti, err := cmdMulti.CombinedOutput()
+	assert.NoError(t, err, "helm template should succeed for multi-deploy chart: %s", string(outMulti))
+	outMultiStr := string(outMulti)
+
+	// Multi deploy should render global-cm with TZ: "America/Belem"
+	assert.Contains(t, outMultiStr, "name: test-multi-tz-global-cm")
+	assert.Contains(t, outMultiStr, "TZ: \"America/Belem\"")
+	// Multi deploy should NOT render api-cm or worker-cm since their config env is empty
+	assert.NotContains(t, outMultiStr, "test-multi-tz-api-cm")
+	assert.NotContains(t, outMultiStr, "test-multi-tz-worker-cm")
+	// Both deployments should reference the shared global-cm
+	assert.Contains(t, outMultiStr, "name: test-multi-tz-global-cm")
+}
+
+func TestGenerate_ManifestWithNodeSelector_PreservesPodAntiAffinity(t *testing.T) {
+	manifests := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker-app
+  labels:
+    app: worker-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: worker-app
+  template:
+    metadata:
+      labels:
+        app: worker-app
+    spec:
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
+        topology.kubernetes.io/zone: zone-east-1
+      containers:
+      - name: worker
+        image: quay.io/tjpa/worker:v2.0.0
+        ports:
+        - containerPort: 9000
+`
+	req := httptest.NewRequest(http.MethodPost, "/v1/generate", bytes.NewBufferString(manifests))
+	req.Header.Set("X-Chart-Name", "worker-app")
+	w := httptest.NewRecorder()
+
+	handleGenerate(w, req)
+
+	resp := w.Result()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+	gr, err := gzip.NewReader(resp.Body)
+	assert.NoError(t, err)
+	defer gr.Close()
+
+	tr := tar.NewReader(gr)
+	files := make(map[string][]byte)
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
+		buf := new(bytes.Buffer)
+		_, _ = io.Copy(buf, tr)
+		files[hdr.Name] = buf.Bytes()
+	}
+
+	valuesEnvStr := string(files["values-env.yaml"])
+
+	// Verify nodeSelector is captured in values-env.yaml
+	assert.Contains(t, valuesEnvStr, "node-role.kubernetes.io/worker:")
+	assert.Contains(t, valuesEnvStr, "topology.kubernetes.io/zone: zone-east-1")
+
+	// Verify podAntiAffinity was NOT erased and is present in values-env.yaml
+	assert.Contains(t, valuesEnvStr, "podAntiAffinity:")
+	assert.Contains(t, valuesEnvStr, "topologyKey: kubernetes.io/hostname")
+	assert.Contains(t, valuesEnvStr, "- worker-app")
+
+	// Verify that helm template renders both nodeSelector and affinity on the deployment
+	tempDir := t.TempDir()
+	for path, content := range files {
+		targetPath := filepath.Join(tempDir, path)
+		if strings.HasSuffix(path, "/") || len(content) == 0 && (path == "chart" || path == "chart/templates" || path == "chart/files") {
+			_ = os.MkdirAll(targetPath, 0755)
+			continue
+		}
+		assert.NoError(t, os.MkdirAll(filepath.Dir(targetPath), 0755))
+		assert.NoError(t, os.WriteFile(targetPath, content, 0644))
+	}
+
+	cmd := exec.Command("helm", "template", "release-worker", filepath.Join(tempDir, "chart"), "-f", filepath.Join(tempDir, "values-env.yaml"), "-s", "templates/deploy.yaml")
+	out, err := cmd.CombinedOutput()
+	assert.NoError(t, err, "helm template failed: %s", string(out))
+	rendered := string(out)
+
+	assert.Contains(t, rendered, "nodeSelector:")
+	assert.Contains(t, rendered, "node-role.kubernetes.io/worker: \"\"")
+	assert.Contains(t, rendered, "topology.kubernetes.io/zone: zone-east-1")
+	assert.Contains(t, rendered, "affinity:")
+	assert.Contains(t, rendered, "podAntiAffinity:")
+	assert.Contains(t, rendered, "topologyKey: kubernetes.io/hostname")
+}
+
+
 
 
 

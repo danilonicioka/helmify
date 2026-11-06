@@ -58,7 +58,7 @@ To ensure consistency, the `values.yaml` must follow a strict section ordering, 
 1. **Section I: CHART-WIDE OPTIONS**
    - `kubernetesClusterDomain`: Default `"cluster.local"`.
    - `nameOverride` / `fullnameOverride`: Default `""`.
-   - `global`: ConfigMaps/Secrets shared across all components (e.g. `TZ: "America/Belem"`).
+   - `global`: ConfigMaps/Secrets shared across all components (e.g. `TZ: "America/Belem"` in multi-deploy charts; for single-deploy charts, `TZ` is placed in `deploys.<name>.config.env` and `global.config.env` remains empty).
 2. **Section II: COMPONENT CONFIGURATION** (e.g. `backend`, `frontend`, or application name in single-model)
    - **Core Workload Settings**: 
      - `replicas: 0`
@@ -212,6 +212,10 @@ files:
 ### Probes & Resources
 - Probes are initialized conditionally if values are defined, preferring `tcpSocket` with `initialDelaySeconds: 0` for instant readiness discovery.
 - Resources must stay under an operational overlay and default to empty.
+
+### High-Availability Scheduling & Pod Anti-Affinity
+- Workloads specify soft pod anti-affinity (`preferredDuringSchedulingIgnoredDuringExecution`, weight: 100) with `topologyKey: kubernetes.io/hostname` matching `app.kubernetes.io/component` to ensure replicas spread across different worker nodes for high availability.
+- Helmify automatically preserves and backfills this default `podAntiAffinity` when custom `nodeSelector` or `tolerations` are present in input manifests.
 
 ---
 

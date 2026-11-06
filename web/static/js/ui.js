@@ -38,8 +38,10 @@ function toggleWorkloadTypeFields() {
                         if (activeComponent === name) {
                             activeComponent = Object.keys(components)[0];
                         }
+                        adjustTZPlacement();
                         renderTabs();
                         renderActiveComponent();
+                        renderGlobalConfigList();
                         updatePreview();
                     };
                     tab.appendChild(removeBtn);
@@ -138,9 +140,11 @@ function toggleWorkloadTypeFields() {
             saveActiveComponentState();
             components[cleanName] = createDefaultComponentConfig(cleanName, modalPreset);
             activeComponent = cleanName;
+            adjustTZPlacement();
 
             renderTabs();
             renderActiveComponent();
+            renderGlobalConfigList();
             updatePreview();
             hideAddDeploymentModal();
         }
@@ -782,6 +786,35 @@ function toggleWorkloadTypeFields() {
 
             if (secretText.trim().length > 0) toggleEnvVar('comp-secret');
             else { document.getElementById('comp-secret-container').style.display = 'none'; document.getElementById('btn-add-comp-secret').style.display = 'inline-block'; }
+        }
+
+        function adjustTZPlacement() {
+            const deployNames = Object.keys(components || {}).filter(name => components[name].workloadType !== 'CronJob');
+            if (deployNames.length === 1) {
+                const comp = components[deployNames[0]];
+                if (!comp.config) comp.config = { env: {}, files: {} };
+                if (!comp.config.env) comp.config.env = {};
+                const tz = comp.config.env['TZ'] || (globalConfig && globalConfig['TZ']) || 'America/Belem';
+                comp.config.env['TZ'] = tz;
+                if (globalConfig) delete globalConfig['TZ'];
+            } else if (deployNames.length > 1) {
+                if (!globalConfig) globalConfig = {};
+                if (!globalConfig['TZ']) {
+                    let foundTZ = 'America/Belem';
+                    for (const name of deployNames) {
+                        if (components[name].config?.env?.['TZ']) {
+                            foundTZ = components[name].config.env['TZ'];
+                            break;
+                        }
+                    }
+                    globalConfig['TZ'] = foundTZ;
+                }
+                for (const name of deployNames) {
+                    if (components[name].config?.env?.['TZ'] === globalConfig['TZ'] || components[name].config?.env?.['TZ'] === 'America/Belem') {
+                        delete components[name].config.env['TZ'];
+                    }
+                }
+            }
         }
 
         // Handle Global Config lists

@@ -39,7 +39,7 @@ allowedWorkloads:
 global:
   config:
     env:
-      TZ: "America/Belem"
+      TZ: "America/Belem" # Managed globally for multi-deploy charts. For single-deploy charts, helmify automatically places TZ under deploys.<name>.config.env instead.
   secrets:
     env: {}
   imageCredentials:
@@ -537,6 +537,14 @@ To prevent developers from spinning up rogue workloads in GitOps environments (e
   - **CronJobs:** Restricts `.Values.cronjobs` strictly to scheduled jobs listed in `allowedWorkloads.cronjobs`.
   - **Optional Container Granularity:** Also supports mapping format (e.g. `deploys.api.initContainers` / `extraContainers`) if granular container-level lockdown is required.
 - **Fail-Fast Enforcement:** If an unauthorized deployment or cronjob is injected, Helm template rendering immediately halts with a `[SECURITY VIOLATION]` error, preventing rogue workloads from deploying onto OpenShift.
+
+---
+
+### 16. Workload Scheduling & High-Availability Pod Anti-Affinity
+Ensures resilience and high availability by spreading deployment replicas across different cluster nodes:
+- **Default HA Anti-Affinity:** Helmify automatically backfills `podAntiAffinity` under `scheduling.affinity` targeting the workload's component label (`app.kubernetes.io/component`), with `preferredDuringSchedulingIgnoredDuringExecution` (weight: 100) across `kubernetes.io/hostname`.
+- **NodeSelector & Tolerations Preservation:** When an input manifest defines custom `nodeSelector` (e.g., node roles or zone constraints) or `tolerations`, Helmify retains the custom node constraints while preserving or backfilling the default `podAntiAffinity` so workloads do not lose high-availability spreading.
+- **Custom Affinity Support:** Explicit user-defined `nodeAffinity`, `podAffinity`, or custom `podAntiAffinity` in input manifests are preserved.
 
 ---
 

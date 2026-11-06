@@ -57,6 +57,10 @@
                     document.getElementById('chartName').value = oldKey;
                 }
 
+                if (typeof adjustTZPlacement === 'function') {
+                    adjustTZPlacement();
+                }
+
                 activeComponent = compKeys.includes('api') ? 'api' : (compKeys[0] || 'api');
                 document.getElementById('btn-add-comp').style.display = 'block';
 

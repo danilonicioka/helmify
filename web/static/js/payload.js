@@ -17,6 +17,7 @@
                 },
                 config: compData.config || { env: {}, files: {} },
                 resources: compData.resources,
+                scheduling: compData.scheduling,
                 probes: compData.probes,
                 instrumentation: compData.instrumentation,
                 command: compData.command,
