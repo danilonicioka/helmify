@@ -693,17 +693,45 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "image", "pullSecrets"), depConfig.Image.PullSecrets)
 		}
 		if depConfig.ExtraContainers != nil && len(depConfig.ExtraContainers) > 0 {
-			for _, sidecar := range depConfig.ExtraContainers {
-				if sidecar != nil && sidecar.Resources != nil {
-					ensureEphemeralStorageDefaults(sidecar.Resources)
+			for sidecarName, sidecar := range depConfig.ExtraContainers {
+				if sidecar != nil {
+					if sidecar.Resources != nil {
+						ensureEphemeralStorageDefaults(sidecar.Resources)
+					}
+					sidecarPrefix := append(appKeyPrefix, "extraContainers", sidecarName)
+					enabledVal := true
+					if sidecar.Enabled != nil {
+						enabledVal = *sidecar.Enabled
+					}
+					_ = setYamlPath(&customNode, append(sidecarPrefix, "enabled"), enabledVal)
+					if sidecar.Image.Repository != "" {
+						_ = setYamlPath(&customNode, append(sidecarPrefix, "image", "repository"), sidecar.Image.Repository)
+					}
+					if sidecar.Image.Tag != "" {
+						_ = setYamlPath(&customNode, append(sidecarPrefix, "image", "tag"), sidecar.Image.Tag)
+					}
 				}
 			}
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "extraContainers"), depConfig.ExtraContainers)
 		}
 		if depConfig.InitContainers != nil && len(depConfig.InitContainers) > 0 {
-			for _, initc := range depConfig.InitContainers {
-				if initc != nil && initc.Resources != nil {
-					ensureEphemeralStorageDefaults(initc.Resources)
+			for initName, initc := range depConfig.InitContainers {
+				if initc != nil {
+					if initc.Resources != nil {
+						ensureEphemeralStorageDefaults(initc.Resources)
+					}
+					initPrefix := append(appKeyPrefix, "initContainers", initName)
+					enabledVal := true
+					if initc.Enabled != nil {
+						enabledVal = *initc.Enabled
+					}
+					_ = setYamlPath(&customNode, append(initPrefix, "enabled"), enabledVal)
+					if initc.Image.Repository != "" {
+						_ = setYamlPath(&customNode, append(initPrefix, "image", "repository"), initc.Image.Repository)
+					}
+					if initc.Image.Tag != "" {
+						_ = setYamlPath(&customNode, append(initPrefix, "image", "tag"), initc.Image.Tag)
+					}
 				}
 			}
 			_ = setYamlPath(&rootNode, append(appKeyPrefix, "initContainers"), depConfig.InitContainers)
@@ -1007,17 +1035,45 @@ func GenerateWizardChart(params WizardParams) (map[string][]byte, error) {
 				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "resources"), cj.Resources)
 			}
 			if cj.ExtraContainers != nil && len(cj.ExtraContainers) > 0 {
-				for _, sidecar := range cj.ExtraContainers {
-					if sidecar != nil && sidecar.Resources != nil {
-						ensureEphemeralStorageDefaults(sidecar.Resources)
+				for sidecarName, sidecar := range cj.ExtraContainers {
+					if sidecar != nil {
+						if sidecar.Resources != nil {
+							ensureEphemeralStorageDefaults(sidecar.Resources)
+						}
+						sidecarPrefix := append(cjKeyPrefix, "extraContainers", sidecarName)
+						enabledVal := true
+						if sidecar.Enabled != nil {
+							enabledVal = *sidecar.Enabled
+						}
+						_ = setYamlPath(&customNode, append(sidecarPrefix, "enabled"), enabledVal)
+						if sidecar.Image.Repository != "" {
+							_ = setYamlPath(&customNode, append(sidecarPrefix, "image", "repository"), sidecar.Image.Repository)
+						}
+						if sidecar.Image.Tag != "" {
+							_ = setYamlPath(&customNode, append(sidecarPrefix, "image", "tag"), sidecar.Image.Tag)
+						}
 					}
 				}
 				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "extraContainers"), cj.ExtraContainers)
 			}
 			if cj.InitContainers != nil && len(cj.InitContainers) > 0 {
-				for _, initc := range cj.InitContainers {
-					if initc != nil && initc.Resources != nil {
-						ensureEphemeralStorageDefaults(initc.Resources)
+				for initName, initc := range cj.InitContainers {
+					if initc != nil {
+						if initc.Resources != nil {
+							ensureEphemeralStorageDefaults(initc.Resources)
+						}
+						initPrefix := append(cjKeyPrefix, "initContainers", initName)
+						enabledVal := true
+						if initc.Enabled != nil {
+							enabledVal = *initc.Enabled
+						}
+						_ = setYamlPath(&customNode, append(initPrefix, "enabled"), enabledVal)
+						if initc.Image.Repository != "" {
+							_ = setYamlPath(&customNode, append(initPrefix, "image", "repository"), initc.Image.Repository)
+						}
+						if initc.Image.Tag != "" {
+							_ = setYamlPath(&customNode, append(initPrefix, "image", "tag"), initc.Image.Tag)
+						}
 					}
 				}
 				_ = setYamlPath(&rootNode, append(cjKeyPrefix, "initContainers"), cj.InitContainers)

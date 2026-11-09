@@ -8,7 +8,7 @@ This chart enforces a clean separation between the infrastructure blueprint (tem
 
 ### Dual-File Configuration Architecture
 Helmify generates two separate values files to prevent merge conflicts between base blueprints and environment-specific data:
-1. **`values.yaml` (Clean Base):** Lives inside the chart directory. Contains structural skeleton configurations like `replicas`, base `image.repository`, and route structures. It is completely stripped of environment-specific overrides (like `env`, `probes`, `resources`).
+1. **`values.yaml` (Clean Base):** Lives inside the chart directory. Contains structural skeleton configurations like `replicas`, base container images (`image.repository` and `image.tag` for main workloads, `initContainers`, and `extraContainers`), and route structures. It is completely stripped of environment-specific overrides (like `env`, `probes`, `resources`), allowing standalone chart linting and template rendering.
 2. **`values-env.yaml` (Operational Overlay):** Generated outside the chart directory. Contains all highly-customizable and environment-specific data (e.g., `config.env`, `secrets.env`, `probes`, `autoscaling`, `resources`, `scheduling`, `command`, `args`). Use this as the base to create your `values-prd.yaml` or `values-hml.yaml`.
 
 ### Environment & Config Management

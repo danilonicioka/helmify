@@ -495,6 +495,18 @@ func TestInitAndExtraContainers_VolumesAndSharedVolumes(t *testing.T) {
 	assert.Contains(t, renderedPVC, "storage: 2Gi")
 	// ephemeral init-scratch must not generate a PVC
 	assert.NotContains(t, renderedPVC, "init-scratch")
+
+	// 3. Test standalone rendering (values.yaml alone without values-env.yaml)
+	// InitContainers and ExtraContainers must have valid image fields mapped in values.yaml
+	cmdStandalone := exec.Command("helm", "template", "test-sidecar-vols", chartDir, "-s", "templates/deploy.yaml")
+	outStandalone, errStandalone := cmdStandalone.CombinedOutput()
+	assert.NoError(t, errStandalone, "helm template deploy.yaml without values-env.yaml failed: %s", string(outStandalone))
+
+	renderedStandalone := string(outStandalone)
+	assert.Contains(t, renderedStandalone, "- name: setup\n          image: \"test/setup:latest\"")
+	assert.Contains(t, renderedStandalone, "- name: bare-init\n          image: \"test/bare:latest\"")
+	assert.Contains(t, renderedStandalone, "- name: sidecar\n          image: \"test/sidecar:latest\"")
+	assert.Contains(t, renderedStandalone, "- name: bare-sidecar\n          image: \"test/bare-sidecar:latest\"")
 }
 
 func TestHandleGenerate_ReleaseNamePrefixStripping(t *testing.T) {

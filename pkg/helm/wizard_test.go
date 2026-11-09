@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestGenerateWizardChart_Single(t *testing.T) {
@@ -474,4 +475,124 @@ func TestPodAntiAffinity_PreservesCustomPodAntiAffinity(t *testing.T) {
 	assert.Contains(t, envStr, "topology.kubernetes.io/zone")
 	// Must not have preferredDuringSchedulingIgnoredDuringExecution injected
 	assert.NotContains(t, envStr, "preferredDuringSchedulingIgnoredDuringExecution:")
+}
+
+func TestInitAndExtraContainers_MappedToSimpleValues(t *testing.T) {
+	enabledFalse := false
+	params := WizardParams{
+		ChartName: "containers-test",
+		Deployments: map[string]DeploymentParams{
+			"api": {
+				Image: ImageParams{
+					Repository: "quay.io/tjpa/api",
+					Tag:        "v1.0.0",
+				},
+				InitContainers: map[string]*SidecarParams{
+					"db-migrate": {
+						Image: ImageParams{
+							Repository: "quay.io/tjpa/db-migrate",
+							Tag:        "v1.2.3",
+						},
+						Resources: &ResourceParams{
+							Limits: map[string]interface{}{"memory": "256Mi", "cpu": "200m"},
+						},
+					},
+					"disabled-init": {
+						Enabled: &enabledFalse,
+						Image: ImageParams{
+							Repository: "quay.io/tjpa/disabled-init",
+							Tag:        "v0.1.0",
+						},
+					},
+				},
+				ExtraContainers: map[string]*SidecarParams{
+					"metrics-exporter": {
+						Image: ImageParams{
+							Repository: "quay.io/tjpa/metrics-exporter",
+							Tag:        "v0.9.1",
+						},
+						Resources: &ResourceParams{
+							Limits: map[string]interface{}{"memory": "128Mi", "cpu": "100m"},
+						},
+					},
+				},
+			},
+		},
+		CronJobs: map[string]DeploymentParams{
+			"batch-job": {
+				Image: ImageParams{
+					Repository: "quay.io/tjpa/batch",
+					Tag:        "v2.0.0",
+				},
+				InitContainers: map[string]*SidecarParams{
+					"prep": {
+						Image: ImageParams{
+							Repository: "quay.io/tjpa/prep",
+							Tag:        "v1.0.0",
+						},
+					},
+				},
+				ExtraContainers: map[string]*SidecarParams{
+					"sidecar": {
+						Image: ImageParams{
+							Repository: "quay.io/tjpa/sidecar",
+							Tag:        "v1.0.0",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	files, err := GenerateWizardChart(params)
+	assert.NoError(t, err)
+
+	valuesYaml := string(files["values.yaml"])
+	valuesEnvYaml := string(files["values-env.yaml"])
+
+	// 1. Check values.yaml (simple defaults) contains container images and enabled flags
+	// Deployment initContainers
+	assert.Contains(t, valuesYaml, "db-migrate:")
+	assert.Contains(t, valuesYaml, "quay.io/tjpa/db-migrate")
+	assert.Contains(t, valuesYaml, "v1.2.3")
+	assert.Contains(t, valuesYaml, "disabled-init:")
+	assert.Contains(t, valuesYaml, "enabled: false")
+
+	// Deployment extraContainers
+	assert.Contains(t, valuesYaml, "metrics-exporter:")
+	assert.Contains(t, valuesYaml, "quay.io/tjpa/metrics-exporter")
+	assert.Contains(t, valuesYaml, "v0.9.1")
+
+	// CronJob initContainers & extraContainers
+	assert.Contains(t, valuesYaml, "prep:")
+	assert.Contains(t, valuesYaml, "quay.io/tjpa/prep")
+	assert.Contains(t, valuesYaml, "sidecar:")
+	assert.Contains(t, valuesYaml, "quay.io/tjpa/sidecar")
+
+	// Simple values.yaml must NOT leak environment-specific operational settings like resources
+	var parsedValues map[string]interface{}
+	assert.NoError(t, yaml.Unmarshal(files["values.yaml"], &parsedValues))
+	deploys, ok := parsedValues["deploys"].(map[string]interface{})
+	assert.True(t, ok)
+	apiMap, ok := deploys["api"].(map[string]interface{})
+	assert.True(t, ok)
+	inits, ok := apiMap["initContainers"].(map[string]interface{})
+	assert.True(t, ok)
+	dbMigrate, ok := inits["db-migrate"].(map[string]interface{})
+	assert.True(t, ok)
+	assert.Nil(t, dbMigrate["resources"], "resources should not be present in values.yaml for initContainers")
+
+	// 2. Check values-env.yaml contains full definitions with resources and backfilled ephemeral-storage
+	var parsedEnv map[string]interface{}
+	assert.NoError(t, yaml.Unmarshal(files["values-env.yaml"], &parsedEnv))
+	envDeploys, ok := parsedEnv["deploys"].(map[string]interface{})
+	assert.True(t, ok)
+	envApi, ok := envDeploys["api"].(map[string]interface{})
+	assert.True(t, ok)
+	envInits, ok := envApi["initContainers"].(map[string]interface{})
+	assert.True(t, ok)
+	envDbMigrate, ok := envInits["db-migrate"].(map[string]interface{})
+	assert.True(t, ok)
+	assert.NotNil(t, envDbMigrate["resources"], "resources must be present in values-env.yaml for initContainers")
+	assert.Contains(t, valuesEnvYaml, "ephemeral-storage: 1Gi")
 }
