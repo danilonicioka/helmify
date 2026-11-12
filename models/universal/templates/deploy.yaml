@@ -36,9 +36,10 @@ spec:
         {{- end }}
         {{- /* OpenTelemetry Instrumentation Logic */}}
         {{- $instrumentedContainers := list }}
+        {{- $primaryContainerName := $comp.containerName | default $compName }}
         {{- if and $comp.instrumentation $comp.instrumentation.enabled }}
         instrumentation.opentelemetry.io/inject-{{ $comp.instrumentation.language | default "java" }}: "{{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-instrumentation"
-        {{- $instrumentedContainers = append $instrumentedContainers $compName }}
+        {{- $instrumentedContainers = append $instrumentedContainers $primaryContainerName }}
         {{- end }}
         {{- if $comp.extraContainers }}
         {{- range $sidecarName, $sidecar := $comp.extraContainers }}
@@ -286,7 +287,7 @@ spec:
       {{- end }}
         {{- end }}
       containers:
-        - name: {{ $compName }}
+        - name: {{ $comp.containerName | default $compName }}
         {{- if and $comp.image $comp.image.repository }}
           image: "{{ $comp.image.repository }}:{{ $comp.image.tag | default $.Chart.AppVersion }}"
           imagePullPolicy: {{ $comp.image.pullPolicy }}

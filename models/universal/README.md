@@ -127,6 +127,8 @@ Defines the base deployment properties, container image, replicas, and OpenShift
 deploys:
   api:
     enabled: true
+    # Optional: overrides the primary container name in the pod spec (defaults to deployment key e.g. 'api')
+    containerName: "api"
     image:
       repository: "tjpa-registry-quay-quay-enterprise.apps.ocp-hub.i.tj.pa.gov.br/sistemas/minha-api"
       tag: "1.0.0"
