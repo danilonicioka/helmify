@@ -441,11 +441,17 @@ Auxiliary containers running alongside the main application pod (e.g., logging a
               content: |
                 http_address = "0.0.0.0:4180"
                 upstreams = [ "http://127.0.0.1:8080/" ]
+        # Global environment inheritance (defaults to true):
+        # Set to false to isolate third-party sidecars from global-cm and global-secret:
+        inheritGlobal: false
         sharedVolumes:
           data:
             mountPath: "/var/lib/data"
             readOnly: true
 ```
+
+> [!NOTE]
+> **Global Environment Inheritance**: By default (`inheritGlobal: true`), all `extraContainers` automatically inherit `global-cm` and `global-secret` via `envFrom`. This ensures multi-container application workloads (e.g. specialized workers or sub-services in the same pod) share common database, storage, and organizational configurations. To completely isolate a third-party container (e.g. an oauth-proxy or exporter), explicitly set `inheritGlobal: false`.
 
 ---
 

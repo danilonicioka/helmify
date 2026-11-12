@@ -555,6 +555,16 @@ spec:
           readinessProbe:
             {{- toYaml $sidecar.probes.readiness | nindent 12 }}
           {{- end }}
+          {{- $hasGlobalCM := false }}
+          {{- $hasGlobalSecret := false }}
+          {{- with $.Values.global }}
+            {{- with .config }}
+              {{- if and .env (not (empty .env)) }}{{ $hasGlobalCM = true }}{{ end }}
+            {{- end }}
+            {{- with .secrets }}
+              {{- if and .env (not (empty .env)) }}{{ $hasGlobalSecret = true }}{{ end }}
+            {{- end }}
+          {{- end }}
           {{- $hasSidecarSharedCMEnv := false }}
           {{- $hasSidecarSharedSecEnv := false }}
           {{- with $sidecar.shared }}
@@ -565,8 +575,22 @@ spec:
               {{- if and .env (not (empty .env)) }}{{ $hasSidecarSharedSecEnv = true }}{{ end }}
             {{- end }}
           {{- end }}
-          {{- if or (and $sidecar.config $sidecar.config.env) (and $sidecar.secrets $sidecar.secrets.env) $hasSidecarSharedCMEnv $hasSidecarSharedSecEnv }}
+          {{- $inheritGlobal := true }}
+          {{- if hasKey $sidecar "inheritGlobal" }}
+            {{- $inheritGlobal = $sidecar.inheritGlobal }}
+          {{- end }}
+          {{- $hasSidecarGlobalCM := and $inheritGlobal $hasGlobalCM }}
+          {{- $hasSidecarGlobalSec := and $inheritGlobal $hasGlobalSecret }}
+          {{- if or $hasSidecarGlobalCM $hasSidecarGlobalSec (and $sidecar.config $sidecar.config.env) (and $sidecar.secrets $sidecar.secrets.env) $hasSidecarSharedCMEnv $hasSidecarSharedSecEnv }}
           envFrom:
+            {{- if $hasSidecarGlobalCM }}
+            - configMapRef:
+                name: {{ include "chart-model-multi.fullname" $ }}-global-cm
+            {{- end }}
+            {{- if $hasSidecarGlobalSec }}
+            - secretRef:
+                name: {{ include "chart-model-multi.fullname" $ }}-global-secret
+            {{- end }}
             {{- if and $sidecar.config $sidecar.config.env }}
             - configMapRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-{{ $name | replace "." "-" | lower | trimAll "-" }}-cm
