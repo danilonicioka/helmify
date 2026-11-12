@@ -293,13 +293,25 @@ spec:
           imagePullPolicy: {{ $comp.image.pullPolicy }}
         {{- end }}
           {{- if and $comp.service (ne $comp.service.enabled false) $comp.service.ports }}
+          {{- $sidecarPortNames := dict }}
+          {{- if $comp.extraContainers }}
+            {{- range $sName, $sidecar := $comp.extraContainers }}
+              {{- if and (ne $sidecar.enabled false) $sidecar.service $sidecar.service.ports }}
+                {{- range $spKey, $spVal := $sidecar.service.ports }}
+                  {{- $_ := set $sidecarPortNames $spKey true }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
           ports:
             {{- range $key, $val := $comp.service.ports }}
+            {{- if not (hasKey $sidecarPortNames $key) }}
             - name: {{ $key }}
               containerPort: {{ $val.containerPort | default $val.port }}
               {{- if $val.protocol }}
               protocol: {{ $val.protocol }}
               {{- end }}
+            {{- end }}
             {{- end }}
           {{- end }}
           

@@ -455,6 +455,9 @@ Auxiliary containers running alongside the main application pod (e.g., logging a
 > [!NOTE]
 > **Global Environment Inheritance**: By default (`inheritGlobal: true`), all `extraContainers` automatically inherit `global-cm` and `global-secret` via `envFrom`. This ensures multi-container application workloads (e.g. specialized workers or sub-services in the same pod) share common database, storage, and organizational configurations. To completely isolate a third-party container (e.g. an oauth-proxy or exporter), explicitly set `inheritGlobal: false`.
 
+> [!TIP]
+> **Sidecar Service Ports Aggregation & Isolation**: Sidecars in `extraContainers` can define their own `service.ports` (specifying external `port` and internal `containerPort`). The deployment's Kubernetes `Service` automatically aggregates ports from both the primary workload and all active sidecars into a single front-end Service. The chart ensures each port is attached strictly to its respective container, preventing port name collisions or duplicate bindings.
+
 ---
 
 ### 12. Scheduled Batch Jobs (`cronjobs`)

@@ -19,6 +19,22 @@ spec:
     protocol: {{ $val.protocol }}
     {{- end }}
   {{- end }}
+  {{- if $comp.extraContainers }}
+    {{- range $sName, $sidecar := $comp.extraContainers }}
+      {{- if and (ne $sidecar.enabled false) $sidecar.service (ne $sidecar.service.enabled false) $sidecar.service.ports }}
+        {{- range $spKey, $spVal := $sidecar.service.ports }}
+          {{- if not (hasKey ($comp.service.ports | default dict) $spKey) }}
+  - name: {{ $spKey }}
+    port: {{ $spVal.port }}
+    targetPort: {{ $spKey }}
+    {{- if $spVal.protocol }}
+    protocol: {{ $spVal.protocol }}
+    {{- end }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
   selector:
     {{- include "chart-model-multi.component.selectorLabels" (dict "context" $ "component" $compName) | nindent 4 }}
 {{- end }}
