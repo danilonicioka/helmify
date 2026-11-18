@@ -83,6 +83,72 @@ spec:
         checksum/secret-global: '{{ toYaml .secrets | sha256sum }}'
         {{- end }}
         {{- end }}
+        {{- if and $.Values.shared $comp.shared }}
+        {{- if and $.Values.shared.config $comp.shared.config }}
+        {{- if and $.Values.shared.config.env $comp.shared.config.env }}
+        {{- range $item := $comp.shared.config.env }}
+        {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+        {{- $conf := index $.Values.shared.config.env $iName }}
+        {{- if $conf }}
+        checksum/cm-shared-{{ $iName | replace "." "-" }}: '{{ toYaml $conf | sha256sum }}'
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if and $.Values.shared.config.files $comp.shared.config.files }}
+        {{- range $item := $comp.shared.config.files }}
+        {{- $name := $item }}{{ if kindIs "map" $item }}{{ $name = $item.name }}{{ end }}
+        {{- $conf := index $.Values.shared.config.files $name }}
+        {{- if $conf }}
+        checksum/file-cm-shared-{{ $name | replace "." "-" }}: '{{ toYaml $conf | sha256sum }}'
+        {{- if $conf.files }}
+        {{- range $filename, $fileconf := $conf.files }}
+        {{- if not $fileconf.content }}
+        checksum/file-cm-shared-{{ $name | replace "." "-" }}-{{ $filename | replace "." "-" }}: '{{ $.Files.Get (printf "files/%s" $filename) | sha256sum }}'
+        {{- end }}
+        {{- end }}
+        {{- else }}
+        {{- $filename := $conf.filename | default $name }}
+        {{- if not $conf.content }}
+        checksum/file-cm-shared-{{ $name | replace "." "-" }}-{{ $filename | replace "." "-" }}: '{{ $.Files.Get (printf "files/%s" $filename) | sha256sum }}'
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if and $.Values.shared.secrets $comp.shared.secrets }}
+        {{- if and $.Values.shared.secrets.env $comp.shared.secrets.env }}
+        {{- range $item := $comp.shared.secrets.env }}
+        {{- $iName := $item }}{{ if kindIs "map" $item }}{{ $iName = $item.name }}{{ end }}
+        {{- $conf := index $.Values.shared.secrets.env $iName }}
+        {{- if $conf }}
+        checksum/secret-shared-{{ $iName | replace "." "-" }}: '{{ toYaml $conf | sha256sum }}'
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- if and $.Values.shared.secrets.files $comp.shared.secrets.files }}
+        {{- range $item := $comp.shared.secrets.files }}
+        {{- $name := $item }}{{ if kindIs "map" $item }}{{ $name = $item.name }}{{ end }}
+        {{- $conf := index $.Values.shared.secrets.files $name }}
+        {{- if $conf }}
+        checksum/file-secret-shared-{{ $name | replace "." "-" }}: '{{ toYaml $conf | sha256sum }}'
+        {{- if $conf.files }}
+        {{- range $filename, $fileconf := $conf.files }}
+        {{- if not $fileconf.content }}
+        checksum/file-secret-shared-{{ $name | replace "." "-" }}-{{ $filename | replace "." "-" }}: '{{ $.Files.Get (printf "files/%s" $filename) | sha256sum }}'
+        {{- end }}
+        {{- end }}
+        {{- else }}
+        {{- $filename := $conf.filename | default $name }}
+        {{- if not $conf.content }}
+        checksum/file-secret-shared-{{ $name | replace "." "-" }}-{{ $filename | replace "." "-" }}: '{{ $.Files.Get (printf "files/%s" $filename) | sha256sum }}'
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
+        {{- end }}
         {{- if $comp.initContainers }}
         checksum/init-containers-{{ $compName }}: '{{ toYaml $comp.initContainers | sha256sum }}'
         {{- end }}

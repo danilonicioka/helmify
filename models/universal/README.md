@@ -15,7 +15,10 @@ Helmify generates two separate values files to cleanly decouple base blueprints 
 Any change to configurations in `config` or `secrets` triggers an automated rolling restart using SHA256 checksum annotations in the pod metadata:
 - `checksum/cm-global` and `checksum/secret-global`
 - `checksum/cm-<component>` and `checksum/secret-<component>`
+- `checksum/cm-shared-<name>` and `checksum/secret-shared-<name>`
+- `checksum/file-cm-shared-<name>` and `checksum/file-secret-shared-<name>`
 - `checksum/init-containers-<component>`
+- `checksum/extra-containers-<component>`
 
 ---
 
