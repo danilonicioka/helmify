@@ -323,34 +323,55 @@
 
                     <!-- 3.5. RESOURCES -->
                     <div class="section-subtitle" style="margin-top: 1.5rem;">Container Resources</div>
-                    <div class="form-row">
-                        <div>
-                            <label for="compCpuRequests">CPU Requests</label>
-                            <input type="text" id="compCpuRequests" placeholder="e.g. 10m, 100m" oninput="saveAndPreview()">
+
+                    <!-- CPU -->
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>CPU</span>
                         </div>
-                        <div>
-                            <label for="compMemRequests">Memory Requests</label>
-                            <input type="text" id="compMemRequests" placeholder="e.g. 128Mi, 256Mi" oninput="saveAndPreview()">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div>
-                            <label for="compCpuLimits">CPU Limits</label>
-                            <input type="text" id="compCpuLimits" placeholder="e.g. 500m, 1" oninput="saveAndPreview()">
-                        </div>
-                        <div>
-                            <label for="compMemLimits">Memory Limits</label>
-                            <input type="text" id="compMemLimits" placeholder="e.g. 512Mi, 1Gi" oninput="saveAndPreview()">
+                        <div class="form-group row" style="margin-bottom: 0;">
+                            <div>
+                                <label for="compCpuRequests">Request</label>
+                                <input type="text" id="compCpuRequests" placeholder="e.g. 100m" oninput="saveAndPreview()">
+                            </div>
+                            <div>
+                                <label for="compCpuLimits">Limit</label>
+                                <input type="text" id="compCpuLimits" placeholder="e.g. 500m" oninput="saveAndPreview()">
+                            </div>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div>
-                            <label for="compEphemeralRequests">Ephemeral Storage Requests</label>
-                            <input type="text" id="compEphemeralRequests" placeholder="e.g. 500Mi, 1Gi" oninput="saveAndPreview()">
+
+                    <!-- Memory -->
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Memory</span>
                         </div>
-                        <div>
-                            <label for="compEphemeralLimits">Ephemeral Storage Limits</label>
-                            <input type="text" id="compEphemeralLimits" placeholder="e.g. 1Gi, 2Gi" oninput="saveAndPreview()">
+                        <div class="form-group row" style="margin-bottom: 0;">
+                            <div>
+                                <label for="compMemRequests">Request</label>
+                                <input type="text" id="compMemRequests" placeholder="e.g. 256Mi" oninput="saveAndPreview()">
+                            </div>
+                            <div>
+                                <label for="compMemLimits">Limit</label>
+                                <input type="text" id="compMemLimits" placeholder="e.g. 512Mi" oninput="saveAndPreview()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ephemeral Storage -->
+                    <div class="route-card">
+                        <div class="route-card-header">
+                            <span>Ephemeral Storage</span>
+                        </div>
+                        <div class="form-group row" style="margin-bottom: 0;">
+                            <div>
+                                <label for="compEphemeralRequests">Request</label>
+                                <input type="text" id="compEphemeralRequests" placeholder="e.g. 500Mi" oninput="saveAndPreview()">
+                            </div>
+                            <div>
+                                <label for="compEphemeralLimits">Limit</label>
+                                <input type="text" id="compEphemeralLimits" placeholder="e.g. 1Gi" oninput="saveAndPreview()">
+                            </div>
                         </div>
                     </div>
 

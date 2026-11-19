@@ -273,11 +273,11 @@ Defines container CPU, Memory, and Ephemeral Storage `requests` and `limits`.
 ```yaml
     resources:
       limits:
-        cpu: "100m"
+        cpu: "500m"
         memory: "512Mi"
         ephemeral-storage: "1Gi"
       requests:
-        cpu: "30m"
+        cpu: "100m"
         memory: "256Mi"
         ephemeral-storage: "500Mi"
 ```
