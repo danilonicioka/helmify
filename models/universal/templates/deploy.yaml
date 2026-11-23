@@ -451,17 +451,20 @@ spec:
           {{- end }}
 
           # Tiered "Fail-Fast" Health Probes
-          {{- if and $comp.probes $comp.probes.startup (not (empty $comp.probes.startup)) }}
+          {{- $serviceEnabled := or (not $comp.service) (ne $comp.service.enabled false) }}
+          {{- if $comp.probes }}
+          {{- if and $comp.probes.startup (not (empty $comp.probes.startup)) (or $serviceEnabled $comp.probes.startup.exec) }}
           startupProbe:
             {{- toYaml $comp.probes.startup | nindent 12 }}
           {{- end }}
-          {{- if and $comp.probes $comp.probes.liveness (not (empty $comp.probes.liveness)) }}
+          {{- if and $comp.probes.liveness (not (empty $comp.probes.liveness)) (or $serviceEnabled $comp.probes.liveness.exec) }}
           livenessProbe:
             {{- toYaml $comp.probes.liveness | nindent 12 }}
           {{- end }}
-          {{- if and $comp.probes $comp.probes.readiness (not (empty $comp.probes.readiness)) }}
+          {{- if and $comp.probes.readiness (not (empty $comp.probes.readiness)) (or $serviceEnabled $comp.probes.readiness.exec) }}
           readinessProbe:
             {{- toYaml $comp.probes.readiness | nindent 12 }}
+          {{- end }}
           {{- end }}
 
           {{- if hasKey $comp "lifecycle" }}
@@ -622,17 +625,20 @@ spec:
           resources:
             {{- toYaml $sidecar.resources | nindent 12 }}
           {{- end }}
-          {{- if and $sidecar.probes $sidecar.probes.startup }}
+          {{- if $sidecar.probes }}
+          {{- $sidecarServiceEnabled := or (not $sidecar.service) (ne $sidecar.service.enabled false) }}
+          {{- if and $sidecar.probes.startup (not (empty $sidecar.probes.startup)) (or $sidecarServiceEnabled $sidecar.probes.startup.exec) }}
           startupProbe:
             {{- toYaml $sidecar.probes.startup | nindent 12 }}
           {{- end }}
-          {{- if and $sidecar.probes $sidecar.probes.liveness }}
+          {{- if and $sidecar.probes.liveness (not (empty $sidecar.probes.liveness)) (or $sidecarServiceEnabled $sidecar.probes.liveness.exec) }}
           livenessProbe:
             {{- toYaml $sidecar.probes.liveness | nindent 12 }}
           {{- end }}
-          {{- if and $sidecar.probes $sidecar.probes.readiness }}
+          {{- if and $sidecar.probes.readiness (not (empty $sidecar.probes.readiness)) (or $sidecarServiceEnabled $sidecar.probes.readiness.exec) }}
           readinessProbe:
             {{- toYaml $sidecar.probes.readiness | nindent 12 }}
+          {{- end }}
           {{- end }}
           {{- $hasGlobalCM := false }}
           {{- $hasGlobalSecret := false }}
