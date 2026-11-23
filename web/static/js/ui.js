@@ -211,7 +211,7 @@ function toggleWorkloadTypeFields() {
                 config.resources = { requests: {}, limits: {} };
                 if (cpuReq) config.resources.requests.cpu = cpuReq;
                 if (memReq) config.resources.requests.memory = memReq;
-                config.resources.requests['ephemeral-storage'] = ephReq || '500Mi';
+                config.resources.requests['ephemeral-storage'] = ephReq || '512Mi';
                 if (cpuLim) config.resources.limits.cpu = cpuLim;
                 if (memLim) config.resources.limits.memory = memLim;
                 config.resources.limits['ephemeral-storage'] = ephLim || '1Gi';

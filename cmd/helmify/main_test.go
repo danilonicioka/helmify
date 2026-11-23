@@ -1138,7 +1138,7 @@ func TestUniversalModelEphemeralStorage(t *testing.T) {
 
 	// Verify that deploy.yaml renders limits and requests for ephemeral-storage
 	assert.Contains(t, outStr, "ephemeral-storage: 1Gi")
-	assert.Contains(t, outStr, "ephemeral-storage: 500Mi")
+	assert.Contains(t, outStr, "ephemeral-storage: 512Mi")
 }
 
 func TestHandleGenerate_EphemeralStorageBackfill(t *testing.T) {
@@ -1226,7 +1226,7 @@ spec:
 	// 1. Verify legacy-app without ephemeral-storage had it backfilled automatically
 	assert.Contains(t, valuesEnv, "legacy-app:")
 	assert.Contains(t, valuesEnv, "ephemeral-storage: 1Gi")
-	assert.Contains(t, valuesEnv, "ephemeral-storage: 500Mi")
+	assert.Contains(t, valuesEnv, "ephemeral-storage: 512Mi")
 
 	// 2. Verify custom-storage-app preserved its explicit values (4Gi and 2Gi)
 	assert.Contains(t, valuesEnv, "custom-storage-app:")

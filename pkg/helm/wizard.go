@@ -1489,7 +1489,7 @@ func ensureEphemeralStorageDefaults(res *ResourceParams) {
 	}
 	if res.Requests != nil {
 		if _, ok := res.Requests["ephemeral-storage"]; !ok {
-			res.Requests["ephemeral-storage"] = "500Mi"
+			res.Requests["ephemeral-storage"] = "512Mi"
 		}
 	}
 }

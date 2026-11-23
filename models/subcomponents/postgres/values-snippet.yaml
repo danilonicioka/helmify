@@ -57,7 +57,7 @@ postgres:
     requests:
       cpu: 30m
       memory: 256Mi
-      ephemeral-storage: "500Mi"
+      ephemeral-storage: "512Mi"
 
   probes:
     startup:

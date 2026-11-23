@@ -104,7 +104,7 @@ The following keys inside `values.yaml` must always include commented-out exampl
       # requests:
       #   cpu: 100m
       #   memory: 256Mi
-      #   ephemeral-storage: "500Mi"
+      #   ephemeral-storage: "512Mi"
   ```
 - **Health Probes**: Demonstrating zero-delay `tcpSocket` specifications:
   ```yaml

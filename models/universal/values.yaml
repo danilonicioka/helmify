@@ -74,7 +74,7 @@ deploys:
       requests:
         cpu: 100m
         memory: 256Mi
-        ephemeral-storage: "500Mi"
+        ephemeral-storage: "512Mi"
 
     autoscaling:
       enabled: false
@@ -250,7 +250,7 @@ deploys:
       requests:
         cpu: 100m
         memory: 256Mi
-        ephemeral-storage: "500Mi"
+        ephemeral-storage: "512Mi"
 
     autoscaling:
       enabled: false

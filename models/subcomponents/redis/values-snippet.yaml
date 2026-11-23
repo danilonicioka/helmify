@@ -52,7 +52,7 @@ redis:
     requests:
       cpu: 30m
       memory: 64Mi
-      ephemeral-storage: "500Mi"
+      ephemeral-storage: "512Mi"
 
   probes:
     startup:

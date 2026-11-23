@@ -279,14 +279,14 @@ Defines container CPU, Memory, and Ephemeral Storage `requests` and `limits`.
       requests:
         cpu: "100m"
         memory: "256Mi"
-        ephemeral-storage: "500Mi"
+        ephemeral-storage: "512Mi"
 ```
 
 #### Ephemeral Storage Limits (Node Protection & Eviction Prevention)
 Ephemeral storage covers the container rootfs writable layer (such as `/tmp`), stdout/stderr container logs written to disk, and all `emptyDir` scratch volumes (`volumes.<name>.ephemeral: true`).
 - **The Problem:** Without explicit ephemeral storage limits, a rogue container filling `/tmp` or generating unbuffered logs can exhaust the underlying node disk, triggering a cluster-wide `NodeDiskPressure` condition that causes the Kubelet to evict arbitrary healthy neighbor pods from the node.
 - **The Solution:** By defining `limits.ephemeral-storage: "1Gi"`, the Kubelet monitors the container's scratch footprint and evicts **only the offending pod** when it exceeds the limit, protecting the node and other workloads.
-- **Scheduling Protection:** Defining `requests.ephemeral-storage: "500Mi"` guarantees that Kubernetes schedules the pod only onto nodes with sufficient allocatable disk space, preventing silent disk overcommitment.
+- **Scheduling Protection:** Defining `requests.ephemeral-storage: "512Mi"` guarantees that Kubernetes schedules the pod only onto nodes with sufficient allocatable disk space, preventing silent disk overcommitment.
 - **Customization:** Workloads requiring larger scratch space (such as batch report generation, large PDF processing, or document conversion) can safely override these limits in their operational overlay (`values-dev.yaml`, `values-prd.yaml`).
 
 ---
@@ -378,7 +378,7 @@ Initialization containers that execute sequentially before application container
           limits:
             cpu: "100m"
             memory: "128Mi"
-            ephemeral-storage: "500Mi"
+            ephemeral-storage: "512Mi"
           requests:
             cpu: "10m"
             memory: "64Mi"
@@ -423,7 +423,7 @@ Auxiliary containers running alongside the main application pod (e.g., logging a
           limits:
             cpu: "200m"
             memory: "256Mi"
-            ephemeral-storage: "500Mi"
+            ephemeral-storage: "512Mi"
           requests:
             cpu: "30m"
             memory: "64Mi"
@@ -496,7 +496,7 @@ cronjobs:
       requests:
         cpu: "100m"
         memory: "256Mi"
-        ephemeral-storage: "500Mi"
+        ephemeral-storage: "512Mi"
     volumes:
       backup-storage:
         mountPath: "/mnt/backups"

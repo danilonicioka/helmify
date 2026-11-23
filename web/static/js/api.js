@@ -187,7 +187,7 @@ function createDefaultComponentConfig(name, type) {
             internal: { enabled: false, host: "" },
             external: { enabled: false, host: "" }
         },
-        resources: { limits: { cpu: "500m", memory: "512Mi", "ephemeral-storage": "1Gi" }, requests: { cpu: "100m", memory: "256Mi", "ephemeral-storage": "500Mi" } },
+        resources: { limits: { cpu: "500m", memory: "512Mi", "ephemeral-storage": "1Gi" }, requests: { cpu: "100m", memory: "256Mi", "ephemeral-storage": "512Mi" } },
         autoscaling: {
             enabled: false,
             engine: "",
