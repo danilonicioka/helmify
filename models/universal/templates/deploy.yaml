@@ -189,9 +189,29 @@ spec:
         {{- range $name, $config := $comp.initContainers }}
         {{- if ne $config.enabled false }}
         - name: {{ $name }}
+          {{- $initRepo := "" }}
           {{- if and $config.image $config.image.repository }}
-          image: "{{ $config.image.repository }}:{{ $config.image.tag | default "latest" }}"
-          imagePullPolicy: {{ $config.image.pullPolicy | default "IfNotPresent" }}
+            {{- $initRepo = $config.image.repository }}
+          {{- else if and $comp.image $comp.image.repository }}
+            {{- $initRepo = $comp.image.repository }}
+          {{- end }}
+          {{- if $initRepo }}
+          {{- $initTag := "" }}
+          {{- if and $config.image $config.image.tag }}
+            {{- $initTag = $config.image.tag }}
+          {{- else if and $comp.image (eq $initRepo $comp.image.repository) }}
+            {{- $initTag = ($comp.image.tag | default $.Chart.AppVersion) }}
+          {{- else }}
+            {{- $initTag = "latest" }}
+          {{- end }}
+          image: "{{ $initRepo }}:{{ $initTag }}"
+          {{- $initPullPolicy := "IfNotPresent" }}
+          {{- if and $config.image $config.image.pullPolicy }}
+            {{- $initPullPolicy = $config.image.pullPolicy }}
+          {{- else if and $comp.image $comp.image.pullPolicy }}
+            {{- $initPullPolicy = $comp.image.pullPolicy }}
+          {{- end }}
+          imagePullPolicy: {{ $initPullPolicy }}
           {{- end }}
           {{- if $config.command }}
           command:
