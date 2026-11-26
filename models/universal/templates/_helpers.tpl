@@ -136,6 +136,7 @@ Validate workloads and containers against the allowedWorkloads allowlist in valu
       {{- $allowedDeploys = $gov.deploys | default list -}}
     {{- end }}
     {{- range $compName, $comp := .Values.deploys }}
+      {{- if and $comp (ne $comp.enabled false) }}
       {{- if not (has $compName $allowedDeploys) }}
         {{- fail (printf "\n[SECURITY VIOLATION] Deployment '%s' is not authorized in chart '%s'. Authorized deployments: %v\n" $compName $.Chart.Name $allowedDeploys) }}
       {{- end }}
@@ -144,17 +145,22 @@ Validate workloads and containers against the allowedWorkloads allowlist in valu
         {{- if and $depGov (kindIs "map" $depGov) }}
           {{- $allowedInits := index $depGov "initContainers" | default list }}
           {{- range $initName, $initConf := $comp.initContainers }}
+            {{- if and $initConf (ne $initConf.enabled false) }}
             {{- if not (has $initName $allowedInits) }}
               {{- fail (printf "\n[SECURITY VIOLATION] InitContainer '%s' is not authorized in deployment '%s' of chart '%s'. Authorized initContainers: %v\n" $initName $compName $.Chart.Name $allowedInits) }}
+            {{- end }}
             {{- end }}
           {{- end }}
           {{- $allowedExtras := index $depGov "extraContainers" | default list }}
           {{- range $extraName, $extraConf := $comp.extraContainers }}
+            {{- if and $extraConf (ne $extraConf.enabled false) }}
             {{- if not (has $extraName $allowedExtras) }}
               {{- fail (printf "\n[SECURITY VIOLATION] ExtraContainer (sidecar) '%s' is not authorized in deployment '%s' of chart '%s'. Authorized extraContainers: %v\n" $extraName $compName $.Chart.Name $allowedExtras) }}
             {{- end }}
+            {{- end }}
           {{- end }}
         {{- end }}
+      {{- end }}
       {{- end }}
     {{- end }}
   {{- end }}
@@ -168,6 +174,7 @@ Validate workloads and containers against the allowedWorkloads allowlist in valu
       {{- $allowedCronjobs = $gov.cronjobs | default list -}}
     {{- end }}
     {{- range $compName, $comp := .Values.cronjobs }}
+      {{- if and $comp (ne $comp.enabled false) }}
       {{- if not (has $compName $allowedCronjobs) }}
         {{- fail (printf "\n[SECURITY VIOLATION] CronJob '%s' is not authorized in chart '%s'. Authorized cronjobs: %v\n" $compName $.Chart.Name $allowedCronjobs) }}
       {{- end }}
@@ -176,17 +183,22 @@ Validate workloads and containers against the allowedWorkloads allowlist in valu
         {{- if and $cronGov (kindIs "map" $cronGov) }}
           {{- $allowedInits := index $cronGov "initContainers" | default list }}
           {{- range $initName, $initConf := $comp.initContainers }}
+            {{- if and $initConf (ne $initConf.enabled false) }}
             {{- if not (has $initName $allowedInits) }}
               {{- fail (printf "\n[SECURITY VIOLATION] InitContainer '%s' is not authorized in cronjob '%s' of chart '%s'. Authorized initContainers: %v\n" $initName $compName $.Chart.Name $allowedInits) }}
+            {{- end }}
             {{- end }}
           {{- end }}
           {{- $allowedExtras := index $cronGov "extraContainers" | default list }}
           {{- range $extraName, $extraConf := $comp.extraContainers }}
+            {{- if and $extraConf (ne $extraConf.enabled false) }}
             {{- if not (has $extraName $allowedExtras) }}
               {{- fail (printf "\n[SECURITY VIOLATION] ExtraContainer (sidecar) '%s' is not authorized in cronjob '%s' of chart '%s'. Authorized extraContainers: %v\n" $extraName $compName $.Chart.Name $allowedExtras) }}
             {{- end }}
+            {{- end }}
           {{- end }}
         {{- end }}
+      {{- end }}
       {{- end }}
     {{- end }}
   {{- end }}
