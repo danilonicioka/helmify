@@ -1239,6 +1239,10 @@ func replaceChartName(content string, oldChartName, newChartName string) string 
 	res = strings.ReplaceAll(res, chartKebab+"-"+chartKebab+"-role", chartKebab+"-role")
 	res = strings.ReplaceAll(res, "kv/data/"+chartKebab+"/"+chartKebab, "kv/data/"+chartKebab)
 	res = strings.ReplaceAll(res, "kv/data/"+newChartName+"/"+newChartName, "kv/data/"+newChartName)
+	res = strings.ReplaceAll(res, "kv/data/sistemas/"+chartKebab+"/"+chartKebab, "kv/data/sistemas/"+chartKebab)
+	res = strings.ReplaceAll(res, "kv/data/sistemas/"+newChartName+"/"+newChartName, "kv/data/sistemas/"+newChartName)
+	res = strings.ReplaceAll(res, "kv/data/infra/"+chartKebab+"/"+chartKebab, "kv/data/infra/"+chartKebab)
+	res = strings.ReplaceAll(res, "kv/data/infra/"+newChartName+"/"+newChartName, "kv/data/infra/"+newChartName)
 	if newChartName != chartKebab {
 		res = strings.ReplaceAll(res, newChartName+"-"+newChartName+"-role", newChartName+"-role")
 	}

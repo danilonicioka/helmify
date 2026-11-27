@@ -7,7 +7,7 @@ kind: CronJob
 metadata:
   name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
   {{- $annotations := include "<CHART_NAME>.component.annotations" (dict "context" $ "component" $compName) }}
   {{- if $annotations }}
   annotations:
@@ -129,8 +129,18 @@ spec:
                 {{- end }}
                 {{- end }}
                 {{- if $hasVSO }}
+                {{- if $comp.vso.secrets }}
+                {{- range $secName, $sec := $comp.vso.secrets }}
+                {{- if and (ne $sec.enabled false) $sec.path }}
+                - secretRef:
+                    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-{{ $secName }}-secret
+                {{- end }}
+                {{- end }}
+                {{- end }}
+                {{- if $comp.vso.path }}
                 - secretRef:
                     name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-secret
+                {{- end }}
                 {{- end }}
               {{- end }}
               {{- if $comp.resources }}
@@ -217,11 +227,23 @@ spec:
                 {{- end }}
                 {{- end }}
                 {{- end }}
-                {{- if and $comp.vso $comp.vso.enabled $comp.vso.secretFiles }}
-                {{- range $key, $val := $comp.vso.secretFiles }}
-                - name: vso-files-secret
-                  mountPath: {{ $val.path }}
-                  subPath: {{ $key | replace "." "-" }}
+                {{- if and $comp.vso $comp.vso.enabled $comp.vso.secrets }}
+                {{- range $secName, $sec := $comp.vso.secrets }}
+                {{- if and (ne $sec.enabled false) $sec.files }}
+                {{- range $filename, $config := $sec.files }}
+                - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso-{{ $secName }}
+                  mountPath: {{ $config.mountPath | default $config.path }}
+                  subPath: {{ $filename }}
+                  readOnly: true
+                {{- end }}
+                {{- end }}
+                {{- end }}
+                {{- end }}
+                {{- if and $comp.vso $comp.vso.enabled (or $comp.vso.files $comp.vso.secretFiles) }}
+                {{- range $filename, $config := ($comp.vso.files | default $comp.vso.secretFiles) }}
+                - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
+                  mountPath: {{ $config.mountPath | default $config.path }}
+                  subPath: {{ $filename }}
                   readOnly: true
                 {{- end }}
                 {{- end }}
@@ -266,6 +288,30 @@ spec:
                 secretName: {{ include "chart-model-multi.fullname" $ }}-shared-{{ $name | replace "." "-" | lower | trimAll "-" }}
             {{- end }}
             {{- end }}
+            {{- if and $comp.vso $comp.vso.enabled $comp.vso.secrets }}
+            {{- range $secName, $sec := $comp.vso.secrets }}
+            {{- if and (ne $sec.enabled false) $sec.files }}
+            {{- range $filename, $config := $sec.files }}
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso-{{ $secName }}
+              secret:
+                secretName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-{{ $secName }}-secret
+                items:
+                  - key: {{ $filename }}
+                    path: {{ $filename }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if and $comp.vso $comp.vso.enabled (or $comp.vso.files $comp.vso.secretFiles) }}
+            {{- range $filename, $config := ($comp.vso.files | default $comp.vso.secretFiles) }}
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso
+              secret:
+                secretName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-secret
+                items:
+                  - key: {{ $filename }}
+                    path: {{ $filename }}
+            {{- end }}
+            {{- end }}
           restartPolicy: {{ default "OnFailure" $comp.restartPolicy }}
           {{- if $comp.scheduling }}
           {{- with $comp.scheduling.nodeSelector }}
@@ -290,7 +336,7 @@ kind: ConfigMap
 metadata:
   name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-files-cm
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 data:
   {{- range $key, $val := $comp.config.files }}
   {{ $key | replace "." "-" }}: |
@@ -305,7 +351,7 @@ kind: ConfigMap
 metadata:
   name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-cm
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 data:
   {{- range $key, $val := $comp.config.env }}
   {{ $key }}: {{ $val | quote }}
@@ -319,7 +365,7 @@ kind: Secret
 metadata:
   name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-files-secret
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 type: Opaque
 stringData:
   {{- range $key, $val := $comp.secrets.files }}
@@ -335,7 +381,7 @@ kind: Secret
 metadata:
   name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-secret
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 type: Opaque
 stringData:
   {{- range $key, $val := $comp.secrets.env }}
@@ -350,7 +396,7 @@ kind: ServiceAccount
 metadata:
   name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-sa
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 {{- end }}
 
 {{ if and $comp.enabled $comp.vso $comp.vso.enabled }}
@@ -358,36 +404,57 @@ metadata:
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultAuth
 metadata:
-  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vaultauth
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vault-auth
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
   method: kubernetes
   mount: {{ $comp.vso.mount | default "kubernetes" }}
   kubernetes:
-    role: {{ $comp.vso.role }}
+    role: {{ $comp.vso.role | quote }}
     serviceAccount: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-sa
     audiences:
       - vault
-{{- end }}
-
-{{ if and $comp.enabled $comp.vso $comp.vso.enabled }}
+{{- if $comp.vso.secrets }}
+{{- range $secName, $sec := $comp.vso.secrets }}
+{{- if and (ne $sec.enabled false) $sec.path }}
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
 metadata:
-  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vaultstaticsecret
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-{{ $secName }}-secret-obj
   labels:
-    {{- include "<CHART_NAME>.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+spec:
+  type: {{ $sec.type | default "kv-v2" }}
+  mount: {{ $sec.mount | default $comp.vso.secretMount | default "kv" }}
+  path: {{ $sec.path | quote }}
+  destination:
+    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-{{ $secName }}-secret
+    create: true
+  refreshAfter: {{ $comp.vso.refreshAfter | default "30s" }}
+  vaultAuthRef: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vault-auth
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if $comp.vso.path }}
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-secret-obj
+  labels:
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
   type: kv-v2
   mount: {{ $comp.vso.secretMount | default "kv" }}
-  path: {{ $comp.vso.path }}
+  path: {{ $comp.vso.path | quote }}
   destination:
     name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-secret
     create: true
   refreshAfter: {{ $comp.vso.refreshAfter | default "30s" }}
-  vaultAuthRef: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vaultauth
+  vaultAuthRef: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vault-auth
+{{- end }}
 {{- end }}
 
 ---

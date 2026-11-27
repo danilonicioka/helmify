@@ -17,10 +17,35 @@ metadata:
     {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
 spec:
   method: kubernetes
-  mount: kubernetes
+  mount: {{ $comp.vso.mount | default "kubernetes" }}
   kubernetes:
     role: {{ $comp.vso.role | quote }}
     serviceAccount: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-sa
+{{- if $comp.vso.secrets }}
+{{- range $secName, $sec := $comp.vso.secrets }}
+{{- if and (ne $sec.enabled false) $sec.path }}
+---
+apiVersion: secrets.hashicorp.com/v1beta1
+kind: VaultStaticSecret
+metadata:
+  name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-{{ $secName }}-secret-obj
+  labels:
+    {{- include "chart-model-multi.component.labels" (dict "context" $ "component" $compName) | nindent 4 }}
+spec:
+  vaultAuthRef: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vault-auth
+  type: {{ $sec.type | default "kv-v2" }}
+  mount: {{ $sec.mount | default $comp.vso.secretMount | default "kv" }}
+  path: {{ $sec.path | quote }}
+  destination:
+    name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-{{ $secName }}-secret
+    create: true
+  rolloutRestartTargets:
+    - kind: Deployment
+      name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- if $comp.vso.path }}
 ---
 apiVersion: secrets.hashicorp.com/v1beta1
 kind: VaultStaticSecret
@@ -31,7 +56,7 @@ metadata:
 spec:
   vaultAuthRef: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vault-auth
   type: kv-v2
-  mount: kv
+  mount: {{ $comp.vso.secretMount | default "kv" }}
   path: {{ $comp.vso.path | quote }}
   destination:
     name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-secret
@@ -39,6 +64,7 @@ spec:
   rolloutRestartTargets:
     - kind: Deployment
       name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

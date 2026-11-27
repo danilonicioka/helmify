@@ -63,8 +63,15 @@ deploys:
     vso:
       enabled: false
       role: "chart-model-multi-api-role"
-      path: "kv/data/chart-model-multi/api"
-      files: {}
+      secrets:
+        app:
+          enabled: true
+          path: "kv/data/chart-model-multi/api"
+          files: {}
+        infra:
+          enabled: true
+          path: "kv/data/infra/chart-model-multi/api"
+          files: {}
 
     resources:
       limits:
@@ -239,8 +246,15 @@ deploys:
     vso:
       enabled: false
       role: "chart-model-multi-app-role"
-      path: "kv/data/chart-model-multi/app"
-      files: {}
+      secrets:
+        app:
+          enabled: true
+          path: "kv/data/chart-model-multi/app"
+          files: {}
+        infra:
+          enabled: true
+          path: "kv/data/infra/chart-model-multi/app"
+          files: {}
 
     resources:
       limits:

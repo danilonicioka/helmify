@@ -182,17 +182,38 @@ Environment variables and arbitrary configuration files injected into the contai
 ---
 
 ### 4. Vault Secrets Operator (VSO / OpenBao)
-Integrates natively with Vault Secrets Operator to fetch secrets directly from Vault/OpenBao using Kubernetes authentication.
+Integrates natively with Vault Secrets Operator to fetch secrets directly from Vault/OpenBao using Kubernetes authentication. Enforces a strict separation of concerns and RBAC between application secrets (managed by developers) and infrastructure/shared secrets (managed by DBAs/Infra):
 
 ```yaml
     vso:
       enabled: true
       role: "myapp-api-role"
-      path: "kv/data/sistemas/myapp/api"
-      files:
-        # Mount specific Vault secret fields as individual files:
-        vault-cert.p12:
-          mountPath: "/app/certs/vault-cert.p12"
+
+      # Map of secrets to sync from Vault/OpenBao:
+      secrets:
+        # 1. Application-specific secrets (accessible to developers in OpenBao):
+        app:
+          enabled: true
+          path: "kv/data/sistemas/myapp/api"
+          files:
+            # Mount specific Vault secret fields as individual files:
+            vault-cert.p12:
+              mountPath: "/app/certs/vault-cert.p12"
+
+        # 2. Infrastructure/Shared secrets (managed by DBAs/Infra team):
+        infra:
+          enabled: true
+          path: "kv/data/infra/databases/oracle-shared"
+          files:
+            # Mount DB wallet or TLS certs if needed:
+            tnsnames.ora:
+              mountPath: "/opt/oracle/network/admin/tnsnames.ora"
+
+        # 3. Add any other custom secret path seamlessly under secrets:
+        rabbitmq:
+          enabled: true
+          path: "kv/data/infra/rabbitmq/queues"
+          files: {}
 ```
 
 ---

@@ -465,8 +465,18 @@ spec:
             {{- end }}
             {{- end }}
             {{- if $hasVSO }}
+            {{- if $comp.vso.secrets }}
+            {{- range $secName, $sec := $comp.vso.secrets }}
+            {{- if and (ne $sec.enabled false) $sec.path }}
+            - secretRef:
+                name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-{{ $secName }}-secret
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if $comp.vso.path }}
             - secretRef:
                 name: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-secret
+            {{- end }}
             {{- end }}
           {{- end }}
 
@@ -517,8 +527,17 @@ spec:
               {{- if and .files (not (empty .files)) }}{{ $hasSharedSecFiles = true }}{{ end }}
             {{- end }}
           {{- end }}
+          {{- $hasVsoFiles := false }}
+          {{- if and $comp.vso $comp.vso.enabled }}
+            {{- if $comp.vso.files }}{{ $hasVsoFiles = true }}{{ end }}
+            {{- if $comp.vso.secrets }}
+              {{- range $secName, $sec := $comp.vso.secrets }}
+                {{- if and (ne $sec.enabled false) $sec.files }}{{ $hasVsoFiles = true }}{{ end }}
+              {{- end }}
+            {{- end }}
+          {{- end }}
           {{- $hasMainVols := false }}
-          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) $hasSharedCMFiles $hasSharedSecFiles (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasMainVols = true }}{{ end }}
+          {{- if or (and $comp.persistence $comp.persistence.enabled) (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) $hasSharedCMFiles $hasSharedSecFiles $hasVsoFiles }}{{ $hasMainVols = true }}{{ end }}
           {{- if $comp.volumes }}{{ range $vName, $v := $comp.volumes }}{{ if ne $v.enabled false }}{{ $hasMainVols = true }}{{ end }}{{ end }}{{ end }}
           {{- if $hasMainVols }}
           volumeMounts:
@@ -596,6 +615,17 @@ spec:
               {{- else if not $def.files }}
               subPath: {{ $def.filename | default $name }}
               {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- end }}
+            {{- if and $comp.vso $comp.vso.enabled $comp.vso.secrets }}
+            {{- range $secName, $sec := $comp.vso.secrets }}
+            {{- if and (ne $sec.enabled false) $sec.files }}
+            {{- range $filename, $config := $sec.files }}
+            - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso-{{ $secName }}
+              mountPath: {{ $config.mountPath }}
+              subPath: {{ $filename }}
+            {{- end }}
             {{- end }}
             {{- end }}
             {{- end }}
@@ -911,7 +941,7 @@ spec:
       {{- end }}
 
       {{- $hasVols := false }}
-      {{- if or (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (gt (len $allSharedCMFiles) 0) (gt (len $allSharedSecFiles) 0) (and $comp.vso $comp.vso.enabled $comp.vso.files) }}{{ $hasVols = true }}{{ end }}
+      {{- if or (and $comp.config $comp.config.files) (and $comp.secrets $comp.secrets.files) (gt (len $allSharedCMFiles) 0) (gt (len $allSharedSecFiles) 0) $hasVsoFiles }}{{ $hasVols = true }}{{ end }}
       {{- if $comp.volumes }}{{ range $vName, $v := $comp.volumes }}{{ if ne $v.enabled false }}{{ $hasVols = true }}{{ end }}{{ end }}{{ end }}
       {{- range $name, $config := $comp.initContainers }}
         {{- if ne $config.enabled false }}
@@ -1038,6 +1068,20 @@ spec:
             items:
               - key: {{ $filename }}
                 path: {{ $filename }}
+        {{- end }}
+        {{- end }}
+        {{- if and $comp.vso $comp.vso.enabled $comp.vso.secrets }}
+        {{- range $secName, $sec := $comp.vso.secrets }}
+        {{- if and (ne $sec.enabled false) $sec.files }}
+        {{- range $filename, $config := $sec.files }}
+        - name: {{ $filename | replace "." "-" | lower | trimAll "-" }}-vso-{{ $secName }}
+          secret:
+            secretName: {{ include "chart-model-multi.componentname" (dict "context" $ "component" $compName) }}-vso-{{ $secName }}-secret
+            items:
+              - key: {{ $filename }}
+                path: {{ $filename }}
+        {{- end }}
+        {{- end }}
         {{- end }}
         {{- end }}
         {{- if and $comp.vso $comp.vso.enabled $comp.vso.files }}
